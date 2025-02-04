@@ -117,13 +117,17 @@ impl HVACSystemForLumpedCabinAndRES {
         let (res_temp, res_temp_prev) = res_temps;
         ensure!(!res_temp.is_nan(), format_dbg!(res_temp));
         ensure!(!res_temp_prev.is_nan(), format_dbg!(res_temp_prev));
+        // TODO: split `solve_for_cabin` and `solve_for_res` into
+        // `solve_for_cabin_requsted` and `solve_for_res_requsted` for the initial
+        // calculation and then `solve_for_cabin_ach` and `solve_for_res_ach` after solving
+        // for cop
         let mut pwr_thrml_hvac_to_cabin = self
             .solve_for_cabin(te_fc, cab_state, cab_heat_cap, dt)
             .with_context(|| format_dbg!())?;
         let mut pwr_thrml_hvac_to_res: si::Power = self
             .solve_for_res(res_temp, res_temp_prev, dt)
             .with_context(|| format_dbg!())?;
-        let (cop_ideal, te_ref) = if pwr_thrml_hvac_to_res + pwr_thrml_hvac_to_cabin
+        let (cop_ideal, _te_ref) = if pwr_thrml_hvac_to_res + pwr_thrml_hvac_to_cabin
             > si::Power::ZERO
         {
             // heating mode
@@ -170,9 +174,13 @@ impl HVACSystemForLumpedCabinAndRES {
             if te_delta_vs_amb.abs() < 5.0 * uc::KELVIN_INT {
                 // cabin is cooler than ambient + threshold
                 // TODO: make this `5.0` not hardcoded
-                (te_ref / (5.0 * uc::KELVIN), te_ref)
+                let cop_ideal = te_ref / (5.0 * uc::KELVIN);
+                ensure!(cop_ideal > si::Ratio::ZERO, format_dbg!(cop_ideal));
+                (cop_ideal, te_ref)
             } else {
-                (te_ref / te_delta_vs_amb.abs(), te_ref)
+                let cop_ideal = te_ref / te_delta_vs_amb.abs();
+                ensure!(cop_ideal > si::Ratio::ZERO, format_dbg!(cop_ideal));
+                (cop_ideal, te_ref)
             }
         } else if pwr_thrml_hvac_to_res + pwr_thrml_hvac_to_cabin < si::Power::ZERO {
             // cooling mode
@@ -218,20 +226,18 @@ impl HVACSystemForLumpedCabinAndRES {
             if te_delta_vs_amb.abs() < 5.0 * uc::KELVIN_INT {
                 // cooling-dominating component is cooler than ambient + threshold
                 // TODO: make this `5.0` not hardcoded
-                (te_ref / (5.0 * uc::KELVIN), te_ref)
+                let cop_ideal = te_ref / (5.0 * uc::KELVIN);
+                ensure!(cop_ideal > si::Ratio::ZERO, format_dbg!(cop_ideal));
+                (cop_ideal, te_ref)
             } else {
-                (te_ref / te_delta_vs_amb.abs(), te_ref)
+                let cop_ideal = te_ref / te_delta_vs_amb.abs();
+                ensure!(cop_ideal > si::Ratio::ZERO, format_dbg!(cop_ideal));
+                (cop_ideal, te_ref)
             }
         } else {
             (si::Ratio::ZERO, f64::NAN * uc::KELVIN)
         };
         self.state.cop = cop_ideal * self.frac_of_ideal_cop;
-        ensure!(
-            self.state.cop >= 0.0 * uc::R,
-            "{}\n{}",
-            format_dbg!(cop_ideal),
-            format_dbg!(te_ref)
-        );
 
         let mut pwr_thrml_fc_to_cabin = si::Power::ZERO;
         self.state.pwr_aux_for_hvac = if pwr_thrml_hvac_to_cabin > si::Power::ZERO {
@@ -345,6 +351,12 @@ impl HVACSystemForLumpedCabinAndRES {
                         (self.state.pwr_p_cab + self.state.pwr_i_cab + self.state.pwr_d_cab)
                             .max(-self.pwr_thrml_max);
 
+                    ensure!(
+                        pwr_thrml_hvac_to_cab < si::Power::ZERO,
+                        "{}\nHVAC should be cooling cabin",
+                        format_dbg!(pwr_thrml_hvac_to_cab)
+                    );
+
                     if (-pwr_thrml_hvac_to_cab / self.state.cop) > self.pwr_aux_for_hvac_max {
                         self.state.pwr_aux_for_hvac = self.pwr_aux_for_hvac_max;
                         // correct if limit is exceeded
@@ -354,8 +366,10 @@ impl HVACSystemForLumpedCabinAndRES {
                     }
                     ensure!(
                         pwr_thrml_hvac_to_cab < si::Power::ZERO,
-                        "{}\nHVAC should be cooling cabin",
-                        format_dbg!(pwr_thrml_hvac_to_cab)
+                        "HVAC should be cooling cabin\n{}\n{}\n{}",
+                        format_dbg!(pwr_thrml_hvac_to_cab),
+                        format_dbg!(self.state.pwr_aux_for_hvac),
+                        format_dbg!(self.state.cop)
                     );
                     pwr_thrml_hvac_to_cab
                 } else {

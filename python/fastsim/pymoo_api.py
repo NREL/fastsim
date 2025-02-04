@@ -207,10 +207,11 @@ class ModelObjectives(object):
                 t1 = time.perf_counter()
                 sd_dict = sd.to_pydict()
                 walk_success = True
-            except RuntimeError as _err:
+            except RuntimeError as err:
                 t1 = time.perf_counter()
                 sd_dict = sd.to_pydict()
                 walk_success = True
+                print(err)
                 if len(sd_dict['veh']['history']['time_seconds']) < np.floor(len(df_exp) / 2):
                     walk_success = False
 
