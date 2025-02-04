@@ -122,6 +122,16 @@ impl Init for FuelConverter {
         Ok(())
     }
 }
+impl SaveInterval for FuelConverter {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        self.thrml.set_save_interval(save_interval)?;
+        Ok(())
+    }
+}
 
 impl Mass for FuelConverter {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
@@ -183,16 +193,6 @@ impl Mass for FuelConverter {
     fn expunge_mass_fields(&mut self) {
         self.mass = None;
         self.specific_pwr = None;
-    }
-}
-
-impl SaveInterval for FuelConverter {
-    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
-        Ok(self.save_interval)
-    }
-    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
-        self.save_interval = save_interval;
-        Ok(())
     }
 }
 
@@ -544,6 +544,20 @@ impl SetCumulative for FuelConverterThermalOption {
         }
     }
 }
+impl SaveInterval for FuelConverterThermalOption {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            FuelConverterThermalOption::FuelConverterThermal(fct) => fct.save_interval(),
+            FuelConverterThermalOption::None => Ok(None),
+        }
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            FuelConverterThermalOption::FuelConverterThermal(fct) => fct.set_save_interval(save_interval),
+            FuelConverterThermalOption::None => Ok(()),
+        }
+    }
+}
 impl FuelConverterThermalOption {
     /// Solve change in temperature and other thermal effects
     /// # Arguments
@@ -633,7 +647,17 @@ pub struct FuelConverterThermal {
         skip_serializing_if = "FuelConverterThermalStateHistoryVec::is_empty"
     )]
     pub history: FuelConverterThermalStateHistoryVec,
-    // TODO: add `save_interval` and associated methods
+    pub save_interval: Option<usize>,
+}
+
+impl SaveInterval for FuelConverterThermal {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
 }
 
 /// Dummy interpolator that will be overridden in [FuelConverterThermal::init]
@@ -822,6 +846,7 @@ impl Default for FuelConverterThermal {
             fc_eff_model: Default::default(),
             state: Default::default(),
             history: Default::default(),
+            save_interval: Some(1),
         };
         fct.init().unwrap();
         fct

@@ -272,7 +272,10 @@ impl SaveInterval for Vehicle {
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
-        self.pt_type.set_save_interval(save_interval)
+        self.pt_type.set_save_interval(save_interval)?;
+        self.cabin.set_save_interval(save_interval)?;
+        self.hvac.set_save_interval(save_interval)?;
+        Ok(())
     }
 }
 

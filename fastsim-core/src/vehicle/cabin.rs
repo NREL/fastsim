@@ -48,6 +48,22 @@ impl Init for CabinOption {
     }
 }
 impl SerdeAPI for CabinOption {}
+impl SaveInterval for CabinOption {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            CabinOption::LumpedCabin(lc) => lc.save_interval(),
+            CabinOption::LumpedCabinWithShell => todo!(),
+            CabinOption::None => Ok(None),
+        }
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            CabinOption::LumpedCabin(lc) => lc.set_save_interval(save_interval),
+            CabinOption::LumpedCabinWithShell => todo!(),
+            CabinOption::None => Ok(()),
+        }
+    }
+}
 impl SetCumulative for CabinOption {
     fn set_cumulative(&mut self, dt: si::Time) {
         match self {
@@ -85,7 +101,8 @@ pub struct LumpedCabin {
     pub state: LumpedCabinState,
     #[serde(default, skip_serializing_if = "LumpedCabinStateHistoryVec::is_empty")]
     pub history: LumpedCabinStateHistoryVec,
-    // TODO: add `save_interval` and associated method
+    /// Time step interval at which history is saved
+    pub save_interval: Option<usize>,
 }
 impl SetCumulative for LumpedCabin {
     fn set_cumulative(&mut self, dt: si::Time) {
@@ -94,6 +111,15 @@ impl SetCumulative for LumpedCabin {
 }
 impl SerdeAPI for LumpedCabin {}
 impl Init for LumpedCabin {}
+impl SaveInterval for LumpedCabin {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+}
 
 impl LumpedCabin {
     /// Solve temperatures, HVAC powers, and cumulative energies of cabin and HVAC system
@@ -177,7 +203,7 @@ impl LumpedCabin {
 #[serde(default)]
 pub struct LumpedCabinState {
     /// time step counter
-    pub i: u32,
+    pub i: usize,
     /// lumped cabin temperature
     pub temperature: si::Temperature,
     /// lumped cabin temperature at previous simulation time step

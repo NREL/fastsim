@@ -32,8 +32,9 @@ impl SaveInterval for ConventionalVehicle {
         bail!("`save_interval` is not implemented in ConventionalVehicle")
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
-        self.fc.save_interval = save_interval;
-        self.transmission.save_interval = save_interval;
+        // self.fs.set_save_interval(save_interval)?;
+        self.fc.set_save_interval(save_interval)?;
+        self.transmission.set_save_interval(save_interval)?;
         Ok(())
     }
 }

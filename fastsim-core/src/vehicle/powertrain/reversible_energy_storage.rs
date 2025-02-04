@@ -630,6 +630,16 @@ impl Init for ReversibleEnergyStorage {
         Ok(())
     }
 }
+impl SaveInterval for ReversibleEnergyStorage {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        self.thrml.set_save_interval(save_interval)?;
+        Ok(())
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
 /// Controls which parameter to update when setting specific energy
@@ -769,6 +779,20 @@ impl Init for RESThermalOption {
     }
 }
 impl SerdeAPI for RESThermalOption {}
+impl SaveInterval for RESThermalOption {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            RESThermalOption::RESLumpedThermal(rlt) => rlt.save_interval(),
+            RESThermalOption::None => Ok(None),
+        }
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            RESThermalOption::RESLumpedThermal(rlt) => rlt.set_save_interval(save_interval),
+            RESThermalOption::None => Ok(()),
+        }
+    }
+}
 impl RESThermalOption {
     /// Solve change in temperature and other thermal effects
     /// # Arguments
@@ -832,7 +856,7 @@ pub struct RESLumpedThermal {
         skip_serializing_if = "RESLumpedThermalStateHistoryVec::is_empty"
     )]
     pub history: RESLumpedThermalStateHistoryVec,
-    // TODO: add `save_interval` and associated methods
+    pub save_interval: Option<usize>
 }
 impl SetCumulative for RESLumpedThermal {
     fn set_cumulative(&mut self, dt: si::Time) {
@@ -841,6 +865,15 @@ impl SetCumulative for RESLumpedThermal {
 }
 impl SerdeAPI for RESLumpedThermal {}
 impl Init for RESLumpedThermal {}
+impl SaveInterval for RESLumpedThermal {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+}
 impl RESLumpedThermal {
     fn solve(
         &mut self,

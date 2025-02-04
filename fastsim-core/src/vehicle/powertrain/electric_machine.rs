@@ -334,6 +334,15 @@ impl Init for ElectricMachine {
         Ok(())
     }
 }
+impl SaveInterval for ElectricMachine {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+}
 
 impl SetCumulative for ElectricMachine {
     fn set_cumulative(&mut self, dt: si::Time) {
