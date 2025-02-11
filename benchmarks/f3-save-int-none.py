@@ -5,7 +5,7 @@ from memory_profiler import profile
 @profile(precision=3)
 def build_and_run_sim_drive():
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
-    fsim.set_param_from_path(veh, "save_interval", None)
+    veh.set_save_interval(None)
     cyc = fsim.Cycle.from_resource("udds.csv")
     sd = fsim.SimDrive(veh, cyc)
     sd.walk()

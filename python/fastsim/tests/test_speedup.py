@@ -16,7 +16,7 @@ if run_tests:
         veh = fsim.Vehicle.from_resource("2016_TOYOTA_Prius_Two.yaml")
 
         # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-        fsim.set_param_from_path(veh, "save_interval", 1)
+        veh.set_save_interval(1)
 
         # load cycle from file
         cyc = fsim.Cycle.from_resource("udds.csv")
@@ -39,7 +39,7 @@ if run_tests:
                 t_fsim3_list.append(t1 - t0)
 
             sd_no_save = sd0.copy()
-            fsim.set_param_from_path(sd_no_save, "veh.save_interval", None)
+            sd_no_save.set_save_interval(None)
             # simulation start time
             t0 = time.perf_counter()
             sd_no_save.walk()
@@ -85,7 +85,7 @@ if run_tests:
         veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
 
         # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-        fsim.set_param_from_path(veh, "save_interval", 1)
+        veh.set_save_interval(1)
 
         # load cycle from file
         cyc = fsim.Cycle.from_resource("udds.csv")
@@ -108,7 +108,7 @@ if run_tests:
                 t_fsim3_list.append(t1 - t0)
 
             sd_no_save = sd0.copy()
-            fsim.set_param_from_path(sd_no_save, "veh.save_interval", None)
+            sd_no_save.set_save_interval(None)
             # simulation start time
             t0 = time.perf_counter()
             sd_no_save.walk()

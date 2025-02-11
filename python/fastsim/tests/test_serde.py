@@ -6,8 +6,8 @@ def get_solved_sd():
     veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
 
     # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-    fsim.set_param_from_path(veh, "save_interval" , 1)
-
+    veh.set_save_interval(1)
+    
     # load cycle from file
     cyc = fsim.Cycle.from_resource("udds.csv")
 

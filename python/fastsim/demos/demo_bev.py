@@ -27,10 +27,10 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 # load 2012 Ford Fusion from file
 veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
 veh_no_save = veh.copy()
-fsim.set_param_from_path(veh_no_save, "save_interval", None)
+veh_no_save.set_save_interval(None)
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-fsim.set_param_from_path(veh, "save_interval" , 1)
+veh.set_save_interval(1)
 
 # load cycle from file
 cyc = fsim.Cycle.from_resource("udds.csv")
@@ -138,7 +138,8 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/res_pwr.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -208,7 +209,8 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/res_energy.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -278,18 +280,20 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/road_loads.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
-if SHOW_PLOTS:
-    fig, ax = plot_res_pwr() 
-    fig, ax = plot_res_energy()
-    fig, ax = plot_road_loads()
+fig, ax = plot_res_pwr() 
+fig, ax = plot_res_energy()
+fig, ax = plot_road_loads()
 
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
 res = fsim.ReversibleEnergyStorage.from_pydict(sd.to_pydict()['veh']['pt_type']['BatteryElectricVehicle']['res'])
 res.set_default_pwr_interp()
 
-# %%
+def test_this_file():
+    """to trigger automated testing"""
+    pass

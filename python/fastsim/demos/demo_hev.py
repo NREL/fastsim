@@ -36,10 +36,11 @@ veh = fsim.Vehicle.from_resource("2016_TOYOTA_Prius_Two.yaml")
 # veh = veh.from_pydict(veh_dict)
 
 veh_no_save = veh.copy()
-fsim.set_param_from_path(veh_no_save, "save_interval", None)
+veh_no_save.set_save_interval(None)
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-fsim.set_param_from_path(veh, "save_interval", 1)
+veh_no_save.set_save_interval(1)
+
 
 # load cycle from file
 # TODO make it so that the cycles in resources have `name` populated
@@ -169,7 +170,8 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/road_loads.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -292,7 +294,8 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/fc_pwr.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -417,7 +420,8 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path(f"./plots/fc_energy.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -515,7 +519,8 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/battery_pwr.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -612,12 +617,13 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/battery_energy.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
 
-def plot_pwr_split() -> Tuple[Figure, Axes]: ...
+# def plot_pwr_split() -> Tuple[Figure, Axes]: ...
 
 
 figsize_3_stacked = (10, 9)
@@ -627,11 +633,10 @@ base_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
                '#7f7f7f', '#bcbd22', '#17becf']
 baselinestyles = ["--", "-.",]
 
-if SHOW_PLOTS:
-    fig, ax = plot_road_loads()
-    fig, ax = plot_fc_pwr()
-    fig, ax = plot_fc_energy()
-    fig, ax = plot_res_pwr()
-    fig, ax = plot_res_energy()
+fig, ax = plot_road_loads()
+fig, ax = plot_fc_pwr()
+fig, ax = plot_fc_energy()
+fig, ax = plot_res_pwr()
+fig, ax = plot_res_energy()
 
 # %%

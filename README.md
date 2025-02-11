@@ -1,6 +1,12 @@
 ![FASTSim Logo](https://www.nrel.gov/transportation/assets/images/icon-fastsim.jpg)
 
-[![homepage](https://img.shields.io/badge/homepage-fastsim-blue)](https://www.nrel.gov/transportation/fastsim.html) [![tests](https://github.com/NREL/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/tests.yaml) [![wheels](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml?event=release) [![python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://pypi.org/project/fastsim/) [![documentation](https://img.shields.io/badge/documentation-book-blue.svg)](https://nrel.github.io/fastsim/) [![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NREL/fastsim)
+[![homepage](https://img.shields.io/badge/homepage-fastsim-blue)](https://www.nrel.gov/transportation/fastsim.html)
+[![tests](https://github.com/NREL/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/tests.yaml)
+<!-- TODO: replace wheels -->
+[![wheels](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml?event=release)
+[![python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://pypi.org/project/fastsim/)
+[![documentation](https://img.shields.io/badge/documentation-book-blue.svg)](https://nrel.github.io/fastsim/)
+[![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NREL/fastsim)
 
 # Description
 This is the `fastim-3` version of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html).
@@ -27,6 +33,7 @@ It introduces numerous new enhancements and features, including:
 
 ## Python 
 Set up and activate a python environment (compatible with Python 3.8 - 3.10; we recommend Python 3.10) with the following steps.
+
 ### [Anaconda](https://www.anaconda.com/) 
 1. Create: `conda create -n fastsim python=3.10`
 1. Activate: `conda activate fastsim`
@@ -45,6 +52,10 @@ There is some variation based on your Operating System:
 - Command Prompt (windows):
     1. Create: `python -m venv fastsim-venv` -- name is user decision
     1. Activate: `fastsim-venv/Scripts/activate.bat`
+
+### [Pixi](https://pixi.sh/latest/) (recommended for developers)
+1. `pixi shell -e dev` -- this creates the environment, installs all the dependencies,
+    builds fastsim, and activates the environment
 
 ## FASTSim-3
 ### Via PyPI

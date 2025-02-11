@@ -19,3 +19,7 @@ rust/
 .zed
 activate
 activate.sh
+
+# pixi environments
+.pixi
+*.egg-info

@@ -37,7 +37,7 @@ veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterTherma
 veh = fsim.Vehicle.from_pydict(veh_dict)
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-fsim.set_param_from_path(veh, "save_interval", 1)
+veh.set_save_interval(1)
 
 # load cycle from file
 cyc_dict = fsim.Cycle.from_resource("udds.csv").to_pydict()
@@ -109,6 +109,8 @@ def plot_temperatures() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/temps.svg"))
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -174,6 +176,8 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/fc_pwr.svg"))
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -213,6 +217,8 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path(f"./plots/fc_energy.svg"))
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -257,6 +263,8 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/res_pwr.svg"))
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -301,6 +309,8 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/res_energy.svg"))
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -341,18 +351,19 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/road_loads.svg"))
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
 
-if SHOW_PLOTS:
-    fig_fc_pwr, ax_fc_pwr = plot_fc_pwr()
-    fig_fc_energy, ax_fc_energy = plot_fc_energy()
-    fig_res_pwr, ax_res_pwr = plot_res_pwr()
-    fig_res_energy, ax_res_energy = plot_res_energy()
-    fig_temps, ax_temps = plot_temperatures()
-    fig, ax = plot_road_loads()
-    plt.show()
+fig_fc_pwr, ax_fc_pwr = plot_fc_pwr()
+fig_fc_energy, ax_fc_energy = plot_fc_energy()
+fig_res_pwr, ax_res_pwr = plot_res_pwr()
+fig_res_energy, ax_res_energy = plot_res_energy()
+fig_temps, ax_temps = plot_temperatures()
+fig, ax = plot_road_loads()
+
 # %%
 
 # %%

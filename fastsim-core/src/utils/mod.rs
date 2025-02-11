@@ -6,8 +6,7 @@ pub mod interp;
 pub use interp::*;
 
 /// Error message for when user attempts to set value in a nested struct.
-pub const DIRECT_SET_ERR: &str =
-    "Setting field value directly not allowed. Please use fastsim.set_param_from_path() method.";
+pub const DIRECT_SET_ERR: &str = "Setting field value directly not allowed";
 
 /// returns true for use with serde default
 pub fn return_true() -> bool {

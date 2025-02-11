@@ -18,13 +18,12 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 dependencies = [
-    "pandas>=1",
-    "polars==1.4.1",
-    "matplotlib>=3.3",
-    "numpy>=1.18",
-    "seaborn>=0.10",
-    "typing_extensions",
-    "pypi-multi-versions",
+    "pandas~=1.5",
+    "polars~=1.4",
+    "matplotlib~=3.3",
+    "numpy~=1.18",
+    "seaborn>=0.11.0,<13.2",
+    "typing_extensions~=4.12",
     "PyYAML==6.0.2",
     "msgpack==1.1.0",
 ]
@@ -34,15 +33,16 @@ Homepage = "https://www.nrel.gov/transportation/fastsim.html"
 
 [project.optional-dependencies]
 dev = [
-    "black",
-    "pytest",
-    "maturin",
-    "plotly",
-    "ipykernel",
-    "pymoo==0.6.0.1",
-    "memory_profiler==0.61.0",
-    "nbformat~=5.0",
-    "pyarrow~=17.0",
+    "pytest~=8.3",
+    "maturin~=1.8",
+    "ipykernel~=6.29",
+    "executing~=2.0",
+    "python-lsp-server~=1.10",
+    "ruff~=0.9",
+    "pylsp-mypy~=0.7.0",
+    "memory_profiler~=0.61.0",
+    "pymoo~=0.6",
+    "plotly~=6.0",
 ]
 
 [tool.setuptools]
@@ -68,3 +68,24 @@ include = [
     { format = "sdist", path = "fastsim-core/proc-macros/Cargo.toml" },
     { format = "sdist", path = "fastsim-core/proc-macros/src/*" },
 ]
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["osx-64", "osx-arm64", "linux-64", "win-64"]
+
+[tool.pixi.pypi-dependencies]
+fastsim = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+
+[tool.pixi.tasks]
+cargo_test = "cargo test"
+py_test = "pixi run -e dev pytest -v"
+build_and_test = { depends-on = ["cargo_test", "py_test"] }
+
+fmt = "ruff"
+lint = "pylint"
+style = { depends-on = ["fmt", "lint"] }
+

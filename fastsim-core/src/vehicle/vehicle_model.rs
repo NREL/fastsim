@@ -25,15 +25,10 @@ impl Init for AuxSource {}
         Ok(Self::try_from(veh.clone())?)
     }
 
-    // despite having `setter` here, this seems to work as a function
-    #[setter("save_interval")]
-    fn set_save_interval_py(&mut self, _save_interval: Option<usize>) -> PyResult<()> {
-        Err(PyAttributeError::new_err(DIRECT_SET_ERR))
-    }
-
-    #[setter("__save_interval")]
+    #[pyo3(name = "set_save_interval")]
+    #[pyo3(signature = (save_interval=None))]
     /// Set save interval and cascade to nested components.
-    fn set_save_interval_hidden(&mut self, save_interval: Option<usize>) -> PyResult<()> {
+    fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> PyResult<()> {
         self.set_save_interval(save_interval).map_err(|e| PyAttributeError::new_err(e.to_string()))
     }
 
@@ -48,40 +43,15 @@ impl Init for AuxSource {}
     fn get_fc(&self) -> Option<FuelConverter> {
         self.fc().cloned()
     }
-    #[setter("fc")]
-    fn set_fc_py(&mut self, _fc: FuelConverter) -> PyResult<()> {
-        Err(PyAttributeError::new_err(DIRECT_SET_ERR))
-    }
-    #[setter("__fc")]
-    fn set_fc_hidden(&mut self, fc: FuelConverter) -> PyResult<()> {
-        self.set_fc(fc).map_err(|e| PyAttributeError::new_err(e.to_string()))
-    }
 
     #[getter]
     fn get_res(&self) -> Option<ReversibleEnergyStorage> {
         self.res().cloned()
     }
-    #[setter("res")]
-    fn set_res_py(&mut self, _res: ReversibleEnergyStorage) -> PyResult<()> {
-        Err(PyAttributeError::new_err(DIRECT_SET_ERR))
-    }
-    #[setter("__res")]
-    fn set_res_hidden(&mut self, res: ReversibleEnergyStorage) -> PyResult<()> {
-        self.set_res(res).map_err(|e| PyAttributeError::new_err(e.to_string()))
-    }
 
     #[getter]
     fn get_em(&self) -> Option<ElectricMachine> {
         self.em().cloned()
-    }
-
-    #[setter("em")]
-    fn set_em_py(&mut self, _em: ElectricMachine) -> PyResult<()> {
-        Err(PyAttributeError::new_err(DIRECT_SET_ERR))
-    }
-    #[setter("__em")]
-    fn set_em_hidden(&mut self, em: ElectricMachine) -> PyResult<()> {
-        self.set_em(em).map_err(|e| PyAttributeError::new_err(e.to_string()))
     }
 
     fn veh_type(&self) -> PyResult<String> {
@@ -97,11 +67,6 @@ impl Init for AuxSource {}
     // fn get_mass_kg(&self) -> PyResult<Option<f64>> {
     //     Ok(self.mass()?.map(|m| m))
     // }
-
-    #[getter("pt_type_json")]
-    fn get_pt_type_json_py(&self) -> anyhow::Result<String >{
-        self.pt_type.to_str("json")
-    }
 
     #[cfg(feature = "resources")]
     #[pyo3(name = "list_resources")]

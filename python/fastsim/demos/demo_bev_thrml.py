@@ -19,7 +19,7 @@ from plot_utils  import *
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
 # if environment var `SAVE_FIGS=true` is set, save plots
-kSAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
+SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 
 # `fastsim3` -- load vehicle and cycle, build simulation, and run 
 # %%
@@ -30,7 +30,7 @@ veh = fsim.Vehicle.from_file(
 )
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-fsim.set_param_from_path(veh, "save_interval" , 1)
+veh.set_save_interval(1)
 
 # load cycle from file
 cyc = fsim.Cycle.from_resource("udds.csv")
@@ -90,7 +90,8 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/res_pwr.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -134,7 +135,8 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/res_energy.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
@@ -174,14 +176,14 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
     plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/road_loads.svg"))
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
     return fig, ax
 
-if SHOW_PLOTS:
-    fig, ax = plot_res_pwr() 
-    fig, ax = plot_res_energy()
-    fig, ax = plot_road_loads()
+fig, ax = plot_res_pwr() 
+fig, ax = plot_res_energy()
+fig, ax = plot_road_loads()
 
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
