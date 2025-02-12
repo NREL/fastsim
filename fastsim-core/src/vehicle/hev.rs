@@ -93,6 +93,10 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .with_context(|| anyhow!(format_dbg!()))?;
         let disch_buffer: si::Energy = match &self.pt_cntrl {
             HEVPowertrainControls::RGWDB(rgwb) => {
+                // speed_soc_disch_buffer: speed such that for the vehicle to accelerate
+                // from its current speed to this speed, the corresponding amount of kinetic energy
+                // needed to accelerate from its current speed to this speed is reserved from the
+                // minimum SOC
                 (0.5 * veh_state.mass
                     * (rgwb
                         .speed_soc_disch_buffer
@@ -110,6 +114,10 @@ impl Powertrain for Box<HybridElectricVehicle> {
         };
         let chrg_buffer: si::Energy = match &self.pt_cntrl {
             HEVPowertrainControls::RGWDB(rgwb) => {
+                // speed_soc_regen_buffer: speed such that for the vehicle to decelerelate
+                // from its current speed to this speed, the corresponding amount of kinetic energy
+                // recharged from decelerating its current speed to this speed is stored from the
+                // minimum SOC
                 (0.5 * veh_state.mass
                     * (veh_state.speed_ach.powi(typenum::P2::new())
                         - rgwb
@@ -336,19 +344,25 @@ pub struct FCOnCauses(Vec<FCOnCause>);
 impl Init for FCOnCauses {}
 impl SerdeAPI for FCOnCauses {}
 impl FCOnCauses {
+    /// Clears the vector, removing all values.
+    /// Note that this method has no effect on the allocated capacity of the vector
     fn clear(&mut self) {
         self.0.clear();
     }
 
     #[allow(dead_code)]
+    /// Removes the last element from a vector and returns it, or None if it is empty.
+    /// If you'd like to pop the first element, consider using [VecDeque::pop_front] instead
     fn pop(&mut self) -> Option<FCOnCause> {
         self.0.pop()
     }
 
+    /// Appends an element to the back of a collection.
     fn push(&mut self, new: FCOnCause) {
         self.0.push(new)
     }
 
+    /// Returns true if the vector contains no elements
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -630,11 +644,14 @@ impl HEVPowertrainControls {
                     (si::Power::ZERO, em_pwr)
                 } else {
                     // engine has been forced on
+                    // setting engine power level to a preset fraction of maximum efficient power output level
                     let frac_of_pwr_for_peak_eff: si::Ratio = rgwdb
                         .frac_of_most_eff_pwr_to_run_fc
                         .with_context(|| format_dbg!())?;
                     let fc_pwr = if pwr_prop_req < si::Power::ZERO {
                         // negative tractive power
+                        // let electric motor charge at the maximum regen power, if em braking effort is less than
+                        // the em regen maximum power, engine will provide additional power to the regen motor
                         // max power system can receive from engine during negative traction
                         (em_state.pwr_mech_regen_max + pwr_prop_req)
                             // or peak efficiency power if it's lower than above
