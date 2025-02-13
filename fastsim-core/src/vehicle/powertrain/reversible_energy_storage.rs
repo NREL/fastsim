@@ -7,30 +7,32 @@ use crate::pyo3::*;
 const TOL: f64 = 1e-3;
 
 #[fastsim_api(
-    // #[getter("eff_max")]
-    // fn get_eff_max_py(&self) -> f64 {
-    //     self.get_eff_max()
-    // }
-
-    // #[setter("__eff_max")]
-    // fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
-    //     self.set_eff_max(eff_max).map_err(PyValueError::new_err)
-    // }
-
-    // #[getter("eff_min")]
-    // fn get_eff_min_py(&self) -> f64 {
-    //     self.get_eff_min()
-    // }
-
-    #[getter("eff_range")]
-    fn get_eff_range_py(&self) -> f64 {
-        self.get_eff_range()
+    #[getter("eff_max")]
+    fn get_eff_max_py(&self) -> PyResult<f64> {
+        Ok(self.get_eff_max()?)
     }
 
-    // #[setter("__eff_range")]
-    // fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
-    //     self.set_eff_range(eff_range)
-    // }
+    #[setter("__eff_max")]
+    fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
+        self.set_eff_max(eff_max)?;
+        Ok(())
+    }
+
+    #[getter("eff_min")]
+    fn get_eff_min_py(&self) -> PyResult<f64> {
+        Ok(self.get_eff_min()?)
+    }
+
+    #[getter("eff_range")]
+    fn get_eff_range_py(&self) -> PyResult<f64> {
+        Ok(self.get_eff_range()?)
+    }
+
+    #[setter("__eff_range")]
+    fn set_eff_range_py(&mut self, eff_range: f64) -> PyResult<()> {
+        self.set_eff_range(eff_range)?;
+        Ok(())
+    }
 
     // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
     #[pyo3(name = "set_mass")]
@@ -430,29 +432,111 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         Ok(())
     }
 
-    pub fn get_eff_max(&self) -> f64 {
-        todo!("adapt from ALTRIOS");
+    /// Returns max value of [Self::eff_interp]
+    pub fn get_eff_max(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(self
+            .eff_interp
+            .f_x()?
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
     }
 
     /// Scales eff_interp by ratio of new `eff_max` per current calculated
     /// max linearly, such that `eff_min` is untouched
-    pub fn set_eff_max(&mut self, _eff_max: f64) -> Result<(), String> {
-        todo!("adapt from ALTRIOS");
+    pub fn set_eff_max(&mut self, eff_max: f64) -> anyhow::Result<()> {
+        if (self.get_eff_min()?..=1.0).contains(&eff_max) {
+            let old_max = self.get_eff_max()?;
+            let f_x = self.eff_interp.f_x()?.to_owned();
+            match &mut self.eff_interp {
+                interp @ Interpolator::Interp1D(..) => {
+                    interp.set_f_x(f_x.iter().map(|x| x * eff_max / old_max).collect())?;
+                }
+                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+            }
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "`eta_max` ({:.3}) must be between `eta_min` ({:.3}) and 1.0",
+                eff_max,
+                self.get_eff_min()?
+            ))
+        }
     }
 
-    pub fn get_eff_min(&self) -> f64 {
-        todo!("adapt from ALTRIOS");
+    /// Returns min value of [Self::eff_interp]
+    pub fn get_eff_min(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(self
+            .eff_interp
+            .f_x()?
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, curr| acc.min(*curr)))
     }
 
     /// Max value of `eff_interp` minus min value of `eff_interp`.
-    pub fn get_eff_range(&self) -> f64 {
-        self.get_eff_max() - self.get_eff_min()
+    pub fn get_eff_range(&self) -> anyhow::Result<f64> {
+        Ok(self.get_eff_max()? - self.get_eff_min()?)
     }
 
     /// Scales values of `eff_interp` without changing max such that max - min
-    /// is equal to new range
-    pub fn set_eff_range(&mut self, _eff_range: f64) -> anyhow::Result<()> {
-        todo!("adapt from ALTRIOS");
+    /// is equal to new range.  Will change max if needed to ensure no values are
+    /// less than zero.
+    pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
+        let eff_max = self.get_eff_max()?;
+        if eff_range == 0.0 {
+            let f_x = vec![
+                eff_max;
+                self.eff_interp
+                    .f_x()
+                    .with_context(|| "eff_interp_fwd does not have f_x field")?
+                    .len()
+            ];
+            self.eff_interp.set_f_x(f_x)?;
+            Ok(())
+        } else if (0.0..=1.0).contains(&eff_range) {
+            let old_min = self.get_eff_min()?;
+            let old_range = self.get_eff_max()? - old_min;
+            if old_range == 0.0 {
+                return Err(anyhow!(
+                    "`eff_range` is already zero so it cannot be modified."
+                ));
+            }
+            let f_x_fwd = self.eff_interp.f_x()?.to_owned();
+            match &mut self.eff_interp {
+                interp @ Interpolator::Interp1D(..) => {
+                    interp.set_f_x(
+                        f_x_fwd
+                            .iter()
+                            .map(|x| eff_max + (x - eff_max) * eff_range / old_range)
+                            .collect(),
+                    )?;
+                }
+                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+            }
+            if self.get_eff_min()? < 0.0 {
+                let x_neg = self.get_eff_min()?;
+                let f_x_fwd = self.eff_interp.f_x()?.to_owned();
+                match &mut self.eff_interp {
+                    interp @ Interpolator::Interp1D(..) => {
+                        interp.set_f_x(f_x_fwd.iter().map(|x| x - x_neg).collect())?;
+                    }
+                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+                }
+            }
+            if self.get_eff_max()? > 1.0 {
+                return Err(anyhow!(format!(
+                    "`eff_max` ({:.3}) must be no greater than 1.0",
+                    self.get_eff_max()?
+                )));
+            }
+            Ok(())
+        } else {
+            Err(anyhow!(format!(
+                "`eff_range` ({:.3}) must be between 0.0 and 1.0",
+                eff_range,
+            )))
+        }
     }
 
     /// Usable energy capacity, accounting for SOC limits

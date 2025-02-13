@@ -17,16 +17,26 @@ impl InterpolatorMethods for Interpolator {
                 Ok(())
             }
             Interpolator::Interp1D(..) => {
-                todo!()
+                Ok(self.set_f_x(self.f_x()?.iter().map(|x| x * min / old_min).collect())?)
             }
-            Interpolator::Interp2D(..) => {
-                todo!()
-            }
-            Interpolator::Interp3D(..) => {
-                todo!()
-            }
+            Interpolator::Interp2D(..) => Ok(self.set_f_xy(
+                self.f_xy()?
+                    .iter()
+                    .map(|v| v.iter().map(|x| x * min / old_min).collect())
+                    .collect(),
+            )?),
+            Interpolator::Interp3D(..) => Ok(self.set_f_xyz(
+                self.f_xyz()?
+                    .iter()
+                    .map(|v0| {
+                        v0.iter()
+                            .map(|v1| v1.iter().map(|x| x * min / old_min).collect())
+                            .collect()
+                    })
+                    .collect(),
+            )?),
             Interpolator::InterpND(..) => {
-                todo!()
+                Ok(self.set_values(self.values()?.map(|x| x * min / old_min))?)
             }
         }
     }
