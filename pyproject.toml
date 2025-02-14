@@ -28,6 +28,7 @@ dependencies = [
     "msgpack==1.1.0",
     "ipykernel~=6.29",
     "executing~=2.0",
+    "pip",
 ]
 
 [project.urls]
