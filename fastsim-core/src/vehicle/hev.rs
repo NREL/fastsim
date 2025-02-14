@@ -181,14 +181,18 @@ impl Powertrain for Box<HybridElectricVehicle> {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // TODO: address these concerns
-        // - add a transmission here
         // - what happens when the fc is on and producing more power than the
         //   transmission requires? It seems like the excess goes straight to the battery,
         //   but it should probably go thourgh the em somehow.
+        let pwr_in_transmission = self
+            .transmission
+            .get_pwr_in_req(pwr_out_req)
+            .with_context(|| anyhow!(format_dbg!()))?;
+
         let (fc_pwr_out_req, em_pwr_out_req) = self
             .pt_cntrl
             .get_pwr_fc_and_em(
-                pwr_out_req,
+                pwr_in_transmission,
                 veh_state,
                 &mut self.state,
                 &self.fc,
