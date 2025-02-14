@@ -16,7 +16,6 @@ pub struct HybridElectricVehicle {
     pub em: ElectricMachine,
     #[has_state]
     pub transmission: Transmission,
-    // TODO: put a transmission here
     /// control strategy for distributing power demand between `fc` and `res`
     #[serde(default)]
     pub pt_cntrl: HEVPowertrainControls,
@@ -56,6 +55,9 @@ impl Init for HybridElectricVehicle {
         self.fc.init().with_context(|| anyhow!(format_dbg!()))?;
         self.res.init().with_context(|| anyhow!(format_dbg!()))?;
         self.em.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.transmission
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.pt_cntrl
             .init()
             .with_context(|| anyhow!(format_dbg!()))?;
