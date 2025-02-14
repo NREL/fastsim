@@ -117,7 +117,7 @@ pt_type:
               offset: 320.1873803210462
               lag: 24.998774179607892
               minimum: 0.1927168135089094
-      pwr_type: Mechanical
+      pwr_out_type: Mechanical
       mass_kilograms: ~
       specific_pwr_watts_per_kilogram: ~
       pwr_out_max_watts: 112000.0

@@ -55,7 +55,7 @@ use std::f64::consts::PI;
 /// Struct for modeling [FuelConverter] (e.g. engine, fuel cell.) thermal plant
 #[non_exhaustive]
 pub struct FuelConverter {
-    pub pwr_type: FuelConverterPowerType,
+    pub pwr_out_type: FuelConverterPowerType,
     /// [Self] Thermal plant, including thermal management controls
     #[serde(default, skip_serializing_if = "FuelConverterThermalOption::is_none")]
     #[has_state]

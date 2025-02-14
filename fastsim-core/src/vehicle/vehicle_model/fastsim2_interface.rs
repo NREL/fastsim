@@ -76,7 +76,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
                             // this means that aux power must include idle fuel
                             pwr_idle_fuel: si::Power::ZERO,
-                            pwr_type: FuelConverterPowerType::Mechanical,
+                            pwr_out_type: FuelConverterPowerType::Mechanical,
                             save_interval: Some(1),
                             history: Default::default(),
                         };
@@ -155,7 +155,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
                             // this means that aux power must include idle fuel
                             pwr_idle_fuel: si::Power::ZERO,
-                            pwr_type: if &f2veh.fc_eff_type == fastsim_2::vehicle::H2FC {
+                            pwr_out_type: if &f2veh.fc_eff_type == fastsim_2::vehicle::H2FC {
                                 FuelConverterPowerType::Electrical
                             } else {
                                 FuelConverterPowerType::Mechanical
