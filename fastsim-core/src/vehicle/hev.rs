@@ -311,11 +311,15 @@ impl Mass for HybridElectricVehicle {
         let fs_mass = self.fs.mass().with_context(|| anyhow!(format_dbg!()))?;
         let res_mass = self.res.mass().with_context(|| anyhow!(format_dbg!()))?;
         let em_mass = self.em.mass().with_context(|| anyhow!(format_dbg!()))?;
-        match (fc_mass, fs_mass, res_mass, em_mass) {
-            (Some(fc_mass), Some(fs_mass), Some(res_mass), Some(em_mass)) => {
-                Ok(Some(fc_mass + fs_mass + em_mass + res_mass))
+        let transmission_mass = self
+            .transmission
+            .mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
+        match (fc_mass, fs_mass, res_mass, em_mass, transmission_mass) {
+            (Some(fc_mass), Some(fs_mass), Some(res_mass), Some(em_mass), Some(transmission_mass)) => {
+                Ok(Some(fc_mass + fs_mass + res_mass + em_mass + transmission_mass))
             }
-            (None, None, None, None) => Ok(None),
+            (None, None, None, None, None) => Ok(None),
             _ => bail!(
                 "`{}` field masses are not consistently set to `Some` or `None`",
                 stringify!(HybridElectricVehicle)
@@ -328,6 +332,7 @@ impl Mass for HybridElectricVehicle {
         self.fs.expunge_mass_fields();
         self.res.expunge_mass_fields();
         self.em.expunge_mass_fields();
+        self.transmission.expunge_mass_fields();
         self.mass = None;
     }
 }
