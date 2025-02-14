@@ -408,8 +408,7 @@ impl Vehicle {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         let te_fc: Option<si::Temperature> = self.fc().and_then(|fc| fc.temperature());
-        let res_temp = self.res().and_then(|res| res.temperature());
-        let res_temp_prev = self.res().and_then(|res| res.temp_prev());
+        let res_thrml_state = self.res().and_then(|res| res.res_thrml_state());
         let pwr_thrml_cab_to_res: si::Power = self
             .res()
             .and_then(|res| match &res.thrml {
@@ -449,13 +448,10 @@ impl Vehicle {
                         te_fc,
                         cab.state,
                         cab.heat_capacitance,
-                        (
-                            res_temp
-                            .with_context(
-                                || "{}\n[HVACOption::LumpedCabinAndRES] requires [ReversibleEnergyStorage::thrml] to be `Some`"
-                            )?,
-                            res_temp_prev.unwrap()
-                        ),
+                        res_thrml_state
+                        .with_context(
+                            || "{}\n[HVACOption::LumpedCabinAndRES] requires [ReversibleEnergyStorage::thrml] to be `Some`"
+                        )?,
                         dt,
                     )
                     .with_context(|| format_dbg!())?;

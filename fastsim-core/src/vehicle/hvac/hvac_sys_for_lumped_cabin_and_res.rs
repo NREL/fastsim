@@ -12,10 +12,10 @@ use super::*;
 /// HVAC system for [LumpedCabin] and [ReversibleEnergyStorage::thrml]
 pub struct HVACSystemForLumpedCabinAndRES {
     /// set point temperature
-    pub te_set: Option<si::Temperature>,
+    pub te_set_cab: Option<si::Temperature>,
     /// Deadband range.  Any cabin temperature within this range of `te_set`
     /// results in no HVAC power draw
-    pub te_deadband: si::TemperatureInterval,
+    pub te_deadband_cab: si::TemperatureInterval,
     /// HVAC proportional gain for cabin
     pub p_cabin: si::ThermalConductance,
     /// HVAC integral gain [W / K / s] for cabin, resets at zero crossing events  
@@ -26,6 +26,11 @@ pub struct HVACSystemForLumpedCabinAndRES {
     /// HVAC derivative gain [W / K * s] for cabin
     /// NOTE: `uom` crate does not have this unit, but it may be possible to make a custom unit for this
     pub d_cabin: f64,
+    /// set point temperature
+    pub te_set_res: Option<si::Temperature>,
+    /// Deadband range.  Any battery temperature within this range of `te_set`
+    /// results in no HVAC power draw
+    pub te_deadband_res: si::TemperatureInterval,
     /// max HVAC thermal power
     /// HVAC proportional gain for [ReversibleEnergyStorage]
     pub p_res: si::ThermalConductance,
@@ -62,12 +67,14 @@ pub struct HVACSystemForLumpedCabinAndRES {
 impl Default for HVACSystemForLumpedCabinAndRES {
     fn default() -> Self {
         Self {
-            te_set: Some(*TE_STD_AIR),
-            te_deadband: 1.5 * uc::KELVIN_INT,
+            te_set_cab: Some(*TE_STD_AIR),
+            te_deadband_cab: 1.5 * uc::KELVIN_INT,
             p_cabin: Default::default(),
             i_cabin: Default::default(),
             d_cabin: Default::default(),
             pwr_i_max_cabin: 5. * uc::KW,
+            te_set_res: Some(*TE_STD_AIR + 8.0 * uc::KELVIN_INT),
+            te_deadband_res: 8.0 * uc::KELVIN_INT,
             p_res: Default::default(),
             i_res: Default::default(),
             d_res: Default::default(),
@@ -111,22 +118,41 @@ impl HVACSystemForLumpedCabinAndRES {
         te_fc: Option<si::Temperature>,
         cab_state: LumpedCabinState,
         cab_heat_cap: si::HeatCapacity,
-        res_temps: (si::Temperature, si::Temperature),
+        res_thrml_state: RESLumpedThermalState,
         dt: si::Time,
     ) -> anyhow::Result<(si::Power, si::Power, si::Power)> {
-        let (res_temp, res_temp_prev) = res_temps;
+        let (res_temp, res_temp_prev) = (res_thrml_state.temperature, res_thrml_state.temp_prev);
         ensure!(!res_temp.is_nan(), format_dbg!(res_temp));
         ensure!(!res_temp_prev.is_nan(), format_dbg!(res_temp_prev));
-        // TODO: split `solve_for_cabin` and `solve_for_res` into
-        // `solve_for_cabin_requsted` and `solve_for_res_requsted` for the initial
-        // calculation and then `solve_for_cabin_ach` and `solve_for_res_ach` after solving
-        // for cop
-        let mut pwr_thrml_hvac_to_cabin = self
-            .solve_for_cabin(te_fc, cab_state, cab_heat_cap, dt)
-            .with_context(|| format_dbg!())?;
-        let mut pwr_thrml_hvac_to_res: si::Power = self
-            .solve_for_res(res_temp, res_temp_prev, dt)
-            .with_context(|| format_dbg!())?;
+
+        let te_cab_delta_vs_set = if let Some(te_set_cab) = self.te_set_cab {
+            let te_cab_delta_vs_set = (cab_state.temperature.get::<si::degree_celsius>()
+                - te_set_cab.get::<si::degree_celsius>())
+                * uc::KELVIN_INT;
+            Some(te_cab_delta_vs_set)
+        } else {
+            None
+        };
+
+        let te_cab_delta_vs_amb: si::TemperatureInterval =
+            (cab_state.temperature.get::<si::degree_celsius>()
+                - te_amb_air.get::<si::degree_celsius>())
+                * uc::KELVIN_INT;
+
+        let te_res_delta_vs_set = if let Some(te_set_res) = self.te_set_res {
+            let te_res_delta_vs_set = (res_thrml_state.temperature.get::<si::degree_celsius>()
+                - te_set_res.get::<si::degree_celsius>())
+                * uc::KELVIN_INT;
+            Some(te_res_delta_vs_set)
+        } else {
+            None
+        };
+
+        let te_res_delta_vs_amb: si::TemperatureInterval =
+            (res_thrml_state.temperature.get::<si::degree_celsius>()
+                - te_amb_air.get::<si::degree_celsius>())
+                * uc::KELVIN_INT;
+
         let (cop_ideal, _te_ref) = if pwr_thrml_hvac_to_res + pwr_thrml_hvac_to_cabin
             > si::Power::ZERO
         {
@@ -238,6 +264,12 @@ impl HVACSystemForLumpedCabinAndRES {
             (si::Ratio::ZERO, f64::NAN * uc::KELVIN)
         };
         self.state.cop = cop_ideal * self.frac_of_ideal_cop;
+        let mut pwr_thrml_hvac_to_cabin = self
+            .solve_for_cabin(te_fc, cab_state, cab_heat_cap, dt)
+            .with_context(|| format_dbg!())?;
+        let mut pwr_thrml_hvac_to_res: si::Power = self
+            .solve_for_res(res_temp, res_temp_prev, dt)
+            .with_context(|| format_dbg!())?;
 
         let mut pwr_thrml_fc_to_cabin = si::Power::ZERO;
         self.state.pwr_aux_for_hvac = if pwr_thrml_hvac_to_cabin > si::Power::ZERO {
@@ -306,12 +338,12 @@ impl HVACSystemForLumpedCabinAndRES {
         cab_heat_cap: si::HeatCapacity,
         dt: si::Time,
     ) -> anyhow::Result<si::Power> {
-        let te_set = match self.te_set {
+        let te_set = match self.te_set_cab {
             Some(te_set) => te_set,
             None => return Ok(si::Power::ZERO),
         };
-        let pwr_thrml_hvac_to_cabin = if cab_state.temperature <= (te_set + self.te_deadband)
-            && cab_state.temperature >= (te_set - self.te_deadband)
+        let pwr_thrml_hvac_to_cabin = if cab_state.temperature <= (te_set + self.te_deadband_cab)
+            && cab_state.temperature >= (te_set - self.te_deadband_cab)
         {
             // inside deadband; no hvac power is needed
 
@@ -340,7 +372,7 @@ impl HVACSystemForLumpedCabinAndRES {
                     / dt);
 
             let pwr_thrml_hvac_to_cab: si::Power =
-                if cab_state.temperature > te_set + self.te_deadband {
+                if cab_state.temperature > te_set + self.te_deadband_cab {
                     // COOLING MODE; cabin is hotter than set point
 
                     if self.state.pwr_i_cab > si::Power::ZERO {
@@ -357,12 +389,33 @@ impl HVACSystemForLumpedCabinAndRES {
                         format_dbg!(pwr_thrml_hvac_to_cab)
                     );
 
-                    if (-pwr_thrml_hvac_to_cab / self.state.cop) > self.pwr_aux_for_hvac_max {
+                    if (pwr_thrml_hvac_to_cab / self.state.cop) > self.pwr_aux_for_hvac_max {
                         self.state.pwr_aux_for_hvac = self.pwr_aux_for_hvac_max;
                         // correct if limit is exceeded
                         pwr_thrml_hvac_to_cab = -self.state.pwr_aux_for_hvac * self.state.cop;
+                        ensure!(
+                            pwr_thrml_hvac_to_cab < si::Power::ZERO,
+                            "{}\nHVAC should be cooling cabin",
+                            format_dbg!(pwr_thrml_hvac_to_cab)
+                        );
+                        ensure!(
+                            self.state.pwr_aux_for_hvac > si::Power::ZERO,
+                            format_dbg!(self.state.pwr_aux_for_hvac)
+                        );
+                        ensure!(
+                            !self.state.pwr_aux_for_hvac.is_nan(),
+                            format_dbg!(self.state.pwr_aux_for_hvac)
+                        );
                     } else {
                         self.state.pwr_aux_for_hvac = pwr_thrml_hvac_to_cab / self.state.cop;
+                        ensure!(
+                            self.state.pwr_aux_for_hvac > si::Power::ZERO,
+                            format_dbg!(self.state.pwr_aux_for_hvac)
+                        );
+                        ensure!(
+                            !self.state.pwr_aux_for_hvac.is_nan(),
+                            format_dbg!(self.state.pwr_aux_for_hvac)
+                        );
                     }
                     ensure!(
                         pwr_thrml_hvac_to_cab < si::Power::ZERO,
@@ -370,6 +423,14 @@ impl HVACSystemForLumpedCabinAndRES {
                         format_dbg!(pwr_thrml_hvac_to_cab),
                         format_dbg!(self.state.pwr_aux_for_hvac),
                         format_dbg!(self.state.cop)
+                    );
+                    ensure!(
+                        self.state.pwr_aux_for_hvac > si::Power::ZERO,
+                        format_dbg!(self.state.pwr_aux_for_hvac)
+                    );
+                    ensure!(
+                        !self.state.pwr_aux_for_hvac.is_nan(),
+                        format_dbg!(self.state.pwr_aux_for_hvac)
                     );
                     pwr_thrml_hvac_to_cab
                 } else {
@@ -382,6 +443,11 @@ impl HVACSystemForLumpedCabinAndRES {
                     let mut pwr_thrml_hvac_to_cabin: si::Power =
                         (self.state.pwr_p_cab + self.state.pwr_i_cab + self.state.pwr_d_cab)
                             .min(self.pwr_thrml_max);
+                    ensure!(
+                        pwr_thrml_hvac_to_cabin > si::Power::ZERO,
+                        "{}\nHVAC should be heating cabin",
+                        format_dbg!(pwr_thrml_hvac_to_cabin)
+                    );
 
                     // Assumes blower has negligible impact on aux load, may want to revise later
                     self.handle_cabin_heat_source(
@@ -412,12 +478,12 @@ impl HVACSystemForLumpedCabinAndRES {
         res_temp_prev: si::Temperature,
         dt: si::Time,
     ) -> anyhow::Result<si::Power> {
-        let te_set = match self.te_set {
+        let te_set = match self.te_set_res {
             Some(te_set) => te_set,
             None => return Ok(si::Power::ZERO),
         };
-        let pwr_thrml_hvac_to_res = if res_temp <= te_set + self.te_deadband
-            && res_temp >= te_set - self.te_deadband
+        let pwr_thrml_hvac_to_res = if res_temp <= te_set + self.te_deadband_res
+            && res_temp >= te_set - self.te_deadband_cab
         {
             // inside deadband; no hvac power is needed
 
@@ -443,7 +509,7 @@ impl HVACSystemForLumpedCabinAndRES {
                     * uc::KELVIN_INT
                     / dt);
 
-            let pwr_thrml_hvac_to_res: si::Power = if res_temp > te_set + self.te_deadband {
+            let pwr_thrml_hvac_to_res: si::Power = if res_temp > te_set + self.te_deadband_cab {
                 // COOLING MODE; Reversible Energy Storage is hotter than set point
 
                 if self.state.pwr_i_res > si::Power::ZERO {
