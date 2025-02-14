@@ -329,13 +329,7 @@ impl FuelConverter {
     }
 
     pub fn eff_max(&self) -> anyhow::Result<si::Ratio> {
-        Ok(self
-            .eff_interp_from_pwr_out
-            .f_x()
-            .with_context(|| format_dbg!())?
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, &curr| acc.max(curr))
-            * uc::R)
+        Ok(self.eff_interp_from_pwr_out.max()? * uc::R)
     }
 
     /// If thermal model is appropriately configured, returns current lumped [Self] temperature

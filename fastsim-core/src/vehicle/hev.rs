@@ -180,30 +180,38 @@ impl Powertrain for Box<HybridElectricVehicle> {
         // - what happens when the fc is on and producing more power than the
         //   transmission requires? It seems like the excess goes straight to the battery,
         //   but it should probably go thourgh the em somehow.
-        let (fc_pwr_out_req, em_pwr_out_req) = self
-            .pt_cntrl
-            .get_pwr_fc_and_em(
-                pwr_out_req,
-                veh_state,
-                &mut self.state,
-                &self.fc,
-                &self.em.state,
-                &self.res,
-            )
-            .with_context(|| format_dbg!())?;
-        let fc_on: bool = !self.state.fc_on_causes.is_empty();
+        match self.fc.pwr_out_type {
+            FuelConverterPowerType::Mechanical => {
+                let (fc_pwr_out_req, em_pwr_out_req) = self
+                    .pt_cntrl
+                    .get_pwr_fc_and_em(
+                        pwr_out_req,
+                        veh_state,
+                        &mut self.state,
+                        &self.fc,
+                        &self.em.state,
+                        &self.res,
+                    )
+                    .with_context(|| format_dbg!())?;
+                let fc_on: bool = !self.state.fc_on_causes.is_empty();
 
-        self.fc
-            .solve(fc_pwr_out_req, fc_on, dt)
-            .with_context(|| format_dbg!())?;
-        let res_pwr_out_req = self
-            .em
-            .get_pwr_in_req(em_pwr_out_req, dt)
-            .with_context(|| format_dbg!())?;
-        // TODO: `res_pwr_out_req` probably does not include charging from the engine
-        self.res
-            .solve(res_pwr_out_req, dt)
-            .with_context(|| format_dbg!())?;
+                self.fc
+                    .solve(fc_pwr_out_req, fc_on, dt)
+                    .with_context(|| format_dbg!())?;
+                let res_pwr_out_req = self
+                    .em
+                    .get_pwr_in_req(em_pwr_out_req, dt)
+                    .with_context(|| format_dbg!())?;
+                // TODO: `res_pwr_out_req` probably does not include charging from the engine
+                self.res
+                    .solve(res_pwr_out_req, dt)
+                    .with_context(|| format_dbg!())?;
+            }
+            FuelConverterPowerType::Electrical => {
+                todo!()
+            }
+        }
+
         Ok(())
     }
 
@@ -559,7 +567,7 @@ impl Init for HEVPowertrainControls {
 }
 
 impl HEVPowertrainControls {
-    /// Determines power split between engine and electric machine
+    /// Determines power split between fuel converter and electric machine
     ///
     /// # Arguments
     /// - `pwr_prop_req`: tractive power required
