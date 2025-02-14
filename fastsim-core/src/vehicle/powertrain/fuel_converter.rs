@@ -55,6 +55,7 @@ use std::f64::consts::PI;
 /// Struct for modeling [FuelConverter] (e.g. engine, fuel cell.) thermal plant
 #[non_exhaustive]
 pub struct FuelConverter {
+    pub pwr_type: FuelConverterPowerType,
     /// [Self] Thermal plant, including thermal management controls
     #[serde(default, skip_serializing_if = "FuelConverterThermalOption::is_none")]
     #[has_state]
@@ -499,6 +500,15 @@ pub struct FuelConverterState {
 
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
+
+/// [`FuelConverter`] output power type
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+pub enum FuelConverterPowerType {
+    /// e.g. conventional (gas/diesel) engine
+    Mechanical,
+    /// e.g. fuel cell stack
+    Electrical,
+}
 
 /// Options for handling [FuelConverter] thermal model
 #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
