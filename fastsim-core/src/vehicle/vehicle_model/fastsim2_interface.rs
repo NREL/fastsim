@@ -198,6 +198,13 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         save_interval: Some(1),
                         history: Default::default(),
                     },
+                    transmission: Transmission {
+                        mass: None,
+                        eff_interp: Interpolator::Interp0D(f2veh.trans_eff),
+                        save_interval: Some(1),
+                        state: Default::default(),
+                        history: Default::default(),
+                    },
                     pt_cntrl,
                     mass: None,
                     sim_params: Default::default(),

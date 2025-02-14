@@ -14,6 +14,8 @@ pub struct HybridElectricVehicle {
     pub fc: FuelConverter,
     #[has_state]
     pub em: ElectricMachine,
+    #[has_state]
+    pub transmission: Transmission,
     // TODO: put a transmission here
     /// control strategy for distributing power demand between `fc` and `res`
     #[serde(default)]
@@ -44,6 +46,7 @@ impl SaveInterval for HybridElectricVehicle {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.res.save_interval = save_interval;
         self.em.save_interval = save_interval;
+        self.transmission.save_interval = save_interval;
         Ok(())
     }
 }
