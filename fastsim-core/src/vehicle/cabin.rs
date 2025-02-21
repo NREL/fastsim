@@ -36,7 +36,7 @@ impl Step for CabinOption {
     }
 }
 impl Init for CabinOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         match self {
             Self::LumpedCabin(scc) => scc.init()?,
             Self::LumpedCabinWithShell => {

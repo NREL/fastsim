@@ -1,3 +1,4 @@
+use crate::error::FsimError;
 use crate::imports::*;
 
 pub trait Linspace {
@@ -152,7 +153,7 @@ impl Max for Interpolator {
 pub trait Init {
     /// Specialized code to execute upon initialization.  For any struct with fields
     /// that implement `Init`, this should propagate down the hierarchy.
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         Ok(())
     }
 }
@@ -448,7 +449,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
 
 impl<T: SerdeAPI> SerdeAPI for Vec<T> {}
 impl<T: Init> Init for Vec<T> {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         for val in self {
             val.init()?
         }

@@ -220,7 +220,7 @@ impl SerdeAPI for Vehicle {
     const RESOURCE_PREFIX: &'static str = "vehicles";
 }
 impl Init for Vehicle {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         let _mass = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         self.calculate_wheel_radius()
             .with_context(|| anyhow!(format_dbg!()))?;

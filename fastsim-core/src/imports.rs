@@ -5,6 +5,7 @@
 #[cfg(feature = "pyo3")]
 pub(crate) use crate::pyo3::*;
 
+pub(crate) use crate::error::FsimError;
 pub(crate) use crate::si;
 pub(crate) use crate::traits::*;
 pub(crate) use crate::uc;
@@ -15,16 +16,15 @@ pub(crate) use crate::utils::{
 };
 pub(crate) use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecWrapper};
 pub(crate) use crate::vehicle::traits::Mass;
+pub(crate) use anyhow::{anyhow, bail, ensure, Context};
 pub(crate) use derive_more::{From, FromStr, IsVariant, TryInto};
+pub(crate) use duplicate::duplicate_item;
+pub(crate) use easy_ext::ext;
 pub(crate) use eng_fmt::FormatEng;
 pub(crate) use fastsim_proc_macros::{
     fastsim_api, fastsim_enum_api, HistoryMethods, HistoryVec, SetCumulative,
 };
 pub(crate) use lazy_static::lazy_static;
-
-pub(crate) use anyhow::{anyhow, bail, ensure, Context};
-pub(crate) use duplicate::duplicate_item;
-pub(crate) use easy_ext::ext;
 pub(crate) use ndarray::prelude::*;
 pub(crate) use ninterp::*;
 pub(crate) use serde::{Deserialize, Serialize};

@@ -304,7 +304,7 @@ impl ElectricMachine {
 
 impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         let _ = check_interp_frac_data(self.eff_interp_achieved.x()?, InterpRange::Either)
             .with_context(||

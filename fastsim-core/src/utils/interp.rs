@@ -108,7 +108,7 @@ impl InterpolatorMethods for Interpolator {
 }
 
 impl Init for Interpolator {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         Ok(self.validate()?)
     }
 }

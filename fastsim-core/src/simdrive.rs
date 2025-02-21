@@ -117,7 +117,7 @@ pub struct SimDrive {
 
 impl SerdeAPI for SimDrive {}
 impl Init for SimDrive {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         self.veh.init().with_context(|| anyhow!(format_dbg!()))?;
         self.cyc.init().with_context(|| anyhow!(format_dbg!()))?;
         self.sim_params

@@ -15,7 +15,7 @@ pub struct BatteryElectricVehicle {
 }
 
 impl Init for BatteryElectricVehicle {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         self.res.init().with_context(|| anyhow!(format_dbg!()))?;
         self.em.init().with_context(|| anyhow!(format_dbg!()))?;
         self.transmission

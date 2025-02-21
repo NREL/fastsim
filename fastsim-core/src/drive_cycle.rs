@@ -71,11 +71,15 @@ impl Init for Cycle {
     /// Sets `self.dist` and `self.elev`
     /// # Assumptions
     /// - if `init_elev.is_none()`, then defaults to [static@ELEV_DEFAULT]
-    fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.len_checked().with_context(|| format_dbg!())?;
+    fn init(&mut self) -> Result<(), FsimError> {
+        let _ = self
+            .len_checked()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
 
         if !self.temp_amb_air.is_empty() {
-            ensure!(self.temp_amb_air.len() == self.time.len());
+            if self.temp_amb_air.len() != self.time.len() {
+                return Err(FsimError::InitError(format_dbg!()));
+            }
         } else {
             self.temp_amb_air = vec![*TE_STD_AIR; self.time.len()];
         }
@@ -98,7 +102,7 @@ impl Init for Cycle {
             self.grade = vec![
                 si::Ratio::ZERO;
                 self.len_checked()
-                    .with_context(|| format_dbg!(self.len_checked()))?
+                    .map_err(|err| FsimError::InitError(format_dbg!(err)))?
             ]
         };
         // calculate elevation from RHS integral of grade and distance

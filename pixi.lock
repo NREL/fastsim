@@ -819,7 +819,7 @@ packages:
 - pypi: .
   name: fastsim
   version: 3.0.0
-  sha256: 55eb6e62e40e8319713e1cf8da0029a79164e59f62ed363f61e9c7e22b230812
+  sha256: 443c22a8176f897e25e782c1f85df168f07d7f79a547958a2eee038f3e9e3492
   requires_dist:
   - pandas~=1.5
   - polars~=1.4

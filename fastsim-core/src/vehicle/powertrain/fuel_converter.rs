@@ -100,7 +100,7 @@ impl SetCumulative for FuelConverter {
 
 impl SerdeAPI for FuelConverter {}
 impl Init for FuelConverter {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         self.thrml.init()?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
@@ -527,7 +527,7 @@ impl Step for FuelConverterThermalOption {
     }
 }
 impl Init for FuelConverterThermalOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         match self {
             Self::FuelConverterThermal(fct) => fct.init()?,
             Self::None => {}
@@ -788,7 +788,7 @@ impl SetCumulative for FuelConverterThermal {
     }
 }
 impl Init for FuelConverterThermal {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), FsimError> {
         self.tstat_te_sto = self
             .tstat_te_sto
             .or(Some((85. + uc::CELSIUS_TO_KELVIN) * uc::KELVIN));
