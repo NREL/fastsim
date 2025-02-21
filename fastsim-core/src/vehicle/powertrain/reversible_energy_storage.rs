@@ -634,7 +634,9 @@ impl Init for ReversibleEnergyStorage {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 /// Controls which parameter to update when setting specific energy
 pub enum SpecificEnergySideEffect {
     /// update mass
@@ -730,7 +732,9 @@ impl Default for ReversibleEnergyStorageState {
 impl Init for ReversibleEnergyStorageState {}
 impl SerdeAPI for ReversibleEnergyStorageState {}
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum RESThermalOption {
     /// Basic thermal plant for [ReversibleEnergyStorage]
     RESLumpedThermal(Box<RESLumpedThermal>),
@@ -930,7 +934,9 @@ impl Default for RESLumpedThermalState {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 /// Determines what [ReversibleEnergyStorage] state variables to use in calculating efficiency
 pub enum RESEffInterpInputs {
     /// Efficiency is constant

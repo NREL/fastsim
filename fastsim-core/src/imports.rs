@@ -17,7 +17,7 @@ pub(crate) use crate::utils::{
 pub(crate) use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecWrapper};
 pub(crate) use crate::vehicle::traits::Mass;
 pub(crate) use anyhow::{anyhow, bail, ensure, Context};
-pub(crate) use derive_more::{From, FromStr, IsVariant, TryInto};
+pub(crate) use derive_more::{FromStr, IsVariant, TryInto};
 pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
 pub(crate) use eng_fmt::FormatEng;

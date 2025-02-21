@@ -118,11 +118,15 @@ pub struct SimDrive {
 impl SerdeAPI for SimDrive {}
 impl Init for SimDrive {
     fn init(&mut self) -> Result<(), FsimError> {
-        self.veh.init().with_context(|| anyhow!(format_dbg!()))?;
-        self.cyc.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.veh
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+        self.cyc
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         self.sim_params
             .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }
@@ -634,7 +638,9 @@ impl Default for TraceMissTolerance {
     }
 }
 
-#[derive(Clone, Default, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum TraceMissOptions {
     /// Allow trace miss without any fanfare
     Allow,

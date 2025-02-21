@@ -6,7 +6,9 @@ use super::{hev::HEVPowertrainControls, *};
 pub mod fastsim2_interface;
 
 /// Possible aux load power sources
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum AuxSource {
     /// Aux load power provided by ReversibleEnergyStorage with help from FuelConverter, if present
     /// and needed
@@ -221,12 +223,14 @@ impl SerdeAPI for Vehicle {
 }
 impl Init for Vehicle {
     fn init(&mut self) -> Result<(), FsimError> {
-        let _mass = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+        let _mass = self
+            .mass()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         self.calculate_wheel_radius()
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         self.pt_type
             .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }

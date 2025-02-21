@@ -305,15 +305,19 @@ impl ElectricMachine {
 impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
     fn init(&mut self) -> Result<(), FsimError> {
-        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+        let _ = self
+            .mass()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         let _ = check_interp_frac_data(self.eff_interp_achieved.x()?, InterpRange::Either)
-            .with_context(||
-                format!(
+            .map_err(|err|
+                FsimError::InitError(format!(
                     "{}\nInvalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1].",
-                    format_dbg!()
+                    format_dbg!(err)
                 )
-             )?;
-        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
+             ))?;
+        self.state
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
         // TODO: what should the default strategy be for eff_interp_bwd?
         let eff_interp_at_max_input = Interpolator::new_1d(

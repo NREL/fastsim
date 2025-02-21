@@ -50,13 +50,21 @@ impl SaveInterval for HybridElectricVehicle {
 
 impl Init for HybridElectricVehicle {
     fn init(&mut self) -> Result<(), FsimError> {
-        self.fc.init().with_context(|| anyhow!(format_dbg!()))?;
-        self.res.init().with_context(|| anyhow!(format_dbg!()))?;
-        self.em.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.fc
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+        self.res
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+        self.em
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         self.pt_cntrl
             .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
-        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+        self.state
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }
@@ -467,7 +475,16 @@ impl std::fmt::Display for FCOnCauses {
 
 #[fastsim_enum_api]
 #[derive(
-    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto, FromStr,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    IsVariant,
+    derive_more::From,
+    TryInto,
+    FromStr,
 )]
 pub enum FCOnCause {
     /// Engine must be on to self heat if thermal model is enabled
@@ -521,7 +538,9 @@ impl Default for HEVSimulationParams {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, PartialEq, Deserialize, Serialize, Default, IsVariant, derive_more::From, TryInto,
+)]
 pub enum HEVAuxControls {
     /// If feasible, use [ReversibleEnergyStorage] to handle aux power demand
     #[default]
@@ -530,7 +549,9 @@ pub enum HEVAuxControls {
     AuxOnFcPriority,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, PartialEq, Deserialize, Serialize, IsVariant, derive_more::From, TryInto,
+)]
 pub enum HEVPowertrainControls {
     /// Greedily uses [ReversibleEnergyStorage] with buffers that derate charge
     /// and discharge power inside of static min and max SOC range.  Also, includes

@@ -101,23 +101,29 @@ impl SetCumulative for FuelConverter {
 impl SerdeAPI for FuelConverter {}
 impl Init for FuelConverter {
     fn init(&mut self) -> Result<(), FsimError> {
-        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+        let _ = self
+            .mass()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         self.thrml.init()?;
-        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
-        let eff_max = self.eff_max()?;
+        self.state
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+        let eff_max = self
+            .eff_max()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         self.pwr_for_peak_eff = *self
             .eff_interp_from_pwr_out
             .x()
-            .with_context(|| format_dbg!())?
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?
             .get(
                 self.eff_interp_from_pwr_out
                     .f_x()
                     .unwrap()
                     .iter()
                     .position(|&eff| eff * uc::R == eff_max)
-                    .with_context(|| format_dbg!())?,
+                    .ok_or_else(|| FsimError::InitError(format_dbg!()))?,
             )
-            .with_context(|| format_dbg!())?
+            .ok_or_else(|| FsimError::InitError(format_dbg!()))?
             * self.pwr_out_max;
         Ok(())
     }
@@ -501,7 +507,9 @@ impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
 
 /// Options for handling [FuelConverter] thermal model
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum FuelConverterThermalOption {
     /// Basic thermal plant for [FuelConverter]
     FuelConverterThermal(Box<FuelConverterThermal>),
@@ -803,7 +811,14 @@ impl Init for FuelConverterThermal {
             Strategy::Linear,
             Extrapolate::Clamp,
         )
-        .with_context(|| format_dbg!((self.tstat_te_sto, self.tstat_te_delta)))?;
+        .map_err(|err| {
+            FsimError::InitError(format!(
+                "{}\n{}\n{}",
+                err,
+                format_dbg!(self.tstat_te_sto),
+                format_dbg!(self.tstat_te_delta)
+            ))
+        })?;
         Ok(())
     }
 }
@@ -890,7 +905,9 @@ impl Default for FuelConverterThermalState {
 }
 
 /// Model variants for how FC efficiency depends on temperature
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Debug, Clone, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum FCTempEffModel {
     /// Linear temperature dependence
     Linear(FCTempEffModelLinear),

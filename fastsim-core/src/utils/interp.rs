@@ -109,7 +109,7 @@ impl InterpolatorMethods for Interpolator {
 
 impl Init for Interpolator {
     fn init(&mut self) -> Result<(), FsimError> {
-        Ok(self.validate()?)
+        Ok(self.validate().map_err(ninterp::Error::from)?)
     }
 }
 impl SerdeAPI for Interpolator {

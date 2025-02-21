@@ -320,7 +320,9 @@ impl HVACSystemForLumpedCabin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum CabinHeatSource {
     /// [FuelConverter], if applicable, provides heat for HVAC system
     FuelConverter,

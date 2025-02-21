@@ -18,11 +18,15 @@ pub struct ConventionalVehicle {
 impl SerdeAPI for ConventionalVehicle {}
 impl Init for ConventionalVehicle {
     fn init(&mut self) -> Result<(), FsimError> {
-        self.fc.init().with_context(|| anyhow!(format_dbg!()))?;
-        self.fs.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.fc
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+        self.fs
+            .init()
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         self.transmission
             .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }
