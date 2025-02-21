@@ -222,15 +222,15 @@ impl SerdeAPI for Vehicle {
     const RESOURCE_PREFIX: &'static str = "vehicles";
 }
 impl Init for Vehicle {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         let _mass = self
             .mass()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.calculate_wheel_radius()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.pt_type
             .init()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }

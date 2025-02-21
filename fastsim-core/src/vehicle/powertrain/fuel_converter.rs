@@ -100,30 +100,30 @@ impl SetCumulative for FuelConverter {
 
 impl SerdeAPI for FuelConverter {}
 impl Init for FuelConverter {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         let _ = self
             .mass()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.thrml.init()?;
         self.state
             .init()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         let eff_max = self
             .eff_max()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.pwr_for_peak_eff = *self
             .eff_interp_from_pwr_out
             .x()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?
+            .map_err(|err| Error::InitError(format_dbg!(err)))?
             .get(
                 self.eff_interp_from_pwr_out
                     .f_x()
                     .unwrap()
                     .iter()
                     .position(|&eff| eff * uc::R == eff_max)
-                    .ok_or_else(|| FsimError::InitError(format_dbg!()))?,
+                    .ok_or_else(|| Error::InitError(format_dbg!()))?,
             )
-            .ok_or_else(|| FsimError::InitError(format_dbg!()))?
+            .ok_or_else(|| Error::InitError(format_dbg!()))?
             * self.pwr_out_max;
         Ok(())
     }
@@ -535,7 +535,7 @@ impl Step for FuelConverterThermalOption {
     }
 }
 impl Init for FuelConverterThermalOption {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::FuelConverterThermal(fct) => fct.init()?,
             Self::None => {}
@@ -796,7 +796,7 @@ impl SetCumulative for FuelConverterThermal {
     }
 }
 impl Init for FuelConverterThermal {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         self.tstat_te_sto = self
             .tstat_te_sto
             .or(Some((85. + uc::CELSIUS_TO_KELVIN) * uc::KELVIN));
@@ -812,7 +812,7 @@ impl Init for FuelConverterThermal {
             Extrapolate::Clamp,
         )
         .map_err(|err| {
-            FsimError::InitError(format!(
+            Error::InitError(format!(
                 "{}\n{}\n{}",
                 err,
                 format_dbg!(self.tstat_te_sto),

@@ -614,16 +614,16 @@ impl Mass for ReversibleEnergyStorage {
 
 impl SerdeAPI for ReversibleEnergyStorage {}
 impl Init for ReversibleEnergyStorage {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         let _ = self
             .mass()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.state
             .init()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         // TODO: make some kind of data validation framework to replace this code.
         if self.max_soc <= self.min_soc {
-            return Err(FsimError::InitError(format!(
+            return Err(Error::InitError(format!(
                 "{}\n`max_soc`: {} must be greater than `min_soc`: {}`",
                 format_dbg!(),
                 self.max_soc.get::<si::ratio>(),
@@ -767,7 +767,7 @@ impl Step for RESThermalOption {
     }
 }
 impl Init for RESThermalOption {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::RESLumpedThermal(rest) => rest.init()?,
             Self::None => {}

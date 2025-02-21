@@ -117,16 +117,16 @@ pub struct SimDrive {
 
 impl SerdeAPI for SimDrive {}
 impl Init for SimDrive {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         self.veh
             .init()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.cyc
             .init()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.sim_params
             .init()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }

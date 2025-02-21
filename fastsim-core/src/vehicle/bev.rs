@@ -15,16 +15,16 @@ pub struct BatteryElectricVehicle {
 }
 
 impl Init for BatteryElectricVehicle {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         self.res
             .init()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.em
             .init()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.transmission
             .init()
-            .map_err(|err| FsimError::InitError(format_dbg!(err)))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }

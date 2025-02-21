@@ -5,7 +5,7 @@
 #[cfg(feature = "pyo3")]
 pub(crate) use crate::pyo3::*;
 
-pub(crate) use crate::error::FsimError;
+pub(crate) use crate::error::Error;
 pub(crate) use crate::si;
 pub(crate) use crate::traits::*;
 pub(crate) use crate::uc;
@@ -26,10 +26,9 @@ pub(crate) use fastsim_proc_macros::{
 };
 pub(crate) use lazy_static::lazy_static;
 pub(crate) use ndarray::prelude::*;
-pub(crate) use ninterp::*;
+pub(crate) use ninterp::prelude::*;
 pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use std::cmp::{self, Ordering};
-pub(crate) use std::error::Error;
 pub(crate) use std::f64::consts::PI;
 pub(crate) use std::ffi::OsStr;
 pub(crate) use std::fmt;

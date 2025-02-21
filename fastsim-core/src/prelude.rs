@@ -2,7 +2,6 @@
 // NOTE: consider exposing more structs and other stuff here
 
 pub use crate::drive_cycle::{Cycle, CycleElement};
-pub use crate::error::FsimError;
 pub use crate::gas_properties::{get_sphere_conv_params, Air, Octane, H_STD, TE_STD_AIR};
 pub use crate::simdrive::{SimDrive, SimParams};
 pub use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecBoolWrapper, Pyo3VecWrapper};

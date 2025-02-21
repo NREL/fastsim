@@ -24,7 +24,7 @@ pub enum HVACOption {
     None,
 }
 impl Init for HVACOption {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::LumpedCabin(cab) => cab.init()?,
             Self::LumpedCabinAndRES(cab) => cab.init()?,

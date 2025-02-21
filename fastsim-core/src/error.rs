@@ -3,7 +3,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
-pub enum FsimError {
+pub enum Error {
     #[error("`Init::init` failed: {0}")]
     InitError(String),
     #[error("`SerdeAPI` failed {0}")]
@@ -11,12 +11,12 @@ pub enum FsimError {
     #[error("{0}")]
     SimulationError(String),
     #[error(transparent)]
-    NinterpError(#[from] ninterp::Error),
+    NinterpError(#[from] ninterp::error::Error),
     #[error("{0}")]
     Other(String),
 }
 
-impl FsimError {
+impl Error {
     fn format_dbg(&self) -> Self {
         match &self {
             Self::InitError(err) => Self::InitError(format_dbg!(err)),

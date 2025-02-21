@@ -12,7 +12,7 @@ pub enum PowertrainType {
 
 impl SerdeAPI for PowertrainType {}
 impl Init for PowertrainType {
-    fn init(&mut self) -> Result<(), FsimError> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::ConventionalVehicle(conv) => conv.init(),
             Self::HybridElectricVehicle(hev) => hev.init(),
