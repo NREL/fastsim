@@ -15,15 +15,3 @@ pub enum Error {
     #[error("{0}")]
     Other(String),
 }
-
-impl Error {
-    fn format_dbg(&self) -> Self {
-        match &self {
-            Self::InitError(err) => Self::InitError(format_dbg!(err)),
-            Self::SerdeError(err) => Self::SerdeError(format_dbg!(err)),
-            Self::SimulationError(err) => Self::SimulationError(format_dbg!(err)),
-            Self::NinterpError(_) => self.clone(), // not possible here
-            Self::Other(err) => Self::Other(format_dbg!(err)),
-        }
-    }
-}
