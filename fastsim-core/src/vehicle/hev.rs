@@ -182,6 +182,10 @@ impl Powertrain for Box<HybridElectricVehicle> {
         //   but it should probably go thourgh the em somehow.
         match self.fc.pwr_out_type {
             FuelConverterPowerType::Mechanical => {
+                // let transmission_pwr_in = self
+                //     .transmission
+                //     .get_pwr_in_req(pwr_out_req)
+                //     .with_context(|| anyhow!(format_dbg!()))?;
                 let (fc_pwr_out_req, em_pwr_out_req) = self
                     .pt_cntrl
                     .get_pwr_fc_and_em(
@@ -193,8 +197,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                         &self.res,
                     )
                     .with_context(|| format_dbg!())?;
-                let fc_on: bool = !self.state.fc_on_causes.is_empty();
-
+                let fc_on = !self.state.fc_on_causes.is_empty();
                 self.fc
                     .solve(fc_pwr_out_req, fc_on, dt)
                     .with_context(|| format_dbg!())?;
@@ -208,7 +211,21 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     .with_context(|| format_dbg!())?;
             }
             FuelConverterPowerType::Electrical => {
-                todo!()
+                // let transmission_pwr_in = self
+                //     .transmission
+                //     .get_pwr_in_req(pwr_out_req)
+                //     .with_context(|| anyhow!(format_dbg!()))?;
+                let em_pwr_in_req = self
+                    .em
+                    .get_pwr_in_req(pwr_out_req, dt)
+                    .with_context(|| format_dbg!())?;
+                self.res
+                    .solve(em_pwr_in_req, dt)
+                    .with_context(|| format_dbg!())?;
+                // TODO: the fc needs to be handled somehow else...
+                self.fc
+                    .solve(fc_pwr_out_req, fc_on, dt)
+                    .with_context(|| format_dbg!())?;
             }
         }
 
