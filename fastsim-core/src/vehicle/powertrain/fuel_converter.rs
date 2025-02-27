@@ -391,13 +391,16 @@ impl FuelConverter {
                 }
                 _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
             }
-            Ok(())
         } else {
-            Err(anyhow!(
+            return Err(anyhow!(
                 "`eff_max` ({:.3}) must be between 0.0 and 1.0",
                 eff_max,
-            ))
+            ));
         }
+        // to update any dependent fields
+        self.init()
+            .map_err(|err| anyhow!("{}\n{err}", format_dbg!()))?;
+        Ok(())
     }
 
     /// Scales values of `eff_interp_fwd.f_x` and `eff_interp_bwd.f_x` without changing max such that max - min
@@ -414,7 +417,6 @@ impl FuelConverter {
                     .len()
             ];
             self.eff_interp_from_pwr_out.set_f_x(f_x)?;
-            Ok(())
         } else if (0.0..=1.0).contains(&eff_range) {
             let old_min = self.get_eff_min()?;
             let old_range = self.get_eff_max()? - old_min;
@@ -451,13 +453,17 @@ impl FuelConverter {
                     self.get_eff_max()?
                 )));
             }
-            Ok(())
         } else {
-            Err(anyhow!(format!(
+            return Err(anyhow!(format!(
                 "`eff_range` ({:.3}) must be between 0.0 and 1.0",
                 eff_range,
-            )))
+            )));
         }
+        // to update any dependent fields
+        self.init()
+            .map_err(|err| anyhow!("{}\n{err}", format_dbg!()))?;
+
+        Ok(())
     }
 }
 

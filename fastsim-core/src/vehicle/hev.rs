@@ -733,7 +733,7 @@ fn handle_fc_on_causes_for_low_soc(
     veh_state: VehicleState,
 ) -> anyhow::Result<()> {
     rgwdb.state.soc_fc_on_buffer = {
-        let energy_delta_to_buffer_speed = 0.5
+        let energy_delta_to_buffer_speed: si::Energy = 0.5
             * veh_state.mass
             * (rgwdb
                 .speed_soc_fc_on_buffer
