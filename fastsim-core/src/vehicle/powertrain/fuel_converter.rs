@@ -76,7 +76,7 @@ pub struct FuelConverter {
     pub eff_interp_from_pwr_out: Interpolator,
     /// power at which peak efficiency occurs
     #[serde(skip)]
-    pub pwr_for_peak_eff: si::Power,
+    pub(crate) pwr_for_peak_eff: si::Power,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     pub pwr_idle_fuel: si::Power,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
