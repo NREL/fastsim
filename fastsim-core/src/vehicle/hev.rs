@@ -150,6 +150,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         };
         if pwr_aux_fc > si::Power::ZERO {
             self.state.fc_on_causes.push(FCOnCause::AuxPowerDemand);
+            todo!("write code to make sure that `pwr_aux_fc` is respectful of `self.state.fc_on_causes`");
         }
         self.fc
             .set_curr_pwr_prop_max(pwr_aux_fc)

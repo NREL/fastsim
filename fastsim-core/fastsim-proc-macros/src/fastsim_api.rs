@@ -264,12 +264,12 @@ fn process_tuple_struct(
 ) {
     // tuple struct
     assert!(unnamed.len() == 1);
+    let re = Regex::new(r"Vec < (.+) >").unwrap();
     for field in unnamed.iter() {
         let ftype = field.ty.clone();
         if let syn::Type::Path(type_path) = ftype.clone() {
             let type_str = type_path.clone().into_token_stream().to_string();
             if type_str.contains("Vec") {
-                let re = Regex::new(r"Vec < (.+) >").unwrap();
                 // println!("{}", type_str);
                 // println!("{}", &re.captures(&type_str).unwrap()[1]);
                 let contained_dtype: TokenStream2 = re.captures(&type_str).unwrap()[1]
