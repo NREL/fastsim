@@ -69,3 +69,11 @@ macro_rules! format_dbg {
         format!("[{}:{}]", file!(), line!())
     };
 }
+
+#[macro_export]
+/// Makes it so that optional parameters get set in the `Init::init` call
+macro_rules! init_opt_default {
+    ($obj:ident, $fieldname:ident, $def_val:expr) => {
+        $obj.$fieldname = $obj.$fieldname.or(Some($def_val));
+    };
+}

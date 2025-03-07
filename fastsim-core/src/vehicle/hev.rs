@@ -876,20 +876,20 @@ pub struct RESGreedyWithDynamicBuffers {
 impl Init for RESGreedyWithDynamicBuffers {
     fn init(&mut self) -> Result<(), Error> {
         // TODO: make sure these values propagate to the documented defaults above
-        self.speed_soc_disch_buffer = self.speed_soc_disch_buffer.or(Some(40.0 * uc::MPH));
-        self.speed_soc_disch_buffer_coeff = self.speed_soc_disch_buffer_coeff.or(Some(1.0 * uc::R));
-        self.speed_soc_fc_on_buffer = self
-            .speed_soc_fc_on_buffer
-            .or(Some(self.speed_soc_disch_buffer.unwrap() * 1.1));
-        self.speed_soc_fc_on_buffer_coeff = self.speed_soc_fc_on_buffer_coeff.or(Some(1.0 * uc::R));
-        self.speed_soc_regen_buffer = self.speed_soc_regen_buffer.or(Some(30. * uc::MPH));
-        self.speed_soc_regen_buffer_coeff = self.speed_soc_regen_buffer_coeff.or(Some(1.0 * uc::R));
-        self.fc_min_time_on = self.fc_min_time_on.or(Some(uc::S * 5.0));
-        self.speed_fc_forced_on = self.speed_fc_forced_on.or(Some(uc::MPH * 75.));
-        self.frac_pwr_demand_fc_forced_on =
-            self.frac_pwr_demand_fc_forced_on.or(Some(uc::R * 0.75));
-        self.frac_of_most_eff_pwr_to_run_fc =
-            self.frac_of_most_eff_pwr_to_run_fc.or(Some(1.0 * uc::R));
+        init_opt_default!(self, speed_soc_disch_buffer, 40.0 * uc::MPH);
+        init_opt_default!(self, speed_soc_disch_buffer_coeff, 1.0 * uc::R);
+        init_opt_default!(
+            self,
+            speed_soc_fc_on_buffer,
+            self.speed_soc_disch_buffer.unwrap() * 1.1
+        );
+        init_opt_default!(self, speed_soc_fc_on_buffer_coeff, 1.0 * uc::R);
+        init_opt_default!(self, speed_soc_regen_buffer, 30. * uc::MPH);
+        init_opt_default!(self, speed_soc_regen_buffer_coeff, 1.0 * uc::R);
+        init_opt_default!(self, fc_min_time_on, uc::S * 5.0);
+        init_opt_default!(self, speed_fc_forced_on, uc::MPH * 75.);
+        init_opt_default!(self, frac_pwr_demand_fc_forced_on, uc::R * 0.75);
+        init_opt_default!(self, frac_of_most_eff_pwr_to_run_fc, 1.0 * uc::R);
         Ok(())
     }
 }
