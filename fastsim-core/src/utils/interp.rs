@@ -5,10 +5,15 @@ pub trait InterpolatorMethods {
     fn set_min(&mut self, min: f64) -> anyhow::Result<()>;
     fn set_max(&mut self, max: f64) -> anyhow::Result<()>;
     fn set_range(&mut self, range: f64) -> anyhow::Result<()>;
+    fn get_min(&self) -> anyhow::Result<f64>;
+    fn get_max(&self) -> anyhow::Result<f64>;
+    fn get_range(&self) -> anyhow::Result<f64>;
 }
 
 impl InterpolatorMethods for Interpolator {
     #[allow(unused)]
+    // TODO: update so that this doesn't change the max
+    // scale up all values below the max, so that the min is the new min
     fn set_min(&mut self, min: f64) -> anyhow::Result<()> {
         let old_min = self.min()?;
         match self {
@@ -41,6 +46,8 @@ impl InterpolatorMethods for Interpolator {
         }
     }
 
+    // TODO: update so that this doesn't change the minimum
+    // scale up all values above the min, so that the max is the new max
     fn set_max(&mut self, max: f64) -> anyhow::Result<()> {
         let old_max = self.max()?;
         match self {
@@ -114,6 +121,15 @@ impl InterpolatorMethods for Interpolator {
                     .map(|x| old_max + (x - old_max) * range / old_range),
             )?),
         }
+    }
+    fn get_min(&self) -> anyhow::Result<f64> {
+        return self.min();
+    }
+    fn get_max(&self) -> anyhow::Result<f64> {
+        return self.max();
+    }
+    fn get_range(&self) -> anyhow::Result<f64> {
+        return Ok(self.max()? - self.min()?);
     }
 }
 

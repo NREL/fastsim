@@ -443,7 +443,8 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     }
 
     /// Scales eff_interp by ratio of new `eff_max` per current calculated
-    /// max linearly, such that `eff_min` is untouched
+    /// max linearly, such that `eff_min` is untouched\
+    // TODO: fix to make it so min doesn't change??
     pub fn set_eff_max(&mut self, eff_max: f64) -> anyhow::Result<()> {
         if (self.get_eff_min()?..=1.0).contains(&eff_max) {
             let old_max = self.get_eff_max()?;
