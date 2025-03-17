@@ -637,7 +637,9 @@ pub struct HVACSystemForLumpedCabinAndRESState {
 impl Init for HVACSystemForLumpedCabinAndRESState {}
 impl SerdeAPI for HVACSystemForLumpedCabinAndRESState {}
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 /// Heat source for [RESLumpedThermal]
 pub enum RESHeatSource {
     /// Resistance heater provides heat for HVAC system
@@ -650,7 +652,9 @@ pub enum RESHeatSource {
 impl Init for RESHeatSource {}
 impl SerdeAPI for RESHeatSource {}
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 /// Cooling source for [RESLumpedThermal]
 pub enum RESCoolingSource {
     /// Vapor compression system used for cabin HVAC also cools [RESLumpedThermal]

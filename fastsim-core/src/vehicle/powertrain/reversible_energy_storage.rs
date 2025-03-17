@@ -605,24 +605,29 @@ impl Mass for ReversibleEnergyStorage {
 
 impl SerdeAPI for ReversibleEnergyStorage {}
 impl Init for ReversibleEnergyStorage {
-    fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
-        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
+    fn init(&mut self) -> Result<(), Error> {
+        let _ = self
+            .mass()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.state
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         // TODO: make some kind of data validation framework to replace this code.
-        ensure!(
-            self.max_soc > self.min_soc,
-            format!(
+        if self.max_soc <= self.min_soc {
+            return Err(Error::InitError(format!(
                 "{}\n`max_soc`: {} must be greater than `min_soc`: {}`",
                 format_dbg!(),
                 self.max_soc.get::<si::ratio>(),
                 self.min_soc.get::<si::ratio>(),
-            )
-        );
+            )));
+        };
         Ok(())
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 /// Controls which parameter to update when setting specific energy
 pub enum SpecificEnergySideEffect {
     /// update mass
@@ -718,7 +723,9 @@ impl Default for ReversibleEnergyStorageState {
 impl Init for ReversibleEnergyStorageState {}
 impl SerdeAPI for ReversibleEnergyStorageState {}
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum RESThermalOption {
     /// Basic thermal plant for [ReversibleEnergyStorage]
     RESLumpedThermal(Box<RESLumpedThermal>),
@@ -751,7 +758,7 @@ impl Step for RESThermalOption {
     }
 }
 impl Init for RESThermalOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::RESLumpedThermal(rest) => rest.init()?,
             Self::None => {}
@@ -918,7 +925,9 @@ impl Default for RESLumpedThermalState {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 /// Determines what [ReversibleEnergyStorage] state variables to use in calculating efficiency
 pub enum RESEffInterpInputs {
     /// Efficiency is constant

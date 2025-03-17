@@ -7,7 +7,9 @@ pub mod hvac_sys_for_lumped_cabin_and_res;
 pub use hvac_sys_for_lumped_cabin_and_res::*;
 
 /// Options for handling HVAC system
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum HVACOption {
     /// HVAC system for [LumpedCabin]
     LumpedCabin(Box<HVACSystemForLumpedCabin>),
@@ -22,7 +24,7 @@ pub enum HVACOption {
     None,
 }
 impl Init for HVACOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::LumpedCabin(cab) => cab.init()?,
             Self::LumpedCabinAndRES(cab) => cab.init()?,

@@ -15,12 +15,16 @@ pub struct BatteryElectricVehicle {
 }
 
 impl Init for BatteryElectricVehicle {
-    fn init(&mut self) -> anyhow::Result<()> {
-        self.res.init().with_context(|| anyhow!(format_dbg!()))?;
-        self.em.init().with_context(|| anyhow!(format_dbg!()))?;
+    fn init(&mut self) -> Result<(), Error> {
+        self.res
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.em
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.transmission
             .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }

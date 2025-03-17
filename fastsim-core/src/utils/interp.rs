@@ -108,10 +108,11 @@ impl InterpolatorMethods for Interpolator {
 }
 
 impl Init for Interpolator {
-    fn init(&mut self) -> anyhow::Result<()> {
-        Ok(self.validate()?)
+    fn init(&mut self) -> Result<(), Error> {
+        Ok(self.validate().map_err(ninterp::error::Error::from)?)
     }
 }
 impl SerdeAPI for Interpolator {
+    #[cfg(feature = "resources")]
     const RESOURCE_PREFIX: &'static str = "interpolators";
 }
