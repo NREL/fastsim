@@ -2,7 +2,9 @@ use super::*;
 // TODO: add parameters and/or cabin model variant for solar heat load
 
 /// Options for handling cabin thermal model
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum CabinOption {
     /// Basic single thermal capacitance cabin thermal model, including HVAC
     /// system and controls
@@ -36,7 +38,7 @@ impl Step for CabinOption {
     }
 }
 impl Init for CabinOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::LumpedCabin(scc) => scc.init()?,
             Self::LumpedCabinWithShell => {
