@@ -111,6 +111,13 @@ impl HVACSystemForLumpedCabinAndRES {
     /// - `pwr_thrml_fc_to_cabin`: thermal power flowing from [FuelConverter] to cabin  
     /// - `pwr_thrml_hvac_to_res`: thermal power flowing from [Vehicle::hvac] system to
     ///     [ReversibleEnergyStorage] `thrml` system  
+    ///
+    /// # Assumptions and Caveats
+    /// - Cabin cooling never occurs concurrently with battery heating
+    /// - Cabin heating never occurs concurrently with battery cooling
+    /// - For real vehicles, control parameters for battery heating and cooling
+    /// are generally different during charging, and we do not currently account for
+    /// that
     #[allow(clippy::too_many_arguments)] // the order is reasonably protected by typing
     pub fn solve(
         &mut self,
@@ -153,117 +160,90 @@ impl HVACSystemForLumpedCabinAndRES {
                 - te_amb_air.get::<si::degree_celsius>())
                 * uc::KELVIN_INT;
 
-        let (cop_ideal, _te_ref) = if pwr_thrml_hvac_to_res + pwr_thrml_hvac_to_cabin
-            > si::Power::ZERO
-        {
-            // heating mode
-            // TODO: account for cabin and battery heat sources in COP calculation!!!!
-
-            let (te_ref, te_delta_vs_amb) = if pwr_thrml_hvac_to_res > si::Power::ZERO {
-                // both powers are positive -- i.e. both are in heating mode
-
-                let te_ref: si::Temperature = if cab_state.temperature > res_temp {
-                    // cabin is hotter
-                    cab_state.temperature
+        // Assume reference temperature for COP calculation is governed by
+        // whichever component is further from its setpoint temperature. NOTE
+        // that this may need some revision.
+        let (te_ref, te_ref_delta_vs_amb, te_ref_delta_vs_set): (
+            Option<si::Temperature>,
+            si::TemperatureInterval,
+            si::TemperatureInterval,
+        ) = match (te_res_delta_vs_set, te_cab_delta_vs_set) {
+            (Some(te_res_delta_vs_set), Some(te_cab_delta_vs_set)) => {
+                if te_res_delta_vs_set.abs() > te_cab_delta_vs_set {
+                    (
+                        Some(res_thrml_state.temperature),
+                        te_res_delta_vs_amb,
+                        te_res_delta_vs_set,
+                    )
                 } else {
-                    // battery is hotter
-                    res_temp
-                };
-                (
-                    te_ref,
-                    (te_ref.get::<si::degree_celsius>() - te_amb_air.get::<si::degree_celsius>())
-                        * uc::KELVIN_INT,
-                )
-            } else if pwr_thrml_hvac_to_res >= si::Power::ZERO {
-                // `pwr_thrml_hvac_to_res` dominates need for heating
-                (
-                    res_temp,
-                    (res_temp.get::<si::degree_celsius>() - te_amb_air.get::<si::degree_celsius>())
-                        * uc::KELVIN_INT,
-                )
-            } else {
-                // `pwr_thrml_hvac_to_res` dominates need for heating
-                (
-                    cab_state.temperature,
-                    (cab_state.temperature.get::<si::degree_celsius>()
-                        - te_amb_air.get::<si::degree_celsius>())
-                        * uc::KELVIN_INT,
-                )
-            };
-
-            // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
-            // cop_ideal is t_h / (t_h - t_c) for heating
-            // cop_ideal is t_c / (t_h - t_c) for cooling
-
-            // divide-by-zero protection and realistic limit on COP
-            // TODO: make sure this is consistent with above commented equation for heating!
-            if te_delta_vs_amb.abs() < 5.0 * uc::KELVIN_INT {
-                // cabin is cooler than ambient + threshold
-                // TODO: make this `5.0` not hardcoded
-                let cop_ideal = te_ref / (5.0 * uc::KELVIN);
-                ensure!(cop_ideal > si::Ratio::ZERO, format_dbg!(cop_ideal));
-                (cop_ideal, te_ref)
-            } else {
-                let cop_ideal = te_ref / te_delta_vs_amb.abs();
-                ensure!(cop_ideal > si::Ratio::ZERO, format_dbg!(cop_ideal));
-                (cop_ideal, te_ref)
+                    (
+                        Some(cab_state.temperature),
+                        te_cab_delta_vs_amb,
+                        te_cab_delta_vs_set,
+                    )
+                }
             }
-        } else if pwr_thrml_hvac_to_res + pwr_thrml_hvac_to_cabin < si::Power::ZERO {
-            // cooling mode
-            // TODO: account for battery cooling source in COP calculation!!!!
+            (Some(te_res_delta_vs_set), None) => (
+                Some(res_thrml_state.temperature),
+                te_res_delta_vs_amb,
+                te_res_delta_vs_set,
+            ),
+            (None, Some(te_cab_delta_vs_set)) => (
+                Some(cab_state.temperature),
+                te_cab_delta_vs_amb,
+                te_cab_delta_vs_set,
+            ),
+            (None, None) => (
+                None,
+                si::TemperatureInterval::ZERO,
+                si::TemperatureInterval::ZERO,
+            ),
+        };
 
-            let (te_ref, te_delta_vs_amb) = if pwr_thrml_hvac_to_res < si::Power::ZERO {
-                // both powers are negative -- i.e. both are in cooling mode
+        // ideal COP if vapor compression sytem is active
+        let cop_ideal_vcs = if let Some(te_ref) = te_ref {
+            if te_ref_delta_vs_set > si::TemperatureInterval::ZERO {
+                // COOLING MODE; reference component is hotter than set point
 
-                let te_ref: si::Temperature = if cab_state.temperature < res_temp {
-                    // cabin is colder
-                    cab_state.temperature
+                // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
+                // cop_ideal is t_h / (t_h - t_c) for heating
+                // cop_ideal is t_c / (t_h - t_c) for cooling
+
+                // divide-by-zero protection and realistic limit on COP
+                let cop_ideal = if -te_ref_delta_vs_amb < 5.0 * uc::KELVIN_INT {
+                    // cabin is cooler than ambient + threshold
+                    // TODO: make this `5.0` not hardcoded
+                    te_ref / (5.0 * uc::KELVIN)
                 } else {
-                    // battery is colder
-                    res_temp
+                    te_ref / te_ref_delta_vs_amb.abs()
                 };
-                (
-                    te_ref,
-                    (te_ref.get::<si::degree_celsius>() - te_amb_air.get::<si::degree_celsius>())
-                        * uc::KELVIN_INT,
-                )
-            } else if pwr_thrml_hvac_to_res >= si::Power::ZERO {
-                // `pwr_thrml_hvac_to_cabin` dominates need for cooling
-                (
-                    cab_state.temperature,
-                    (cab_state.temperature.get::<si::kelvin_abs>()
-                        - te_amb_air.get::<si::degree_celsius>())
-                        * uc::KELVIN_INT,
-                )
+                let cop = cop_ideal * self.frac_of_ideal_cop;
+                ensure!(cop > 0.0 * uc::R, format_dbg!(cop));
+                cop
             } else {
-                // `pwr_thrml_hvac_to_res` dominates need for cooling
-                (
-                    res_temp,
-                    (res_temp.get::<si::degree_celsius>() - te_amb_air.get::<si::degree_celsius>())
-                        * uc::KELVIN_INT,
-                )
-            };
+                // HEATING MODE; cabin is colder than set point
 
-            // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
-            // cop_ideal is t_h / (t_h - t_c) for heating
-            // cop_ideal is t_c / (t_h - t_c) for cooling
+                // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
+                // cop_ideal is t_h / (t_h - t_c) for heating
+                // cop_ideal is t_c / (t_h - t_c) for cooling
 
-            // divide-by-zero protection and realistic limit on COP
-            if te_delta_vs_amb.abs() < 5.0 * uc::KELVIN_INT {
-                // cooling-dominating component is cooler than ambient + threshold
-                // TODO: make this `5.0` not hardcoded
-                let cop_ideal = te_ref / (5.0 * uc::KELVIN);
-                ensure!(cop_ideal > si::Ratio::ZERO, format_dbg!(cop_ideal));
-                (cop_ideal, te_ref)
-            } else {
-                let cop_ideal = te_ref / te_delta_vs_amb.abs();
-                ensure!(cop_ideal > si::Ratio::ZERO, format_dbg!(cop_ideal));
-                (cop_ideal, te_ref)
+                // divide-by-zero protection and realistic limit on COP
+                let cop_ideal = if te_ref_delta_vs_amb < 5.0 * uc::KELVIN_INT {
+                    // cabin is cooler than ambient + threshold
+                    // TODO: make this `5.0` not hardcoded
+                    te_ref / (5.0 * uc::KELVIN)
+                } else {
+                    te_ref / te_ref_delta_vs_amb.abs()
+                };
+                let cop = cop_ideal * self.frac_of_ideal_cop;
+                ensure!(cop > 0.0 * uc::R, format_dbg!(cop));
+                cop
             }
         } else {
-            (si::Ratio::ZERO, f64::NAN * uc::KELVIN)
+            si::Ratio::ZERO
         };
-        self.state.cop = cop_ideal * self.frac_of_ideal_cop;
+
+        self.state.cop = cop_ideal_vcs * self.frac_of_ideal_cop;
         let mut pwr_thrml_hvac_to_cabin = self
             .solve_for_cabin(te_fc, cab_state, cab_heat_cap, dt)
             .with_context(|| format_dbg!())?;
