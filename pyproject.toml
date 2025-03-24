@@ -90,3 +90,18 @@ fmt = "ruff"
 lint = "pylint"
 style = { depends-on = ["fmt", "lint"] }
 
+[tool.ruff]
+# Specify Python version
+target-version = "py311"
+
+# Maximum line length
+line-length = 100
+
+# Exclude specific paths
+exclude = [
+    "site-packages" # Ignore all errors in site-packages
+]
+
+[tool.ruff.isort]
+known-first-party = ["fastsim"]
+section-order = ["standard-library", "third-party", "first-party", "local-folder"]
