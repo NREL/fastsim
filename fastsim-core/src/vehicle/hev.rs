@@ -42,8 +42,10 @@ impl SaveInterval for HybridElectricVehicle {
         bail!("`save_interval` is not implemented in HybridElectricVehicle")
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
-        self.res.save_interval = save_interval;
-        self.em.save_interval = save_interval;
+        self.res.set_save_interval(save_interval)?;
+        // self.fs.set_save_interval(save_interval)?;
+        self.fc.set_save_interval(save_interval)?;
+        self.em.set_save_interval(save_interval)?;
         Ok(())
     }
 }
