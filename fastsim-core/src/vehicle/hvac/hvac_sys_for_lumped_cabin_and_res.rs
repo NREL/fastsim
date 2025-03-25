@@ -116,8 +116,8 @@ impl HVACSystemForLumpedCabinAndRES {
     /// - Cabin cooling never occurs concurrently with battery heating
     /// - Cabin heating never occurs concurrently with battery cooling
     /// - For real vehicles, control parameters for battery heating and cooling
-    /// are generally different during charging, and we do not currently account for
-    /// that
+    ///   are generally different during charging, and we do not currently account for
+    ///   that
     #[allow(clippy::too_many_arguments)] // the order is reasonably protected by typing
     pub fn solve(
         &mut self,
@@ -163,6 +163,7 @@ impl HVACSystemForLumpedCabinAndRES {
         // Assume reference temperature for COP calculation is governed by
         // whichever component is further from its setpoint temperature. NOTE
         // that this may need some revision.
+        // TODO: account for deadbands in here
         let (te_ref, te_ref_delta_vs_amb, te_ref_delta_vs_set): (
             Option<si::Temperature>,
             si::TemperatureInterval,
@@ -183,21 +184,30 @@ impl HVACSystemForLumpedCabinAndRES {
                     )
                 }
             }
-            (Some(te_res_delta_vs_set), None) => (
-                Some(res_thrml_state.temperature),
-                te_res_delta_vs_amb,
-                te_res_delta_vs_set,
-            ),
-            (None, Some(te_cab_delta_vs_set)) => (
-                Some(cab_state.temperature),
-                te_cab_delta_vs_amb,
-                te_cab_delta_vs_set,
-            ),
-            (None, None) => (
-                None,
-                si::TemperatureInterval::ZERO,
-                si::TemperatureInterval::ZERO,
-            ),
+            (Some(te_res_delta_vs_set), None) => {
+                println!("{}\nGet off my lawn!", format_dbg!());
+                (
+                    Some(res_thrml_state.temperature),
+                    te_res_delta_vs_amb,
+                    te_res_delta_vs_set,
+                )
+            }
+            (None, Some(te_cab_delta_vs_set)) => {
+                println!("{}\nGet off my lawn!", format_dbg!());
+                (
+                    Some(cab_state.temperature),
+                    te_cab_delta_vs_amb,
+                    te_cab_delta_vs_set,
+                )
+            }
+            (None, None) => {
+                println!("{}\nGet off my lawn!", format_dbg!());
+                (
+                    None,
+                    si::TemperatureInterval::ZERO,
+                    si::TemperatureInterval::ZERO,
+                )
+            }
         };
 
         // ideal COP if vapor compression sytem is active

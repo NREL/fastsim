@@ -16,12 +16,13 @@ cabin:
     width_meters: 1.765
 hvac: 
   LumpedCabinAndRES:
-    te_set_kelvin: 295.15
+    te_set_cab_kelvin: 295.15
     te_deadband_cab_kelvin: 0.5
     p_cabin_watts_per_kelvin: 500.0
     i_cabin: 40.0
     pwr_i_max_cabin_watts: 15000.0
     d_cabin: 5.0
+    te_set_res_kelvin: 295.15
     te_deadband_res_kelvin: 10.0
     p_res_watts_per_kelvin: 500.0
     i_res: 40.0
