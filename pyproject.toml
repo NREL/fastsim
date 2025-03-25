@@ -82,7 +82,7 @@ default = { solve-group = "default" }
 dev = { features = ["dev"], solve-group = "default" }
 
 [tool.pixi.tasks]
-cargo_test = "cargo test"
+cargo_test = "cargo test --release"
 pybuild = "maturin develop --release"
 py_test = { cmd = "pixi run -e dev pytest -v",  depends-on = ["pybuild"] }
 build_and_test = { depends-on = ["cargo_test", "py_test"] }
