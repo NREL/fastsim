@@ -14,6 +14,7 @@ cabin:
     length_meters: 2.5
     # 1.765 meters (69.5 in). Source: https://www.edmunds.com/chevrolet/bolt-ev/2020/features-specs/
     width_meters: 1.765
+    save_interval: 1
 hvac: 
   LumpedCabinAndRES:
     te_set_cab_kelvin: 295.15
@@ -34,6 +35,7 @@ hvac:
     res_heat_source: ResistanceHeater
     res_cooling_source: HVAC
     pwr_aux_for_hvac_max_watts: 10000.0
+    save_interval: 1
 pt_type:
   BatteryElectricVehicle:
     res:
@@ -45,6 +47,7 @@ pt_type:
           conductance_to_amb_watts_per_kelvin: 0.1
           # 0.5 is Chad's uncalibrated estimate
           conductance_to_cab_watts_per_kelvin: 0.5
+          save_interval: 1
       mass_kilograms: ~
       specific_energy_joules_per_kilogram: ~
       pwr_out_max_watts: 165000.0
