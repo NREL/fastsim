@@ -50,7 +50,15 @@ impl Transmission {
         Ok(state.pwr_in)
     }
 }
-
+impl SaveInterval for Transmission {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+}
 impl SerdeAPI for Transmission {}
 impl Init for Transmission {}
 
