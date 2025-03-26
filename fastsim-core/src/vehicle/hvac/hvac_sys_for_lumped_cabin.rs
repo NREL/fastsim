@@ -42,6 +42,7 @@ pub struct HVACSystemForLumpedCabin {
         skip_serializing_if = "HVACSystemForLumpedCabinStateHistoryVec::is_empty"
     )]
     pub history: HVACSystemForLumpedCabinStateHistoryVec,
+    pub save_interval: Option<usize>,
 }
 impl Default for HVACSystemForLumpedCabin {
     fn default() -> Self {
@@ -58,6 +59,7 @@ impl Default for HVACSystemForLumpedCabin {
             pwr_aux_for_hvac_max: uc::KW * 5.,
             state: Default::default(),
             history: Default::default(),
+            save_interval: Some(1),
         }
     }
 }
@@ -68,6 +70,15 @@ impl SetCumulative for HVACSystemForLumpedCabin {
 }
 impl Init for HVACSystemForLumpedCabin {}
 impl SerdeAPI for HVACSystemForLumpedCabin {}
+impl SaveInterval for HVACSystemForLumpedCabin {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+}
 impl HVACSystemForLumpedCabin {
     /// # Arguments
     /// - `te_amb_air`: ambient air temperature
@@ -347,7 +358,7 @@ impl SerdeAPI for CabinHeatSource {}
 #[serde(default)]
 pub struct HVACSystemForLumpedCabinState {
     /// time step counter
-    pub i: u32,
+    pub i: usize,
     /// portion of total HVAC cooling/heating (negative/positive) power due to proportional gain
     pub pwr_p: si::Power,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy due to proportional gain

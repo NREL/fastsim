@@ -652,6 +652,11 @@ pt_type:
       specific_pwr_watts_per_kilogram: ~
       mass_kilograms: ~
       save_interval: 1
+    transmission:
+      mass_kilograms: ~
+      eff_interp:
+        Interp0D: 0.95
+      save_interval: 1
     pt_cntrl:
       RGWDB:
         speed_soc_disch_buffer: 17.8816

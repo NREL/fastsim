@@ -14,7 +14,8 @@ pub struct HybridElectricVehicle {
     pub fc: FuelConverter,
     #[has_state]
     pub em: ElectricMachine,
-    // TODO: put a transmission here
+    #[has_state]
+    pub transmission: Transmission,
     /// control strategy for distributing power demand between `fc` and `res`
     #[serde(default)]
     pub pt_cntrl: HEVPowertrainControls,
@@ -42,8 +43,11 @@ impl SaveInterval for HybridElectricVehicle {
         bail!("`save_interval` is not implemented in HybridElectricVehicle")
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
-        self.res.save_interval = save_interval;
-        self.em.save_interval = save_interval;
+        self.res.set_save_interval(save_interval)?;
+        // self.fs.set_save_interval(save_interval)?;
+        self.fc.set_save_interval(save_interval)?;
+        self.em.set_save_interval(save_interval)?;
+        self.transmission.set_save_interval(save_interval);
         Ok(())
     }
 }
@@ -57,6 +61,9 @@ impl Init for HybridElectricVehicle {
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.em
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.transmission
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.pt_cntrl
@@ -184,14 +191,18 @@ impl Powertrain for Box<HybridElectricVehicle> {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // TODO: address these concerns
-        // - add a transmission here
         // - what happens when the fc is on and producing more power than the
         //   transmission requires? It seems like the excess goes straight to the battery,
         //   but it should probably go thourgh the em somehow.
+        let pwr_in_transmission = self
+            .transmission
+            .get_pwr_in_req(pwr_out_req)
+            .with_context(|| anyhow!(format_dbg!()))?;
+
         let (fc_pwr_out_req, em_pwr_out_req) = self
             .pt_cntrl
             .get_pwr_fc_and_em(
-                pwr_out_req,
+                pwr_in_transmission,
                 veh_state,
                 &mut self.state,
                 &self.fc,
@@ -316,11 +327,21 @@ impl Mass for HybridElectricVehicle {
         let fs_mass = self.fs.mass().with_context(|| anyhow!(format_dbg!()))?;
         let res_mass = self.res.mass().with_context(|| anyhow!(format_dbg!()))?;
         let em_mass = self.em.mass().with_context(|| anyhow!(format_dbg!()))?;
-        match (fc_mass, fs_mass, res_mass, em_mass) {
-            (Some(fc_mass), Some(fs_mass), Some(res_mass), Some(em_mass)) => {
-                Ok(Some(fc_mass + fs_mass + em_mass + res_mass))
-            }
-            (None, None, None, None) => Ok(None),
+        let transmission_mass = self
+            .transmission
+            .mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
+        match (fc_mass, fs_mass, res_mass, em_mass, transmission_mass) {
+            (
+                Some(fc_mass),
+                Some(fs_mass),
+                Some(res_mass),
+                Some(em_mass),
+                Some(transmission_mass),
+            ) => Ok(Some(
+                fc_mass + fs_mass + res_mass + em_mass + transmission_mass,
+            )),
+            (None, None, None, None, None) => Ok(None),
             _ => bail!(
                 "`{}` field masses are not consistently set to `Some` or `None`",
                 stringify!(HybridElectricVehicle)
@@ -333,6 +354,7 @@ impl Mass for HybridElectricVehicle {
         self.fs.expunge_mass_fields();
         self.res.expunge_mass_fields();
         self.em.expunge_mass_fields();
+        self.transmission.expunge_mass_fields();
         self.mass = None;
     }
 }
