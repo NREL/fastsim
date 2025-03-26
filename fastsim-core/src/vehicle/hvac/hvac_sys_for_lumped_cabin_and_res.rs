@@ -108,6 +108,7 @@ impl SaveInterval for HVACSystemForLumpedCabinAndRES {
         Ok(())
     }
 }
+
 impl HVACSystemForLumpedCabinAndRES {
     /// # Arguments
     /// - `te_amb_air`: ambient air temperature

@@ -119,6 +119,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         frac_res_dschrg_for_fc: f2veh.ess_dischg_to_fc_max_eff_perc * uc::R,
                         temp_fc_forced_on: None,
                         temp_fc_allowed_off: None,
+                        save_interval: Some(1),
                         state: Default::default(),
                         history: Default::default(),
                     }));
