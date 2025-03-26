@@ -47,7 +47,8 @@ impl SaveInterval for HybridElectricVehicle {
         // self.fs.set_save_interval(save_interval)?;
         self.fc.set_save_interval(save_interval)?;
         self.em.set_save_interval(save_interval)?;
-        self.transmission.set_save_interval(save_interval);
+        self.transmission.set_save_interval(save_interval)?;
+        self.pt_cntrl.set_save_interval(save_interval)?;
         Ok(())
     }
 }
@@ -589,6 +590,22 @@ impl Default for HEVPowertrainControls {
     }
 }
 
+impl SaveInterval for HEVPowertrainControls {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => Ok(rgwdb.set_save_interval(save_interval)?),
+            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
+        }
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_interval(),
+            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
+        }
+    }
+}
+
 impl Init for HEVPowertrainControls {
     fn init(&mut self) -> Result<(), Error> {
         match self {
@@ -874,7 +891,8 @@ pub struct RESGreedyWithDynamicBuffers {
     // NOTE: this is inherited from fastsim-2 and has no effect here.  After
     // further thought, either remove it or use it.
     pub frac_res_chrg_for_fc: si::Ratio,
-    // TODO: put `save_interval` in here
+    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
     // NOTE: this is inherited from fastsim-2 and has no effect here.  After
     // further thought, either remove it or use it.
     /// Fraction of available discharging capacity to use toward running the
@@ -892,6 +910,17 @@ pub struct RESGreedyWithDynamicBuffers {
     #[serde(default, skip_serializing_if = "RGWDBStateHistoryVec::is_empty")]
     /// history of current state
     pub history: RGWDBStateHistoryVec,
+}
+
+impl SaveInterval for RESGreedyWithDynamicBuffers {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
 }
 
 impl Init for RESGreedyWithDynamicBuffers {
