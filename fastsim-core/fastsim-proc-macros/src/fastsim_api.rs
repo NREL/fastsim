@@ -95,7 +95,10 @@ fn add_serde_methods(py_impl_block: &mut TokenStream2) {
         #[pyo3(name = "from_resource")]
         #[pyo3(signature = (filepath, skip_init=None))]
         pub fn from_resource_py(filepath: &Bound<PyAny>, skip_init: Option<bool>) -> PyResult<Self> {
-            Self::from_resource(PathBuf::extract_bound(filepath)?, skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
+            Self::from_resource(
+                PathBuf::extract_bound(filepath)?,
+                skip_init.unwrap_or_default()
+            ).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
 
         /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
@@ -261,12 +264,12 @@ fn process_tuple_struct(
 ) {
     // tuple struct
     assert!(unnamed.len() == 1);
+    let re = Regex::new(r"Vec < (.+) >").unwrap();
     for field in unnamed.iter() {
         let ftype = field.ty.clone();
         if let syn::Type::Path(type_path) = ftype.clone() {
             let type_str = type_path.clone().into_token_stream().to_string();
             if type_str.contains("Vec") {
-                let re = Regex::new(r"Vec < (.+) >").unwrap();
                 // println!("{}", type_str);
                 // println!("{}", &re.captures(&type_str).unwrap()[1]);
                 let contained_dtype: TokenStream2 = re.captures(&type_str).unwrap()[1]

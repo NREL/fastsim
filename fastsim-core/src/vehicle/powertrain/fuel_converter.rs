@@ -76,7 +76,7 @@ pub struct FuelConverter {
     pub eff_interp_from_pwr_out: Interpolator,
     /// power at which peak efficiency occurs
     #[serde(skip)]
-    pub pwr_for_peak_eff: si::Power,
+    pub(crate) pwr_for_peak_eff: si::Power,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     pub pwr_idle_fuel: si::Power,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
@@ -100,24 +100,30 @@ impl SetCumulative for FuelConverter {
 
 impl SerdeAPI for FuelConverter {}
 impl Init for FuelConverter {
-    fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+    fn init(&mut self) -> Result<(), Error> {
+        let _ = self
+            .mass()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.thrml.init()?;
-        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
-        let eff_max = self.eff_max()?;
+        self.state
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        let eff_max = self
+            .eff_max()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.pwr_for_peak_eff = *self
             .eff_interp_from_pwr_out
             .x()
-            .with_context(|| format_dbg!())?
+            .map_err(|err| Error::InitError(format_dbg!(err)))?
             .get(
                 self.eff_interp_from_pwr_out
                     .f_x()
                     .unwrap()
                     .iter()
                     .position(|&eff| eff * uc::R == eff_max)
-                    .with_context(|| format_dbg!())?,
+                    .ok_or_else(|| Error::InitError(format_dbg!()))?,
             )
-            .with_context(|| format_dbg!())?
+            .ok_or_else(|| Error::InitError(format_dbg!()))?
             * self.pwr_out_max;
         Ok(())
     }
@@ -385,13 +391,16 @@ impl FuelConverter {
                 }
                 _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
             }
-            Ok(())
         } else {
-            Err(anyhow!(
+            return Err(anyhow!(
                 "`eff_max` ({:.3}) must be between 0.0 and 1.0",
                 eff_max,
-            ))
+            ));
         }
+        // to update any dependent fields
+        self.init()
+            .map_err(|err| anyhow!("{}\n{err}", format_dbg!()))?;
+        Ok(())
     }
 
     /// Scales values of `eff_interp_fwd.f_x` and `eff_interp_bwd.f_x` without changing max such that max - min
@@ -408,7 +417,6 @@ impl FuelConverter {
                     .len()
             ];
             self.eff_interp_from_pwr_out.set_f_x(f_x)?;
-            Ok(())
         } else if (0.0..=1.0).contains(&eff_range) {
             let old_min = self.get_eff_min()?;
             let old_range = self.get_eff_max()? - old_min;
@@ -445,13 +453,17 @@ impl FuelConverter {
                     self.get_eff_max()?
                 )));
             }
-            Ok(())
         } else {
-            Err(anyhow!(format!(
+            return Err(anyhow!(format!(
                 "`eff_range` ({:.3}) must be between 0.0 and 1.0",
                 eff_range,
-            )))
+            )));
         }
+        // to update any dependent fields
+        self.init()
+            .map_err(|err| anyhow!("{}\n{err}", format_dbg!()))?;
+
+        Ok(())
     }
 }
 
@@ -501,7 +513,9 @@ impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
 
 /// Options for handling [FuelConverter] thermal model
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum FuelConverterThermalOption {
     /// Basic thermal plant for [FuelConverter]
     FuelConverterThermal(Box<FuelConverterThermal>),
@@ -527,7 +541,7 @@ impl Step for FuelConverterThermalOption {
     }
 }
 impl Init for FuelConverterThermalOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::FuelConverterThermal(fct) => fct.init()?,
             Self::None => {}
@@ -788,7 +802,7 @@ impl SetCumulative for FuelConverterThermal {
     }
 }
 impl Init for FuelConverterThermal {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         self.tstat_te_sto = self
             .tstat_te_sto
             .or(Some((85. + uc::CELSIUS_TO_KELVIN) * uc::KELVIN));
@@ -803,7 +817,14 @@ impl Init for FuelConverterThermal {
             Strategy::Linear,
             Extrapolate::Clamp,
         )
-        .with_context(|| format_dbg!((self.tstat_te_sto, self.tstat_te_delta)))?;
+        .map_err(|err| {
+            Error::InitError(format!(
+                "{}\n{}\n{}",
+                err,
+                format_dbg!(self.tstat_te_sto),
+                format_dbg!(self.tstat_te_delta)
+            ))
+        })?;
         Ok(())
     }
 }
@@ -890,7 +911,9 @@ impl Default for FuelConverterThermalState {
 }
 
 /// Model variants for how FC efficiency depends on temperature
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Debug, Clone, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum FCTempEffModel {
     /// Linear temperature dependence
     Linear(FCTempEffModelLinear),

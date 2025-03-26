@@ -1,6 +1,8 @@
 use super::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum PowertrainType {
     ConventionalVehicle(Box<ConventionalVehicle>),
     HybridElectricVehicle(Box<HybridElectricVehicle>),
@@ -10,7 +12,7 @@ pub enum PowertrainType {
 
 impl SerdeAPI for PowertrainType {}
 impl Init for PowertrainType {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::ConventionalVehicle(conv) => conv.init(),
             Self::HybridElectricVehicle(hev) => hev.init(),

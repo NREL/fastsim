@@ -71,11 +71,15 @@ impl Init for Cycle {
     /// Sets `self.dist` and `self.elev`
     /// # Assumptions
     /// - if `init_elev.is_none()`, then defaults to [static@ELEV_DEFAULT]
-    fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.len_checked().with_context(|| format_dbg!())?;
+    fn init(&mut self) -> Result<(), Error> {
+        let _ = self
+            .len_checked()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
 
         if !self.temp_amb_air.is_empty() {
-            ensure!(self.temp_amb_air.len() == self.time.len());
+            if self.temp_amb_air.len() != self.time.len() {
+                return Err(Error::InitError(format_dbg!()));
+            }
         } else {
             self.temp_amb_air = vec![*TE_STD_AIR; self.time.len()];
         }
@@ -98,7 +102,7 @@ impl Init for Cycle {
             self.grade = vec![
                 si::Ratio::ZERO;
                 self.len_checked()
-                    .with_context(|| format_dbg!(self.len_checked()))?
+                    .map_err(|err| Error::InitError(format_dbg!(err)))?
             ]
         };
         // calculate elevation from RHS integral of grade and distance
@@ -119,19 +123,25 @@ impl Init for Cycle {
             .collect();
         let g0 = self.grade[0];
         if self.grade.iter().all(|&g| g != g0) {
-            self.grade_interp = Some(Interpolator::new_1d(
-                self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
-                self.grade.iter().map(|y| y.get::<si::ratio>()).collect(),
-                Strategy::Linear,
-                Extrapolate::Error,
-            )?);
+            self.grade_interp = Some(
+                Interpolator::new_1d(
+                    self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
+                    self.grade.iter().map(|y| y.get::<si::ratio>()).collect(),
+                    Strategy::Linear,
+                    Extrapolate::Error,
+                )
+                .map_err(ninterp::error::Error::from)?,
+            );
 
-            self.elev_interp = Some(Interpolator::new_1d(
-                self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
-                self.elev.iter().map(|y| y.get::<si::meter>()).collect(),
-                Strategy::Linear,
-                Extrapolate::Error,
-            )?);
+            self.elev_interp = Some(
+                Interpolator::new_1d(
+                    self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
+                    self.elev.iter().map(|y| y.get::<si::meter>()).collect(),
+                    Strategy::Linear,
+                    Extrapolate::Error,
+                )
+                .map_err(ninterp::error::Error::from)?,
+            );
         } else {
             self.grade_interp = Some(Interpolator::Interp0D(g0.get::<si::ratio>()));
             self.elev_interp = Some(Interpolator::Interp0D(
@@ -174,12 +184,15 @@ impl SerdeAPI for Cycle {
     /// * `wtr` - The writer into which to write object data
     /// * `format` - The target format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
     ///
-    fn to_writer<W: std::io::Write>(&self, mut wtr: W, format: &str) -> anyhow::Result<()> {
+    fn to_writer<W: std::io::Write>(&self, mut wtr: W, format: &str) -> Result<(), Error> {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             #[cfg(feature = "csv")]
             "csv" => {
                 let mut wtr = csv::Writer::from_writer(wtr);
-                for i in 0..self.len_checked().with_context(|| format_dbg!())? {
+                for i in 0..self
+                    .len_checked()
+                    .map_err(|err| Error::SerdeError(format_dbg!(err)))?
+                {
                     wtr.serialize(CycleElement {
                         // unchecked indexing should be ok because of `self.len()`
                         time: self.time[i],
@@ -204,23 +217,30 @@ impl SerdeAPI for Cycle {
                         } else {
                             None
                         },
-                    })?;
+                    })
+                    .map_err(|err| Error::SerdeError(format_dbg!(err)))?;
                 }
-                wtr.flush()?
+                wtr.flush()
+                    .map_err(|err| Error::SerdeError(format_dbg!(err)))?
             }
             #[cfg(feature = "json")]
-            "json" => serde_json::to_writer(wtr, self)?,
+            "json" => serde_json::to_writer(wtr, self)
+                .map_err(|err| Error::SerdeError(format_dbg!(err)))?,
             #[cfg(feature = "toml")]
             "toml" => {
-                let toml_string = self.to_toml()?;
-                wtr.write_all(toml_string.as_bytes())?;
+                let toml_string = self
+                    .to_toml()
+                    .map_err(|err| Error::SerdeError(format_dbg!(err)))?;
+                wtr.write_all(toml_string.as_bytes())
+                    .map_err(|err| Error::SerdeError(format_dbg!(err)))?;
             }
             #[cfg(feature = "yaml")]
-            "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
-            _ => bail!(
+            "yaml" | "yml" => serde_yaml::to_writer(wtr, self)
+                .map_err(|err| Error::SerdeError(format_dbg!(err)))?,
+            _ => Err(Error::SerdeError(format!(
                 "Unsupported format {format:?}, must be one of {:?}",
-                Self::ACCEPTED_BYTE_FORMATS
-            ),
+                Self::ACCEPTED_BYTE_FORMATS,
+            )))?,
         }
         Ok(())
     }
@@ -236,34 +256,41 @@ impl SerdeAPI for Cycle {
         rdr: &mut R,
         format: &str,
         skip_init: bool,
-    ) -> anyhow::Result<Self> {
-        let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
-            #[cfg(feature = "csv")]
-            "csv" => {
-                // Create empty cycle to be populated
-                let mut cyc = Self::default();
-                let mut rdr = csv::Reader::from_reader(rdr);
-                for result in rdr.deserialize() {
-                    cyc.push(result.with_context(|| format_dbg!())?)
-                        .with_context(|| format_dbg!())?;
+    ) -> Result<Self, Error> {
+        let mut deserialized: Self =
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                #[cfg(feature = "csv")]
+                "csv" => {
+                    // Create empty cycle to be populated
+                    let mut cyc = Self::default();
+                    let mut rdr = csv::Reader::from_reader(rdr);
+                    for result in rdr.deserialize() {
+                        cyc.push(result.map_err(|err| Error::SerdeError(format_dbg!(err)))?)
+                            .map_err(|err| Error::SerdeError(format!("{err}")))?;
+                    }
+                    cyc
                 }
-                cyc
-            }
-            #[cfg(feature = "json")]
-            "json" => serde_json::from_reader(rdr)?,
-            #[cfg(feature = "toml")]
-            "toml" => {
-                let mut buf = String::new();
-                rdr.read_to_string(&mut buf)?;
-                Self::from_toml(buf, skip_init)?
-            }
-            #[cfg(feature = "yaml")]
-            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
-            _ => bail!(
-                "Unsupported format {format:?}, must be one of {:?}",
-                Self::ACCEPTED_BYTE_FORMATS
-            ),
-        };
+                #[cfg(feature = "json")]
+                "json" => serde_json::from_reader(rdr)
+                    .map_err(|err| Error::SerdeError(format!("{err}")))?,
+                #[cfg(feature = "toml")]
+                "toml" => {
+                    let mut buf = String::new();
+                    rdr.read_to_string(&mut buf)
+                        .map_err(|err| Error::SerdeError(format_dbg!(err)))?;
+                    Self::from_toml(buf, skip_init)
+                        .map_err(|err| Error::SerdeError(format_dbg!(err)))?
+                }
+                #[cfg(feature = "yaml")]
+                "yaml" | "yml" => serde_yaml::from_reader(rdr)
+                    .map_err(|err| Error::SerdeError(format_dbg!(err)))?,
+                _ => {
+                    return Err(Error::SerdeError(format!(
+                        "Unsupported format {format:?}, must be one of {:?}",
+                        Self::ACCEPTED_BYTE_FORMATS
+                    )))
+                }
+            };
         if !skip_init {
             deserialized.init()?;
         }
