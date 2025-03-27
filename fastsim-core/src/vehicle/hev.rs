@@ -14,7 +14,8 @@ pub struct HybridElectricVehicle {
     pub fc: FuelConverter,
     #[has_state]
     pub em: ElectricMachine,
-    // TODO: put a transmission here
+    #[has_state]
+    pub transmission: Transmission,
     /// control strategy for distributing power demand between `fc` and `res`
     #[serde(default)]
     pub pt_cntrl: HEVPowertrainControls,
@@ -46,6 +47,8 @@ impl SaveInterval for HybridElectricVehicle {
         // self.fs.set_save_interval(save_interval)?;
         self.fc.set_save_interval(save_interval)?;
         self.em.set_save_interval(save_interval)?;
+        self.transmission.set_save_interval(save_interval)?;
+        self.pt_cntrl.set_save_interval(save_interval)?;
         Ok(())
     }
 }
@@ -59,6 +62,9 @@ impl Init for HybridElectricVehicle {
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.em
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.transmission
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.pt_cntrl
@@ -186,14 +192,18 @@ impl Powertrain for Box<HybridElectricVehicle> {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // TODO: address these concerns
-        // - add a transmission here
         // - what happens when the fc is on and producing more power than the
         //   transmission requires? It seems like the excess goes straight to the battery,
         //   but it should probably go thourgh the em somehow.
+        let pwr_in_transmission = self
+            .transmission
+            .get_pwr_in_req(pwr_out_req)
+            .with_context(|| anyhow!(format_dbg!()))?;
+
         let (fc_pwr_out_req, em_pwr_out_req) = self
             .pt_cntrl
             .get_pwr_fc_and_em(
-                pwr_out_req,
+                pwr_in_transmission,
                 veh_state,
                 &mut self.state,
                 &self.fc,
@@ -318,11 +328,21 @@ impl Mass for HybridElectricVehicle {
         let fs_mass = self.fs.mass().with_context(|| anyhow!(format_dbg!()))?;
         let res_mass = self.res.mass().with_context(|| anyhow!(format_dbg!()))?;
         let em_mass = self.em.mass().with_context(|| anyhow!(format_dbg!()))?;
-        match (fc_mass, fs_mass, res_mass, em_mass) {
-            (Some(fc_mass), Some(fs_mass), Some(res_mass), Some(em_mass)) => {
-                Ok(Some(fc_mass + fs_mass + em_mass + res_mass))
-            }
-            (None, None, None, None) => Ok(None),
+        let transmission_mass = self
+            .transmission
+            .mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
+        match (fc_mass, fs_mass, res_mass, em_mass, transmission_mass) {
+            (
+                Some(fc_mass),
+                Some(fs_mass),
+                Some(res_mass),
+                Some(em_mass),
+                Some(transmission_mass),
+            ) => Ok(Some(
+                fc_mass + fs_mass + res_mass + em_mass + transmission_mass,
+            )),
+            (None, None, None, None, None) => Ok(None),
             _ => bail!(
                 "`{}` field masses are not consistently set to `Some` or `None`",
                 stringify!(HybridElectricVehicle)
@@ -335,6 +355,7 @@ impl Mass for HybridElectricVehicle {
         self.fs.expunge_mass_fields();
         self.res.expunge_mass_fields();
         self.em.expunge_mass_fields();
+        self.transmission.expunge_mass_fields();
         self.mass = None;
     }
 }
@@ -566,6 +587,22 @@ pub enum HEVPowertrainControls {
 impl Default for HEVPowertrainControls {
     fn default() -> Self {
         Self::RGWDB(Default::default())
+    }
+}
+
+impl SaveInterval for HEVPowertrainControls {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => Ok(rgwdb.set_save_interval(save_interval)?),
+            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
+        }
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_interval(),
+            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
+        }
     }
 }
 
@@ -854,7 +891,8 @@ pub struct RESGreedyWithDynamicBuffers {
     // NOTE: this is inherited from fastsim-2 and has no effect here.  After
     // further thought, either remove it or use it.
     pub frac_res_chrg_for_fc: si::Ratio,
-    // TODO: put `save_interval` in here
+    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
     // NOTE: this is inherited from fastsim-2 and has no effect here.  After
     // further thought, either remove it or use it.
     /// Fraction of available discharging capacity to use toward running the
@@ -872,6 +910,17 @@ pub struct RESGreedyWithDynamicBuffers {
     #[serde(default, skip_serializing_if = "RGWDBStateHistoryVec::is_empty")]
     /// history of current state
     pub history: RGWDBStateHistoryVec,
+}
+
+impl SaveInterval for RESGreedyWithDynamicBuffers {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
 }
 
 impl Init for RESGreedyWithDynamicBuffers {

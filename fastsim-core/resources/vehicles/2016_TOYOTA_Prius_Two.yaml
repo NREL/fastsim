@@ -711,6 +711,19 @@ pt_type:
         energy_elec_dyn_brake_joules: 0.0
         pwr_loss_watts: 0.0
         energy_loss_joules: 0.0
+    transmission:
+      mass_kilograms: ~
+      eff_interp:
+        Interp0D: 0.98
+      save_interval: 1
+      state:
+        i: 0
+        eff: 0.0
+        pwr_out_watts: 0.0
+        pwr_in_watts: 0.0
+        pwr_loss_watts: 0.0
+        energy_out_joules: 0.0
+        energy_loss_joules: 0.0
     pt_cntrl:
       RGWDB:
         speed_soc_disch_buffer_meters_per_second: 17.8816
