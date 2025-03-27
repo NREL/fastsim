@@ -200,6 +200,11 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .get_pwr_in_req(pwr_out_req)
             .with_context(|| anyhow!(format_dbg!()))?;
 
+        // TODO: use an enum with a match here to determine whether power is shared by
+        // - fc and em (e.g. for ICE HEV)
+        //   or
+        // - fc and res (e.g. for H2FC HEV)
+
         let (fc_pwr_out_req, em_pwr_out_req) = self
             .pt_cntrl
             .get_pwr_fc_and_em(

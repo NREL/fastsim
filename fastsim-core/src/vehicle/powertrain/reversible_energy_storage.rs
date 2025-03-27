@@ -382,22 +382,25 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
 
         ensure!(
             pwr_aux <= state.pwr_disch_max,
-            "`{}` ({} W) must always be less than or equal to {} ({} W)\nsoc:{}",
+            "{}\n`{}` ({} W) must always be less than or equal to {} ({} W)\nsoc:{}",
+            format_dbg!(),
             stringify!(pwr_aux),
             pwr_aux.get::<si::watt>().format_eng(None),
             stringify!(state.pwr_disch_max),
             state.pwr_disch_max.get::<si::watt>().format_eng(None),
-            state.soc.get::<si::ratio>()
+            state.soc.get::<si::ratio>().format_eng(None)
         );
         ensure!(
             state.pwr_prop_max >= si::Power::ZERO,
-            "`{}` ({} W) must be greater than or equal to zero",
+            "{}\n`{}` ({} W) must be greater than or equal to zero",
+            format_dbg!(),
             stringify!(state.pwr_prop_max),
             state.pwr_prop_max.get::<si::watt>().format_eng(None)
         );
         ensure!(
             state.pwr_regen_max >= si::Power::ZERO,
-            "`{}` ({} W) must be greater than or equal to zero",
+            "{}\n`{}` ({} W) must be greater than or equal to zero",
+            format_dbg!(),
             stringify!(state.pwr_regen_max),
             state.pwr_regen_max.get::<si::watt>().format_eng(None)
         );
@@ -862,7 +865,7 @@ pub struct RESLumpedThermal {
         skip_serializing_if = "RESLumpedThermalStateHistoryVec::is_empty"
     )]
     pub history: RESLumpedThermalStateHistoryVec,
-    pub save_interval: Option<usize>
+    pub save_interval: Option<usize>,
 }
 impl SetCumulative for RESLumpedThermal {
     fn set_cumulative(&mut self, dt: si::Time) {

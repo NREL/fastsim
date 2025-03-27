@@ -244,9 +244,6 @@ impl SimDrive {
         // }
         // ```
         self.veh
-            .solve_thermal(self.cyc.temp_amb_air[i], dt)
-            .with_context(|| format_dbg!())?;
-        self.veh
             .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_pwr_prop_for_speed(self.cyc.speed[i], speed_prev, dt)
@@ -265,6 +262,9 @@ impl SimDrive {
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
+        self.veh
+            .solve_thermal(self.cyc.temp_amb_air[i], dt)
+            .with_context(|| format_dbg!())?;
         self.veh.set_cumulative(dt);
         Ok(())
     }

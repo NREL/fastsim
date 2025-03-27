@@ -83,8 +83,8 @@ dev = { features = ["dev"], solve-group = "default" }
 
 [tool.pixi.tasks]
 cargo_test = "cargo test --release"
-pybuild = "maturin develop --release"
-py_test = { cmd = "pixi run -e dev pytest -v",  depends-on = ["pybuild"] }
+py_build = "maturin develop --release"
+py_test = { cmd = "pixi run -e dev pytest -v",  depends-on = ["py_build"] }
 build_and_test = { depends-on = ["cargo_test", "py_test"] }
 fmt = "ruff format"
 lint = "pylint"

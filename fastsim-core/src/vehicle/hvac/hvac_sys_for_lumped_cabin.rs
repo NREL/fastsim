@@ -167,7 +167,7 @@ impl HVACSystemForLumpedCabin {
                         format_dbg!(pwr_thrml_hvac_to_cab)
                     );
 
-                    if (pwr_thrml_hvac_to_cab / cop).abs() > self.pwr_aux_for_hvac_max {
+                    if (pwr_thrml_hvac_to_cab * cop).abs() > self.pwr_aux_for_hvac_max {
                         self.state.pwr_aux_for_hvac = self.pwr_aux_for_hvac_max;
                         // correct if limit is exceeded
                         pwr_thrml_hvac_to_cab = -self.state.pwr_aux_for_hvac * cop;
