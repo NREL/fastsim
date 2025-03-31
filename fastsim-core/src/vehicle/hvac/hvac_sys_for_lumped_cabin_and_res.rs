@@ -878,6 +878,7 @@ impl HVACSystemForLumpedCabinAndRES {
                 / dt);
     }
 
+    // TODO: Pickup here.  Make this function look like `solve_for_cabin`
     /// Solve for thermal power for [RESLumpedThermal]
     fn solve_for_res(
         &mut self,
