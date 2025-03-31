@@ -23,14 +23,12 @@ impl Init for AuxSource {}
 
 #[fastsim_api(
     #[staticmethod]
-    #[allow(clippy::useless_conversion)]
     fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {
         Ok(Self::try_from(veh.clone())?)
     }
 
     #[pyo3(name = "set_save_interval")]
     #[pyo3(signature = (save_interval=None))]
-    #[allow(clippy::useless_conversion)]
     /// Set save interval and cascade to nested components.
     fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> PyResult<()> {
         self.set_save_interval(save_interval).map_err(|e| PyAttributeError::new_err(e.to_string()))
@@ -58,9 +56,8 @@ impl Init for AuxSource {}
         self.em().cloned()
     }
 
-    #[allow(clippy::useless_conversion)]
-    fn veh_type(&self) -> PyResult<String> {
-        Ok(self.pt_type.to_string())
+    fn veh_type(&self) -> String {
+        self.pt_type.to_string()
     }
 
     // #[getter]
