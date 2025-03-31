@@ -501,6 +501,15 @@ impl Vehicle {
                 self.state.pwr_aux = self.pwr_aux_base
                     + hvac.state.pwr_aux_for_cab_hvac
                     + hvac.state.pwr_aux_for_res_hvac;
+                ensure!(
+                    self.state.pwr_aux > si::Power::ZERO,
+                    format!(
+                        "{}\n{}\n{}",
+                        format_dbg!(self.state.pwr_aux),
+                        format_dbg!(hvac.state.pwr_aux_for_res_hvac),
+                        format_dbg!(hvac.state.pwr_aux_for_cab_hvac)
+                    )
+                );
                 (
                     Some(pwr_thrml_fc_to_cab),
                     Some(pwr_thrml_hvac_to_res),

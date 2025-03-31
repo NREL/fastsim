@@ -243,6 +243,11 @@ impl SimDrive {
         //     Proportional
         // }
         // ```
+
+        // `solve_thermal` must happen before the other methods because it impacts aux power demand
+        self.veh
+            .solve_thermal(self.cyc.temp_amb_air[i], dt)
+            .with_context(|| format_dbg!())?;
         self.veh
             .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -262,9 +267,6 @@ impl SimDrive {
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.veh
-            .solve_thermal(self.cyc.temp_amb_air[i], dt)
-            .with_context(|| format_dbg!())?;
         self.veh.set_cumulative(dt);
         Ok(())
     }

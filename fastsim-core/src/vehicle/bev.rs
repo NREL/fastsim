@@ -159,7 +159,6 @@ impl Powertrain for BatteryElectricVehicle {
         _veh_state: VehicleState,
     ) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
-        // TODO: change these to something other than zero
         let disch_buffer = si::Energy::ZERO;
         let chrg_buffer = si::Energy::ZERO;
         self.res
