@@ -15,5 +15,5 @@ pub enum HvacMode {
     Inactive,
     #[default]
     /// Each time step sets to this value at the start to enforce updating
-    None,
+    Invalid,
 }
