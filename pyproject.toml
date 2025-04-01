@@ -29,6 +29,7 @@ dependencies = [
     "ipykernel~=6.29",
     "executing~=2.0",
     "pip",
+    "types-seaborn~=0.13.2",
 ]
 
 [project.urls]
@@ -136,6 +137,7 @@ select = [
 ]
 ignore = [
   "D400" # first-line-should-end-with-a-period
+  "E266" # Too many leading `#`
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -143,3 +145,32 @@ convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+# https://mypy.readthedocs.io/en/stable/config_file.html
+# https://mypy.readthedocs.io/en/stable/config_file.html#example-pyproject-toml
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+allow_redefinition = true
+exclude = [
+    # '^file1\.py$',  # TOML literal string (single-quotes, no escaping necessary)
+    # "^file2\\.py$",  # TOML basic string (double-quotes, backslash and other characters need escaping)
+]
+
+# mypy per-module options:
+
+# [[tool.mypy.overrides]]
+# module = "mycode.foo.*"
+# disallow_untyped_defs = true
+
+# [[tool.mypy.overrides]]
+# module = "mycode.bar"
+# warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = [
+    "pymoo.*",
+    "fastsim.*", # TODO: fix fastsim and remove this line
+]
+ignore_missing_imports = true
