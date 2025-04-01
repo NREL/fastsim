@@ -667,6 +667,7 @@ impl HVACSystemForLumpedCabinAndRES {
         self.state.pwr_aux_for_cab_hvac_req = uc::W * f64::NAN;
         self.state.pwr_aux_for_cab_hvac = uc::W * f64::NAN;
         self.state.pwr_thrml_hvac_to_cabin = uc::W * f64::NAN;
+
         match self.te_set_cab {
             Some(te_set_cab) => {
                 match self.state.cabin_mode {
@@ -889,6 +890,7 @@ impl HVACSystemForLumpedCabinAndRES {
         self.state.pwr_aux_for_res_hvac_req = uc::W * f64::NAN;
         self.state.pwr_aux_for_res_hvac = uc::W * f64::NAN;
         self.state.pwr_thrml_hvac_to_res = uc::W * f64::NAN;
+
         match self.te_set_res {
             Some(te_set_res) => {
                 match self.state.res_mode {
