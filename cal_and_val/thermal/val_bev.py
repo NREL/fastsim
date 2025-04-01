@@ -11,12 +11,17 @@ from cal_bev import time_column, speed_column, cell_temp_column
 from cal_bev import  mps_per_mph 
 
 res_df = pd.read_csv(save_path / "pymoo_res_df.csv")
+# TODO: change all the fuel stuff to reference SOC
 res_df_fuel_energy = res_df.filter(regex="get_mod_energy_fuel")
 res_df_fuel_energy_summed = res_df.filter(
     regex="get_mod_energy_fuel").sum(1)
 best_row_fuel_energy = res_df_fuel_energy_summed.argmin()
 param_vals_fuel_energy = res_df.iloc[
     best_row_fuel_energy,
+    :len(cal_mod_obj.param_fns)].to_numpy()
+
+param_vals_soc = res_df.iloc[
+    best_row_soc,
     :len(cal_mod_obj.param_fns)].to_numpy()
 
 best_row = res_df["euclidean"].argmin()

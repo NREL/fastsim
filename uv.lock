@@ -297,7 +297,7 @@ requires-dist = [
     { name = "pyyaml", specifier = "==6.0.2" },
     { name = "ruff", marker = "extra == 'dev'", specifier = "~=0.9" },
     { name = "seaborn", specifier = ">=0.11.0,<13.2" },
-    { name = "types-seaborn", specifier = ">=0.13.2.20250111" },
+    { name = "types-seaborn", specifier = "~=0.13.2" },
     { name = "typing-extensions", specifier = "~=4.12" },
 ]
 
