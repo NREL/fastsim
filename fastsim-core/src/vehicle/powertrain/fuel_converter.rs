@@ -567,7 +567,9 @@ impl SaveInterval for FuelConverterThermalOption {
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
-            FuelConverterThermalOption::FuelConverterThermal(fct) => fct.set_save_interval(save_interval),
+            FuelConverterThermalOption::FuelConverterThermal(fct) => {
+                fct.set_save_interval(save_interval)
+            }
             FuelConverterThermalOption::None => Ok(()),
         }
     }

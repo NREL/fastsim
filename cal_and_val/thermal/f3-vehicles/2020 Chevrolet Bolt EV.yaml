@@ -14,24 +14,29 @@ cabin:
     length_meters: 2.5
     # 1.765 meters (69.5 in). Source: https://www.edmunds.com/chevrolet/bolt-ev/2020/features-specs/
     width_meters: 1.765
+    save_interval: 1
 hvac: 
   LumpedCabinAndRES:
-    te_set_kelvin: 295.15
-    te_deadband_kelvin: 0.5
-    p_cabin_watts_per_kelvin: 0.0
-    i_cabin: 0.0
-    pwr_i_max_cabin_watts: 5000.0
-    d_cabin: 0.0
-    p_res_watts_per_kelvin: 0.0
-    i_res: 0.0
-    pwr_i_max_res_watts: 5000.0
-    d_res: 0.0
-    pwr_thrml_max_watts: 10000.0
+    te_set_cab_kelvin: 295.15
+    te_deadband_cab_kelvin: 0.5
+    p_cabin_watts_per_kelvin: 500.0
+    i_cabin: 40.0
+    pwr_i_max_cabin_watts: 15000.0
+    d_cabin: 5.0
+    pwr_aux_for_hvac_cab_max_watts: 5000.0
+    te_set_res_kelvin: 295.15
+    te_deadband_res_kelvin: 10.0
+    p_res_watts_per_kelvin: 500.0
+    i_res: 40.0
+    pwr_i_max_res_watts: 15000.0
+    d_res: 5.0
+    pwr_thrml_max_watts: 15000.0
     frac_of_ideal_cop: 0.15
     cabin_heat_source: ResistanceHeater
     res_heat_source: ResistanceHeater
     res_cooling_source: HVAC
-    pwr_aux_for_hvac_max_watts: 5000.0
+    pwr_aux_for_hvac_res_max_watts: 5000.0
+    save_interval: 1
 pt_type:
   BatteryElectricVehicle:
     res:
@@ -43,6 +48,7 @@ pt_type:
           conductance_to_amb_watts_per_kelvin: 0.1
           # 0.5 is Chad's uncalibrated estimate
           conductance_to_cab_watts_per_kelvin: 0.5
+          save_interval: 1
       mass_kilograms: ~
       specific_energy_joules_per_kilogram: ~
       pwr_out_max_watts: 165000.0

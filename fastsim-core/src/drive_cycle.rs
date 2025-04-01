@@ -13,8 +13,8 @@ use fastsim_2::cycle::RustCycle as Cycle2;
     }
 
     #[pyo3(name = "len")]
-    fn len_py(&self) -> PyResult<u32> {
-       Ok(self.len_checked().map(|l| l as u32)?)
+    fn len_py(&self) -> PyResult<usize> {
+        Ok(self.len_checked()?)
     }
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]

@@ -243,6 +243,8 @@ impl SimDrive {
         //     Proportional
         // }
         // ```
+
+        // `solve_thermal` must happen before the other methods because it impacts aux power demand
         self.veh
             .solve_thermal(self.cyc.temp_amb_air[i], dt)
             .with_context(|| format_dbg!())?;

@@ -111,6 +111,8 @@ def get_hist_len(obj: Dict) -> Optional[int]:
     """
     Finds nested `history` and gets lenth of first element
     """
+    # TODO: check if this is sufficiently recursive and if it's not, make it recursive all the way down
+    
     if 'history' in obj.keys():
         return len(next(iter(obj['history'].values())))
 

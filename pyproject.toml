@@ -26,6 +26,9 @@ dependencies = [
     "typing_extensions~=4.12",
     "PyYAML==6.0.2",
     "msgpack==1.1.0",
+    "ipykernel~=6.29",
+    "executing~=2.0",
+    "pip",
 ]
 
 [project.urls]
@@ -35,8 +38,6 @@ Homepage = "https://www.nrel.gov/transportation/fastsim.html"
 dev = [
     "pytest~=8.3",
     "maturin~=1.8",
-    "ipykernel~=6.29",
-    "executing~=2.0",
     "python-lsp-server~=1.10",
     "ruff~=0.9",
     "pylsp-mypy~=0.7.0",
@@ -81,11 +82,26 @@ default = { solve-group = "default" }
 dev = { features = ["dev"], solve-group = "default" }
 
 [tool.pixi.tasks]
-cargo_test = "cargo test"
-py_test = "pixi run -e dev pytest -v"
+cargo_test = "cargo test --release"
+py_build = "maturin develop --release"
+py_test = { cmd = "pixi run -e dev pytest -v",  depends-on = ["py_build"] }
 build_and_test = { depends-on = ["cargo_test", "py_test"] }
-
-fmt = "ruff"
+fmt = "ruff format"
 lint = "pylint"
 style = { depends-on = ["fmt", "lint"] }
 
+[tool.ruff]
+# Specify Python version
+target-version = "py311"
+
+# Maximum line length
+line-length = 100
+
+# Exclude specific paths
+exclude = [
+    "site-packages" # Ignore all errors in site-packages
+]
+
+[tool.ruff.isort]
+known-first-party = ["fastsim"]
+section-order = ["standard-library", "third-party", "first-party", "local-folder"]

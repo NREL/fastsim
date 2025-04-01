@@ -56,8 +56,8 @@ impl Init for AuxSource {}
         self.em().cloned()
     }
 
-    fn veh_type(&self) -> PyResult<String> {
-        Ok(self.pt_type.to_string())
+    fn veh_type(&self) -> String {
+        self.pt_type.to_string()
     }
 
     // #[getter]
@@ -394,9 +394,7 @@ impl Vehicle {
     }
 
     pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        // TODO: make transmission field in vehicle and make it be able to produce an efficiency
-        // TODO: account for traction limits here or somewhere?
-
+        // TODO: account for traction limits here
         self.pt_type
             .set_curr_pwr_prop_out_max(self.state.pwr_aux, dt, self.state)
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -415,8 +413,7 @@ impl Vehicle {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         let te_fc: Option<si::Temperature> = self.fc().and_then(|fc| fc.temperature());
-        let res_temp = self.res().and_then(|res| res.temperature());
-        let res_temp_prev = self.res().and_then(|res| res.temp_prev());
+        let res_thrml_state = self.res().and_then(|res| res.res_thrml_state());
         let pwr_thrml_cab_to_res: si::Power = self
             .res()
             .and_then(|res| match &res.thrml {
@@ -424,6 +421,35 @@ impl Vehicle {
                 RESThermalOption::None => None,
             })
             .unwrap_or_default();
+
+        let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab) =
+            self.solve_hvac_cab_res(te_amb_air, dt, te_fc, res_thrml_state, pwr_thrml_cab_to_res)?;
+
+        self.pt_type
+            .solve_thermal(
+                te_amb_air,
+                pwr_thrml_fc_to_cabin,
+                &mut self.state,
+                pwr_thrml_hvac_to_res,
+                te_cab,
+                dt,
+            )
+            .with_context(|| format_dbg!())?;
+        Ok(())
+    }
+
+    fn solve_hvac_cab_res(
+        &mut self,
+        te_amb_air: si::Temperature,
+        dt: si::Time,
+        te_fc: Option<si::Temperature>,
+        res_thrml_state: Option<RESLumpedThermalState>,
+        pwr_thrml_cab_to_res: si::Power,
+    ) -> anyhow::Result<(
+        Option<si::Power>,
+        Option<si::Power>,
+        Option<si::Temperature>,
+    )> {
         let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab): (
             Option<si::Power>,
             Option<si::Power>,
@@ -456,13 +482,10 @@ impl Vehicle {
                         te_fc,
                         cab.state,
                         cab.heat_capacitance,
-                        (
-                            res_temp
-                            .with_context(
-                                || "{}\n[HVACOption::LumpedCabinAndRES] requires [ReversibleEnergyStorage::thrml] to be `Some`"
-                            )?,
-                            res_temp_prev.unwrap()
-                        ),
+                        res_thrml_state
+                        .with_context(
+                            || "{}\n[HVACOption::LumpedCabinAndRES] requires [ReversibleEnergyStorage::thrml] to be `Some`"
+                        )?,
                         dt,
                     )
                     .with_context(|| format_dbg!())?;
@@ -475,7 +498,18 @@ impl Vehicle {
                         dt,
                     )
                     .with_context(|| format_dbg!())?;
-                self.state.pwr_aux = self.pwr_aux_base + hvac.state.pwr_aux_for_hvac;
+                self.state.pwr_aux = self.pwr_aux_base
+                    + hvac.state.pwr_aux_for_cab_hvac
+                    + hvac.state.pwr_aux_for_res_hvac;
+                ensure!(
+                    self.state.pwr_aux > si::Power::ZERO,
+                    format!(
+                        "{}\n{}\n{}",
+                        format_dbg!(self.state.pwr_aux),
+                        format_dbg!(hvac.state.pwr_aux_for_res_hvac),
+                        format_dbg!(hvac.state.pwr_aux_for_cab_hvac)
+                    )
+                );
                 (
                     Some(pwr_thrml_fc_to_cab),
                     Some(pwr_thrml_hvac_to_res),
@@ -504,18 +538,7 @@ impl Vehicle {
                 "This match needs more match arms to be fully correct in validating model config."
             ),
         };
-
-        self.pt_type
-            .solve_thermal(
-                te_amb_air,
-                pwr_thrml_fc_to_cabin,
-                &mut self.state,
-                pwr_thrml_hvac_to_res,
-                te_cab,
-                dt,
-            )
-            .with_context(|| format_dbg!())?;
-        Ok(())
+        Ok((pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab))
     }
 
     fn from_f2_file(file: PathBuf) -> anyhow::Result<Self> {

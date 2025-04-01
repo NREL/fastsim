@@ -1,5 +1,8 @@
 use super::*;
 
+pub mod hvac_utils;
+pub use hvac_utils::*;
+
 pub mod hvac_sys_for_lumped_cabin;
 pub use hvac_sys_for_lumped_cabin::*;
 

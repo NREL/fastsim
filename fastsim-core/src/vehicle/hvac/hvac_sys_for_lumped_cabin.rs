@@ -143,7 +143,7 @@ impl HVACSystemForLumpedCabin {
                     // cop_ideal is t_c / (t_h - t_c) for cooling
 
                     // divide-by-zero protection and realistic limit on COP
-                    let cop_ideal = if te_delta_vs_amb.abs() < 5.0 * uc::KELVIN_INT {
+                    let cop_ideal = if -te_delta_vs_amb < 5.0 * uc::KELVIN_INT {
                         // cabin is cooler than ambient + threshold
                         // TODO: make this `5.0` not hardcoded
                         cab_state.temperature / (5.0 * uc::KELVIN)
@@ -167,7 +167,7 @@ impl HVACSystemForLumpedCabin {
                         format_dbg!(pwr_thrml_hvac_to_cab)
                     );
 
-                    if (pwr_thrml_hvac_to_cab / cop).abs() > self.pwr_aux_for_hvac_max {
+                    if (pwr_thrml_hvac_to_cab * cop).abs() > self.pwr_aux_for_hvac_max {
                         self.state.pwr_aux_for_hvac = self.pwr_aux_for_hvac_max;
                         // correct if limit is exceeded
                         pwr_thrml_hvac_to_cab = -self.state.pwr_aux_for_hvac * cop;
@@ -306,7 +306,7 @@ impl HVACSystemForLumpedCabin {
 
                 // divide-by-zero protection and realistic limit on COP
                 // TODO: make sure this is consist with above commented equation for heating!
-                let cop_ideal = if te_delta_vs_amb.abs() < 5.0 * uc::KELVIN_INT {
+                let cop_ideal = if te_delta_vs_amb < 5.0 * uc::KELVIN_INT {
                     // cabin is cooler than ambient + threshold
                     // TODO: make this `5.0` not hardcoded
                     cab_state.temperature / (5.0 * uc::KELVIN)
