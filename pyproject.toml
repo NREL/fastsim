@@ -93,10 +93,8 @@ style = { depends-on = ["fmt", "lint"] }
 [tool.ruff]
 # Specify Python version
 target-version = "py311"
-
 # Maximum line length
 line-length = 100
-
 # Exclude specific paths
 exclude = [
     "site-packages" # Ignore all errors in site-packages
@@ -105,3 +103,43 @@ exclude = [
 [tool.ruff.isort]
 known-first-party = ["fastsim"]
 section-order = ["standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+preview = true
+select = [
+  "A", # flake8-builtins
+  "ARG", # flake8-unused-arguments
+  # "B", # flake8-bugbear
+  "C", # Pylint: Convention
+  "C4", # flake8-comprehensions
+  "C90", # mccabe
+  "COM", # flake8-commas
+  "D", # pydocstyle
+  "E", # Error
+  "F", # Pyflakes
+  "G", # flake8-logging-format
+  "I", # isort
+  "LOG", # flake8-logging
+  "N", # pep8-naming
+  "NPY", # numpy-specific
+  "PERF", # Perflint
+  # "PL", # Pylint
+  "Q", # flake8-quotes
+  "SIM", # flake8-simplify
+  # "TID", # flake8-tidy-imports (absolute imports)
+  "UP", # pyupgrade
+  "W" # Warning
+]
+ignore = [
+  "D400" # first-line-should-end-with-a-period
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
