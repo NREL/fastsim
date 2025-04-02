@@ -4,6 +4,7 @@ use crate::prelude::ElectricMachineState;
 #[fastsim_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Hybrid vehicle with both engine and reversible energy storage (aka battery)
 /// This type of vehicle is not likely to be widely prevalent due to modularity of consists.
 pub struct HybridElectricVehicle {

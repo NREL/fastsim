@@ -3,6 +3,7 @@ use super::*;
 #[fastsim_api]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Battery electric vehicle
 pub struct BatteryElectricVehicle {
     #[has_state]
