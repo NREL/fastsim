@@ -1,5 +1,5 @@
 """
-Calibration script for 2021_Hyundai_Sonata_Hybrid_Blue
+Calibration script for 2020 Chevrolet Bolt EV
 """
 
 import pprint
@@ -545,7 +545,7 @@ if __name__ == "__main__":
     pop_size = args.pop_size
     run_minimize = not (args.skip_minimize)
 
-    print("Starting calibration.")
+    print(f"Starting calibration with: {args}.")
     algorithm = pymoo_api.NSGA2(
         # size of each population
         pop_size=pop_size,
