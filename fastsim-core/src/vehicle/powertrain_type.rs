@@ -4,11 +4,11 @@ use super::*;
     Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
 )]
 pub enum PowertrainType {
-    #[serde(rename = "Conv")]
+    // #[serde(rename = "Conv")]
     ConventionalVehicle(Box<ConventionalVehicle>),
-    #[serde(rename = "HEV")]
+    // #[serde(rename = "HEV")]
     HybridElectricVehicle(Box<HybridElectricVehicle>),
-    #[serde(rename = "BEV")]
+    // #[serde(rename = "BEV")]
     BatteryElectricVehicle(Box<BatteryElectricVehicle>),
     // TODO: add PHEV here or maybe as an option in the HybridElectricVehicle
 }
