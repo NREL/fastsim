@@ -362,6 +362,19 @@ def get_exp_pwr_hvac_kw(df):
     return pwr_hvac
 
 
+# post-processing functions
+def get_mod_soc_delta(sd_dict: dict) -> float:
+    soc = np.array(sd_dict["veh"]["pt_type"][pt_type_var]["res"]["history"]["soc"])
+    soc_delta: float = soc[-1] - soc[0]
+    return soc_delta
+
+
+def get_exp_soc_delta(sd_dict: dict) -> float:
+    soc = df["HVBatt_SOC_CAN4__per"].to_numpy() / 100
+    soc_delta: float = soc[-1] - soc[0]
+    return soc_delta
+
+
 save_path = Path(__file__).parent / "pymoo_res" / Path(__file__).stem
 save_path.mkdir(exist_ok=True, parents=True)
 
