@@ -167,39 +167,47 @@ def draw_error_zones(ax):
 
 # %%
 # Scatter plots with temperature effects
-soc_exp_cal = []
-soc_mod_cal = []
-for ((key, df_cal), (sd_key, sd_cal)) in zip(cal_mod_obj.dfs.items(), sds_cal_solved.items()):
-    if not isinstance(sd_cal, dict):
-        print(f"skipping {key}")
-        continue
-    assert key == sd_key
+def get_soc_exp_and_mod_cal() -> Tuple[list(float), list(float)]:
+    soc_exp_cal = []
+    soc_mod_cal = []
+    for ((key, df_cal), (sd_key, sd_cal)) in zip(cal_mod_obj.dfs.items(), sds_cal_solved.items()):
+        if not isinstance(sd_cal, dict):
+            print(f"skipping {key}")
+            continue
+        assert key == sd_key
 
-    df_cal = df_cal[:len(sd_cal['veh']['history']['time_seconds'])]
+        df_cal = df_cal[:len(sd_cal['veh']['history']['time_seconds'])]
 
-    mod_soc = get_mod_soc_delta(sd_cal)
-    exp_soc = get_exp_soc_delta(df_cal)
+        exp_soc = get_exp_soc_delta(df_cal)
+        mod_soc = get_mod_soc_delta(sd_cal)
 
-    soc_mod_cal.append(mod_soc)
-    soc_exp_cal.append(exp_soc)
+        soc_exp_cal.append(exp_soc)
+        soc_mod_cal.append(mod_soc)
 
-soc_exp_val = []
-soc_mod_val = []
+    return (soc_exp_cal, soc_mod_cal)
 
-for ((key, df_val), (sd_key, sd_val)) in zip(val_mod_obj.dfs.items(), sds_val_solved.items()):
-    if not isinstance(sd_val, dict):
-        print(f"skipping {key}")
-        continue
-    assert key == sd_key
+(soc_exp_cal, soc_mod_cal) = get_soc_exp_and_mod_cal()
 
-    df_val = df_val[:len(sd_val['veh']['history']['time_seconds'])]
+def get_soc_exp_and_mod_val() -> Tuple[list(float), list(float)]:
+    soc_exp_val = []
+    soc_mod_val = []
+    for ((key, df_val), (sd_key, sd_val)) in zip(val_mod_obj.dfs.items(), sds_val_solved.items()):
+        if not isinstance(sd_val, dict):
+            print(f"skipping {key}")
+            continue
+        assert key == sd_key
 
-    mod_soc = get_mod_soc_delta(sd_val)
-    exp_soc = get_exp_soc_delta(df_val)
+        df_val = df_val[:len(sd_val['veh']['history']['time_seconds'])]
 
-    soc_mod_val.append(mod_soc)
-    soc_exp_val.append(exp_soc)
+        exp_soc = get_exp_soc_delta(df_val)
+        mod_soc = get_mod_soc_delta(sd_val)
 
+        soc_exp_val.append(exp_soc)
+        soc_mod_val.append(mod_soc)
+
+    return (soc_exp_val, soc_mod_val)
+
+(soc_exp_val, soc_mod_val) = get_soc_exp_and_mod_val()
 
 fig, ax = plt.subplots()
 fig.suptitle("Model v. Test Data With Thermal Effects")
@@ -223,72 +231,84 @@ plt.savefig(plot_save_path / "scatter with thrml effects.svg")
 
 # Scatter plots without temperature effects
 
-soc_mod_cal_no_thrml = []
-soc_exp_cal_no_thrml = []
-for ((key, df_cal), (sd_key, sd_cal)) in zip(cal_mod_obj.dfs.items(), sds_cal.items()):
-    if not isinstance(sd_cal, dict):
-        print(f"skipping {key}")
-        continue
-    assert key == sd_key
+def get_soc_exp_mod_cal_no_thrml() -> Tuple(list(float), list(float)):
+    soc_mod_cal_no_thrml = []
+    soc_exp_cal_no_thrml = []
+    for ((key, df_cal), (sd_key, sd_cal)) in zip(cal_mod_obj.dfs.items(), sds_cal.items()):
+        if not isinstance(sd_cal, dict):
+            print(f"skipping {key}")
+            continue
+        assert key == sd_key
 
-    sd_cal_no_thrml = deepcopy(sd_cal)
+        sd_cal_no_thrml = deepcopy(sd_cal)
 
-    sd_cal_no_thrml['veh']['hvac'] = 'None'
-    sd_cal_no_thrml['veh']['cabin'] = 'None'
-    sd_cal_no_thrml['veh']['pt_type'][pt_type_var]['res']['thrml'] = 'None'
-    res = fsim.ReversibleEnergyStorage.from_pydict(
-        sd_cal_no_thrml['veh']['pt_type'][pt_type_var]['res'], skip_init=False)
-    res.set_default_pwr_interp()
-    sd_cal_no_thrml['veh']['pt_type'][pt_type_var]['res'] = res.to_pydict()
+        sd_cal_no_thrml['veh']['hvac'] = 'None'
+        sd_cal_no_thrml['veh']['cabin'] = 'None'
+        sd_cal_no_thrml['veh']['pt_type'][pt_type_var]['res']['thrml'] = 'None'
+        res = fsim.ReversibleEnergyStorage.from_pydict(
+            sd_cal_no_thrml['veh']['pt_type'][pt_type_var]['res'], skip_init=False)
+        res.set_default_pwr_interp()
+        sd_cal_no_thrml['veh']['pt_type'][pt_type_var]['res'] = res.to_pydict()
 
-    sd_cal_no_thrml = fsim.SimDrive.from_pydict(
-        sd_cal_no_thrml, skip_init=False)
-    try:
-        sd_cal_no_thrml.walk_once()
-    except Exception:
-        pass
-    sd_cal_no_thrml = sd_cal_no_thrml.to_pydict()
+        sd_cal_no_thrml = fsim.SimDrive.from_pydict(
+            sd_cal_no_thrml, skip_init=False)
+        try:
+            sd_cal_no_thrml.walk_once()
+        except Exception:
+            pass
+        sd_cal_no_thrml = sd_cal_no_thrml.to_pydict()
 
-    df_cal = df_cal[:len(sd_cal_no_thrml['veh']['history']['time_seconds'])]
+        df_cal = df_cal[:len(sd_cal_no_thrml['veh']['history']['time_seconds'])]
 
-    mod_soc = get_mod_soc_delta(sd_cal_no_thrml)
-    exp_soc = get_exp_soc_delta(df_cal)
+        mod_soc = get_mod_soc_delta(sd_cal_no_thrml)
+        exp_soc = get_exp_soc_delta(df_cal)
 
-    soc_mod_cal_no_thrml.append(mod_soc)
-    soc_exp_cal_no_thrml.append(exp_soc)
+        soc_mod_cal_no_thrml.append(mod_soc)
+        soc_exp_cal_no_thrml.append(exp_soc)
 
-soc_exp_val_no_thrml = []
-soc_mod_val_no_thrml = []
-for ((key, df_val), (sd_key, sd_val)) in zip(val_mod_obj.dfs.items(), sds_val.items()):
-    if not isinstance(sd_val, dict):
-        print(f"skipping {key}")
-        continue
-    assert key == sd_key
+        return (soc_exp_cal_no_thrml, soc_mod_cal_no_thrml)
 
-    sd_val_no_thrml = deepcopy(sd_val)
+(soc_exp_cal_no_thrml, soc_mod_cal_no_thrml) = get_soc_exp_mod_cal_no_thrml()
 
-    sd_val_no_thrml['veh']['hvac'] = 'None'
-    sd_val_no_thrml['veh']['cabin'] = 'None'
-    sd_val_no_thrml['veh']['pt_type'][pt_type_var]['res']['thrml'] = 'None'
-    res = fsim.ReversibleEnergyStorage.from_pydict(
-        sd_val_no_thrml['veh']['pt_type'][pt_type_var]['res'], skip_init=False)
-    res.set_default_pwr_interp()
-    sd_val_no_thrml['veh']['pt_type'][pt_type_var]['res'] = res.to_pydict()
-    sd_val_no_thrml = fsim.SimDrive.from_pydict(
-        sd_val_no_thrml, skip_init=False)
-    try:
-        sd_val_no_thrml.walk_once()
-    except Exception:
-        pass
-    sd_val_no_thrml = sd_val_no_thrml.to_pydict()
+def get_soc_exp_mod_val_no_thrml() -> Tuple(list(float), list(float)):
+    soc_mod_val_no_thrml = []
+    soc_exp_val_no_thrml = []
+    for ((key, df_val), (sd_key, sd_val)) in zip(val_mod_obj.dfs.items(), sds_val.items()):
+        if not isinstance(sd_val, dict):
+            print(f"skipping {key}")
+            continue
+        assert key == sd_key
 
-    df_val = df_val[:len(sd_val_no_thrml['veh']['history']['time_seconds'])]
+        sd_val_no_thrml = deepcopy(sd_val)
 
-    mod_soc = get_mod_soc_delta(sd_val_no_thrml)
-    exp_soc = get_exp_soc_delta(df_val)
+        sd_val_no_thrml['veh']['hvac'] = 'None'
+        sd_val_no_thrml['veh']['cabin'] = 'None'
+        sd_val_no_thrml['veh']['pt_type'][pt_type_var]['res']['thrml'] = 'None'
+        res = fsim.ReversibleEnergyStorage.from_pydict(
+            sd_val_no_thrml['veh']['pt_type'][pt_type_var]['res'], skip_init=False)
+        res.set_default_pwr_interp()
+        sd_val_no_thrml['veh']['pt_type'][pt_type_var]['res'] = res.to_pydict()
 
-    soc_mod_val_no_thrml.append(mod_soc)
-    soc_exp_val_no_thrml.append(exp_soc)
+        sd_val_no_thrml = fsim.SimDrive.from_pydict(
+            sd_val_no_thrml, skip_init=False)
+        try:
+            sd_val_no_thrml.walk_once()
+        except Exception:
+            pass
+        sd_val_no_thrml = sd_val_no_thrml.to_pydict()
+
+        df_val = df_val[:len(sd_val_no_thrml['veh']['history']['time_seconds'])]
+
+        mod_soc = get_mod_soc_delta(sd_val_no_thrml)
+        exp_soc = get_exp_soc_delta(df_val)
+
+        soc_mod_val_no_thrml.append(mod_soc)
+        soc_exp_val_no_thrml.append(exp_soc)
+
+        return (soc_exp_val_no_thrml, soc_mod_val_no_thrml)
+
+(soc_exp_val_no_thrml, soc_mod_val_no_thrml) = get_soc_exp_mod_val_no_thrml()
+
 
 fig, ax = plt.subplots()
 fig.suptitle("Model v. Test Data Without Thermal Effects")

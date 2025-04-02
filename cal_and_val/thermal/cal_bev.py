@@ -40,6 +40,7 @@ assert cyc_folder_path.exists(), cyc_folder_path
 time_column = "Time[s]_RawFacilities"
 speed_column = "Dyno_Spd[mph]"
 cabin_temp_column = "Cabin_Driver_Headrest_Temp__C"
+cabin_temp_column = "HVBatt_pack_average_temp_HPCM2__C"
 eng_clnt_temp_column = "engine_coolant_temp_PCAN__C"
 cell_temp_column = "Cell_Temp[C]"
 soc_column = "HVBatt_SOC_CAN4__per"
@@ -343,9 +344,19 @@ def get_mod_cab_temp_celsius(sd_dict):
         - celsius_to_kelvin_offset
     )
 
-
 def get_exp_cab_temp_celsius(df):
     return df[cabin_temp_column]
+
+
+def get_mod_batt_temp_celsius(sd_dict):
+    mod_batt_temp_celsiusi_float = np.array(sd_dict["veh"]["pt_type"][pt_type_var]["res"]["thrml"]["RESLumpedThermal"]["history"]["temperature_kelvin"]) 
+    # the test data temperature is quantized
+    mod_batt_temp_celsius_int = np.array([int(temp) for temp in mod_batt_temp_celsiusi_float]) 
+    return mod_batt_temp_celsius_int
+
+
+def get_exp_batt_temp_celsius(df):
+    return df[batt_temp_column]
 
 
 def get_mod_pwr_hvac_kw(sd_dict):
