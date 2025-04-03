@@ -285,6 +285,9 @@ impl SimDrive {
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
+        // TODO: memo-ize this
+        //     - if we get back on trace or nearly back on trace, revert to just using the index
+        //     - we can also shorten the x and y values by removing stuff that's already happened
         let interp_pt_dist: &[f64] = match self.cyc.grade_interp {
             Some(Interpolator::Interp0D(..)) => &[],
             Some(Interpolator::Interp1D(..)) => &[vs.dist.get::<si::meter>()],
