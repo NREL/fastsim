@@ -54,6 +54,7 @@ use std::f64::consts::PI;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling [FuelConverter] (e.g. engine, fuel cell.) thermal plant
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct FuelConverter {
     /// [Self] Thermal plant, including thermal management controls
     #[serde(default, skip_serializing_if = "FuelConverterThermalOption::is_none")]
@@ -478,6 +479,7 @@ impl FuelConverter {
 )]
 #[non_exhaustive]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct FuelConverterState {
     /// time step index
     pub i: usize,
@@ -629,6 +631,7 @@ impl FuelConverterThermalOption {
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for modeling Fuel Converter (e.g. engine, fuel cell.)
 pub struct FuelConverterThermal {
     /// [FuelConverter] thermal capacitance
@@ -879,6 +882,7 @@ impl Default for FuelConverterThermal {
 #[fastsim_api]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct FuelConverterThermalState {
     /// time step index
     pub i: usize,
@@ -955,6 +959,7 @@ impl Default for FCTempEffModel {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct FCTempEffModelLinear {
     pub offset: si::Ratio,
     /// Change in efficiency factor per change in temperature /[K/]
@@ -973,6 +978,7 @@ impl Default for FCTempEffModelLinear {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct FCTempEffModelExponential {
     /// temperature at which `fc_eta_temp_coeff` begins to grow
     pub offset: si::Temperature,

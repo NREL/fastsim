@@ -395,6 +395,7 @@ impl FCOnCauses {
 #[fastsim_api]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 #[serde(default)]
 pub struct HEVState {
     /// time step index
@@ -545,6 +546,7 @@ impl fmt::Display for FCOnCause {
 /// Options for controlling simulation behavior
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct HEVSimulationParams {
     /// [ReversibleEnergyStorage] per [FuelConverter]
     pub res_per_fuel_lim: si::Ratio,
@@ -862,6 +864,7 @@ for an HEV equipped with thermal models or superfluous otherwise",
 #[fastsim_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct RESGreedyWithDynamicBuffers {
     /// RES energy delta from minimum SOC corresponding to kinetic energy of
     /// vehicle at this speed that triggers ramp down in RES discharge.
@@ -954,6 +957,7 @@ impl SerdeAPI for RESGreedyWithDynamicBuffers {}
 #[fastsim_api]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 /// State for [RESGreedyWithDynamicBuffers ]
 pub struct RGWDBState {
     /// time step index

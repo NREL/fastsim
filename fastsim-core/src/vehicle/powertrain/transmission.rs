@@ -3,6 +3,7 @@ use super::*;
 #[fastsim_api]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct Transmission {
     /// Transmission mass
     #[serde(default)]
@@ -92,6 +93,7 @@ impl Mass for Transmission {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct TransmissionState {
     /// time step index
     pub i: usize,

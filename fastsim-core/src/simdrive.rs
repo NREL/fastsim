@@ -14,6 +14,7 @@ use crate::prelude::*;
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Solver parameters
 pub struct SimParams {
     #[serde(default = "SimParams::def_ach_speed_max_iter")]
@@ -108,6 +109,7 @@ impl Default for SimParams {
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct SimDrive {
     #[has_state]
     pub veh: Vehicle,
@@ -564,6 +566,7 @@ pwr deficit: {} kW
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 // NOTE: consider embedding this in TraceMissOptions::AllowChecked
 pub struct TraceMissTolerance {

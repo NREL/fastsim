@@ -8,6 +8,7 @@ use super::*;
     }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[serde(deny_unknown_fields)]
 /// HVAC system for `LumpedCabin` and `ReversibleEnergyStorage::thrml`
 pub struct HVACSystemForLumpedCabinAndRES {
     /// set point temperature
@@ -988,6 +989,7 @@ impl HVACSystemForLumpedCabinAndRES {
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct HVACSystemForLumpedCabinAndRESState {
     /// time step counter
     pub i: usize,

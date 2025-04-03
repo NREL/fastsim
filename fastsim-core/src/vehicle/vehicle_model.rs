@@ -87,6 +87,7 @@ impl Init for AuxSource {}
 )]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle
 pub struct Vehicle {
     /// Vehicle name
@@ -554,6 +555,7 @@ impl Vehicle {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct VehicleState {
     /// time step index
     pub i: usize,

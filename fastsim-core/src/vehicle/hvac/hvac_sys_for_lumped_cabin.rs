@@ -8,6 +8,7 @@ use super::*;
     }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[serde(deny_unknown_fields)]
 /// HVAC system for [LumpedCabin]
 pub struct HVACSystemForLumpedCabin {
     /// set point temperature, `None` means HVAC is inactive
@@ -356,6 +357,7 @@ impl SerdeAPI for CabinHeatSource {}
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct HVACSystemForLumpedCabinState {
     /// time step counter
     pub i: usize,
