@@ -108,6 +108,47 @@ def plot_temperatures() -> Tuple[Figure, Axes]:
 
     return fig, ax
 
+
+def plot_hvac_pwr() -> Tuple[Figure, Axes]:
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
+    plt.suptitle("Thermal Management Power Demand")
+
+    ax[0].set_prop_cycle(get_uni_cycler())
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        df['veh.hvac.LumpedCabinAndRES.history.pwr_thrml_hvac_to_cabin_watts'],
+        label="hvac to cabin",
+    )
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        df['veh.hvac.LumpedCabinAndRES.history.pwr_thrml_hvac_to_res_watts'],
+        label="hvac to battery",
+    )
+    ax[0].set_ylabel("Power [W]")
+    ax[0].legend()
+
+    ax[-1].set_prop_cycle(get_paired_cycler())
+    ax[-1].plot(
+        df["cyc.time_seconds"],
+        df["veh.history.speed_ach_meters_per_second"],
+        label="ach",
+    )
+    ax[-1].legend()
+    ax[-1].set_xlabel("Time [s]")
+    ax[-1].set_ylabel("Ach Speed [m/s]")
+    x_min, x_max = ax[-1].get_xlim()[0], ax[-1].get_xlim()[1]
+    x_max = (x_max - x_min) * 1.15
+    ax[-1].set_xlim([x_min, x_max])
+
+    plt.tight_layout()
+    if SAVE_FIGS:
+        plt.savefig(Path("./plots/hvac pwr.svg"))
+    if SHOW_PLOTS:
+        plt.show()
+
+    return fig, ax
+
+
 def plot_res_pwr() -> Tuple[Figure, Axes]:
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Reversible Energy Storage Power")
@@ -245,6 +286,7 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
 fig_res_pwr, ax_res_pwr = plot_res_pwr()
 fig_res_energy, ax_res_energy = plot_res_energy()
 fig_temps, ax_temps = plot_temperatures()
+fig_hvac, ax_hvac = plot_hvac_pwr()
 fig, ax = plot_road_loads()
 
 # %%
