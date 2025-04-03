@@ -72,11 +72,6 @@ def plot_temperatures() -> Tuple[Figure, Axes]:
     ax[0].set_prop_cycle(get_uni_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["cyc.temp_amb_air_kelvin"] - 273.15,
-        label="amb",
-    )
-    ax[0].plot(
-        df["cyc.time_seconds"],
         df["veh.cabin.LumpedCabin.history.temperature_kelvin"] - 273.15,
         label="cabin",
     )
@@ -85,6 +80,11 @@ def plot_temperatures() -> Tuple[Figure, Axes]:
         df["veh.pt_type.BatteryElectricVehicle.res.thrml." +
             "RESLumpedThermal.history.temperature_kelvin"] - 273.15,
         label="res",
+    )
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        df["cyc.temp_amb_air_kelvin"] - 273.15,
+        label="amb",
     )
     ax[0].set_ylabel("Temperatures [°C]")
     ax[0].legend()
