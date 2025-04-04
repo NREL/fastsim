@@ -507,6 +507,38 @@ impl Cycle {
 
         Ok(cyc2)
     }
+
+    pub fn to_elements(&self) -> Vec<CycleElement> {
+        let mut result = Vec::with_capacity(self.time.len());
+        for idx in 0..self.time.len() {
+            let element = CycleElement {
+                time: self.time[idx],
+                speed: self.speed[idx],
+                grade: if self.grade.is_empty() {
+                    None
+                } else {
+                    Some(self.grade[idx])
+                },
+                pwr_max_charge: if self.pwr_max_chrg.is_empty() {
+                    None
+                } else {
+                    Some(self.pwr_max_chrg[idx])
+                },
+                temp_amb_air: if self.temp_amb_air.is_empty() {
+                    None
+                } else {
+                    Some(self.temp_amb_air[idx])
+                },
+                pwr_solar_load: if self.pwr_solar_load.is_empty() {
+                    None
+                } else {
+                    Some(self.pwr_solar_load[idx])
+                },
+            };
+            result.push(element);
+        }
+        result
+    }
 }
 
 #[fastsim_api]
@@ -577,5 +609,19 @@ mod tests {
                 .map(|x| *x * uc::M)
                 .collect::<Vec<si::Length>>()
         );
+    }
+
+    #[test]
+    fn test_to_elements() {
+        let cyc = mock_cyc_len_2();
+        let elements = cyc.to_elements();
+        assert_eq!(elements.len(), 3);
+        assert_eq!(elements[0].time, 0.0 * uc::S);
+        assert_eq!(elements[2].time, cyc.time[2]);
+        assert_eq!(elements[2].speed, cyc.speed[2]);
+        assert_eq!(elements[2].grade.unwrap(), 0.02 * uc::R);
+        assert!(elements[2].pwr_max_charge.is_none());
+        assert_eq!(elements[2].temp_amb_air.unwrap(), *TE_STD_AIR);
+        assert!(elements[2].pwr_solar_load.is_none());
     }
 }
