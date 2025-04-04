@@ -543,134 +543,96 @@ impl Cycle {
     fn to_microtrips(&self, stop_speed: Option<si::Velocity>) -> Vec<Cycle> {
         let stop_speed = stop_speed.unwrap_or(1e-6 * uc::MPS);
         let mut microtrips = Vec::new();
-        let times = self.time.to_vec();
-        let speeds = self.speed.to_vec();
-        let grades = self.grade.to_vec();
-        let elevations = self.elev.to_vec();
-        let temperatures = self.temp_amb_air.to_vec();
-        let solar_loads = self.pwr_solar_load.to_vec();
-        let charge_powers = self.pwr_max_chrg.to_vec();
-        let mut microtrip_times = Vec::new();
-        let mut microtrip_speeds = Vec::new();
-        let mut microtrip_grades = Vec::new();
-        let mut microtrip_elevations = Vec::new();
-        let mut microtrip_temperatures = Vec::new();
-        let mut microtrip_solar_loads = Vec::new();
-        let mut microtrip_charge_powers = Vec::new();
+        let mut current = Cycle {
+            name: self.name.clone(),
+            init_elev: self.init_elev.clone(),
+            time: vec![],
+            speed: vec![],
+            dist: vec![],
+            grade: vec![],
+            elev: vec![],
+            pwr_max_chrg: vec![],
+            temp_amb_air: vec![],
+            pwr_solar_load: vec![],
+            grade_interp: self.grade_interp.clone(),
+            elev_interp: self.elev_interp.clone(),
+        };
+        let elements = self.to_elements();
         let mut moving: bool = false;
-        for idx in 0..times.len() {
-            let time = times[idx];
-            let speed = speeds[idx];
-            let grade = grades[idx];
-            let elevation = elevations[idx];
-            let temperature = temperatures[idx];
-            let solar_load = if idx >= solar_loads.len() {
-                None
-            } else {
-                Some(solar_loads[idx])
-            };
-            let charge_power = if idx >= charge_powers.len() {
-                None
-            } else {
-                Some(charge_powers[idx])
-            };
-            if speed > stop_speed && !moving && microtrip_times.len() > 1 {
-                let last_idx = microtrip_times.len() - 1;
-                let last_time = microtrip_times[last_idx];
-                let last_speed = microtrip_speeds[last_idx];
-                let last_grade = microtrip_grades[last_idx];
-                let last_elevation = microtrip_elevations[last_idx];
-                let last_temperature = microtrip_temperatures[last_idx];
-                let last_solar_load = if last_idx >= microtrip_solar_loads.len() {
+        for idx in 0..elements.len() {
+            let element = &elements[idx];
+            if element.speed > stop_speed && !moving && current.time.len() > 1 {
+                current.init().unwrap();
+                let last_idx = current.time.len() - 1;
+                let last_time = current.time[last_idx];
+                let last_speed = current.speed[last_idx];
+                let last_grade = if last_idx >= current.grade.len() {
                     None
                 } else {
-                    Some(microtrip_solar_loads[last_idx])
+                    Some(current.grade[last_idx])
                 };
-                let last_charge_power = if last_idx >= microtrip_charge_powers.len() {
+                let last_elevation = if last_idx >= current.elev.len() {
                     None
                 } else {
-                    Some(microtrip_charge_powers[last_idx])
+                    Some(current.elev[last_idx])
                 };
-                microtrip_times = microtrip_times
-                    .iter()
-                    .map(|t| *t - microtrip_times[0])
-                    .collect();
-                let mut cyc = Cycle {
+                let last_temperature = if last_idx >= current.temp_amb_air.len() {
+                    None
+                } else {
+                    Some(current.temp_amb_air[last_idx])
+                };
+                let last_solar_load = if last_idx >= current.pwr_solar_load.len() {
+                    None
+                } else {
+                    Some(current.pwr_solar_load[last_idx])
+                };
+                let last_charge_power = if last_idx >= current.pwr_max_chrg.len() {
+                    None
+                } else {
+                    Some(current.pwr_max_chrg[last_idx])
+                };
+                current.time = current.time.iter().map(|t| *t - current.time[0]).collect();
+                microtrips.push(current.clone());
+                current = Cycle {
                     name: self.name.clone(),
-                    init_elev: Some(last_elevation),
-                    time: Vec::from(microtrip_times),
-                    speed: Vec::from(microtrip_speeds),
+                    init_elev: last_elevation,
+                    time: vec![last_time],
+                    speed: vec![last_speed],
                     dist: vec![],
-                    grade: Vec::from(microtrip_grades),
+                    grade: if let Some(g) = last_grade {
+                        vec![g]
+                    } else {
+                        vec![]
+                    },
                     elev: vec![],
-                    pwr_max_chrg: Vec::from(microtrip_charge_powers),
-                    temp_amb_air: Vec::from(microtrip_temperatures),
-                    pwr_solar_load: Vec::from(microtrip_solar_loads),
+                    pwr_max_chrg: if let Some(p) = last_charge_power {
+                        vec![p]
+                    } else {
+                        vec![]
+                    },
+                    temp_amb_air: if let Some(temp) = last_temperature {
+                        vec![temp]
+                    } else {
+                        vec![]
+                    },
+                    pwr_solar_load: if let Some(p) = last_solar_load {
+                        vec![p]
+                    } else {
+                        vec![]
+                    },
                     grade_interp: self.grade_interp.clone(),
                     elev_interp: self.elev_interp.clone(),
                 };
-                cyc.init().unwrap();
-                microtrips.push(cyc);
-                microtrip_times = vec![last_time];
-                microtrip_speeds = vec![last_speed];
-                microtrip_grades = vec![last_grade];
-                microtrip_elevations = vec![last_elevation];
-                microtrip_temperatures = vec![last_temperature];
-                microtrip_solar_loads = if let Some(solar) = last_solar_load {
-                    vec![solar]
-                } else {
-                    vec![]
-                };
-                microtrip_charge_powers = if let Some(charge) = last_charge_power {
-                    vec![charge]
-                } else {
-                    vec![]
-                };
             }
-            microtrip_times.push(time);
-            microtrip_speeds.push(speed);
-            microtrip_grades.push(grade);
-            microtrip_elevations.push(elevation);
-            microtrip_temperatures.push(temperature);
-            if let Some(solar) = solar_load {
-                microtrip_solar_loads.push(solar);
-            }
-            if let Some(charge) = charge_power {
-                microtrip_charge_powers.push(charge);
-            }
-            moving = speed > stop_speed;
+            current
+                .push(element.clone())
+                .expect("Push shouldn't have an error path");
+            moving = element.speed > stop_speed;
         }
-        if microtrip_times.len() > 1 {
-            let last_elevation = if microtrips.len() > 0 {
-                let len_elev = microtrips.last().unwrap().elev.len();
-                if len_elev > 0 {
-                    Some(microtrips.last().unwrap().elev[len_elev - 1])
-                } else {
-                    None
-                }
-            } else {
-                self.init_elev
-            };
-            microtrip_times = microtrip_times
-                .iter()
-                .map(|t| *t - microtrip_times[0])
-                .collect();
-            let mut cyc = Cycle {
-                name: self.name.clone(),
-                init_elev: last_elevation,
-                time: Vec::from(microtrip_times),
-                speed: Vec::from(microtrip_speeds),
-                dist: vec![],
-                grade: Vec::from(microtrip_grades),
-                elev: vec![],
-                pwr_max_chrg: Vec::from(microtrip_charge_powers),
-                temp_amb_air: Vec::from(microtrip_temperatures),
-                pwr_solar_load: Vec::from(microtrip_solar_loads),
-                grade_interp: self.grade_interp.clone(),
-                elev_interp: self.elev_interp.clone(),
-            };
-            cyc.init().unwrap();
-            microtrips.push(cyc);
+        if current.time.len() > 1 {
+            current.time = current.time.iter().map(|t| *t - current.time[0]).collect();
+            current.init().unwrap();
+            microtrips.push(current.clone());
         }
         microtrips
     }
