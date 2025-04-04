@@ -119,12 +119,12 @@ def plot_hvac_pwr() -> Tuple[Figure, Axes]:
     ax[0].plot(
         df["cyc.time_seconds"],
         df['veh.hvac.LumpedCabinAndRES.history.pwr_thrml_hvac_to_cabin_watts'],
-        label="hvac to cabin",
+        label="hvac thrml to cabin",
     )
     ax[0].plot(
         df["cyc.time_seconds"],
         df['veh.hvac.LumpedCabinAndRES.history.pwr_thrml_hvac_to_res_watts'],
-        label="hvac to battery",
+        label="hvac thrml to battery",
     )
     ax[0].set_ylabel("Power [W]")
     ax[0].legend()

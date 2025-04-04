@@ -41,7 +41,8 @@ veh.set_save_interval(1)
 
 # load cycle from file
 cyc_dict = fsim.Cycle.from_resource("udds.csv").to_pydict()
-cyc_dict['temp_amb_air_kelvin'] = [temp_amb_and_init] * len(cyc_dict['time_seconds'])
+cyc_dict['temp_amb_air_kelvin'] = [
+    temp_amb_and_init] * len(cyc_dict['time_seconds'])
 cyc = fsim.Cycle.from_pydict(cyc_dict)
 
 # instantiate `SimDrive` simulation object
@@ -117,12 +118,12 @@ def plot_hvac_pwr() -> Tuple[Figure, Axes]:
     ax[0].plot(
         df["cyc.time_seconds"],
         df['veh.hvac.LumpedCabinAndRES.history.pwr_thrml_hvac_to_cabin_watts'],
-        label="hvac to cabin",
+        label="hvac thrml to cabin",
     )
     ax[0].plot(
         df["cyc.time_seconds"],
         df['veh.hvac.LumpedCabinAndRES.history.pwr_thrml_hvac_to_res_watts'],
-        label="hvac to battery",
+        label="hvac thrml to battery",
     )
     ax[0].set_ylabel("Power [W]")
     ax[0].legend()
