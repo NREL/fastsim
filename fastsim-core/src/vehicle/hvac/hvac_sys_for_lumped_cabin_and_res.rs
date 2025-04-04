@@ -510,8 +510,8 @@ impl HVACSystemForLumpedCabinAndRES {
                         // cabin is cold and within the deadband
                         self.state.cabin_mode = HvacMode::InsideDeadband;
                         self.state.res_mode = match self.res_heat_source {
-                            RESHeatSource::HeatPump => HvacMode::Heating,
-                            RESHeatSource::ResistanceHeater => HvacMode::Heating,
+                            RESHeatSource::HeatPump => HvacMode::InsideDeadband,
+                            RESHeatSource::ResistanceHeater => HvacMode::InsideDeadband,
                             RESHeatSource::None => HvacMode::Inactive,
                         };
                         self.state.te_ref_component = TeRefComp::None;
