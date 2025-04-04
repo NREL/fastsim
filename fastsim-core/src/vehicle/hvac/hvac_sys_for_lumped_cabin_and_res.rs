@@ -201,14 +201,11 @@ impl HVACSystemForLumpedCabinAndRES {
         si::TemperatureInterval,
     ) {
         let te_cab_delta_vs_set: Option<si::TemperatureInterval> =
-            if let Some(te_set_cab) = self.te_set_cab {
-                let te_cab_delta_vs_set = (cab_state.temperature.get::<si::degree_celsius>()
+            self.te_set_cab.map(|te_set_cab| {
+                (cab_state.temperature.get::<si::degree_celsius>()
                     - te_set_cab.get::<si::degree_celsius>())
-                    * uc::KELVIN_INT;
-                Some(te_cab_delta_vs_set)
-            } else {
-                None
-            };
+                    * uc::KELVIN_INT
+            });
 
         let te_cab_delta_vs_amb: si::TemperatureInterval =
             (cab_state.temperature.get::<si::degree_celsius>()
@@ -216,14 +213,11 @@ impl HVACSystemForLumpedCabinAndRES {
                 * uc::KELVIN_INT;
 
         let te_res_delta_vs_set: Option<si::TemperatureInterval> =
-            if let Some(te_set_res) = self.te_set_res {
-                let te_res_delta_vs_set = (res_thrml_state.temperature.get::<si::degree_celsius>()
+            self.te_set_res.map(|te_set_res| {
+                (res_thrml_state.temperature.get::<si::degree_celsius>()
                     - te_set_res.get::<si::degree_celsius>())
-                    * uc::KELVIN_INT;
-                Some(te_res_delta_vs_set)
-            } else {
-                None
-            };
+                    * uc::KELVIN_INT
+            });
 
         let te_res_delta_vs_amb: si::TemperatureInterval =
             (res_thrml_state.temperature.get::<si::degree_celsius>()
