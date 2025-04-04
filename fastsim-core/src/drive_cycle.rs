@@ -651,6 +651,10 @@ impl Cycle {
             } else {
                 self.init_elev
             };
+            microtrip_times = microtrip_times
+                .iter()
+                .map(|t| *t - microtrip_times[0])
+                .collect();
             let mut cyc = Cycle {
                 name: self.name.clone(),
                 init_elev: last_elevation,
@@ -782,7 +786,7 @@ mod tests {
                 0.0 * uc::R,
                 0.0 * uc::R,
                 0.0 * uc::R,
-                1.0 * uc::R,
+                0.0 * uc::R,
                 1.0 * uc::R,
                 1.0 * uc::R,
             ],
@@ -796,5 +800,25 @@ mod tests {
         cyc.init().unwrap();
         let actual = cyc.to_microtrips(Some(0.01 * uc::MPH));
         assert_eq!(actual.len(), 2);
+        let cyc0 = &actual[0];
+        assert_eq!(
+            cyc0.time,
+            vec![0.0 * uc::S, 10.0 * uc::S, 20.0 * uc::S, 30.0 * uc::S]
+        );
+        assert_eq!(
+            cyc0.speed,
+            vec![0.0 * uc::MPS, 4.0 * uc::MPS, 0.0 * uc::MPS, 0.0 * uc::MPS]
+        );
+        assert_eq!(
+            cyc0.grade,
+            vec![0.0 * uc::R, 0.0 * uc::R, 0.0 * uc::R, 0.0 * uc::R]
+        );
+        let cyc1 = &actual[1];
+        assert_eq!(cyc1.time, vec![0.0 * uc::S, 10.0 * uc::S, 20.0 * uc::S]);
+        assert_eq!(
+            cyc1.speed,
+            vec![0.0 * uc::MPS, 5.0 * uc::MPS, 0.0 * uc::MPS]
+        );
+        assert_eq!(cyc1.grade, vec![0.0 * uc::R, 1.0 * uc::R, 1.0 * uc::R]);
     }
 }
