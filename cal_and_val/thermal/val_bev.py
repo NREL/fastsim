@@ -178,8 +178,8 @@ def get_soc_exp_and_mod_cal() -> tuple[list[float], list[float]]:
 
         df_cal = df_cal[:len(sd_cal['veh']['history']['time_seconds'])]
 
-        exp_soc = get_exp_soc_delta(df_cal)
-        mod_soc = get_mod_soc_delta(sd_cal)
+        exp_soc = -get_exp_soc_delta(df_cal)
+        mod_soc = -get_mod_soc_delta(sd_cal)
 
         soc_exp_cal.append(exp_soc)
         soc_mod_cal.append(mod_soc)
@@ -199,8 +199,8 @@ def get_soc_exp_and_mod_val() -> tuple[list[float], list[float]]:
 
         df_val = df_val[:len(sd_val['veh']['history']['time_seconds'])]
 
-        exp_soc = get_exp_soc_delta(df_val)
-        mod_soc = get_mod_soc_delta(sd_val)
+        exp_soc = -get_exp_soc_delta(df_val)
+        mod_soc = -get_mod_soc_delta(sd_val)
 
         soc_exp_val.append(exp_soc)
         soc_mod_val.append(mod_soc)
@@ -260,8 +260,8 @@ def get_soc_exp_mod_cal_no_thrml() -> tuple[list[float], list[float]]:
 
         df_cal = df_cal[:len(sd_cal_no_thrml['veh']['history']['time_seconds'])]
 
-        mod_soc = get_mod_soc_delta(sd_cal_no_thrml)
-        exp_soc = get_exp_soc_delta(df_cal)
+        mod_soc = -get_mod_soc_delta(sd_cal_no_thrml)
+        exp_soc = -get_exp_soc_delta(df_cal)
 
         soc_mod_cal_no_thrml.append(mod_soc)
         soc_exp_cal_no_thrml.append(exp_soc)
@@ -299,8 +299,8 @@ def get_soc_exp_mod_val_no_thrml() -> tuple[list[float], list[float]]:
 
         df_val = df_val[:len(sd_val_no_thrml['veh']['history']['time_seconds'])]
 
-        mod_soc = get_mod_soc_delta(sd_val_no_thrml)
-        exp_soc = get_exp_soc_delta(df_val)
+        mod_soc = -get_mod_soc_delta(sd_val_no_thrml)
+        exp_soc = -get_exp_soc_delta(df_val)
 
         soc_mod_val_no_thrml.append(mod_soc)
         soc_exp_val_no_thrml.append(exp_soc)

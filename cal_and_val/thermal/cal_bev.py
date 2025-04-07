@@ -40,7 +40,7 @@ assert cyc_folder_path.exists(), cyc_folder_path
 time_column = "Time[s]_RawFacilities"
 speed_column = "Dyno_Spd[mph]"
 cabin_temp_column = "Cabin_Driver_Headrest_Temp__C"
-cabin_temp_column = "HVBatt_pack_average_temp_HPCM2__C"
+batt_temp_column = "HVBatt_pack_average_temp_HPCM2__C"
 eng_clnt_temp_column = "engine_coolant_temp_PCAN__C"
 cell_temp_column = "Cell_Temp[C]"
 soc_column = "HVBatt_SOC_CAN4__per"
@@ -139,10 +139,9 @@ def veh_init(cyc_file_stem: str, dfs: dict[str, pd.DataFrame]) -> fsim.Vehicle:
         dfs[cyc_file_stem][cabin_temp_column][0] + celsius_to_kelvin_offset
     )
 
-    # TODO: check if battery temperature is available for Bolt
     vd["pt_type"][pt_type_var]["res"]["thrml"]["RESLumpedThermal"]["state"][
         "temperature_kelvin"
-    ] = dfs[cyc_file_stem][cabin_temp_column][0] + celsius_to_kelvin_offset
+    ] = dfs[cyc_file_stem][batt_temp_column][0] + celsius_to_kelvin_offset
 
     # set HVAC set point temperature
     te_set = next(
