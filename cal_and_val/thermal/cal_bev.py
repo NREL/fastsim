@@ -380,7 +380,7 @@ def get_mod_soc_delta(sd_dict: dict) -> float:
     return soc_delta
 
 
-def get_exp_soc_delta(sd_dict: dict) -> float:
+def get_exp_soc_delta(df: pd.DataFrame) -> float:
     soc = df["HVBatt_SOC_CAN4__per"].to_numpy() / 100
     soc_delta: float = soc[-1] - soc[0]
     return soc_delta

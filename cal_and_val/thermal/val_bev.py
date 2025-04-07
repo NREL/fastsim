@@ -167,7 +167,7 @@ def draw_error_zones(ax):
 
 # %%
 # Scatter plots with temperature effects
-def get_soc_exp_and_mod_cal() -> Tuple[list(float), list(float)]:
+def get_soc_exp_and_mod_cal() -> tuple[list[float], list[float]]:
     soc_exp_cal = []
     soc_mod_cal = []
     for ((key, df_cal), (sd_key, sd_cal)) in zip(cal_mod_obj.dfs.items(), sds_cal_solved.items()):
@@ -188,7 +188,7 @@ def get_soc_exp_and_mod_cal() -> Tuple[list(float), list(float)]:
 
 (soc_exp_cal, soc_mod_cal) = get_soc_exp_and_mod_cal()
 
-def get_soc_exp_and_mod_val() -> Tuple[list(float), list(float)]:
+def get_soc_exp_and_mod_val() -> tuple[list[float], list[float]]:
     soc_exp_val = []
     soc_mod_val = []
     for ((key, df_val), (sd_key, sd_val)) in zip(val_mod_obj.dfs.items(), sds_val_solved.items()):
@@ -231,7 +231,7 @@ plt.savefig(plot_save_path / "scatter with thrml effects.svg")
 
 # Scatter plots without temperature effects
 
-def get_soc_exp_mod_cal_no_thrml() -> Tuple(list(float), list(float)):
+def get_soc_exp_mod_cal_no_thrml() -> tuple[list[float], list[float]]:
     soc_mod_cal_no_thrml = []
     soc_exp_cal_no_thrml = []
     for ((key, df_cal), (sd_key, sd_cal)) in zip(cal_mod_obj.dfs.items(), sds_cal.items()):
@@ -266,11 +266,11 @@ def get_soc_exp_mod_cal_no_thrml() -> Tuple(list(float), list(float)):
         soc_mod_cal_no_thrml.append(mod_soc)
         soc_exp_cal_no_thrml.append(exp_soc)
 
-        return (soc_exp_cal_no_thrml, soc_mod_cal_no_thrml)
+    return (soc_exp_cal_no_thrml, soc_mod_cal_no_thrml)
 
 (soc_exp_cal_no_thrml, soc_mod_cal_no_thrml) = get_soc_exp_mod_cal_no_thrml()
 
-def get_soc_exp_mod_val_no_thrml() -> Tuple(list(float), list(float)):
+def get_soc_exp_mod_val_no_thrml() -> tuple[list[float], list[float]]:
     soc_mod_val_no_thrml = []
     soc_exp_val_no_thrml = []
     for ((key, df_val), (sd_key, sd_val)) in zip(val_mod_obj.dfs.items(), sds_val.items()):
@@ -305,7 +305,7 @@ def get_soc_exp_mod_val_no_thrml() -> Tuple(list(float), list(float)):
         soc_mod_val_no_thrml.append(mod_soc)
         soc_exp_val_no_thrml.append(exp_soc)
 
-        return (soc_exp_val_no_thrml, soc_mod_val_no_thrml)
+    return (soc_exp_val_no_thrml, soc_mod_val_no_thrml)
 
 (soc_exp_val_no_thrml, soc_mod_val_no_thrml) = get_soc_exp_mod_val_no_thrml()
 
