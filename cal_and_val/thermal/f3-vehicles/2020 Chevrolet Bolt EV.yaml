@@ -158,15 +158,8 @@ cabin:
     width_meters: 1.765
     state:
       i: 0
-      temperature_kelvin: 266.45
-      temp_prev_kelvin: 295.15
-      pwr_thrml_from_hvac_watts: 0.0
-      energy_thrml_from_hvac_joules: 0.0
-      pwr_thrml_from_amb_watts: 0.0
-      energy_thrml_from_amb_joules: 0.0
-      pwr_thrml_to_res_watts: 0.0
-      energy_thrml_to_res_joules: 0.0
-      reynolds_for_plate: 0.0
+      temperature_kelvin: 298.15
+      temp_prev_kelvin: 298.15
     save_interval: 1
 hvac:
   LumpedCabinAndRES:
