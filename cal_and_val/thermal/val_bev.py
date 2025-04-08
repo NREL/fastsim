@@ -24,20 +24,20 @@ res_df = deepcopy(res_df_orig)
 # filter bad results out
 print(f"len(res_df): {len(res_df)}")
 res_df.drop(
-    res_df.filter(regex="get_mod_soc").max(axis=1)[
-        res_df.filter(regex="get_mod_soc").max(axis=1) > 0.005].index,
+    res_df.filter(regex="get_mod_soc").mean(axis=1)[
+        res_df.filter(regex="get_mod_soc").mean(axis=1) > 0.003].index,
     inplace=True
 )
 print(f"len(res_df) after soc filter: {len(res_df)}")
 res_df.drop(
-    res_df.filter(regex="get_mod_batt_temp").max(axis=1)[
-        res_df.filter(regex="get_mod_batt_temp").max(axis=1) > 3].index,
+    res_df.filter(regex="get_mod_batt_temp").mean(axis=1)[
+        res_df.filter(regex="get_mod_batt_temp").mean(axis=1) > 3].index,
     inplace=True
 )
 print(f"len(res_df) after batt temp filter: {len(res_df)}")
 res_df.drop(
-    res_df.filter(regex="get_mod_cab_temp").max(axis=1)[
-        res_df.filter(regex="get_cab_batt_temp").max(axis=1) > 3].index,
+    res_df.filter(regex="get_mod_cab_temp").mean(axis=1)[
+        res_df.filter(regex="get_mod_batt_temp").mean(axis=1) > 3].index,
     inplace=True
 )
 print(f"len(res_df) after batt temp filter: {len(res_df)}")
@@ -377,12 +377,12 @@ ax.legend()
 plt.savefig(plot_save_path / "scatter without thrml effects.svg")
 
 # %%
+veh_dict_new = deepcopy(sd_cal['veh'])
+veh_dict_new['hvac']['LumpedCabinAndRES']['te_set_cab_kelvin'] = 22 + \
+    celsius_to_kelvin_offset
+veh_dict_new['hvac']['LumpedCabinAndRES']['te_set_res_kelvin'] = 22 + \
+    celsius_to_kelvin_offset
+veh_new = fsim.Vehicle.from_pydict(veh_dict_new)
+veh_new.clear()
 if OVERWRITE_VEH:
-    veh_dict_new = deepcopy(sd_cal['veh'])
-    veh_dict_new['hvac']['LumpedCabinAndRES']['te_set_cab_kelvin'] = 22 + \
-        celsius_to_kelvin_offset
-    veh_dict_new['hvac']['LumpedCabinAndRES']['te_set_res_kelvin'] = 22 + \
-        celsius_to_kelvin_offset
-    veh_new = fsim.Vehicle.from_pydict(veh_dict_new)
-    veh_new.clear()
     veh_new.to_file('./f3-vehicles/2020 Chevrolet Bolt EV.yaml')
