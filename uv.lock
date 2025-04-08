@@ -277,6 +277,11 @@ dev = [
     { name = "ruff" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "fastsim", extra = ["dev"] },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "executing", specifier = "~=2.0" },
@@ -300,6 +305,9 @@ requires-dist = [
     { name = "types-seaborn", specifier = "~=0.13.2" },
     { name = "typing-extensions", specifier = "~=4.12" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "fastsim", extras = ["dev"] }]
 
 [[package]]
 name = "fonttools"
