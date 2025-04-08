@@ -18,7 +18,30 @@ SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "false").lower() == "true"
 # if environment var `OVERWRITE_VEH=true` is set, vehicle file is overwritten
 OVERWRITE_VEH = os.environ.get("SHOW_PLOTS", "false").lower() == "true"
 
-res_df = pd.read_csv(save_path / "pymoo_res_df.csv")
+res_df_orig = pd.read_csv(save_path / "pymoo_res_df.csv")
+res_df = deepcopy(res_df_orig)
+
+# filter bad results out
+print(f"len(res_df): {len(res_df)}")
+res_df.drop(
+    res_df.filter(regex="get_mod_soc").max(axis=1)[
+        res_df.filter(regex="get_mod_soc").max(axis=1) > 0.005].index,
+    inplace=True
+)
+print(f"len(res_df) after soc filter: {len(res_df)}")
+res_df.drop(
+    res_df.filter(regex="get_mod_batt_temp").max(axis=1)[
+        res_df.filter(regex="get_mod_batt_temp").max(axis=1) > 3].index,
+    inplace=True
+)
+print(f"len(res_df) after batt temp filter: {len(res_df)}")
+res_df.drop(
+    res_df.filter(regex="get_mod_cab_temp").max(axis=1)[
+        res_df.filter(regex="get_cab_batt_temp").max(axis=1) > 3].index,
+    inplace=True
+)
+print(f"len(res_df) after batt temp filter: {len(res_df)}")
+
 res_df_soc = res_df.filter(regex="get_mod_soc")
 res_df_soc_err_summed = res_df.filter(
     regex="get_mod_soc").sum(1)
@@ -33,7 +56,8 @@ param_vals_euclidean = res_df.iloc[
     best_row,
     :len(cal_mod_obj.param_fns)].to_numpy()
 
-param_vals_best = param_vals_soc
+# param_vals_best = param_vals_soc
+param_vals_best = param_vals_euclidean
 
 # getting the solved models
 (errors_cal, cvs_cal, sds_cal_solved, sds_cal) = cal_mod_obj.get_errors(

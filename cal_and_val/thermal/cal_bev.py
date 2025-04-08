@@ -526,10 +526,10 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
         ),
         (veh_dict["hvac"][hvac_type_var]["p_res_watts_per_kelvin"], None),
         (veh_dict["hvac"][hvac_type_var]["i_res"], None),
-        (veh_dict["hvac"][hvac_type_var]["d_res"], None),
+        # (veh_dict["hvac"][hvac_type_var]["d_res"], None),
         (veh_dict["hvac"][hvac_type_var]["p_cabin_watts_per_kelvin"], None),
         (veh_dict["hvac"][hvac_type_var]["i_cabin"], None),
-        (veh_dict["hvac"][hvac_type_var]["d_cabin"], None),
+        # (veh_dict["hvac"][hvac_type_var]["d_cabin"], None),
         (veh_dict["hvac"][hvac_type_var]["frac_of_ideal_cop"], None),
     ]
 
