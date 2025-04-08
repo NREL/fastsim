@@ -6,9 +6,9 @@ pt_type:
     res:
       thrml:
         RESLumpedThermal:
-          heat_capacitance_joules_per_kelvin: 200000.0
-          conductance_to_amb_watts_per_kelvin: 0.1
-          conductance_to_cab_watts_per_kelvin: 0.5
+          heat_capacitance_joules_per_kelvin: 193522.1016501104
+          conductance_to_amb_watts_per_kelvin: 58.28484647188246
+          conductance_to_cab_watts_per_kelvin: 1.2079495090412669
           save_interval: 1
       mass_kilograms: ~
       specific_energy_joules_per_kilogram: ~
@@ -112,17 +112,17 @@ pt_type:
             - 0.8
             - 1.0
           f_x:
-            - 0.83
-            - 0.85
-            - 0.87
-            - 0.89
-            - 0.9
-            - 0.91
-            - 0.93
-            - 0.94
-            - 0.94
-            - 0.93
-            - 0.92
+            - 0.8736113907685258
+            - 0.894336709838892
+            - 0.9150620289092581
+            - 0.9357873479796243
+            - 0.9461500075148074
+            - 0.9565126670499905
+            - 0.9772379861203567
+            - 0.9876006456555396
+            - 0.9876006456555396
+            - 0.9772379861203567
+            - 0.9668753265851735
           strategy: Linear
           extrapolate: Error
       pwr_out_max_watts: 149139.974
@@ -134,6 +134,7 @@ pt_type:
       eff_interp:
         Interp0D: 0.98
       save_interval: 1
+    mass_kilograms: ~
 chassis:
   drag_coef: 0.309
   frontal_area_square_meters: 2.396898
@@ -141,6 +142,7 @@ chassis:
   wheel_inertia_kilogram_square_meters: 0.815
   num_wheels: 4
   wheel_radius_meters: 0.3234
+  tire_code: ~
   cg_height_meters: 0.53
   wheel_fric_coef: 0.7
   drive_type: FWD
@@ -151,32 +153,28 @@ chassis:
   cargo_mass_kilograms: ~
 cabin:
   LumpedCabin:
-    cab_shell_htc_to_amb_watts_per_square_meter_kelvin: 0.05
-    cab_htc_to_amb_stop_watts_per_square_meter_kelvin: 0.05
-    heat_capacitance_joules_per_kelvin: 200000.0
-    length_meters: 2.5
+    cab_shell_htc_to_amb_watts_per_square_meter_kelvin: 15.029023813975158
+    cab_htc_to_amb_stop_watts_per_square_meter_kelvin: 234.7984978369895
+    heat_capacitance_joules_per_kelvin: 74366.53201351284
+    length_meters: 5.70338144631797
     width_meters: 1.765
-    state:
-      i: 0
-      temperature_kelvin: 298.15
-      temp_prev_kelvin: 298.15
     save_interval: 1
 hvac:
   LumpedCabinAndRES:
     te_set_cab_kelvin: 295.15
     te_deadband_cab_kelvin: 0.5
-    p_cabin_watts_per_kelvin: 500.0
-    i_cabin: 40.0
+    p_cabin_watts_per_kelvin: 881.6321317014631
+    i_cabin: 34.0671708520381
     pwr_i_max_cabin_watts: 15000.0
     d_cabin: 10.0
-    te_set_res_kelvin: 290.15
+    te_set_res_kelvin: 295.15
     te_deadband_res_kelvin: 15.0
-    p_res_watts_per_kelvin: 500.0
-    i_res: 40.0
+    p_res_watts_per_kelvin: 7.776638335865715
+    i_res: 1.014641941728727
     pwr_i_max_res_watts: 15000.0
     d_res: 10.0
     pwr_thrml_max_watts: 15000.0
-    frac_of_ideal_cop: 0.15
+    frac_of_ideal_cop: 0.1672948274768393
     cabin_heat_source: ResistanceHeater
     res_heat_source: ResistanceHeater
     res_cooling_source: HVAC
