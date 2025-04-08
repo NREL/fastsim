@@ -40,7 +40,7 @@ res_df.drop(
         res_df.filter(regex="get_mod_cab_temp").mean(axis=1) > 3].index,
     inplace=True
 )
-print(f"len(res_df) after batt temp filter: {len(res_df)}")
+print(f"len(res_df) after cab temp filter: {len(res_df)}")
 
 res_df_soc = res_df.filter(regex="get_mod_soc")
 res_df_soc_err_summed = res_df.filter(
