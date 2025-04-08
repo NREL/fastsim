@@ -169,7 +169,7 @@ hvac:
     i_cabin: 40.0
     pwr_i_max_cabin_watts: 15000.0
     d_cabin: 10.0
-    te_set_res_kelvin: 295.15
+    te_set_res_kelvin: 290.15
     te_deadband_res_kelvin: 15.0
     p_res_watts_per_kelvin: 500.0
     i_res: 40.0
