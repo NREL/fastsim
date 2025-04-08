@@ -59,6 +59,9 @@ param_vals_euclidean = res_df.iloc[
 # param_vals_best = param_vals_soc
 param_vals_best = param_vals_euclidean
 
+for (p, b, best) in zip(cal_mod_obj.param_fns, cal_mod_obj.bounds, param_vals_best):
+    print(f'{p.__name__.replace("cal_bev.new_", "")}, {b}: {best:.5g}')
+
 # getting the solved models
 (errors_cal, cvs_cal, sds_cal_solved, sds_cal) = cal_mod_obj.get_errors(
     sim_drives=cal_mod_obj.update_params(param_vals_best),
