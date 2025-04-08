@@ -9,7 +9,7 @@ import os
 import fastsim as fsim
 from cal_bev import cal_mod_obj, val_mod_obj, save_path,  cyc_files_dict
 from cal_bev import time_column, speed_column, cell_temp_column
-from cal_bev import mps_per_mph
+from cal_bev import mps_per_mph, celsius_to_kelvin_offset
 from cal_bev import get_mod_soc_delta, get_exp_soc_delta
 from cal_bev import pt_type_var, cabin_type_var, hvac_type_var
 
@@ -354,6 +354,11 @@ plt.savefig(plot_save_path / "scatter without thrml effects.svg")
 
 # %%
 if OVERWRITE_VEH:
-    veh = fsim.Vehicle.from_pydict(sd_cal['veh'])
-    veh.clear()
-    veh.to_file('./f3-vehicles/2020 Chevrolet Bolt EV.yaml')
+    veh_dict_new = deepcopy(sd_cal['veh'])
+    veh_dict_new['hvac']['LumpedCabinAndRES']['te_set_cab_kelvin'] = 22 + \
+        celsius_to_kelvin_offset
+    veh_dict_new['hvac']['LumpedCabinAndRES']['te_set_res_kelvin'] = 22 + \
+        celsius_to_kelvin_offset
+    veh_new = fsim.Vehicle.from_pydict(veh_dict_new)
+    veh_new.clear()
+    veh_new.to_file('./f3-vehicles/2020 Chevrolet Bolt EV.yaml')

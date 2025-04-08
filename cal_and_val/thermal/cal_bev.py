@@ -175,7 +175,7 @@ def veh_init(cyc_file_stem: str, dfs: dict[str, pd.DataFrame]) -> fsim.Vehicle:
         )
     )
     vd["hvac"][hvac_type_var]["te_set_res_kelvin"] = (
-        te_set + celsius_to_kelvin_offset if te_set is not None else None
+        22 + celsius_to_kelvin_offset if te_set is not None else None
     )
     vd["hvac"][hvac_type_var]["te_set_cab_kelvin"] = (
         te_set + celsius_to_kelvin_offset if te_set is not None else None
@@ -457,7 +457,7 @@ cal_mod_obj = pymoo_api.ModelObjectives(
         (new_em_eff_max, (0.80, 0.99)),  # new_em_eff_max,
         (new_em_eff_range, (0.1, 0.6)),  # new_em_eff_range,
         # new_cab_shell_htc_w_per_m2_k,
-        (new_cab_shell_htc_w_per_m2_k, (10, 250)),
+        (new_cab_shell_htc_w_per_m2_k, (10, 350)),
         # new_cab_htc_to_amb_stop_w_per_m2_k,
         (new_cab_htc_to_amb_stop_w_per_m2_k, (10, 250)),
         (new_cab_tm_j_per_k, (100e3, 350e3)),  # new_cab_tm_j_per_k,
