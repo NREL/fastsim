@@ -84,6 +84,11 @@ impl Init for AuxSource {}
     fn from_f2_file_py(file: PathBuf) -> anyhow::Result<Self> {
         Self::from_f2_file(file)
     }
+
+    #[pyo3(name = "clear")]
+    fn clear_py(&mut self) {
+        self.clear()
+    }
 )]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 #[non_exhaustive]
