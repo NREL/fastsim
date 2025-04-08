@@ -25,7 +25,6 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 celsius_to_kelvin = 273.15
 temp_amb = -6.7 + celsius_to_kelvin
 temp_init_bat_and_cab = 22.0 + celsius_to_kelvin
-temp_init_eng = 70.0 + celsius_to_kelvin
 # `fastsim3` -- load vehicle and cycle, build simulation, and run
 # %%
 
