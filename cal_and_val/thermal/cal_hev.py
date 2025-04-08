@@ -32,7 +32,7 @@ sim_params_dict["trace_miss_opts"] = "AllowChecked"
 sim_params = fsim.SimParams.from_pydict(sim_params_dict, skip_init=False)
 
 # Obtain the data from
-# https://nrel.sharepoint.com/:f:/r/sites/EEMSCoreModelingandDecisionSupport2022-2024/Shared%20Documents/FASTSim/DynoTestData?csf=1&web=1&e=F4FEBp
+# https://www.anl.gov/taps/d3-2021-hyundai-sonata-hybrid
 # and then copy it to the local folder below
 cyc_folder_path = Path(__file__).parent / "dyno_test_data/2021 Hyundai Sonata Hybrid/Extended Datasets"
 assert cyc_folder_path.exists()

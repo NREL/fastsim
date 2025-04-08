@@ -37,7 +37,7 @@ res_df.drop(
 print(f"len(res_df) after batt temp filter: {len(res_df)}")
 res_df.drop(
     res_df.filter(regex="get_mod_cab_temp").mean(axis=1)[
-        res_df.filter(regex="get_mod_batt_temp").mean(axis=1) > 3].index,
+        res_df.filter(regex="get_mod_cab_temp").mean(axis=1) > 3].index,
     inplace=True
 )
 print(f"len(res_df) after batt temp filter: {len(res_df)}")
