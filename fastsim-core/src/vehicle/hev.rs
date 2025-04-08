@@ -39,7 +39,7 @@ pub struct HybridElectricVehicle {
     pub soc_bal_iter_history: Vec<Self>,
 }
 
-impl SaveInterval for HybridElectricVehicle {
+impl HistoryMethods for HybridElectricVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         bail!("`save_interval` is not implemented in HybridElectricVehicle")
     }
@@ -51,6 +51,14 @@ impl SaveInterval for HybridElectricVehicle {
         self.transmission.set_save_interval(save_interval)?;
         self.pt_cntrl.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.res.clear();
+        // self.fs.clear();
+        self.fc.clear();
+        self.em.clear();
+        self.transmission.clear();
+        self.pt_cntrl.clear();
     }
 }
 
@@ -598,7 +606,7 @@ impl Default for HEVPowertrainControls {
     }
 }
 
-impl SaveInterval for HEVPowertrainControls {
+impl HistoryMethods for HEVPowertrainControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => Ok(rgwdb.set_save_interval(save_interval)?),
@@ -609,6 +617,12 @@ impl SaveInterval for HEVPowertrainControls {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_interval(),
+            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.clear(),
             HEVPowertrainControls::Placeholder => todo!("Placeholder"),
         }
     }
@@ -921,7 +935,7 @@ pub struct RESGreedyWithDynamicBuffers {
     pub history: RGWDBStateHistoryVec,
 }
 
-impl SaveInterval for RESGreedyWithDynamicBuffers {
+impl HistoryMethods for RESGreedyWithDynamicBuffers {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
@@ -929,6 +943,10 @@ impl SaveInterval for RESGreedyWithDynamicBuffers {
 
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
+    }
+
+    fn clear(&mut self) {
+        self.history.clear();
     }
 }
 

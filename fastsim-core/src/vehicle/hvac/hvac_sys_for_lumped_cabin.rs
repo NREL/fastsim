@@ -71,13 +71,16 @@ impl SetCumulative for HVACSystemForLumpedCabin {
 }
 impl Init for HVACSystemForLumpedCabin {}
 impl SerdeAPI for HVACSystemForLumpedCabin {}
-impl SaveInterval for HVACSystemForLumpedCabin {
+impl HistoryMethods for HVACSystemForLumpedCabin {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
     }
 }
 impl HVACSystemForLumpedCabin {

@@ -69,7 +69,7 @@ impl Powertrain for PowertrainType {
     }
 }
 
-impl SaveInterval for PowertrainType {
+impl HistoryMethods for PowertrainType {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             PowertrainType::ConventionalVehicle(v) => v.save_interval(),
@@ -82,6 +82,13 @@ impl SaveInterval for PowertrainType {
             PowertrainType::ConventionalVehicle(v) => v.set_save_interval(save_interval),
             PowertrainType::HybridElectricVehicle(v) => v.set_save_interval(save_interval),
             PowertrainType::BatteryElectricVehicle(v) => v.set_save_interval(save_interval),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            PowertrainType::ConventionalVehicle(v) => v.clear(),
+            PowertrainType::HybridElectricVehicle(v) => v.clear(),
+            PowertrainType::BatteryElectricVehicle(v) => v.clear(),
         }
     }
 }

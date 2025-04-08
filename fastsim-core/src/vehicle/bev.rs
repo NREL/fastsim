@@ -112,7 +112,7 @@ impl Mass for BatteryElectricVehicle {
     }
 }
 
-impl SaveInterval for BatteryElectricVehicle {
+impl HistoryMethods for BatteryElectricVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         bail!("`save_interval` is not implemented in BatteryElectricVehicle")
     }
@@ -121,6 +121,11 @@ impl SaveInterval for BatteryElectricVehicle {
         self.em.set_save_interval(save_interval)?;
         self.transmission.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.res.clear();
+        self.em.clear();
+        self.transmission.clear();
     }
 }
 

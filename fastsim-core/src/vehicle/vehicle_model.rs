@@ -236,7 +236,7 @@ impl Init for Vehicle {
     }
 }
 
-impl SaveInterval for Vehicle {
+impl HistoryMethods for Vehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
@@ -246,6 +246,12 @@ impl SaveInterval for Vehicle {
         self.cabin.set_save_interval(save_interval)?;
         self.hvac.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+        self.pt_type.clear();
+        self.cabin.clear();
+        self.hvac.clear();
     }
 }
 

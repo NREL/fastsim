@@ -636,7 +636,7 @@ impl Init for ReversibleEnergyStorage {
         Ok(())
     }
 }
-impl SaveInterval for ReversibleEnergyStorage {
+impl HistoryMethods for ReversibleEnergyStorage {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
@@ -644,6 +644,10 @@ impl SaveInterval for ReversibleEnergyStorage {
         self.save_interval = save_interval;
         self.thrml.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+        self.thrml.clear();
     }
 }
 
@@ -790,7 +794,7 @@ impl Init for RESThermalOption {
     }
 }
 impl SerdeAPI for RESThermalOption {}
-impl SaveInterval for RESThermalOption {
+impl HistoryMethods for RESThermalOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             RESThermalOption::RESLumpedThermal(rlt) => rlt.save_interval(),
@@ -801,6 +805,12 @@ impl SaveInterval for RESThermalOption {
         match self {
             RESThermalOption::RESLumpedThermal(rlt) => rlt.set_save_interval(save_interval),
             RESThermalOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            RESThermalOption::RESLumpedThermal(rlt) => rlt.clear(),
+            RESThermalOption::None => {}
         }
     }
 }
@@ -877,13 +887,16 @@ impl SetCumulative for RESLumpedThermal {
 }
 impl SerdeAPI for RESLumpedThermal {}
 impl Init for RESLumpedThermal {}
-impl SaveInterval for RESLumpedThermal {
+impl HistoryMethods for RESLumpedThermal {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear()
     }
 }
 impl RESLumpedThermal {

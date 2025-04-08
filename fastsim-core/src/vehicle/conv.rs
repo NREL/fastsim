@@ -32,7 +32,7 @@ impl Init for ConventionalVehicle {
     }
 }
 
-impl SaveInterval for ConventionalVehicle {
+impl HistoryMethods for ConventionalVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         bail!("`save_interval` is not implemented in ConventionalVehicle")
     }
@@ -41,6 +41,10 @@ impl SaveInterval for ConventionalVehicle {
         self.fc.set_save_interval(save_interval)?;
         self.transmission.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.fc.clear();
+        self.transmission.clear();
     }
 }
 

@@ -129,7 +129,7 @@ impl Init for FuelConverter {
         Ok(())
     }
 }
-impl SaveInterval for FuelConverter {
+impl HistoryMethods for FuelConverter {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
@@ -137,6 +137,10 @@ impl SaveInterval for FuelConverter {
         self.save_interval = save_interval;
         self.thrml.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+        self.thrml.clear();
     }
 }
 
@@ -560,7 +564,7 @@ impl SetCumulative for FuelConverterThermalOption {
         }
     }
 }
-impl SaveInterval for FuelConverterThermalOption {
+impl HistoryMethods for FuelConverterThermalOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             FuelConverterThermalOption::FuelConverterThermal(fct) => fct.save_interval(),
@@ -573,6 +577,14 @@ impl SaveInterval for FuelConverterThermalOption {
                 fct.set_save_interval(save_interval)
             }
             FuelConverterThermalOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            FuelConverterThermalOption::FuelConverterThermal(fct) => {
+                fct.clear();
+            }
+            FuelConverterThermalOption::None => {}
         }
     }
 }
@@ -669,13 +681,16 @@ pub struct FuelConverterThermal {
     pub save_interval: Option<usize>,
 }
 
-impl SaveInterval for FuelConverterThermal {
+impl HistoryMethods for FuelConverterThermal {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
     }
 }
 
