@@ -348,7 +348,9 @@ def get_exp_cab_temp_celsius(df):
 
 
 def get_mod_batt_temp_celsius(sd_dict):
-    mod_batt_temp_celsiusi_float = np.array(sd_dict["veh"]["pt_type"][pt_type_var]["res"]["thrml"]["RESLumpedThermal"]["history"]["temperature_kelvin"]) 
+    mod_batt_temp_celsiusi_float = np.array(
+        sd_dict["veh"]["pt_type"][pt_type_var]["res"]["thrml"]["RESLumpedThermal"]["history"]["temperature_kelvin"]
+    ) - celsius_to_kelvin_offset
     # the test data temperature is quantized
     mod_batt_temp_celsius_int = np.array([int(temp) for temp in mod_batt_temp_celsiusi_float]) 
     return mod_batt_temp_celsius_int
@@ -395,6 +397,7 @@ cal_mod_obj = pymoo_api.ModelObjectives(
     obj_fns=(
         (get_mod_soc, get_exp_soc),
         (get_mod_cab_temp_celsius, get_exp_cab_temp_celsius),
+        (get_mod_batt_temp_celsius, get_exp_batt_temp_celsius),
         # TODO: add objectives for:
         # - achieved and cycle speed
         # - battery temperature -- BEV only, if available
