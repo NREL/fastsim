@@ -213,7 +213,6 @@ impl LumpedCabin {
 
 #[fastsim_api]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct LumpedCabinState {
     /// time step counter

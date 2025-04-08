@@ -939,7 +939,6 @@ impl RESLumpedThermal {
     }
 )]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct RESLumpedThermalState {
     /// time step index
