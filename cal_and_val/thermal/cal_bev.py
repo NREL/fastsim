@@ -22,7 +22,8 @@ celsius_to_kelvin_offset = 273.15
 # Initialize seaborn plot configuration
 sns.set_style("darkgrid")
 
-veh = fsim.Vehicle.from_file(Path(__file__).parent / "f3-vehicles/2020 Chevrolet Bolt EV.yaml")
+veh = fsim.Vehicle.from_file(
+    Path(__file__).parent / "f3-vehicles/2020 Chevrolet Bolt EV.yaml")
 veh_dict = veh.to_pydict()
 
 sim_params_dict = fsim.SimParams.default().to_pydict()
@@ -33,7 +34,8 @@ sim_params = fsim.SimParams.from_pydict(sim_params_dict, skip_init=False)
 # Obtain the data from
 # https://nrel.sharepoint.com/:f:/r/sites/EEMSCoreModelingandDecisionSupport2022-2024/Shared%20Documents/FASTSim/DynoTestData?csf=1&web=1&e=F4FEBp
 # and then copy it to the local folder below
-cyc_folder_path = Path(__file__).parent / "dyno_test_data/2020 Chevrolet Bolt/Extended Datasets"
+cyc_folder_path = Path(__file__).parent / \
+    "dyno_test_data/2020 Chevrolet Bolt/Extended Datasets"
 assert cyc_folder_path.exists(), cyc_folder_path
 
 # Test data columns
@@ -77,18 +79,34 @@ cyc_files_dict: dict[str, dict] = {
     # 95F (HVAC on), UDDS + HWY + UDDS
     "62009040 Test Data.txt": {
         cell_temp_column: 35,
-        "solar load [W/m^2]": None,
-        "set temp [*C]": 22,
+        "solar load [W/m^2]": 850,
+        # 28 *C is approximately the steady state temperature
+        "set temp [*C]": 28,
     },
-    # 95F (HVAC on), US06
-    "62009041 Test Data.txt": {
-        cell_temp_column: 35,
-        "solar load [W/m^2]": None,
-        "set temp [*C]": 22,
+    # Commented out due to junk data for headrest temperatures
+    # # 95F (HVAC on), US06
+    # "62009041 Test Data.txt": {
+    #     cell_temp_column: 35,
+    #     "solar load [W/m^2]": None,
+    #     "set temp [*C]": 22,
+    # },
+    # Data quality of the following cycles has not been checked
+    # 95F (HVAC on), US06 x2
+    "62009043 Test Data.txt": {
+        cell_temp_column: 38,
+        "solar load [W/m^2]": 850,
+        "set temp [*C]": 28,
     },
+    # # 95F (HVAC on), SC03 x 3, #1
+    # "62009044 Test Data.txt": {
+    #     cell_temp_column: 38,
+    #     "solar load [W/m^2]": 850,
+    #     "set temp [*C]": 22,
+    # },
 }
 assert len(cyc_files_dict) > 0
-cyc_files: list[Path] = [cyc_folder_path / cyc_file for cyc_file in cyc_files_dict.keys()]
+cyc_files: list[Path] = [cyc_folder_path /
+                         cyc_file for cyc_file in cyc_files_dict.keys()]
 print("\ncyc_files:\n", "\n".join([cf.name for cf in cyc_files]), sep="")
 
 # use random or manual selection to retain ~70% of cycles for calibration,
@@ -100,12 +118,15 @@ cyc_files_for_cal: list[str] = [
     # "62009021 Test Data.txt",
     "62009040 Test Data.txt",
     # "62009041 Test Data.txt"
+    # "62009044 Test Data.txt",
 ]
 cyc_files_for_cal: list[Path] = [
     cyc_file for cyc_file in cyc_files if cyc_file.name in cyc_files_for_cal
 ]
 assert len(cyc_files_for_cal) > 0, cyc_files_for_cal
-print("\ncyc_files_for_cal:\n", "\n".join([cf.name for cf in cyc_files_for_cal]), sep="")
+print("\ncyc_files_for_cal:\n", "\n".join(
+    [cf.name for cf in cyc_files_for_cal]), sep="")
+
 
 def df_to_cyc(df: pd.DataFrame) -> fsim.Cycle:
     cyc_dict = {
@@ -172,7 +193,9 @@ def resample_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df[::10]  # convert to ~1 Hz
     df.reset_index(inplace=True)
     dt_new = np.diff(df[time_column])
-    df[speed_column] = np.concatenate(([init_speed], np.diff(df["cumu. dist [mph*s]"]) / dt_new))
+    df[speed_column] = np.concatenate(
+        ([init_speed], np.diff(df["cumu. dist [mph*s]"]) / dt_new))
+    df = df[df[time_column] < 2160]
 
     return df
 
@@ -199,11 +222,13 @@ for cyc_file_stem, cyc in cycs_for_cal.items():
     cyc: fsim.Cycle
     # NOTE: maybe change `save_interval` to 5
     veh = veh_init(cyc_file_stem, dfs_for_cal)
-    sds_for_cal[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_pydict()
+    sds_for_cal[cyc_file_stem] = fsim.SimDrive(
+        veh, cyc, sim_params).to_pydict()
 
 cyc_files_for_val: list[Path] = list(set(cyc_files) - set(cyc_files_for_cal))
 assert len(cyc_files_for_val) > 0
-print("\ncyc_files_for_val:\n", "\n".join([cf.name for cf in cyc_files_for_val]), sep="")
+print("\ncyc_files_for_val:\n", "\n".join(
+    [cf.name for cf in cyc_files_for_val]), sep="")
 
 dfs_for_val: dict[str, pd.DataFrame] = {
     # `delimiter="\t"` should work for tab separated variables
@@ -216,6 +241,10 @@ cycs_for_val: dict[str, fsim.Cycle] = {}
 for cyc_file_stem, df in dfs_for_val.items():
     cyc_file_stem: str
     df: pd.DataFrame
+    if "9043" in cyc_file_stem:
+        # trim out junk data
+        df = df[df[time_column] < 500]
+        dfs_for_val[cyc_file_stem] = df
     cycs_for_val[cyc_file_stem] = df_to_cyc(df)
 
 sds_for_val: dict[str, fsim.SimDrive] = {}
@@ -224,17 +253,19 @@ for cyc_file_stem, cyc in cycs_for_val.items():
     cyc_file_stem: str
     cyc: fsim.Cycle
     veh = veh_init(cyc_file_stem, dfs_for_val)
-    sds_for_val[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_pydict()
+    sds_for_val[cyc_file_stem] = fsim.SimDrive(
+        veh, cyc, sim_params).to_pydict()
 
 
 # Setup model objectives
-## Parameter Functions
+# Parameter Functions
 # `param_fns`
 def new_em_eff_max(sd_dict, new_eff_max) -> dict:
     """
     Set `new_eff_max` in `ElectricMachine`
     """
-    em = fsim.ElectricMachine.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
+    em = fsim.ElectricMachine.from_pydict(
+        sd_dict["veh"]["pt_type"][pt_type_var]["em"])
     em.__eff_fwd_max = new_eff_max
     sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_pydict()
     return sd_dict
@@ -244,7 +275,8 @@ def new_em_eff_range(sd_dict, new_eff_range) -> dict:
     """
     Set `new_eff_range` in `ElectricMachine`
     """
-    em = fsim.ElectricMachine.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
+    em = fsim.ElectricMachine.from_pydict(
+        sd_dict["veh"]["pt_type"][pt_type_var]["em"])
     em.__eff_fwd_range = new_eff_range
     sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_pydict()
     return sd_dict
@@ -312,6 +344,12 @@ def new_hvac_i_res(sd_dict, new_val) -> dict:
     return sd_dict
 
 
+def new_hvac_d_res(sd_dict, new_val) -> dict:
+    """Set `new_val` for HVAC derivative control gain"""
+    sd_dict["veh"]["hvac"][hvac_type_var]["d_res"] = new_val
+    return sd_dict
+
+
 def new_hvac_p_cabin_w_per_k(sd_dict, new_val) -> dict:
     sd_dict["veh"]["hvac"][hvac_type_var]["p_cabin_watts_per_kelvin"] = new_val
     return sd_dict
@@ -320,6 +358,12 @@ def new_hvac_p_cabin_w_per_k(sd_dict, new_val) -> dict:
 def new_hvac_i_cabin(sd_dict, new_val) -> dict:
     """Set `new_val` for HVAC integral control gain"""
     sd_dict["veh"]["hvac"][hvac_type_var]["i_cabin"] = new_val
+    return sd_dict
+
+
+def new_hvac_d_cabin(sd_dict, new_val) -> dict:
+    """Set `new_val` for HVAC derivative control gain"""
+    sd_dict["veh"]["hvac"][hvac_type_var]["d_cabin"] = new_val
     return sd_dict
 
 
@@ -339,9 +383,11 @@ def get_exp_soc(df):
 
 def get_mod_cab_temp_celsius(sd_dict):
     return (
-        np.array(sd_dict["veh"]["cabin"][cabin_type_var]["history"]["temperature_kelvin"])
+        np.array(sd_dict["veh"]["cabin"][cabin_type_var]
+                 ["history"]["temperature_kelvin"])
         - celsius_to_kelvin_offset
     )
+
 
 def get_exp_cab_temp_celsius(df):
     return df[cabin_temp_column]
@@ -352,7 +398,8 @@ def get_mod_batt_temp_celsius(sd_dict):
         sd_dict["veh"]["pt_type"][pt_type_var]["res"]["thrml"]["RESLumpedThermal"]["history"]["temperature_kelvin"]
     ) - celsius_to_kelvin_offset
     # the test data temperature is quantized
-    mod_batt_temp_celsius_int = np.array([int(temp) for temp in mod_batt_temp_celsiusi_float]) 
+    mod_batt_temp_celsius_int = np.array(
+        [int(temp) for temp in mod_batt_temp_celsiusi_float])
     return mod_batt_temp_celsius_int
 
 
@@ -362,7 +409,8 @@ def get_exp_batt_temp_celsius(df):
 
 def get_mod_pwr_hvac_kw(sd_dict):
     return (
-        np.array(sd_dict["veh"]["hvac"][cabin_type_var]["history"]["pwr_aux_for_hvac_watts"]) / 1e3
+        np.array(sd_dict["veh"]["hvac"][cabin_type_var]
+                 ["history"]["pwr_aux_for_hvac_watts"]) / 1e3
     )
 
 
@@ -376,7 +424,8 @@ def get_exp_pwr_hvac_kw(df):
 
 # post-processing functions
 def get_mod_soc_delta(sd_dict: dict) -> float:
-    soc = np.array(sd_dict["veh"]["pt_type"][pt_type_var]["res"]["history"]["soc"])
+    soc = np.array(sd_dict["veh"]["pt_type"]
+                   [pt_type_var]["res"]["history"]["soc"])
     soc_delta: float = soc[-1] - soc[0]
     return soc_delta
 
@@ -390,7 +439,7 @@ def get_exp_soc_delta(df: pd.DataFrame) -> float:
 save_path = Path(__file__).parent / "pymoo_res" / Path(__file__).stem
 save_path.mkdir(exist_ok=True, parents=True)
 
-## Model Objectives
+# Model Objectives
 cal_mod_obj = pymoo_api.ModelObjectives(
     models=sds_for_cal,
     dfs=dfs_for_cal,
@@ -407,8 +456,10 @@ cal_mod_obj = pymoo_api.ModelObjectives(
     param_fns_and_bounds=(
         (new_em_eff_max, (0.80, 0.99)),  # new_em_eff_max,
         (new_em_eff_range, (0.1, 0.6)),  # new_em_eff_range,
-        (new_cab_shell_htc_w_per_m2_k, (10, 250)),  # new_cab_shell_htc_w_per_m2_k,
-        (new_cab_htc_to_amb_stop_w_per_m2_k, (10, 250)),  # new_cab_htc_to_amb_stop_w_per_m2_k,
+        # new_cab_shell_htc_w_per_m2_k,
+        (new_cab_shell_htc_w_per_m2_k, (10, 250)),
+        # new_cab_htc_to_amb_stop_w_per_m2_k,
+        (new_cab_htc_to_amb_stop_w_per_m2_k, (10, 250)),
         (new_cab_tm_j_per_k, (100e3, 350e3)),  # new_cab_tm_j_per_k,
         (new_cab_length_m, (1.5, 7)),  # new_cab_length_m,
         (new_res_cndctnc_to_amb, (1, 50)),  # new_res_cndctnc_to_amb,
@@ -416,14 +467,12 @@ cal_mod_obj = pymoo_api.ModelObjectives(
         (new_res_tm_j_per_k, (30e3, 200e3)),  # new_res_tm_j_per_k,
         (new_hvac_p_res_w_per_k, (5, 1_000)),  # new_hvac_p_res_w_per_k,
         (new_hvac_i_res, (1, 100)),  # new_hvac_i_res,
+        (new_hvac_d_res, (1, 100)),  # new_hvac_d_res,
         (new_hvac_p_cabin_w_per_k, (5, 1_000)),  # new_hvac_p_cabin_w_per_k,
         (new_hvac_i_cabin, (1, 100)),  # new_hvac_i_cabin,
-        (new_hvac_frac_of_ideal_cop, (0.15, 0.35)),  # new_hvac_frac_of_ideal_cop,
-        # TODO: make sure this has functions for modifying
-        # - battery thermal -- not necessary for HEV because battery temperature has no real effect
-        #     - thermal mass
-        #     - convection to ambient
-        #     - convection to cabin
+        (new_hvac_d_cabin, (1, 100)),  # new_hvac_d_cabin,
+        # new_hvac_frac_of_ideal_cop,
+        (new_hvac_frac_of_ideal_cop, (0.15, 0.35)),
     ),
     constr_fns=(),
     verbose=False,
@@ -441,7 +490,8 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
     # - `pos_perturb_doc`: perturbation percentage added to all params.  Can be overridden invididually
     # - `neg_perturb_doc`: perturbation percentage subtracted from all params.  Can be overridden invididually
     """
-    em = fsim.ElectricMachine.from_pydict(veh_dict["pt_type"][pt_type_var]["em"], skip_init=False)
+    em = fsim.ElectricMachine.from_pydict(
+        veh_dict["pt_type"][pt_type_var]["em"], skip_init=False)
     baseline_params_and_bounds = [
         (em.eff_fwd_max, None),
         (em.eff_fwd_range, None),
@@ -453,7 +503,8 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
             veh_dict["cabin"][cabin_type_var]["cab_htc_to_amb_stop_watts_per_square_meter_kelvin"],
             None,
         ),
-        (veh_dict["cabin"][cabin_type_var]["heat_capacitance_joules_per_kelvin"], None),
+        (veh_dict["cabin"][cabin_type_var]
+         ["heat_capacitance_joules_per_kelvin"], None),
         (veh_dict["cabin"][cabin_type_var]["length_meters"], None),
         (
             veh_dict["pt_type"][pt_type_var]["res"]["thrml"]["RESLumpedThermal"][
@@ -475,8 +526,10 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
         ),
         (veh_dict["hvac"][hvac_type_var]["p_res_watts_per_kelvin"], None),
         (veh_dict["hvac"][hvac_type_var]["i_res"], None),
+        (veh_dict["hvac"][hvac_type_var]["d_res"], None),
         (veh_dict["hvac"][hvac_type_var]["p_cabin_watts_per_kelvin"], None),
         (veh_dict["hvac"][hvac_type_var]["i_cabin"], None),
+        (veh_dict["hvac"][hvac_type_var]["d_cabin"], None),
         (veh_dict["hvac"][hvac_type_var]["frac_of_ideal_cop"], None),
     ]
 
@@ -505,7 +558,8 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
 
         perturbed_params = baseline_params.copy()
         perturbed_params[i] = param * (1 + param_pos_perturb_dec)
-        perturbed_errors = cal_mod_obj.get_errors(cal_mod_obj.update_params(perturbed_params))
+        perturbed_errors = cal_mod_obj.get_errors(
+            cal_mod_obj.update_params(perturbed_params))
         if np.all(perturbed_errors == baseline_errors):
             print("\nperturbed_errros:")
             pprint.pp(perturbed_errors)
@@ -519,7 +573,8 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
         # -5%
         perturbed_params = baseline_params.copy()
         perturbed_params[i] = param * (1 - param_neg_perturb_dec)
-        perturbed_errors = cal_mod_obj.get_errors(cal_mod_obj.update_params(perturbed_params))
+        perturbed_errors = cal_mod_obj.get_errors(
+            cal_mod_obj.update_params(perturbed_params))
         if np.all(perturbed_errors == baseline_errors):
             print("\nperturbed_errros:")
             pprint.pp(perturbed_errors)

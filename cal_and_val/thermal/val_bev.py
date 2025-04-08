@@ -3,14 +3,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from copy import deepcopy
+import os
 
 # local
 import fastsim as fsim
 from cal_bev import cal_mod_obj, val_mod_obj, save_path,  cyc_files_dict
 from cal_bev import time_column, speed_column, cell_temp_column
-from cal_bev import mps_per_mph 
+from cal_bev import mps_per_mph
 from cal_bev import get_mod_soc_delta, get_exp_soc_delta
 from cal_bev import pt_type_var, cabin_type_var, hvac_type_var
+
+# unless environment var `SHOW_PLOTS=true` is set, no plots are shown
+SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "false").lower() == "true"
+# if environment var `OVERWRITE_VEH=true` is set, vehicle file is overwritten
+OVERWRITE_VEH = os.environ.get("SHOW_PLOTS", "false").lower() == "true"
 
 res_df = pd.read_csv(save_path / "pymoo_res_df.csv")
 res_df_soc = res_df.filter(regex="get_mod_soc")
@@ -87,6 +93,9 @@ for ((key, df_cal), (sd_key, sd_cal)) in zip(cal_mod_obj.dfs.items(), sds_cal_so
         plt.savefig(
             plot_save_path / f"{key}_{obj_fn[0].__name__.replace('get_mod_', '')}_cal.svg")
 
+if SHOW_PLOTS:
+    plt.show()
+
 for ((key, df_val), (sd_key, sd_val)) in zip(val_mod_obj.dfs.items(), sds_val_solved.items()):
     if not isinstance(sd_val, dict):
         print(f"skipping {key}")
@@ -129,6 +138,10 @@ for ((key, df_val), (sd_key, sd_val)) in zip(val_mod_obj.dfs.items(), sds_val_so
         ax[1].set_ylabel("Speed [m/s]")
         plt.savefig(
             plot_save_path / f"{key}_{obj_fn[0].__name__.replace('get_mod_', '')}_val.svg")
+
+if SHOW_PLOTS:
+    plt.show()
+
 # %%
 # function for plot formatting
 
@@ -167,6 +180,8 @@ def draw_error_zones(ax):
 
 # %%
 # Scatter plots with temperature effects
+
+
 def get_soc_exp_and_mod_cal() -> tuple[list[float], list[float]]:
     soc_exp_cal = []
     soc_mod_cal = []
@@ -186,7 +201,9 @@ def get_soc_exp_and_mod_cal() -> tuple[list[float], list[float]]:
 
     return (soc_exp_cal, soc_mod_cal)
 
+
 (soc_exp_cal, soc_mod_cal) = get_soc_exp_and_mod_cal()
+
 
 def get_soc_exp_and_mod_val() -> tuple[list[float], list[float]]:
     soc_exp_val = []
@@ -206,6 +223,7 @@ def get_soc_exp_and_mod_val() -> tuple[list[float], list[float]]:
         soc_mod_val.append(mod_soc)
 
     return (soc_exp_val, soc_mod_val)
+
 
 (soc_exp_val, soc_mod_val) = get_soc_exp_and_mod_val()
 
@@ -230,6 +248,7 @@ plt.savefig(plot_save_path / "scatter with thrml effects.svg")
 # %%
 
 # Scatter plots without temperature effects
+
 
 def get_soc_exp_mod_cal_no_thrml() -> tuple[list[float], list[float]]:
     soc_mod_cal_no_thrml = []
@@ -258,7 +277,8 @@ def get_soc_exp_mod_cal_no_thrml() -> tuple[list[float], list[float]]:
             pass
         sd_cal_no_thrml = sd_cal_no_thrml.to_pydict()
 
-        df_cal = df_cal[:len(sd_cal_no_thrml['veh']['history']['time_seconds'])]
+        df_cal = df_cal[:len(sd_cal_no_thrml['veh']
+                             ['history']['time_seconds'])]
 
         mod_soc = -get_mod_soc_delta(sd_cal_no_thrml)
         exp_soc = -get_exp_soc_delta(df_cal)
@@ -268,7 +288,9 @@ def get_soc_exp_mod_cal_no_thrml() -> tuple[list[float], list[float]]:
 
     return (soc_exp_cal_no_thrml, soc_mod_cal_no_thrml)
 
+
 (soc_exp_cal_no_thrml, soc_mod_cal_no_thrml) = get_soc_exp_mod_cal_no_thrml()
+
 
 def get_soc_exp_mod_val_no_thrml() -> tuple[list[float], list[float]]:
     soc_mod_val_no_thrml = []
@@ -297,7 +319,8 @@ def get_soc_exp_mod_val_no_thrml() -> tuple[list[float], list[float]]:
             pass
         sd_val_no_thrml = sd_val_no_thrml.to_pydict()
 
-        df_val = df_val[:len(sd_val_no_thrml['veh']['history']['time_seconds'])]
+        df_val = df_val[:len(sd_val_no_thrml['veh']
+                             ['history']['time_seconds'])]
 
         mod_soc = -get_mod_soc_delta(sd_val_no_thrml)
         exp_soc = -get_exp_soc_delta(df_val)
@@ -306,6 +329,7 @@ def get_soc_exp_mod_val_no_thrml() -> tuple[list[float], list[float]]:
         soc_exp_val_no_thrml.append(exp_soc)
 
     return (soc_exp_val_no_thrml, soc_mod_val_no_thrml)
+
 
 (soc_exp_val_no_thrml, soc_mod_val_no_thrml) = get_soc_exp_mod_val_no_thrml()
 
@@ -329,3 +353,7 @@ ax.legend()
 plt.savefig(plot_save_path / "scatter without thrml effects.svg")
 
 # %%
+if OVERWRITE_VEH:
+    veh = fsim.Vehicle.from_pydict(sd_cal['veh'])
+    veh.clear()
+    veh.to_file('./f3-vehicles/2020 Chevrolet Bolt EV.yaml')
