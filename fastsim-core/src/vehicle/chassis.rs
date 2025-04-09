@@ -21,6 +21,7 @@ impl Init for DriveTypes {}
 #[fastsim_api]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle
 pub struct Chassis {
     /// Aerodynamic drag coefficient

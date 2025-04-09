@@ -3,6 +3,7 @@ use super::*;
 #[fastsim_api]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Conventional vehicle with only a FuelConverter as a power source
 pub struct ConventionalVehicle {
     pub fs: FuelStorage,
@@ -31,7 +32,7 @@ impl Init for ConventionalVehicle {
     }
 }
 
-impl SaveInterval for ConventionalVehicle {
+impl HistoryMethods for ConventionalVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         bail!("`save_interval` is not implemented in ConventionalVehicle")
     }
@@ -40,6 +41,10 @@ impl SaveInterval for ConventionalVehicle {
         self.fc.set_save_interval(save_interval)?;
         self.transmission.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.fc.clear();
+        self.transmission.clear();
     }
 }
 

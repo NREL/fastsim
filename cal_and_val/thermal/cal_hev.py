@@ -26,14 +26,13 @@ sns.set_style("darkgrid")
 
 veh = fsim.Vehicle.from_file(Path(__file__).parent / "f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml")
 veh_dict = veh.to_pydict()
-veh_dict_flat = veh.to_pydict(flatten=True)
 
 sim_params_dict = fsim.SimParams.default().to_pydict()
 sim_params_dict["trace_miss_opts"] = "AllowChecked"
 sim_params = fsim.SimParams.from_pydict(sim_params_dict, skip_init=False)
 
 # Obtain the data from
-# https://nrel.sharepoint.com/:f:/r/sites/EEMSCoreModelingandDecisionSupport2022-2024/Shared%20Documents/FASTSim/DynoTestData?csf=1&web=1&e=F4FEBp
+# https://www.anl.gov/taps/d3-2021-hyundai-sonata-hybrid
 # and then copy it to the local folder below
 cyc_folder_path = Path(__file__).parent / "dyno_test_data/2021 Hyundai Sonata Hybrid/Extended Datasets"
 assert cyc_folder_path.exists()
@@ -146,8 +145,8 @@ def resample_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df[::10] # convert to ~1 Hz
     df.reset_index(inplace=True)
     dt_new = np.diff(df[time_column])
-    df[speed_column] = np.concat(([init_speed], np.diff(df['cumu. dist [mph*s]']) / dt_new))
-    df[fuel_column] = np.concat(([init_fuel], np.diff(df['cumu. fuel [g]']) / dt_new))
+    df[speed_column] = np.concatenate(([init_speed], np.diff(df['cumu. dist [mph*s]']) / dt_new))
+    df[fuel_column] = np.concatenate(([init_fuel], np.diff(df['cumu. fuel [g]']) / dt_new))
 
     return df
 
@@ -450,34 +449,34 @@ cal_mod_obj = pymoo_api.ModelObjectives(
             get_exp_pwr_hvac_kw  
         ),
     ),
-    param_fns=(
-        new_em_eff_max,
-        new_em_eff_range,
-        new_fc_eff_max,
-        # new_fc_eff_range, # range is not working
-        new_cab_shell_htc_w_per_m2_k,
-        new_cab_htc_to_amb_stop_w_per_m2_k,
-        new_cab_tm_j_per_k,
-        new_cab_length_m,
-        new_speed_soc_disch_buffer_m_per_s,
-        new_speed_soc_disch_buffer_coeff,
-        new_speed_soc_fc_on_buffer_m_per_s,
-        new_speed_soc_fc_on_buffer_coeff,
-        new_fc_min_time_on_s,
-        new_frac_pwr_demand_fc_forced_on,
-        new_frac_of_most_eff_pwr_to_run_fc,
-        new_hvac_p_w_per_k,
-        new_hvac_i,
-        new_hvac_frac_of_ideal_cop,
-        new_fc_thrml_heat_capacitance_j_per_k,
-        new_fc_thrml_length_for_convection_m,
-        new_fc_thrml_htc_to_amb_stop_w_per_m2_k,
-        new_fc_thrml_conductance_from_comb_w_per_k,
-        # new_fc_thrml_max_frac_from_comb,
-        new_fc_thrml_radiator_effectiveness,
-        new_fc_thrml_fc_eff_model_Exponential_offset,
-        new_fc_thrml_fc_eff_model_Exponential_lag,
-        new_fc_thrml_fc_eff_model_Exponential_minimum,
+    param_fns_and_bounds=(
+        (new_em_eff_max, (0.80, 0.99)), # new_em_eff_max
+        (new_em_eff_range, (0.1, 0.6)), # new_em_eff_range
+        (new_fc_eff_max, (0.32, 0.45)), # new_fc_eff_max
+        # (new_fc_eff_range, # (0.2, 0.45)), # range is not working # #  # range is not working
+        (new_cab_shell_htc_w_per_m2_k, (10, 250)), # new_cab_shell_htc
+        (new_cab_htc_to_amb_stop_w_per_m2_k, (10, 250)), # new_cab_htc_to_amb_stop
+        (new_cab_tm_j_per_k, (100e3, 350e3)), # new_cab_tm
+        (new_cab_length_m, (1.5, 7)), # new_cab_length
+        (new_speed_soc_disch_buffer_m_per_s, (5, 100)), # new_speed_soc_disch_buffer_meters_per_second
+        (new_speed_soc_disch_buffer_coeff, (0.25, 5.0)), # new_speed_soc_disch_buffer_coeff
+        (new_speed_soc_fc_on_buffer_m_per_s, (5, 100)), # new_speed_soc_fc_on_buffer_meters_per_second
+        (new_speed_soc_fc_on_buffer_coeff, (0.25, 5.0)), # new_speed_soc_fc_on_buffer_coeff
+        (new_fc_min_time_on_s, (3, 30)), # new_fc_min_time_on_seconds
+        (new_frac_pwr_demand_fc_forced_on, (0.3, 0.8)), # new_frac_pwr_demand_fc_forced_on
+        (new_frac_of_most_eff_pwr_to_run_fc, (0.1, 1.0)), # new_frac_of_most_eff_pwr_to_run_fc
+        (new_hvac_p_w_per_k, (5, 1_000)), # new_hvac_p_watts_per_kelvin
+        (new_hvac_i, (1, 100)), # new_hvac_i
+        (new_hvac_frac_of_ideal_cop, (0.05, 0.35)), # new_hvac_frac_of_ideal_cop
+        (new_fc_thrml_heat_capacitance_j_per_k, (50e3, 300e3)), # new_fc_thrml_heat_capacitance_joules_per_kelvin,
+        (new_fc_thrml_length_for_convection_m, (0.2, 3)), # new_fc_thrml_length_for_convection_meters,
+        (new_fc_thrml_htc_to_amb_stop_w_per_m2_k, (5, 100)), # new_fc_thrml_htc_to_amb_stop_watts_per_square_meter_kelvin,
+        (new_fc_thrml_conductance_from_comb_w_per_k, (5, 5_000)), # new_fc_thrml_conductance_from_comb_watts_per_kelvin,
+        # (new_fc_thrml_max_frac_from_comb, # ()), # new_fc_thrml_max_frac_from_comb,
+        (new_fc_thrml_radiator_effectiveness, (3, 300)), # new_fc_thrml_radiator_effectiveness,
+        (new_fc_thrml_fc_eff_model_Exponential_offset, (220, 350)), # new_fc_thrml_fc_eff_model_Exponential_offset,
+        (new_fc_thrml_fc_eff_model_Exponential_lag, (10, 60)), # new_fc_thrml_fc_eff_model_Exponential_lag,
+        (new_fc_thrml_fc_eff_model_Exponential_minimum, (0.15, 0.35)), # new_fc_thrml_fc_eff_model_Exponential_minimum,
         # TODO: make sure this has functions for modifying
         # - aux power
         # - battery thermal -- not necessary for HEV because battery temperature has no real effect
@@ -486,35 +485,6 @@ cal_mod_obj = pymoo_api.ModelObjectives(
         #     - convection to cabin
     ),
     # must match order and length of `params_fns`
-    bounds=(
-        (0.80, 0.99), # new_em_eff_max
-        (0.1, 0.6), # new_em_eff_range
-        (0.32, 0.45), # new_fc_eff_max
-        # (0.2, 0.45), # range is not working # # 
-        (10, 250), # new_cab_shell_htc
-        (10, 250), # new_cab_htc_to_amb_stop
-        (100e3, 350e3), # new_cab_tm
-        (1.5, 7), # new_cab_length
-        (5, 100), # new_speed_soc_disch_buffer_meters_per_second
-        (0.25, 5.0), # new_speed_soc_disch_buffer_coeff
-        (5, 100), # new_speed_soc_fc_on_buffer_meters_per_second
-        (0.25, 5.0), # new_speed_soc_fc_on_buffer_coeff
-        (3, 30), # new_fc_min_time_on_seconds
-        (0.3, 0.8), # new_frac_pwr_demand_fc_forced_on
-        (0.1, 1.0), # new_frac_of_most_eff_pwr_to_run_fc
-        (5, 1_000), # new_hvac_p_watts_per_kelvin
-        (1, 100), # new_hvac_i
-        (0.05, 0.35), # new_hvac_frac_of_ideal_cop
-        (50e3, 300e3), # new_fc_thrml_heat_capacitance_joules_per_kelvin,
-        (0.2, 3), # new_fc_thrml_length_for_convection_meters,
-        (5, 100), # new_fc_thrml_htc_to_amb_stop_watts_per_square_meter_kelvin,
-        (5, 5_000), # new_fc_thrml_conductance_from_comb_watts_per_kelvin,
-        # (), # new_fc_thrml_max_frac_from_comb,
-        (3, 300), # new_fc_thrml_radiator_effectiveness,
-        (220, 350), # new_fc_thrml_fc_eff_model_Exponential_offset,
-        (10, 60), # new_fc_thrml_fc_eff_model_Exponential_lag,
-        (0.15, 0.35), # new_fc_thrml_fc_eff_model_Exponential_minimum,
-    ),
     constr_fns=(
         get_fc_temp_too_hot,
     ),
@@ -538,29 +508,29 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
         (em.eff_fwd_range, None),
         (fc.eff_max, None),
         # (fc.eff_range, None),
-        (veh_dict_flat['cabin.LumpedCabin.cab_shell_htc_to_amb_watts_per_square_meter_kelvin'], None),
-        (veh_dict_flat['cabin.LumpedCabin.cab_htc_to_amb_stop_watts_per_square_meter_kelvin'], None),
-        (veh_dict_flat['cabin.LumpedCabin.heat_capacitance_joules_per_kelvin'], None),
-        (veh_dict_flat['cabin.LumpedCabin.length_meters'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.pt_cntrl.RGWDB.speed_soc_disch_buffer_meters_per_second'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.pt_cntrl.RGWDB.speed_soc_disch_buffer_coeff'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.pt_cntrl.RGWDB.speed_soc_fc_on_buffer_meters_per_second'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.pt_cntrl.RGWDB.speed_soc_fc_on_buffer_coeff'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.pt_cntrl.RGWDB.fc_min_time_on_seconds'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.pt_cntrl.RGWDB.frac_pwr_demand_fc_forced_on'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.pt_cntrl.RGWDB.frac_of_most_eff_pwr_to_run_fc'], None),
-        (veh_dict_flat['hvac.LumpedCabin.p_watts_per_kelvin'], None),
-        (veh_dict_flat['hvac.LumpedCabin.i'], None),
-        (veh_dict_flat['hvac.LumpedCabin.frac_of_ideal_cop'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.fc.thrml.FuelConverterThermal.heat_capacitance_joules_per_kelvin'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.fc.thrml.FuelConverterThermal.length_for_convection_meters'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.fc.thrml.FuelConverterThermal.htc_to_amb_stop_watts_per_square_meter_kelvin'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.fc.thrml.FuelConverterThermal.conductance_from_comb_watts_per_kelvin'], None),
-        # (veh_dict_flat['pt_type.HybridElectricVehicle.fc.thrml.FuelConverterThermal.max_frac_from_comb'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.fc.thrml.FuelConverterThermal.radiator_effectiveness'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.fc.thrml.FuelConverterThermal.fc_eff_model.Exponential.offset'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.fc.thrml.FuelConverterThermal.fc_eff_model.Exponential.lag'], None),
-        (veh_dict_flat['pt_type.HybridElectricVehicle.fc.thrml.FuelConverterThermal.fc_eff_model.Exponential.minimum'], None)
+        (veh_dict['cabin']['LumpedCabin']['cab_shell_htc_to_amb_watts_per_square_meter_kelvin'], None),
+        (veh_dict['cabin']['LumpedCabin']['cab_htc_to_amb_stop_watts_per_square_meter_kelvin'], None),
+        (veh_dict['cabin']['LumpedCabin']['heat_capacitance_joules_per_kelvin'], None),
+        (veh_dict['cabin']['LumpedCabin']['length_meters'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['speed_soc_disch_buffer_meters_per_second'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['speed_soc_disch_buffer_coeff'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['speed_soc_fc_on_buffer_meters_per_second'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['speed_soc_fc_on_buffer_coeff'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['fc_min_time_on_seconds'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['frac_pwr_demand_fc_forced_on'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['frac_of_most_eff_pwr_to_run_fc'], None),
+        (veh_dict['hvac']['LumpedCabin']['p_watts_per_kelvin'], None),
+        (veh_dict['hvac']['LumpedCabin']['i'], None),
+        (veh_dict['hvac']['LumpedCabin']['frac_of_ideal_cop'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['heat_capacitance_joules_per_kelvin'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['length_for_convection_meters'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['htc_to_amb_stop_watts_per_square_meter_kelvin'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['conductance_from_comb_watts_per_kelvin'], None),
+        # (veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['max_frac_from_comb'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['radiator_effectiveness'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['fc_eff_model']['Exponential']['offset'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['fc_eff_model']['Exponential']['lag'], None),
+        (veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['fc_eff_model']['Exponential']['minimum'], None)
     ]
 
     baseline_params = [bpb[0] for bpb in baseline_params_and_bounds]
@@ -611,7 +581,7 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
 
 if __name__ == "__main__":
     print("Params and bounds:")
-    pprint.pp(cal_mod_obj.params_and_bounds())
+    pprint.pp(cal_mod_obj.param_fns_and_bounds)
     print("")
     perturb_params()
     parser = pymoo_api.get_parser()

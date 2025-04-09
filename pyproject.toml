@@ -29,6 +29,7 @@ dependencies = [
     "ipykernel~=6.29",
     "executing~=2.0",
     "pip",
+    "types-seaborn~=0.13.2",
 ]
 
 [project.urls]
@@ -45,6 +46,9 @@ dev = [
     "pymoo~=0.6",
     "plotly~=6.0",
 ]
+
+[dependency-groups]
+dev = ["fastsim[dev]"]
 
 [tool.setuptools]
 zip-safe = false
@@ -93,10 +97,8 @@ style = { depends-on = ["fmt", "lint"] }
 [tool.ruff]
 # Specify Python version
 target-version = "py311"
-
 # Maximum line length
 line-length = 100
-
 # Exclude specific paths
 exclude = [
     "site-packages" # Ignore all errors in site-packages
@@ -105,3 +107,73 @@ exclude = [
 [tool.ruff.isort]
 known-first-party = ["fastsim"]
 section-order = ["standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+preview = true
+select = [
+  "A", # flake8-builtins
+  "ARG", # flake8-unused-arguments
+  # "B", # flake8-bugbear
+  "C", # Pylint: Convention
+  "C4", # flake8-comprehensions
+  "C90", # mccabe
+  "COM", # flake8-commas
+  "D", # pydocstyle
+  "E", # Error
+  "F", # Pyflakes
+  "G", # flake8-logging-format
+  "I", # isort
+  "LOG", # flake8-logging
+  "N", # pep8-naming
+  "NPY", # numpy-specific
+  "PERF", # Perflint
+  # "PL", # Pylint
+  "Q", # flake8-quotes
+  "SIM", # flake8-simplify
+  # "TID", # flake8-tidy-imports (absolute imports)
+  "UP", # pyupgrade
+  "W" # Warning
+]
+ignore = [
+  "D400", # first-line-should-end-with-a-period
+  "E266", # Too many leading `#`
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+# https://mypy.readthedocs.io/en/stable/config_file.html
+# https://mypy.readthedocs.io/en/stable/config_file.html#example-pyproject-toml
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+allow_redefinition = true
+exclude = [
+    # '^file1\.py$',  # TOML literal string (single-quotes, no escaping necessary)
+    # "^file2\\.py$",  # TOML basic string (double-quotes, backslash and other characters need escaping)
+]
+
+# mypy per-module options:
+
+# [[tool.mypy.overrides]]
+# module = "mycode.foo.*"
+# disallow_untyped_defs = true
+
+# [[tool.mypy.overrides]]
+# module = "mycode.bar"
+# warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = [
+    "pymoo.*",
+    "fastsim.*", # TODO: fix fastsim and remove this line
+]
+ignore_missing_imports = true

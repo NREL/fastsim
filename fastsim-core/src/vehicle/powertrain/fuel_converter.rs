@@ -54,6 +54,7 @@ use std::f64::consts::PI;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling [FuelConverter] (e.g. engine, fuel cell.) thermal plant
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct FuelConverter {
     /// [Self] Thermal plant, including thermal management controls
     #[serde(default, skip_serializing_if = "FuelConverterThermalOption::is_none")]
@@ -128,7 +129,7 @@ impl Init for FuelConverter {
         Ok(())
     }
 }
-impl SaveInterval for FuelConverter {
+impl HistoryMethods for FuelConverter {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
@@ -136,6 +137,10 @@ impl SaveInterval for FuelConverter {
         self.save_interval = save_interval;
         self.thrml.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+        self.thrml.clear();
     }
 }
 
@@ -478,6 +483,7 @@ impl FuelConverter {
 )]
 #[non_exhaustive]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct FuelConverterState {
     /// time step index
     pub i: usize,
@@ -558,7 +564,7 @@ impl SetCumulative for FuelConverterThermalOption {
         }
     }
 }
-impl SaveInterval for FuelConverterThermalOption {
+impl HistoryMethods for FuelConverterThermalOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             FuelConverterThermalOption::FuelConverterThermal(fct) => fct.save_interval(),
@@ -571,6 +577,14 @@ impl SaveInterval for FuelConverterThermalOption {
                 fct.set_save_interval(save_interval)
             }
             FuelConverterThermalOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            FuelConverterThermalOption::FuelConverterThermal(fct) => {
+                fct.clear();
+            }
+            FuelConverterThermalOption::None => {}
         }
     }
 }
@@ -629,6 +643,7 @@ impl FuelConverterThermalOption {
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for modeling Fuel Converter (e.g. engine, fuel cell.)
 pub struct FuelConverterThermal {
     /// [FuelConverter] thermal capacitance
@@ -666,13 +681,16 @@ pub struct FuelConverterThermal {
     pub save_interval: Option<usize>,
 }
 
-impl SaveInterval for FuelConverterThermal {
+impl HistoryMethods for FuelConverterThermal {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
     }
 }
 
@@ -879,6 +897,7 @@ impl Default for FuelConverterThermal {
 #[fastsim_api]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct FuelConverterThermalState {
     /// time step index
     pub i: usize,
@@ -955,6 +974,7 @@ impl Default for FCTempEffModel {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct FCTempEffModelLinear {
     pub offset: si::Ratio,
     /// Change in efficiency factor per change in temperature /[K/]
@@ -973,6 +993,7 @@ impl Default for FCTempEffModelLinear {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct FCTempEffModelExponential {
     /// temperature at which `fc_eta_temp_coeff` begins to grow
     pub offset: si::Temperature,

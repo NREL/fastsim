@@ -81,6 +81,7 @@ const TOL: f64 = 1e-3;
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
 pub struct ReversibleEnergyStorage {
     /// [Self] Thermal plant, including thermal management controls
@@ -635,7 +636,7 @@ impl Init for ReversibleEnergyStorage {
         Ok(())
     }
 }
-impl SaveInterval for ReversibleEnergyStorage {
+impl HistoryMethods for ReversibleEnergyStorage {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
@@ -643,6 +644,10 @@ impl SaveInterval for ReversibleEnergyStorage {
         self.save_interval = save_interval;
         self.thrml.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+        self.thrml.clear();
     }
 }
 
@@ -660,6 +665,7 @@ pub enum SpecificEnergySideEffect {
 #[fastsim_api]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 #[serde(default)]
 /// ReversibleEnergyStorage state variables
 pub struct ReversibleEnergyStorageState {
@@ -788,7 +794,7 @@ impl Init for RESThermalOption {
     }
 }
 impl SerdeAPI for RESThermalOption {}
-impl SaveInterval for RESThermalOption {
+impl HistoryMethods for RESThermalOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             RESThermalOption::RESLumpedThermal(rlt) => rlt.save_interval(),
@@ -799,6 +805,12 @@ impl SaveInterval for RESThermalOption {
         match self {
             RESThermalOption::RESLumpedThermal(rlt) => rlt.set_save_interval(save_interval),
             RESThermalOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            RESThermalOption::RESLumpedThermal(rlt) => rlt.clear(),
+            RESThermalOption::None => {}
         }
     }
 }
@@ -848,6 +860,7 @@ impl RESThermalOption {
     }
 )]
 #[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[serde(deny_unknown_fields)]
 /// Struct for modeling [ReversibleEnergyStorage] (e.g. battery) thermal plant
 pub struct RESLumpedThermal {
     /// [ReversibleEnergyStorage] thermal capacitance
@@ -874,13 +887,16 @@ impl SetCumulative for RESLumpedThermal {
 }
 impl SerdeAPI for RESLumpedThermal {}
 impl Init for RESLumpedThermal {}
-impl SaveInterval for RESLumpedThermal {
+impl HistoryMethods for RESLumpedThermal {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear()
     }
 }
 impl RESLumpedThermal {
@@ -923,7 +939,7 @@ impl RESLumpedThermal {
     }
 )]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct RESLumpedThermalState {
     /// time step index
     pub i: usize,

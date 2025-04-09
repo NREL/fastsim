@@ -57,6 +57,7 @@ use crate::pyo3::*;
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
 /// electronics.
 pub struct ElectricMachine {
@@ -339,13 +340,16 @@ impl Init for ElectricMachine {
         Ok(())
     }
 }
-impl SaveInterval for ElectricMachine {
+impl HistoryMethods for ElectricMachine {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
     }
 }
 
@@ -642,6 +646,7 @@ impl ElectricMachine {
 )]
 #[non_exhaustive]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct ElectricMachineState {
     /// time step index
     pub i: usize,

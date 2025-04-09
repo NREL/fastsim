@@ -114,6 +114,7 @@ lazy_static! {
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct Air {}
 impl Init for Air {}
 impl SerdeAPI for Air {}
@@ -617,6 +618,7 @@ mod octane_static_props {
     }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[serde(deny_unknown_fields)]
 pub struct Octane {}
 impl Init for Octane {}
 impl SerdeAPI for Octane {}

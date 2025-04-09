@@ -43,7 +43,7 @@ impl Init for HVACOption {
     }
 }
 impl SerdeAPI for HVACOption {}
-impl SaveInterval for HVACOption {
+impl HistoryMethods for HVACOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             HVACOption::LumpedCabin(lc) => lc.save_interval(),
@@ -60,6 +60,15 @@ impl SaveInterval for HVACOption {
             HVACOption::LumpedCabinWithShell => todo!(),
             HVACOption::ReversibleEnergyStorageOnly => todo!(),
             HVACOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            HVACOption::LumpedCabin(lc) => lc.clear(),
+            HVACOption::LumpedCabinAndRES(lcr) => lcr.clear(),
+            HVACOption::LumpedCabinWithShell => todo!(),
+            HVACOption::ReversibleEnergyStorageOnly => todo!(),
+            HVACOption::None => {}
         }
     }
 }

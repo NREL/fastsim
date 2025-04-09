@@ -27,4 +27,5 @@ pyo3 = "0.23.3"
 numpy = "0.23"
 thiserror = "2.0.11"
 uom = { version = "0.35.0", features = ["use_serde"] }
+ninterp = { version = "0.2.4", features = ["serde"] }
 fastsim-2 = { package = "fastsim-core", version = "~0", features = ["pyo3", "resources"] }

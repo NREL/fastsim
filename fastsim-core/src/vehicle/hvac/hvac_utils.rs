@@ -11,9 +11,9 @@ pub enum HvacMode {
     /// minus deadband and less than or equal to setpoint temperature plus
     /// deadband
     InsideDeadband,
+    #[default]
     /// Inactive
     Inactive,
-    #[default]
     /// Each time step sets to this value at the start to enforce updating
     Invalid,
 }
