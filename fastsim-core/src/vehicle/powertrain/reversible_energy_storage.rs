@@ -994,9 +994,9 @@ pub enum RESEffInterpInputs {
     Constant,
     /// Efficiency = f(C-rate)
     CRate,
-    /// Efficiency = f(C-rate, temperature)
-    CRateSOCTemperature,
     /// Efficiency = f(C-rate, soc, temperature)
+    CRateSOCTemperature,
+    /// Efficiency = f(C-rate, temperature)
     CRateTemperature,
     /// Efficiency = f(C-rate, soc)
     CRateSOC,
