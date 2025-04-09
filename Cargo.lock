@@ -618,6 +618,7 @@ version = "1.0.0"
 dependencies = [
  "fastsim-core 0.1.9",
  "fastsim-core 1.0.0",
+ "ninterp",
  "pyo3",
 ]
 

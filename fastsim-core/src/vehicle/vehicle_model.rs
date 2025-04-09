@@ -84,9 +84,15 @@ impl Init for AuxSource {}
     fn from_f2_file_py(file: PathBuf) -> anyhow::Result<Self> {
         Self::from_f2_file(file)
     }
+
+    #[pyo3(name = "clear")]
+    fn clear_py(&mut self) {
+        self.clear()
+    }
 )]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle
 pub struct Vehicle {
     /// Vehicle name
@@ -235,7 +241,7 @@ impl Init for Vehicle {
     }
 }
 
-impl SaveInterval for Vehicle {
+impl HistoryMethods for Vehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
@@ -245,6 +251,12 @@ impl SaveInterval for Vehicle {
         self.cabin.set_save_interval(save_interval)?;
         self.hvac.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+        self.pt_type.clear();
+        self.cabin.clear();
+        self.hvac.clear();
     }
 }
 
@@ -554,6 +566,7 @@ impl Vehicle {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct VehicleState {
     /// time step index
     pub i: usize,

@@ -3,6 +3,7 @@ use super::*;
 #[fastsim_api]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct Transmission {
     /// Transmission mass
     #[serde(default)]
@@ -50,13 +51,16 @@ impl Transmission {
         Ok(state.pwr_in)
     }
 }
-impl SaveInterval for Transmission {
+impl HistoryMethods for Transmission {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear()
     }
 }
 impl SerdeAPI for Transmission {}
@@ -92,6 +96,7 @@ impl Mass for Transmission {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct TransmissionState {
     /// time step index
     pub i: usize,

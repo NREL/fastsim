@@ -8,6 +8,7 @@ use super::*;
     }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[serde(deny_unknown_fields)]
 /// HVAC system for [LumpedCabin]
 pub struct HVACSystemForLumpedCabin {
     /// set point temperature, `None` means HVAC is inactive
@@ -70,13 +71,16 @@ impl SetCumulative for HVACSystemForLumpedCabin {
 }
 impl Init for HVACSystemForLumpedCabin {}
 impl SerdeAPI for HVACSystemForLumpedCabin {}
-impl SaveInterval for HVACSystemForLumpedCabin {
+impl HistoryMethods for HVACSystemForLumpedCabin {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
     }
 }
 impl HVACSystemForLumpedCabin {
@@ -356,6 +360,7 @@ impl SerdeAPI for CabinHeatSource {}
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct HVACSystemForLumpedCabinState {
     /// time step counter
     pub i: usize,

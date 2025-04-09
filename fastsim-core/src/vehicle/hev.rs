@@ -4,6 +4,7 @@ use crate::prelude::ElectricMachineState;
 #[fastsim_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Hybrid vehicle with both engine and reversible energy storage (aka battery)
 /// This type of vehicle is not likely to be widely prevalent due to modularity of consists.
 pub struct HybridElectricVehicle {
@@ -38,7 +39,7 @@ pub struct HybridElectricVehicle {
     pub soc_bal_iter_history: Vec<Self>,
 }
 
-impl SaveInterval for HybridElectricVehicle {
+impl HistoryMethods for HybridElectricVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         bail!("`save_interval` is not implemented in HybridElectricVehicle")
     }
@@ -50,6 +51,14 @@ impl SaveInterval for HybridElectricVehicle {
         self.transmission.set_save_interval(save_interval)?;
         self.pt_cntrl.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.res.clear();
+        // self.fs.clear();
+        self.fc.clear();
+        self.em.clear();
+        self.transmission.clear();
+        self.pt_cntrl.clear();
     }
 }
 
@@ -394,6 +403,7 @@ impl FCOnCauses {
 #[fastsim_api]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 #[serde(default)]
 pub struct HEVState {
     /// time step index
@@ -544,6 +554,7 @@ impl fmt::Display for FCOnCause {
 /// Options for controlling simulation behavior
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct HEVSimulationParams {
     /// [ReversibleEnergyStorage] per [FuelConverter]
     pub res_per_fuel_lim: si::Ratio,
@@ -595,7 +606,7 @@ impl Default for HEVPowertrainControls {
     }
 }
 
-impl SaveInterval for HEVPowertrainControls {
+impl HistoryMethods for HEVPowertrainControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => Ok(rgwdb.set_save_interval(save_interval)?),
@@ -606,6 +617,12 @@ impl SaveInterval for HEVPowertrainControls {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_interval(),
+            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.clear(),
             HEVPowertrainControls::Placeholder => todo!("Placeholder"),
         }
     }
@@ -861,6 +878,7 @@ for an HEV equipped with thermal models or superfluous otherwise",
 #[fastsim_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct RESGreedyWithDynamicBuffers {
     /// RES energy delta from minimum SOC corresponding to kinetic energy of
     /// vehicle at this speed that triggers ramp down in RES discharge.
@@ -917,7 +935,7 @@ pub struct RESGreedyWithDynamicBuffers {
     pub history: RGWDBStateHistoryVec,
 }
 
-impl SaveInterval for RESGreedyWithDynamicBuffers {
+impl HistoryMethods for RESGreedyWithDynamicBuffers {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
@@ -925,6 +943,10 @@ impl SaveInterval for RESGreedyWithDynamicBuffers {
 
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
+    }
+
+    fn clear(&mut self) {
+        self.history.clear();
     }
 }
 
@@ -953,6 +975,7 @@ impl SerdeAPI for RESGreedyWithDynamicBuffers {}
 #[fastsim_api]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 /// State for [RESGreedyWithDynamicBuffers ]
 pub struct RGWDBState {
     /// time step index

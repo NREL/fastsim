@@ -50,7 +50,7 @@ impl Init for CabinOption {
     }
 }
 impl SerdeAPI for CabinOption {}
-impl SaveInterval for CabinOption {
+impl HistoryMethods for CabinOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             CabinOption::LumpedCabin(lc) => lc.save_interval(),
@@ -63,6 +63,13 @@ impl SaveInterval for CabinOption {
             CabinOption::LumpedCabin(lc) => lc.set_save_interval(save_interval),
             CabinOption::LumpedCabinWithShell => todo!(),
             CabinOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            CabinOption::LumpedCabin(lc) => lc.clear(),
+            CabinOption::LumpedCabinWithShell => todo!(),
+            CabinOption::None => {}
         }
     }
 }
@@ -85,6 +92,7 @@ impl SetCumulative for CabinOption {
 )]
 #[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Basic single thermal capacitance cabin thermal model, including HVAC
 /// system and controls
 pub struct LumpedCabin {
@@ -113,13 +121,16 @@ impl SetCumulative for LumpedCabin {
 }
 impl SerdeAPI for LumpedCabin {}
 impl Init for LumpedCabin {}
-impl SaveInterval for LumpedCabin {
+impl HistoryMethods for LumpedCabin {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
     }
 }
 
@@ -202,7 +213,7 @@ impl LumpedCabin {
 
 #[fastsim_api]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct LumpedCabinState {
     /// time step counter
     pub i: usize,

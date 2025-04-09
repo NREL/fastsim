@@ -2,7 +2,7 @@
 Module containing functions and classes for easy interaction with PyMOO   
 """
 import numpy as np
-import pprint
+import pprint  # noqa: F401
 import numpy.typing as npt
 from typing import Tuple, Any, List, Callable, Dict, Optional, Union
 from pathlib import Path
@@ -90,7 +90,7 @@ class ModelObjectives(object):
               )
           )
           ```
-    - `param_fns` (Tuple[Callable]): 
+    - `param_fns_and_bounds` Tuple[Tuple[Callable], Tuple[Tuple[float, float]]]: 
       tuple containing functions to modify parameters and bounds for optimizer
       Example   
       ```
@@ -98,26 +98,20 @@ class ModelObjectives(object):
           sd_dict['veh']['pt_type']['HybridElectricVehicle']['res']['peak_eff'] = new_peak_eff
           return sd_dict
       ...
-      param_fns = (
-          new_peak_res_eff,
+      param_fns_and_bounds = (
+          (new_peak_res_eff, (100.0, 200.0)),
       )
       ``` 
-    - `bounds` (Tuple[Tuple[float, float]]):
-      Tuple of (min, max) bounds corresponding to self.param_fns -- e.g.
-      ```
-      bounds=(
-          (100.0, 200.0),
-      )
-      ```
     - `verbose` (bool): print more stuff or not
     """
 
     models: Dict[str, Dict]
     dfs: Dict[str, pd.DataFrame]
     obj_fns: Tuple[Callable] | Tuple[Tuple[Callable, Callable]]
-    param_fns: Tuple[Callable]
-    bounds: Tuple[Tuple[float, float]]
     constr_fns: Tuple[Callable] 
+    param_fns_and_bounds: Tuple[Tuple[Callable], Tuple[Tuple[float, float]]]
+    param_fns: Optional[Tuple[Callable]] = None 
+    bounds: Optional[Tuple[Tuple[float, float]]] = None
 
     # if True, prints timing and misc info
     verbose: bool = False
@@ -130,6 +124,8 @@ class ModelObjectives(object):
         assert self.n_obj is None, "`n_obj` is not intended to be user provided"
         assert len(self.dfs) == len(
             self.models), f"{len(self.dfs)} != {len(self.models)}"
+        self.param_fns: Tuple[Callable] = tuple([pb[0] for pb in self.param_fns_and_bounds])  # type: ignore[annotation-unchecked]
+        self.bounds: Tuple[Tuple[float, float]] = tuple([pb[1] for pb in self.param_fns_and_bounds])  # type: ignore[annotation-unchecked]
         assert len(self.bounds) == len(self.param_fns)
         self.n_obj = len(self.models) * len(self.obj_fns)
         self.n_constr = len(self.models) * len(self.constr_fns)
@@ -281,13 +277,8 @@ class ModelObjectives(object):
             return objectives, constraint_violations, solved_mods, unsolved_mods
         else:
             return objectives, constraint_violations
-
-    def params_and_bounds(self):
-        return [
-            (param_fn.__name__, bound_set) for (param_fn, bound_set) in zip(self.param_fns, self.bounds)
-        ]
-        
     
+
 if PYMOO_AVAILABLE:
     class CalibrationProblem(ElementwiseProblem):
         """
@@ -300,8 +291,6 @@ if PYMOO_AVAILABLE:
             elementwise_runner=LoopedElementwiseEvaluation(),
         ):
             self.mod_obj = mod_obj
-            assert len(self.mod_obj.bounds) == len(
-                self.mod_obj.param_fns), f"{len(self.mod_obj.bounds)} != {len(self.mod_obj.param_fns)}"
             super().__init__(
                 n_var=len(self.mod_obj.param_fns),
                 n_obj=self.mod_obj.n_obj,
