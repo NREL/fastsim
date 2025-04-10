@@ -7,11 +7,12 @@ n_iters = 5
 run_tests = os.environ.get("RUN_SPEEDUP", "false").lower() == "true"
 
 if run_tests:
+
     def test_hev_speedup():
         # minimum allowed f3 / f2 speed ratio
         min_speed_ratio_si_none = 2
         min_speed_ratio_si_1 = 1.4
-    
+
         # load 2016 Toyota Prius Two from file
         veh = fsim.Vehicle.from_resource("2016_TOYOTA_Prius_Two.yaml")
 
@@ -64,15 +65,19 @@ if run_tests:
         t_fsim3_median = np.median(t_fsim3_list)
         t_fsim3_no_save_median = np.median(t_fsim3_no_save_list)
 
-        assert t_fsim2_mean / t_fsim3_mean > min_speed_ratio_si_1, \
+        assert t_fsim2_mean / t_fsim3_mean > min_speed_ratio_si_1, (
             f"`min_speed_ratio_si_1`: {min_speed_ratio_si_1:.3G}, mean achieved ratio: {(t_fsim2_mean / t_fsim3_mean):.3G}"
-        assert t_fsim2_median / t_fsim3_median > min_speed_ratio_si_1, \
+        )
+        assert t_fsim2_median / t_fsim3_median > min_speed_ratio_si_1, (
             f"`min_speed_ratio_si_1`: {min_speed_ratio_si_1:.3G}, median achieved ratio: {(t_fsim2_median / t_fsim3_median):.3G}"
+        )
 
-        assert t_fsim2_mean / t_fsim3_no_save_mean > min_speed_ratio_si_none, \
+        assert t_fsim2_mean / t_fsim3_no_save_mean > min_speed_ratio_si_none, (
             f"`min_speed_ratio_si_none`: {min_speed_ratio_si_none:.3G}, mean achieved ratio: {(t_fsim2_mean / t_fsim3_no_save_mean):.3G}"
-        assert t_fsim2_median / t_fsim3_no_save_median > min_speed_ratio_si_none, \
+        )
+        assert t_fsim2_median / t_fsim3_no_save_median > min_speed_ratio_si_none, (
             f"`min_speed_ratio_si_none`: {min_speed_ratio_si_none:.3G}, median achieved ratio: {(t_fsim2_median / t_fsim3_no_save_median):.3G}"
+        )
 
     def test_conv_speedup():
         # minimum allowed f3 / f2 speed ratio
@@ -80,7 +85,7 @@ if run_tests:
         # relative to fastsim-2 with `save_interval` of `None`
         min_speed_ratio_si_none = 3.6
         min_speed_ratio_si_1 = 2.0
-    
+
         # load 2016 Toyota Prius Two from file
         veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
 
@@ -133,16 +138,22 @@ if run_tests:
         t_fsim3_median = np.median(t_fsim3_list)
         t_fsim3_no_save_median = np.median(t_fsim3_no_save_list)
 
-        assert t_fsim2_mean / t_fsim3_mean > min_speed_ratio_si_1, \
+        assert t_fsim2_mean / t_fsim3_mean > min_speed_ratio_si_1, (
             f"`min_speed_ratio_si_1`: {min_speed_ratio_si_1:.3G}, achieved ratio: {(t_fsim2_mean / t_fsim3_mean):.3G}"
-        assert t_fsim2_median / t_fsim3_median > min_speed_ratio_si_1, \
+        )
+        assert t_fsim2_median / t_fsim3_median > min_speed_ratio_si_1, (
             f"`min_speed_ratio_si_1`: {min_speed_ratio_si_1:.3G}, achieved ratio: {(t_fsim2_median / t_fsim3_median):.3G}"
+        )
 
-        assert t_fsim2_mean / t_fsim3_no_save_mean > min_speed_ratio_si_none, \
+        assert t_fsim2_mean / t_fsim3_no_save_mean > min_speed_ratio_si_none, (
             f"`min_speed_ratio_si_none`: {min_speed_ratio_si_none:.3G}, achieved ratio: {(t_fsim2_mean / t_fsim3_no_save_mean):.3G}"
-        assert t_fsim2_median / t_fsim3_no_save_median > min_speed_ratio_si_none, \
+        )
+        assert t_fsim2_median / t_fsim3_no_save_median > min_speed_ratio_si_none, (
             f"`min_speed_ratio_si_none`: {min_speed_ratio_si_none:.3G}, achieved ratio: {(t_fsim2_median / t_fsim3_no_save_median):.3G}"
+        )
+
 
 if __name__ == "__main__":
     import pytest
+
     pytest.main([__file__])

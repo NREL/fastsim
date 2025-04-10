@@ -7,7 +7,8 @@ import argparse
 # NOTE: REQUIRES PYTHON 3.9 OR NEWER!
 # https://docs.python.org/3/library/ast.html#ast.unparse
 
-class DocCopier(ast.NodeTransformer):    
+
+class DocCopier(ast.NodeTransformer):
     @staticmethod
     def make_docstring(node: ast.AST, docstring: str) -> ast.AST:
         # Only make docstring if not already present
@@ -39,8 +40,11 @@ ARG_DEFAULTS = {
     "backup_suffix": "_backup",
 }
 
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Programmatically copy Rust docstrings into .pyi file")
+    parser = argparse.ArgumentParser(
+        description="Programmatically copy Rust docstrings into .pyi file"
+    )
     parser.add_argument(
         "pyi_filepath",
         nargs="?",

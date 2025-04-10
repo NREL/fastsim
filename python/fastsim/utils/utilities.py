@@ -8,8 +8,10 @@ import datetime
 
 import fastsim as fsim
 
+
 def print_dt():
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
 
 def set_log_level(level: Union[str, int]) -> int:
     """
@@ -21,7 +23,7 @@ def set_log_level(level: Union[str, int]) -> int:
     ----------
     level: `str` | `int`
         Logging level to set. `str` level name or `int` logging level
-        
+
         =========== ================
         Level       Numeric value
         =========== ================
@@ -31,7 +33,7 @@ def set_log_level(level: Union[str, int]) -> int:
         INFO        20
         DEBUG       10
         NOTSET      0
-    
+
     Returns
     -------
     `int`
@@ -68,17 +70,19 @@ def set_log_level(level: Union[str, int]) -> int:
     fastsimrust_logger.setLevel(level)
     return previous_level
 
+
 def disable_logging() -> int:
     """
     Disable FASTSim logs from being shown by setting log level
     to CRITICAL+1 (51).
-    
+
     Returns
     -------
     `int`
         Previous log level
     """
     return set_log_level(logging.CRITICAL + 1)
+
 
 def enable_logging(level: Optional[Union[int, str]] = None) -> int:
     """
@@ -100,6 +104,7 @@ def enable_logging(level: Optional[Union[int, str]] = None) -> int:
         level = logging.WARNING
     return set_log_level(level)
 
+
 @contextmanager
 def with_logging(log_level="DEBUG"):
     """
@@ -108,7 +113,7 @@ def with_logging(log_level="DEBUG"):
 
     # Arguments
     - `log_level`: see levels in `set_log_level`
-    
+
     # Example:
     ``` python
     with fastsim.utils.suppress_logging():
@@ -121,14 +126,15 @@ def with_logging(log_level="DEBUG"):
         yield
     finally:
         set_log_level(previous_level)
-            
+
+
 @contextmanager
 def without_logging():
     """
     Disable, then re-enable FASTSim logging using a context manager.
     The log level is returned to its previous value.
     Logging is re-enabled even if the nested code throws an error.
-    
+
     Example:
     ``` python
     with fastsim.utils.without_logging():
@@ -141,26 +147,30 @@ def without_logging():
     finally:
         enable_logging(previous_level)
 
+
 def set_log_filename(filename: Union[str, Path]):
     handler = logging.FileHandler(filename)
     handler.setFormatter(logging.root.handlers[0].formatter)
     logging.getLogger("fastsim").addHandler(handler)
     logging.getLogger("fastsim.fastsimrust").addHandler(handler)
-    
-def copy_demo_files(path_for_copies: Path=Path("demos")):
+
+
+def copy_demo_files(path_for_copies: Path = Path("demos")):
     """
     Copies demo files from demos folder into specified local directory
     # Arguments
     - `path_for_copies`: path to copy files into (relative or absolute in)
     # Warning
-    Running this function will overwrite existing files with the same name in the specified directory, so 
+    Running this function will overwrite existing files with the same name in the specified directory, so
     make sure any files with changes you'd like to keep are renamed.
     """
     v = f"v{fsim.__version__}"
     current_demo_path = fsim.package_root() / "demos"
-    assert Path(path_for_copies).resolve() != Path(current_demo_path), "Can't copy demos inside site-packages"
-    demo_files = list(current_demo_path.glob('*demo*.py'))
-    test_demo_files = list(current_demo_path.glob('*test*.py'))
+    assert Path(path_for_copies).resolve() != Path(current_demo_path), (
+        "Can't copy demos inside site-packages"
+    )
+    demo_files = list(current_demo_path.glob("*demo*.py"))
+    test_demo_files = list(current_demo_path.glob("*test*.py"))
     for file in test_demo_files:
         demo_files.remove(file)
     for file in demo_files:
@@ -187,4 +197,3 @@ def copy_demo_files(path_for_copies: Path=Path("demos")):
                 file.seek(0)
                 file.writelines(file_content)
             print(f"Saved {dest_file.name} to {dest_file}")
-

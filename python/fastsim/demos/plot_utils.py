@@ -72,7 +72,9 @@ def get_uni_cycler(pair_attr: str = DEF_PAIR_ATTR):
     return uni_cycler
 
 
-def plot_bev_temperatures(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tuple[Figure, Axes]:
+def plot_bev_temperatures(
+    df: pd.DataFrame, save_figs: bool, show_plots: bool
+) -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Component Temperatures")
 
