@@ -162,14 +162,23 @@ impl HVACSystemForLumpedCabinAndRES {
             )
         );
 
-        let (te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb) = self.get_te_ref_and_deltas(
-            cab_state,
-            res_thrml_state,
-            te_cab_delta_vs_set,
-            te_cab_delta_vs_amb,
-            te_res_delta_vs_set,
-            te_res_delta_vs_amb,
-        )?;
+        let (te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb) =
+            self.state.mode.set_mode_and_get_te_for_cop(
+                cab_state,
+                res_thrml_state,
+                (
+                    te_cab_delta_vs_set,
+                    te_cab_delta_vs_amb,
+                    te_res_delta_vs_set,
+                    te_res_delta_vs_amb,
+                ),
+                (self.cabin_heat_source, self.te_deadband_cab),
+                (
+                    self.res_heat_source,
+                    self.res_cooling_source,
+                    self.te_deadband_res,
+                ),
+            )?;
 
         self.state.te_ref = te_ref;
         self.state.cop = self
@@ -232,377 +241,6 @@ impl HVACSystemForLumpedCabinAndRES {
             te_res_delta_vs_set,
             te_res_delta_vs_amb,
         )
-    }
-
-    fn get_te_ref_and_deltas(
-        &mut self,
-        cab_state: LumpedCabinState,
-        res_thrml_state: RESLumpedThermalState,
-        te_cab_delta_vs_set: Option<si::TemperatureInterval>,
-        te_cab_delta_vs_amb: si::TemperatureInterval,
-        te_res_delta_vs_set: Option<si::TemperatureInterval>,
-        te_res_delta_vs_amb: si::TemperatureInterval,
-    ) -> anyhow::Result<(
-        Option<si::Temperature>,
-        Option<si::TemperatureInterval>,
-        Option<si::TemperatureInterval>,
-    )> {
-        self.state.cabin_mode = HvacMode::Invalid;
-        self.state.res_mode = HvacMode::Invalid;
-        self.state.te_ref_component = TeRefComp::Invalid;
-
-        // NOTE: if `_` is used, order of match statements has an effect on
-        // which mode gets set because the `_` are greedy!
-        match (te_res_delta_vs_set, te_cab_delta_vs_set) {
-            (Some(te_res_delta_vs_set), Some(te_cab_delta_vs_set)) => {
-                match (
-                    te_res_delta_vs_set > si::TemperatureInterval::ZERO,
-                    te_res_delta_vs_set.abs() > self.te_deadband_res,
-                    te_cab_delta_vs_set > si::TemperatureInterval::ZERO,
-                    te_cab_delta_vs_set.abs() > self.te_deadband_cab,
-                ) {
-                    (true, true, true, true) => {
-                        // battery is hot and outside deadband
-                        // cabin is hot and outside the deadband
-                        self.state.cabin_mode = HvacMode::Cooling;
-                        (self.state.res_mode, self.state.te_ref_component) =
-                            match self.res_cooling_source {
-                                RESCoolingSource::HVAC => (
-                                    HvacMode::Cooling,
-                                    if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
-                                        TeRefComp::RES
-                                    } else {
-                                        TeRefComp::Cabin
-                                    },
-                                ),
-                                RESCoolingSource::None => (HvacMode::Inactive, TeRefComp::Cabin),
-                            }
-                    }
-                    (true, true, true, false) => {
-                        // battery is hot and outside deadband
-                        // cabin is hot and within the deadband
-                        self.state.cabin_mode = HvacMode::InsideDeadband;
-                        (self.state.res_mode, self.state.te_ref_component) =
-                            match self.res_cooling_source {
-                                RESCoolingSource::HVAC => (HvacMode::Cooling, TeRefComp::RES),
-                                RESCoolingSource::None => (HvacMode::Inactive, TeRefComp::None),
-                            };
-                    }
-                    (true, true, false, true) => {
-                        // battery is hot and outside deadband
-                        // cabin is cold and outside the deadband
-                        self.state.cabin_mode = HvacMode::Heating;
-                        (self.state.res_mode, self.state.te_ref_component) =
-                            match (self.cabin_heat_source, self.res_cooling_source) {
-                                (CabinHeatSource::HeatPump, RESCoolingSource::HVAC) => (
-                                    HvacMode::Cooling,
-                                    if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
-                                        TeRefComp::RES
-                                    } else {
-                                        TeRefComp::Cabin
-                                    },
-                                ),
-                                (CabinHeatSource::HeatPump, RESCoolingSource::None) => {
-                                    (HvacMode::Inactive, TeRefComp::Cabin)
-                                }
-                                (CabinHeatSource::ResistanceHeater, RESCoolingSource::HVAC) => {
-                                    (HvacMode::Cooling, TeRefComp::RES)
-                                }
-                                (CabinHeatSource::ResistanceHeater, RESCoolingSource::None) => {
-                                    (HvacMode::Inactive, TeRefComp::None)
-                                }
-                                (CabinHeatSource::FuelConverter, RESCoolingSource::HVAC) => {
-                                    (HvacMode::Cooling, TeRefComp::RES)
-                                }
-                                (CabinHeatSource::FuelConverter, RESCoolingSource::None) => {
-                                    (HvacMode::Inactive, TeRefComp::None)
-                                }
-                            };
-                    }
-                    (true, true, false, false) => {
-                        // battery is hot and outside deadband
-                        // cabin is cold and within the deadband
-                        self.state.cabin_mode = HvacMode::InsideDeadband;
-                        (self.state.res_mode, self.state.te_ref_component) =
-                            match self.res_cooling_source {
-                                RESCoolingSource::HVAC => (HvacMode::Cooling, TeRefComp::RES),
-                                RESCoolingSource::None => (HvacMode::Inactive, TeRefComp::None),
-                            }
-                    }
-                    (true, false, true, true) => {
-                        // battery is hot and within the deadband
-                        // cabin is hot and outside the deadband
-                        self.state.res_mode = match self.res_cooling_source {
-                            RESCoolingSource::HVAC => HvacMode::InsideDeadband,
-                            RESCoolingSource::None => HvacMode::Inactive,
-                        };
-                        self.state.cabin_mode = HvacMode::Cooling;
-                        self.state.te_ref_component = TeRefComp::Cabin;
-                    }
-                    (true, false, false, true) => {
-                        // battery is hot and within deadband
-                        // cabin is cold and outside the deadband
-                        self.state.res_mode = match self.res_cooling_source {
-                            RESCoolingSource::HVAC => HvacMode::InsideDeadband,
-                            RESCoolingSource::None => HvacMode::Inactive,
-                        };
-                        self.state.cabin_mode = HvacMode::Heating;
-                        self.state.te_ref_component = match self.cabin_heat_source {
-                            CabinHeatSource::HeatPump => TeRefComp::Cabin,
-                            _ => TeRefComp::None,
-                        }
-                    }
-                    (true, false, true, false) => {
-                        // battery is hot and within the deadband
-                        // cabin is hot  and within the deadband
-                        self.state.cabin_mode = HvacMode::InsideDeadband;
-                        self.state.res_mode = match self.res_cooling_source {
-                            RESCoolingSource::HVAC => HvacMode::InsideDeadband,
-                            RESCoolingSource::None => HvacMode::Inactive,
-                        };
-                        self.state.te_ref_component = TeRefComp::None;
-                    }
-                    (true, false, false, false) => {
-                        // battery is hot and within the deadband
-                        // cabin is cold and within the deadband
-                        self.state.cabin_mode = HvacMode::InsideDeadband;
-                        self.state.res_mode = match self.res_cooling_source {
-                            RESCoolingSource::HVAC => HvacMode::InsideDeadband,
-                            RESCoolingSource::None => HvacMode::Inactive,
-                        };
-                        self.state.te_ref_component = TeRefComp::None;
-                    }
-                    (false, true, true, true) => {
-                        // battery is cold and outside deadband
-                        // cabin is hot and outside the deadband
-                        self.state.cabin_mode = HvacMode::Cooling;
-                        (self.state.res_mode, self.state.te_ref_component) =
-                            match self.res_heat_source {
-                                RESHeatSource::HeatPump => (
-                                    HvacMode::Heating,
-                                    if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
-                                        TeRefComp::RES
-                                    } else {
-                                        TeRefComp::Cabin
-                                    },
-                                ),
-                                RESHeatSource::ResistanceHeater => {
-                                    (HvacMode::Heating, TeRefComp::Cabin)
-                                }
-                                RESHeatSource::None => (HvacMode::Inactive, TeRefComp::Cabin),
-                            }
-                    }
-                    (false, true, true, false) => {
-                        // battery is cold and outside the deadband
-                        // cabin is hot and within the deadband
-                        self.state.cabin_mode = HvacMode::InsideDeadband;
-                        (self.state.res_mode, self.state.te_ref_component) = match self
-                            .res_heat_source
-                        {
-                            RESHeatSource::HeatPump => (HvacMode::Heating, TeRefComp::RES),
-                            RESHeatSource::ResistanceHeater => (HvacMode::Heating, TeRefComp::None),
-                            RESHeatSource::None => (HvacMode::Inactive, TeRefComp::None),
-                        };
-                    }
-                    (false, true, false, true) => {
-                        // battery is cold and outside deadband
-                        // cabin is cold and outside the deadband
-                        self.state.cabin_mode = HvacMode::Heating;
-                        (self.state.res_mode, self.state.te_ref_component) =
-                            match (self.cabin_heat_source, self.res_heat_source) {
-                                (CabinHeatSource::HeatPump, RESHeatSource::HeatPump) => (
-                                    HvacMode::Heating,
-                                    if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
-                                        TeRefComp::RES
-                                    } else {
-                                        TeRefComp::Cabin
-                                    },
-                                ),
-                                (CabinHeatSource::HeatPump, RESHeatSource::ResistanceHeater) => {
-                                    (HvacMode::Heating, TeRefComp::Cabin)
-                                }
-                                (CabinHeatSource::HeatPump, RESHeatSource::None) => {
-                                    (HvacMode::Inactive, TeRefComp::Cabin)
-                                }
-                                (CabinHeatSource::FuelConverter, RESHeatSource::HeatPump) => {
-                                    (HvacMode::Heating, TeRefComp::RES)
-                                }
-                                (
-                                    CabinHeatSource::FuelConverter,
-                                    RESHeatSource::ResistanceHeater,
-                                ) => (HvacMode::Heating, TeRefComp::None),
-                                (CabinHeatSource::FuelConverter, RESHeatSource::None) => {
-                                    (HvacMode::Inactive, TeRefComp::None)
-                                }
-                                (CabinHeatSource::ResistanceHeater, RESHeatSource::HeatPump) => {
-                                    (HvacMode::Heating, TeRefComp::RES)
-                                }
-                                (
-                                    CabinHeatSource::ResistanceHeater,
-                                    RESHeatSource::ResistanceHeater,
-                                ) => (HvacMode::Heating, TeRefComp::None),
-                                (CabinHeatSource::ResistanceHeater, RESHeatSource::None) => {
-                                    (HvacMode::Inactive, TeRefComp::None)
-                                }
-                            }
-                    }
-                    (false, true, false, false) => {
-                        // battery is cold and outside deadband
-                        // cabin is cold and within the deadband
-                        self.state.cabin_mode = HvacMode::InsideDeadband;
-                        (self.state.res_mode, self.state.te_ref_component) =
-                            match self.res_heat_source {
-                                RESHeatSource::HeatPump => (
-                                    HvacMode::Heating,
-                                    if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
-                                        TeRefComp::RES
-                                    } else {
-                                        TeRefComp::Cabin
-                                    },
-                                ),
-                                RESHeatSource::ResistanceHeater => {
-                                    (HvacMode::Heating, TeRefComp::Cabin)
-                                }
-                                RESHeatSource::None => (HvacMode::Inactive, TeRefComp::Cabin),
-                            }
-                    }
-                    (false, false, true, true) => {
-                        // battery is cold and within deadband
-                        // cabin is hot and outside the deadband
-                        self.state.cabin_mode = HvacMode::Cooling;
-                        self.state.res_mode = match self.res_heat_source {
-                            RESHeatSource::HeatPump => HvacMode::InsideDeadband,
-                            RESHeatSource::ResistanceHeater => HvacMode::InsideDeadband,
-                            RESHeatSource::None => HvacMode::Inactive,
-                        };
-                        self.state.te_ref_component = TeRefComp::Cabin;
-                    }
-                    (false, false, true, false) => {
-                        // battery is cold and within deadband
-                        // cabin is hot and within the deadband
-                        self.state.cabin_mode = HvacMode::InsideDeadband;
-                        self.state.res_mode = match self.res_heat_source {
-                            RESHeatSource::HeatPump => HvacMode::InsideDeadband,
-                            RESHeatSource::ResistanceHeater => HvacMode::InsideDeadband,
-                            RESHeatSource::None => HvacMode::Inactive,
-                        };
-                        self.state.te_ref_component = TeRefComp::None;
-                    }
-                    (false, false, false, true) => {
-                        // battery is cold and within deadband
-                        // cabin is cold and outside the deadband
-                        self.state.res_mode = match self.res_heat_source {
-                            RESHeatSource::HeatPump => HvacMode::InsideDeadband,
-                            RESHeatSource::ResistanceHeater => HvacMode::InsideDeadband,
-                            RESHeatSource::None => HvacMode::Inactive,
-                        };
-                        (self.state.cabin_mode, self.state.te_ref_component) =
-                            match self.cabin_heat_source {
-                                CabinHeatSource::HeatPump => (HvacMode::Heating, TeRefComp::Cabin),
-                                _ => (HvacMode::Heating, TeRefComp::None),
-                            }
-                    }
-                    (false, false, false, false) => {
-                        // battery is cold and within deadband
-                        // cabin is cold and within the deadband
-                        self.state.cabin_mode = HvacMode::InsideDeadband;
-                        self.state.res_mode = match self.res_heat_source {
-                            RESHeatSource::HeatPump => HvacMode::InsideDeadband,
-                            RESHeatSource::ResistanceHeater => HvacMode::InsideDeadband,
-                            RESHeatSource::None => HvacMode::Inactive,
-                        };
-                        self.state.te_ref_component = TeRefComp::None;
-                    }
-                }
-            }
-            (Some(te_res_delta_vs_set), None) => {
-                // positive and outside the deadband
-                self.state.cabin_mode = HvacMode::Inactive;
-                (self.state.res_mode, self.state.te_ref_component) =
-                    if te_res_delta_vs_set > self.te_deadband_res {
-                        // positive  - i.e. cooling mode
-                        match self.res_cooling_source {
-                            RESCoolingSource::HVAC => (HvacMode::Cooling, TeRefComp::RES),
-                            RESCoolingSource::None => (HvacMode::Inactive, TeRefComp::None),
-                        }
-                    } else if te_res_delta_vs_set < -self.te_deadband_res {
-                        // negative -- i.e. heating mode
-                        match self.res_heat_source {
-                            RESHeatSource::HeatPump => (HvacMode::Heating, TeRefComp::RES),
-                            RESHeatSource::ResistanceHeater => (HvacMode::Heating, TeRefComp::None),
-                            RESHeatSource::None => (HvacMode::Inactive, TeRefComp::None),
-                        }
-                    } else {
-                        (
-                            // actual temperature is within deadband range of setpoint temperature
-                            HvacMode::InsideDeadband,
-                            TeRefComp::None,
-                        )
-                    }
-            }
-            (None, Some(te_cab_delta_vs_set)) => {
-                self.state.res_mode = HvacMode::Inactive;
-                // positive and outside the deadband
-                (self.state.cabin_mode, self.state.te_ref_component) =
-                    if te_cab_delta_vs_set > self.te_deadband_cab {
-                        (HvacMode::Cooling, TeRefComp::Cabin)
-                    } else if te_cab_delta_vs_set < -self.te_deadband_cab {
-                        (
-                            HvacMode::Heating,
-                            // negative -- i.e. heating mode
-                            match self.cabin_heat_source {
-                                CabinHeatSource::HeatPump => TeRefComp::Cabin,
-                                _ => TeRefComp::None,
-                            },
-                        )
-                    } else {
-                        (
-                            // actual temperature is within deadband range of setpoint temperature
-                            HvacMode::InsideDeadband,
-                            TeRefComp::None,
-                        )
-                    }
-            }
-            (None, None) => {
-                // thermal management is totally inactive
-                self.state.cabin_mode = HvacMode::Inactive;
-                self.state.res_mode = HvacMode::Inactive;
-                self.state.te_ref_component = TeRefComp::None;
-            }
-        }
-        ensure!(
-            !self.state.te_ref_component.is_invalid(),
-            format!("{}\n`te_ref_component` has not been updated", format_dbg!())
-        );
-        ensure!(
-            !self.state.cabin_mode.is_invalid(),
-            format!("{}\n`cabin_mode` has not been updated", format_dbg!())
-        );
-        ensure!(
-            !self.state.res_mode.is_invalid(),
-            format!("{}\n`res_mode` has not been updated", format_dbg!())
-        );
-
-        let (te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb): (
-            Option<si::Temperature>,
-            Option<si::TemperatureInterval>,
-            Option<si::TemperatureInterval>,
-        ) = match self.state.te_ref_component {
-            TeRefComp::Cabin => (
-                Some(cab_state.temperature),
-                te_cab_delta_vs_set,
-                Some(te_cab_delta_vs_amb),
-            ),
-            TeRefComp::RES => (
-                Some(res_thrml_state.temperature),
-                te_res_delta_vs_set,
-                Some(te_res_delta_vs_amb),
-            ),
-            TeRefComp::None => (None, None, None),
-            TeRefComp::Invalid => unreachable!(),
-        };
-
-        Ok((te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb))
     }
 
     /// Returns ideal coefficient of performance (COP) for vapor compression system (VCS)
@@ -684,7 +322,7 @@ impl HVACSystemForLumpedCabinAndRES {
 
         match self.te_set_cab {
             Some(te_set_cab) => {
-                match self.state.cabin_mode {
+                match self.state.mode.cabin_mode {
                     HvacMode::InsideDeadband => {
                         self.state.pwr_i_cab = si::Power::ZERO; // reset to 0.0
                         self.state.pwr_p_cab = si::Power::ZERO;
@@ -899,7 +537,7 @@ impl HVACSystemForLumpedCabinAndRES {
 
         match self.te_set_res {
             Some(te_set_res) => {
-                match self.state.res_mode {
+                match self.state.mode.res_mode {
                     HvacMode::InsideDeadband => {
                         // inside deadband; no hvac power is needed
                         self.state.pwr_i_res = si::Power::ZERO;
@@ -1133,8 +771,6 @@ pub struct HVACSystemForLumpedCabinAndRESState {
     /// Reference temperature used to calculate coefficient of performance (i.e.
     /// efficiency) of vapor compression cycle
     pub te_ref: Option<si::Temperature>,
-    /// Component corresponding to [te_ref]
-    pub te_ref_component: TeRefComp,
     /// Requested aux power demand from [Vehicle::hvac] system for cabin thermal
     /// managemement.
     pub pwr_aux_for_cab_hvac_req: si::Power,
@@ -1180,13 +816,400 @@ pub struct HVACSystemForLumpedCabinAndRESState {
     pub pwr_thrml_hvac_to_res: si::Power,
     /// Cumulative thermal energy from HVAC to [ReversibleEnergyStorage]
     pub energy_thrml_hvac_to_res: si::Energy,
+    pub mode: HvacModeForLumpedCabinAndRes,
+}
+impl Init for HVACSystemForLumpedCabinAndRESState {}
+impl SerdeAPI for HVACSystemForLumpedCabinAndRESState {}
+
+#[fastsim_api]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
+)]
+#[serde(default)]
+#[serde(deny_unknown_fields)]
+pub struct HvacModeForLumpedCabinAndRes {
+    /// Component corresponding to [te_ref]
+    pub te_ref_component: TeRefComp,
     /// Current mode of cabin hvac
     pub cabin_mode: HvacMode,
     /// Current mode of [ReversibleEnergyStorage] hvac
     pub res_mode: HvacMode,
 }
-impl Init for HVACSystemForLumpedCabinAndRESState {}
-impl SerdeAPI for HVACSystemForLumpedCabinAndRESState {}
+impl Init for HvacModeForLumpedCabinAndRes {}
+impl SerdeAPI for HvacModeForLumpedCabinAndRes {}
+impl HvacModeForLumpedCabinAndRes {
+    fn set_mode_and_get_te_for_cop(
+        &mut self,
+        cab_state: LumpedCabinState,
+        res_thrml_state: RESLumpedThermalState,
+        te_deltas: (
+            Option<si::TemperatureInterval>,
+            si::TemperatureInterval,
+            Option<si::TemperatureInterval>,
+            si::TemperatureInterval,
+        ),
+        cab_params: (CabinHeatSource, si::TemperatureInterval),
+        res_params: (RESHeatSource, RESCoolingSource, si::TemperatureInterval),
+    ) -> anyhow::Result<(
+        Option<si::Temperature>,
+        Option<si::TemperatureInterval>,
+        Option<si::TemperatureInterval>,
+    )> {
+        let (te_cab_delta_vs_set, te_cab_delta_vs_amb, te_res_delta_vs_set, te_res_delta_vs_amb) =
+            te_deltas;
+
+        let (cabin_heat_source, te_deadband_cab) = cab_params;
+        let (res_heat_source, res_cooling_source, te_deadband_res) = res_params;
+
+        self.cabin_mode = HvacMode::Invalid;
+        self.res_mode = HvacMode::Invalid;
+        self.te_ref_component = TeRefComp::Invalid;
+
+        // NOTE: if `_` is used, order of match statements has an effect on
+        // which mode gets set because the `_` are greedy!
+        match (te_res_delta_vs_set, te_cab_delta_vs_set) {
+            (Some(te_res_delta_vs_set), Some(te_cab_delta_vs_set)) => {
+                match (
+                    te_res_delta_vs_set > si::TemperatureInterval::ZERO,
+                    te_res_delta_vs_set.abs() > te_deadband_res,
+                    te_cab_delta_vs_set > si::TemperatureInterval::ZERO,
+                    te_cab_delta_vs_set.abs() > te_deadband_cab,
+                ) {
+                    (true, true, true, true) => {
+                        // battery is hot and outside deadband
+                        // cabin is hot and outside the deadband
+                        self.cabin_mode = HvacMode::Cooling;
+                        (self.res_mode, self.te_ref_component) = match res_cooling_source {
+                            RESCoolingSource::HVAC => (
+                                HvacMode::Cooling,
+                                if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
+                                    TeRefComp::RES
+                                } else {
+                                    TeRefComp::Cabin
+                                },
+                            ),
+                            RESCoolingSource::None => (HvacMode::Inactive, TeRefComp::Cabin),
+                        }
+                    }
+                    (true, true, true, false) => {
+                        // battery is hot and outside deadband
+                        // cabin is hot and within the deadband
+                        self.cabin_mode = HvacMode::InsideDeadband;
+                        (self.res_mode, self.te_ref_component) = match res_cooling_source {
+                            RESCoolingSource::HVAC => (HvacMode::Cooling, TeRefComp::RES),
+                            RESCoolingSource::None => (HvacMode::Inactive, TeRefComp::None),
+                        };
+                    }
+                    (true, true, false, true) => {
+                        // battery is hot and outside deadband
+                        // cabin is cold and outside the deadband
+                        self.cabin_mode = HvacMode::Heating;
+                        (self.res_mode, self.te_ref_component) =
+                            match (cabin_heat_source, res_cooling_source) {
+                                (CabinHeatSource::HeatPump, RESCoolingSource::HVAC) => (
+                                    HvacMode::Cooling,
+                                    if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
+                                        TeRefComp::RES
+                                    } else {
+                                        TeRefComp::Cabin
+                                    },
+                                ),
+                                (CabinHeatSource::HeatPump, RESCoolingSource::None) => {
+                                    (HvacMode::Inactive, TeRefComp::Cabin)
+                                }
+                                (CabinHeatSource::ResistanceHeater, RESCoolingSource::HVAC) => {
+                                    (HvacMode::Cooling, TeRefComp::RES)
+                                }
+                                (CabinHeatSource::ResistanceHeater, RESCoolingSource::None) => {
+                                    (HvacMode::Inactive, TeRefComp::None)
+                                }
+                                (CabinHeatSource::FuelConverter, RESCoolingSource::HVAC) => {
+                                    (HvacMode::Cooling, TeRefComp::RES)
+                                }
+                                (CabinHeatSource::FuelConverter, RESCoolingSource::None) => {
+                                    (HvacMode::Inactive, TeRefComp::None)
+                                }
+                            };
+                    }
+                    (true, true, false, false) => {
+                        // battery is hot and outside deadband
+                        // cabin is cold and within the deadband
+                        self.cabin_mode = HvacMode::InsideDeadband;
+                        (self.res_mode, self.te_ref_component) = match res_cooling_source {
+                            RESCoolingSource::HVAC => (HvacMode::Cooling, TeRefComp::RES),
+                            RESCoolingSource::None => (HvacMode::Inactive, TeRefComp::None),
+                        }
+                    }
+                    (true, false, true, true) => {
+                        // battery is hot and within the deadband
+                        // cabin is hot and outside the deadband
+                        self.res_mode = match res_cooling_source {
+                            RESCoolingSource::HVAC => HvacMode::InsideDeadband,
+                            RESCoolingSource::None => HvacMode::Inactive,
+                        };
+                        self.cabin_mode = HvacMode::Cooling;
+                        self.te_ref_component = TeRefComp::Cabin;
+                    }
+                    (true, false, false, true) => {
+                        // battery is hot and within deadband
+                        // cabin is cold and outside the deadband
+                        self.res_mode = match res_cooling_source {
+                            RESCoolingSource::HVAC => HvacMode::InsideDeadband,
+                            RESCoolingSource::None => HvacMode::Inactive,
+                        };
+                        self.cabin_mode = HvacMode::Heating;
+                        self.te_ref_component = match cabin_heat_source {
+                            CabinHeatSource::HeatPump => TeRefComp::Cabin,
+                            _ => TeRefComp::None,
+                        }
+                    }
+                    (true, false, true, false) => {
+                        // battery is hot and within the deadband
+                        // cabin is hot  and within the deadband
+                        self.cabin_mode = HvacMode::InsideDeadband;
+                        self.res_mode = match res_cooling_source {
+                            RESCoolingSource::HVAC => HvacMode::InsideDeadband,
+                            RESCoolingSource::None => HvacMode::Inactive,
+                        };
+                        self.te_ref_component = TeRefComp::None;
+                    }
+                    (true, false, false, false) => {
+                        // battery is hot and within the deadband
+                        // cabin is cold and within the deadband
+                        self.cabin_mode = HvacMode::InsideDeadband;
+                        self.res_mode = match res_cooling_source {
+                            RESCoolingSource::HVAC => HvacMode::InsideDeadband,
+                            RESCoolingSource::None => HvacMode::Inactive,
+                        };
+                        self.te_ref_component = TeRefComp::None;
+                    }
+                    (false, true, true, true) => {
+                        // battery is cold and outside deadband
+                        // cabin is hot and outside the deadband
+                        self.cabin_mode = HvacMode::Cooling;
+                        (self.res_mode, self.te_ref_component) = match res_heat_source {
+                            RESHeatSource::HeatPump => (
+                                HvacMode::Heating,
+                                if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
+                                    TeRefComp::RES
+                                } else {
+                                    TeRefComp::Cabin
+                                },
+                            ),
+                            RESHeatSource::ResistanceHeater => {
+                                (HvacMode::Heating, TeRefComp::Cabin)
+                            }
+                            RESHeatSource::None => (HvacMode::Inactive, TeRefComp::Cabin),
+                        }
+                    }
+                    (false, true, true, false) => {
+                        // battery is cold and outside the deadband
+                        // cabin is hot and within the deadband
+                        self.cabin_mode = HvacMode::InsideDeadband;
+                        (self.res_mode, self.te_ref_component) = match res_heat_source {
+                            RESHeatSource::HeatPump => (HvacMode::Heating, TeRefComp::RES),
+                            RESHeatSource::ResistanceHeater => (HvacMode::Heating, TeRefComp::None),
+                            RESHeatSource::None => (HvacMode::Inactive, TeRefComp::None),
+                        };
+                    }
+                    (false, true, false, true) => {
+                        // battery is cold and outside deadband
+                        // cabin is cold and outside the deadband
+                        self.cabin_mode = HvacMode::Heating;
+                        (self.res_mode, self.te_ref_component) =
+                            match (cabin_heat_source, res_heat_source) {
+                                (CabinHeatSource::HeatPump, RESHeatSource::HeatPump) => (
+                                    HvacMode::Heating,
+                                    if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
+                                        TeRefComp::RES
+                                    } else {
+                                        TeRefComp::Cabin
+                                    },
+                                ),
+                                (CabinHeatSource::HeatPump, RESHeatSource::ResistanceHeater) => {
+                                    (HvacMode::Heating, TeRefComp::Cabin)
+                                }
+                                (CabinHeatSource::HeatPump, RESHeatSource::None) => {
+                                    (HvacMode::Inactive, TeRefComp::Cabin)
+                                }
+                                (CabinHeatSource::FuelConverter, RESHeatSource::HeatPump) => {
+                                    (HvacMode::Heating, TeRefComp::RES)
+                                }
+                                (
+                                    CabinHeatSource::FuelConverter,
+                                    RESHeatSource::ResistanceHeater,
+                                ) => (HvacMode::Heating, TeRefComp::None),
+                                (CabinHeatSource::FuelConverter, RESHeatSource::None) => {
+                                    (HvacMode::Inactive, TeRefComp::None)
+                                }
+                                (CabinHeatSource::ResistanceHeater, RESHeatSource::HeatPump) => {
+                                    (HvacMode::Heating, TeRefComp::RES)
+                                }
+                                (
+                                    CabinHeatSource::ResistanceHeater,
+                                    RESHeatSource::ResistanceHeater,
+                                ) => (HvacMode::Heating, TeRefComp::None),
+                                (CabinHeatSource::ResistanceHeater, RESHeatSource::None) => {
+                                    (HvacMode::Inactive, TeRefComp::None)
+                                }
+                            }
+                    }
+                    (false, true, false, false) => {
+                        // battery is cold and outside deadband
+                        // cabin is cold and within the deadband
+                        self.cabin_mode = HvacMode::InsideDeadband;
+                        (self.res_mode, self.te_ref_component) = match res_heat_source {
+                            RESHeatSource::HeatPump => (
+                                HvacMode::Heating,
+                                if te_res_delta_vs_amb.abs() > te_cab_delta_vs_amb.abs() {
+                                    TeRefComp::RES
+                                } else {
+                                    TeRefComp::Cabin
+                                },
+                            ),
+                            RESHeatSource::ResistanceHeater => {
+                                (HvacMode::Heating, TeRefComp::Cabin)
+                            }
+                            RESHeatSource::None => (HvacMode::Inactive, TeRefComp::Cabin),
+                        }
+                    }
+                    (false, false, true, true) => {
+                        // battery is cold and within deadband
+                        // cabin is hot and outside the deadband
+                        self.cabin_mode = HvacMode::Cooling;
+                        self.res_mode = match res_heat_source {
+                            RESHeatSource::HeatPump => HvacMode::InsideDeadband,
+                            RESHeatSource::ResistanceHeater => HvacMode::InsideDeadband,
+                            RESHeatSource::None => HvacMode::Inactive,
+                        };
+                        self.te_ref_component = TeRefComp::Cabin;
+                    }
+                    (false, false, true, false) => {
+                        // battery is cold and within deadband
+                        // cabin is hot and within the deadband
+                        self.cabin_mode = HvacMode::InsideDeadband;
+                        self.res_mode = match res_heat_source {
+                            RESHeatSource::HeatPump => HvacMode::InsideDeadband,
+                            RESHeatSource::ResistanceHeater => HvacMode::InsideDeadband,
+                            RESHeatSource::None => HvacMode::Inactive,
+                        };
+                        self.te_ref_component = TeRefComp::None;
+                    }
+                    (false, false, false, true) => {
+                        // battery is cold and within deadband
+                        // cabin is cold and outside the deadband
+                        self.res_mode = match res_heat_source {
+                            RESHeatSource::HeatPump => HvacMode::InsideDeadband,
+                            RESHeatSource::ResistanceHeater => HvacMode::InsideDeadband,
+                            RESHeatSource::None => HvacMode::Inactive,
+                        };
+                        (self.cabin_mode, self.te_ref_component) = match cabin_heat_source {
+                            CabinHeatSource::HeatPump => (HvacMode::Heating, TeRefComp::Cabin),
+                            _ => (HvacMode::Heating, TeRefComp::None),
+                        }
+                    }
+                    (false, false, false, false) => {
+                        // battery is cold and within deadband
+                        // cabin is cold and within the deadband
+                        self.cabin_mode = HvacMode::InsideDeadband;
+                        self.res_mode = match res_heat_source {
+                            RESHeatSource::HeatPump => HvacMode::InsideDeadband,
+                            RESHeatSource::ResistanceHeater => HvacMode::InsideDeadband,
+                            RESHeatSource::None => HvacMode::Inactive,
+                        };
+                        self.te_ref_component = TeRefComp::None;
+                    }
+                }
+            }
+            (Some(te_res_delta_vs_set), None) => {
+                // positive and outside the deadband
+                self.cabin_mode = HvacMode::Inactive;
+                (self.res_mode, self.te_ref_component) = if te_res_delta_vs_set > te_deadband_res {
+                    // positive  - i.e. cooling mode
+                    match res_cooling_source {
+                        RESCoolingSource::HVAC => (HvacMode::Cooling, TeRefComp::RES),
+                        RESCoolingSource::None => (HvacMode::Inactive, TeRefComp::None),
+                    }
+                } else if te_res_delta_vs_set < -te_deadband_res {
+                    // negative -- i.e. heating mode
+                    match res_heat_source {
+                        RESHeatSource::HeatPump => (HvacMode::Heating, TeRefComp::RES),
+                        RESHeatSource::ResistanceHeater => (HvacMode::Heating, TeRefComp::None),
+                        RESHeatSource::None => (HvacMode::Inactive, TeRefComp::None),
+                    }
+                } else {
+                    (
+                        // actual temperature is within deadband range of setpoint temperature
+                        HvacMode::InsideDeadband,
+                        TeRefComp::None,
+                    )
+                }
+            }
+            (None, Some(te_cab_delta_vs_set)) => {
+                self.res_mode = HvacMode::Inactive;
+                // positive and outside the deadband
+                (self.cabin_mode, self.te_ref_component) = if te_cab_delta_vs_set > te_deadband_cab
+                {
+                    (HvacMode::Cooling, TeRefComp::Cabin)
+                } else if te_cab_delta_vs_set < -te_deadband_cab {
+                    (
+                        HvacMode::Heating,
+                        // negative -- i.e. heating mode
+                        match cabin_heat_source {
+                            CabinHeatSource::HeatPump => TeRefComp::Cabin,
+                            _ => TeRefComp::None,
+                        },
+                    )
+                } else {
+                    (
+                        // actual temperature is within deadband range of setpoint temperature
+                        HvacMode::InsideDeadband,
+                        TeRefComp::None,
+                    )
+                }
+            }
+            (None, None) => {
+                // thermal management is totally inactive
+                self.cabin_mode = HvacMode::Inactive;
+                self.res_mode = HvacMode::Inactive;
+                self.te_ref_component = TeRefComp::None;
+            }
+        }
+        ensure!(
+            !self.te_ref_component.is_invalid(),
+            format!("{}\n`te_ref_component` has not been updated", format_dbg!())
+        );
+        ensure!(
+            !self.cabin_mode.is_invalid(),
+            format!("{}\n`cabin_mode` has not been updated", format_dbg!())
+        );
+        ensure!(
+            !self.res_mode.is_invalid(),
+            format!("{}\n`res_mode` has not been updated", format_dbg!())
+        );
+
+        let (te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb): (
+            Option<si::Temperature>,
+            Option<si::TemperatureInterval>,
+            Option<si::TemperatureInterval>,
+        ) = match self.te_ref_component {
+            TeRefComp::Cabin => (
+                Some(cab_state.temperature),
+                te_cab_delta_vs_set,
+                Some(te_cab_delta_vs_amb),
+            ),
+            TeRefComp::RES => (
+                Some(res_thrml_state.temperature),
+                te_res_delta_vs_set,
+                Some(te_res_delta_vs_amb),
+            ),
+            TeRefComp::None => (None, None, None),
+            TeRefComp::Invalid => unreachable!(),
+        };
+
+        Ok((te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb))
+    }
+}
 
 #[derive(
     Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
