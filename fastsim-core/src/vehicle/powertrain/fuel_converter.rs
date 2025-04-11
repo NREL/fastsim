@@ -218,10 +218,11 @@ impl FuelConverter {
             // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
-        self.state.pwr_out_max =
-            (self.state.pwr_prop + self.state.pwr_aux + self.pwr_out_max / self.pwr_ramp_lag * dt)
-                .min(self.pwr_out_max)
-                .max(self.pwr_out_max_init);
+        self.state.pwr_out_max = (self.state.pwr_prop
+            + self.state.pwr_aux
+            + *self.pwr_out_max.get()? / self.pwr_ramp_lag * dt)
+            .min(self.pwr_out_max)
+            .max(self.pwr_out_max_init);
         Ok(())
     }
 
@@ -478,9 +479,7 @@ impl FuelConverter {
 // }
 
 #[fastsim_api]
-#[derive(
-    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
-)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
@@ -488,7 +487,7 @@ pub struct FuelConverterState {
     /// time step index
     pub i: usize,
     /// max total output power fc can produce at current time
-    pub pwr_out_max: si::Power,
+    pub pwr_out_max: TrackedState<si::Power>,
     /// max propulsion power fc can produce at current time
     pub pwr_prop_max: si::Power,
     /// efficiency evaluated at current demand

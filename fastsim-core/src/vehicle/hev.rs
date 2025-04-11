@@ -772,7 +772,8 @@ fn handle_fc_on_causes_for_pwr_demand(
         .frac_pwr_demand_fc_forced_on
         .with_context(|| format_dbg!())?;
     if pwr_out_req
-        > frac_pwr_demand_fc_forced_on * (em_state.pwr_mech_fwd_out_max + fc_state.pwr_out_max)
+        > frac_pwr_demand_fc_forced_on
+            * (em_state.pwr_mech_fwd_out_max + *fc_state.pwr_out_max.get()?)
     {
         hev_state
             .fc_on_causes
