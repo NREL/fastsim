@@ -225,7 +225,7 @@ pt_type:
       save_interval: 1
       state:
         i: 0
-        pwr_out_max_watts: 0.0
+        pwr_out_max: ~
         pwr_prop_max_watts: 0.0
         eff: 0.0
         pwr_prop_watts: 0.0

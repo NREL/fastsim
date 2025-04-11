@@ -15,7 +15,7 @@ pub enum CabinOption {
     #[default]
     None,
 }
-impl SaveState for CabinOption {
+impl StateMethods for CabinOption {
     fn save_state(&mut self) {
         match self {
             Self::LumpedCabin(lc) => lc.save_state(),
@@ -24,6 +24,16 @@ impl SaveState for CabinOption {
             }
             Self::None => {}
         }
+    }
+    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => lc.check_and_reset()?,
+            Self::LumpedCabinWithShell => {
+                todo!()
+            }
+            Self::None => {}
+        }
+        Ok(())
     }
 }
 impl Step for CabinOption {

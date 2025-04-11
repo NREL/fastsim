@@ -308,13 +308,21 @@ impl PowertrainType {
     }
 }
 
-impl SaveState for PowertrainType {
+impl StateMethods for PowertrainType {
     fn save_state(&mut self) {
         match self {
             Self::ConventionalVehicle(conv) => conv.save_state(),
             Self::HybridElectricVehicle(hev) => hev.save_state(),
             Self::BatteryElectricVehicle(bev) => bev.save_state(),
         }
+    }
+    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => conv.check_and_reset()?,
+            Self::HybridElectricVehicle(hev) => hev.check_and_reset()?,
+            Self::BatteryElectricVehicle(bev) => bev.check_and_reset()?,
+        }
+        Ok(())
     }
 }
 

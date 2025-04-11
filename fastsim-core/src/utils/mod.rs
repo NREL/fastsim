@@ -384,14 +384,16 @@ mod tests {
     }
 }
 
+#[allow(dead_code)]
 #[derive(PartialEq, Clone, Debug, Default)]
 /// Struct for storing state variable and ensuring one mutation per
 /// initialization or reset
 pub(crate) struct TrackedState<T: std::fmt::Debug + Clone + PartialEq>(Option<T>);
 
+#[allow(dead_code)]
 impl<T> TrackedState<T>
 where
-    T: std::fmt::Debug + Clone + PartialEq + for<'de> Deserialize<'de> + Serialize,
+    T: std::fmt::Debug + Clone + PartialEq,
 {
     // Not that `anyhow::Error` is fine here because this should result only in
     // logic errors and not runtime errors for end users
@@ -401,12 +403,18 @@ where
         Ok(())
     }
 
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         self.0 = None;
     }
 
-    pub fn check(&self) -> anyhow::Result<()> {
+    fn check(&self) -> anyhow::Result<()> {
         ensure!(self.0.is_some(), "State variable was not updated!");
+        Ok(())
+    }
+
+    pub fn check_and_reset(&mut self) -> anyhow::Result<()> {
+        self.check()?;
+        self.reset();
         Ok(())
     }
 
@@ -491,5 +499,56 @@ where
         self.0
             .as_ref()
             .ok_or(anyhow!("State variable was not updated!"))
+    }
+}
+
+#[cfg(test)]
+mod test_tracked_state {
+    use super::*;
+    #[test]
+    #[should_panic]
+    fn test_that_update_can_happen_only_once() {
+        let mut pwr = TrackedState::<si::Power>::default();
+        let mut energy = TrackedState::<si::Energy>::default();
+        let mut dt = TrackedState::<si::Time>::default();
+
+        pwr.update(si::Power::new::<si::watt>(1.0)).unwrap();
+        dt.update(si::Time::new::<si::second>(1.0)).unwrap();
+        energy
+            .update(*pwr.get().unwrap() * *dt.get().unwrap())
+            .unwrap();
+
+        pwr.update(si::Power::new::<si::watt>(2.0)).unwrap();
+    }
+
+    #[test]
+    fn test_that_reset_and_check_work() {
+        let mut pwr = TrackedState::<si::Power>::default();
+        let mut energy = TrackedState::<si::Energy>::default();
+        let mut dt = TrackedState::<si::Time>::default();
+
+        pwr.update(si::Power::new::<si::watt>(1.0)).unwrap();
+        dt.update(si::Time::new::<si::second>(1.0)).unwrap();
+        energy
+            .update(*pwr.get().unwrap() * *dt.get().unwrap())
+            .unwrap();
+
+        pwr.check().unwrap();
+        dt.check().unwrap();
+        energy.check().unwrap();
+
+        pwr.reset();
+        dt.reset();
+        energy.reset();
+
+        pwr.update(si::Power::new::<si::watt>(1.0)).unwrap();
+        dt.update(si::Time::new::<si::second>(1.0)).unwrap();
+        energy
+            .update(*pwr.get().unwrap() * *dt.get().unwrap())
+            .unwrap();
+
+        pwr.check().unwrap();
+        dt.check().unwrap();
+        energy.check().unwrap();
     }
 }

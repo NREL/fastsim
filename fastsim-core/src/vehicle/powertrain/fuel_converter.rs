@@ -218,11 +218,11 @@ impl FuelConverter {
             // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
-        self.state.pwr_out_max = (self.state.pwr_prop
-            + self.state.pwr_aux
-            + *self.pwr_out_max.get()? / self.pwr_ramp_lag * dt)
-            .min(self.pwr_out_max)
-            .max(self.pwr_out_max_init);
+        self.state.pwr_out_max.update(
+            (self.state.pwr_prop + self.state.pwr_aux + self.pwr_out_max / self.pwr_ramp_lag * dt)
+                .min(self.pwr_out_max)
+                .max(self.pwr_out_max_init),
+        )?;
         Ok(())
     }
 
@@ -239,7 +239,7 @@ impl FuelConverter {
             )
         );
         self.state.pwr_aux = pwr_aux;
-        self.state.pwr_prop_max = self.state.pwr_out_max - pwr_aux;
+        self.state.pwr_prop_max = *self.state.pwr_out_max.get()? - pwr_aux;
         Ok(())
     }
 
@@ -529,12 +529,19 @@ pub enum FuelConverterThermalOption {
     None,
 }
 
-impl SaveState for FuelConverterThermalOption {
+impl StateMethods for FuelConverterThermalOption {
     fn save_state(&mut self) {
         match self {
             Self::FuelConverterThermal(fct) => fct.save_state(),
             Self::None => {}
         }
+    }
+    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+        match self {
+            Self::FuelConverterThermal(fct) => fct.check_and_reset()?,
+            Self::None => {}
+        }
+        Ok(())
     }
 }
 impl Step for FuelConverterThermalOption {
