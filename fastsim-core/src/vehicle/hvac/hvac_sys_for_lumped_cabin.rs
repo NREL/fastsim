@@ -7,7 +7,7 @@ use super::*;
         Default::default()
     }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[serde(deny_unknown_fields)]
 /// HVAC system for [LumpedCabin]
 pub struct HVACSystemForLumpedCabin {

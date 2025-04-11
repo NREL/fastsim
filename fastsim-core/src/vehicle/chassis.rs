@@ -19,7 +19,7 @@ impl SerdeAPI for DriveTypes {}
 impl Init for DriveTypes {}
 
 #[fastsim_api]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle

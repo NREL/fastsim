@@ -55,7 +55,7 @@ use crate::pyo3::*;
         Ok(())
     }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power

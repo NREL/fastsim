@@ -4,7 +4,7 @@ mod cumu_method_derive;
 mod cycle_derive;
 mod fastsim_api;
 mod history_vec_derive;
-mod hm_derive;
+mod sm_derive;
 mod timer;
 mod utilities;
 
@@ -45,9 +45,9 @@ pub fn cumu_method_derive(input: TokenStream) -> TokenStream {
     cumu_method_derive::cumu_method_derive(input)
 }
 
-#[proc_macro_derive(HistoryMethods, attributes(has_state))]
+#[proc_macro_derive(StateMethods, attributes(has_state))]
 /// Generate `step` and `save_state` methods that work for struct and any
 /// nested fields with the `#[has_state]` attribute.
-pub fn history_methods_derive(input: TokenStream) -> TokenStream {
-    hm_derive::history_methods_derive(input)
+pub fn state_methods_derive(input: TokenStream) -> TokenStream {
+    sm_derive::state_methods_derive(input)
 }

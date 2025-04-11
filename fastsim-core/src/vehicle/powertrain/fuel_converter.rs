@@ -51,7 +51,7 @@ use std::f64::consts::PI;
         self.specific_pwr.map(|x| x.get::<si::kilowatt_per_kilogram>())
     }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 /// Struct for modeling [FuelConverter] (e.g. engine, fuel cell.) thermal plant
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -84,6 +84,7 @@ pub struct FuelConverter {
     pub save_interval: Option<usize>,
     /// struct for tracking current state
     #[serde(default)]
+    #[has_state]
     pub state: FuelConverterState,
     /// Custom vector of [Self::state]
     #[serde(
@@ -222,6 +223,7 @@ impl FuelConverter {
             (self.state.pwr_prop + self.state.pwr_aux + self.pwr_out_max / self.pwr_ramp_lag * dt)
                 .min(self.pwr_out_max)
                 .max(self.pwr_out_max_init),
+            format_dbg!(),
         )?;
         Ok(())
     }
@@ -516,6 +518,20 @@ pub struct FuelConverterState {
 
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
+impl StateMethods for FuelConverterState {
+    fn save_state(&mut self) {
+        // this does not need to do anything
+    }
+    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+        self.pwr_out_max.check_and_reset()?;
+        Ok(())
+    }
+}
+impl Step for FuelConverterState {
+    fn step(&mut self) {
+        // this is redundant and should not do anything
+    }
+}
 
 /// Options for handling [FuelConverter] thermal model
 #[derive(
@@ -647,7 +663,7 @@ impl FuelConverterThermalOption {
         Default::default()
     }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for modeling Fuel Converter (e.g. engine, fuel cell.)

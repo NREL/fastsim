@@ -90,7 +90,7 @@ impl Init for AuxSource {}
         self.clear()
     }
 )]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle
@@ -699,6 +699,7 @@ pub(crate) mod tests {
         veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
             .unwrap();
         assert!(veh.pt_type.is_conventional_vehicle());
+        veh.fc().unwrap().state.pwr_out_max.check().unwrap();
         veh
     }
 

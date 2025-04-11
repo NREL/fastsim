@@ -2,7 +2,7 @@ use super::{vehicle_model::VehicleState, *};
 use crate::prelude::ElectricMachineState;
 
 #[fastsim_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, HistoryMethods)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Hybrid vehicle with both engine and reversible energy storage (aka battery)
@@ -606,6 +606,21 @@ impl Default for HEVPowertrainControls {
     }
 }
 
+impl StateMethods for HEVPowertrainControls {
+    fn save_state(&mut self) {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_state(),
+            HEVPowertrainControls::Placeholder => todo!(),
+        }
+    }
+    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.check_and_reset()?,
+            HEVPowertrainControls::Placeholder => todo!(),
+        }
+        Ok(())
+    }
+}
 impl HistoryMethods for HEVPowertrainControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
@@ -877,7 +892,7 @@ for an HEV equipped with thermal models or superfluous otherwise",
 /// buffer for forcing [FuelConverter] to be active/on. See [Self::init] for
 /// default values.
 #[fastsim_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 pub struct RESGreedyWithDynamicBuffers {

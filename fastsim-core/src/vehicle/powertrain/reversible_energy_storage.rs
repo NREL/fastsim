@@ -79,7 +79,7 @@ const TOL: f64 = 1e-3;
         self.set_default_pwr_soc_and_temp_interp()
     }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
@@ -866,7 +866,7 @@ impl RESThermalOption {
         Default::default()
     }
 )]
-#[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[serde(deny_unknown_fields)]
 /// Struct for modeling [ReversibleEnergyStorage] (e.g. battery) thermal plant
 pub struct RESLumpedThermal {

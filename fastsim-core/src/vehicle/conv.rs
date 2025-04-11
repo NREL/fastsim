@@ -1,7 +1,7 @@
 use super::*;
 
 #[fastsim_api]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Conventional vehicle with only a FuelConverter as a power source

@@ -385,43 +385,63 @@ mod tests {
 }
 
 #[allow(dead_code)]
-#[derive(PartialEq, Clone, Debug, Default)]
+#[derive(PartialEq, Clone, Debug)]
 /// Struct for storing state variable and ensuring one mutation per
 /// initialization or reset
-pub(crate) struct TrackedState<T: std::fmt::Debug + Clone + PartialEq>(Option<T>);
+pub struct TrackedState<T: std::fmt::Debug + Clone + PartialEq>(Option<T>);
 
 #[allow(dead_code)]
 impl<T> TrackedState<T>
 where
-    T: std::fmt::Debug + Clone + PartialEq,
+    T: std::fmt::Debug + Clone + PartialEq + Default,
 {
     // Not that `anyhow::Error` is fine here because this should result only in
     // logic errors and not runtime errors for end users
-    pub fn update(&mut self, value: T) -> anyhow::Result<()> {
-        assert!(self.0.is_none());
+    /// Update the value of the tracked state
+    /// # Arguments
+    /// - `value`: new value
+    /// - `loc`: file and line number where called
+    pub fn update(&mut self, value: T, loc: String) -> anyhow::Result<()> {
+        ensure!(
+            self.0.is_none(),
+            format!("{}\nState variable has not been reset", loc)
+        );
         self.0 = Some(value);
         Ok(())
     }
 
-    fn reset(&mut self) {
+    /// Reset the tracked state for the next update
+    pub fn reset(&mut self) {
         self.0 = None;
     }
 
-    fn check(&self) -> anyhow::Result<()> {
+    /// Verify that the state has been updated
+    pub fn check(&self) -> anyhow::Result<()> {
         ensure!(self.0.is_some(), "State variable was not updated!");
         Ok(())
     }
 
+    /// Run [Self::check] and [Self::reset]
     pub fn check_and_reset(&mut self) -> anyhow::Result<()> {
         self.check()?;
         self.reset();
         Ok(())
     }
 
+    /// Check that value has been updated and then return as a result
     pub fn get(&self) -> anyhow::Result<&T> {
         self.0
             .as_ref()
             .ok_or(anyhow!("State variable was not updated!"))
+    }
+}
+
+impl<T> Default for TrackedState<T>
+where
+    T: std::fmt::Debug + Clone + PartialEq + Default,
+{
+    fn default() -> Self {
+        Self(Some(Default::default()))
     }
 }
 
@@ -438,21 +458,6 @@ where
     }
 }
 
-// Custom deserialization
-// impl<'de> Deserialize<'de> for TrackedState<f64>
-// // where
-// //     f64: serde::Deserialize<'de> + Clone + std::fmt::Debug + PartialEq + Serialize,
-// {
-//     fn deserialize<De>(deserializer: De) -> Result<Self, De::Error>
-//     where
-//         De: serde::Deserializer<'de>,
-//     {
-//         let value: Option<f64> = Some(f64::deserialize(deserializer)?);
-
-//         Ok(Self(value))
-//     }
-// }
-
 impl<'de, T> Deserialize<'de> for TrackedState<T>
 where
     T: std::fmt::Debug + Clone + PartialEq + Deserialize<'de> + Serialize,
@@ -467,41 +472,6 @@ where
     }
 }
 
-#[derive(PartialEq, Clone, Debug, Default)]
-/// Struct for storing state variable with previous value and ensuring one mutation per initialization or reset
-pub(crate) struct TrackedStateWithHistory<T: std::fmt::Debug + Clone>(Option<T>, Option<T>);
-
-impl<T> TrackedStateWithHistory<T>
-where
-    T: std::fmt::Debug + Clone + PartialEq,
-{
-    // Not that `anyhow::Error` is fine here because this should result only in
-    // logic errors and not runtime errors for end users
-    pub fn update(&mut self, value: T) -> anyhow::Result<()> {
-        assert!(self.0.is_none());
-        self.0 = Some(value);
-        Ok(())
-    }
-
-    pub fn reset(&mut self) -> anyhow::Result<()> {
-        self.check()?;
-        self.1 = self.0.clone();
-        self.0 = None;
-        Ok(())
-    }
-
-    pub fn check(&self) -> anyhow::Result<()> {
-        ensure!(self.0.is_some(), "State variable was not updated!");
-        Ok(())
-    }
-
-    pub fn get(&self) -> anyhow::Result<&T> {
-        self.0
-            .as_ref()
-            .ok_or(anyhow!("State variable was not updated!"))
-    }
-}
-
 #[cfg(test)]
 mod test_tracked_state {
     use super::*;
@@ -512,13 +482,16 @@ mod test_tracked_state {
         let mut energy = TrackedState::<si::Energy>::default();
         let mut dt = TrackedState::<si::Time>::default();
 
-        pwr.update(si::Power::new::<si::watt>(1.0)).unwrap();
-        dt.update(si::Time::new::<si::second>(1.0)).unwrap();
+        pwr.update(si::Power::new::<si::watt>(1.0), format_dbg!())
+            .unwrap();
+        dt.update(si::Time::new::<si::second>(1.0), format_dbg!())
+            .unwrap();
         energy
-            .update(*pwr.get().unwrap() * *dt.get().unwrap())
+            .update(*pwr.get().unwrap() * *dt.get().unwrap(), format_dbg!())
             .unwrap();
 
-        pwr.update(si::Power::new::<si::watt>(2.0)).unwrap();
+        pwr.update(si::Power::new::<si::watt>(2.0), format_dbg!())
+            .unwrap();
     }
 
     #[test]
@@ -527,28 +500,32 @@ mod test_tracked_state {
         let mut energy = TrackedState::<si::Energy>::default();
         let mut dt = TrackedState::<si::Time>::default();
 
-        pwr.update(si::Power::new::<si::watt>(1.0)).unwrap();
-        dt.update(si::Time::new::<si::second>(1.0)).unwrap();
+        pwr.check_and_reset().unwrap();
+        dt.check_and_reset().unwrap();
+        energy.check_and_reset().unwrap();
+
+        pwr.update(si::Power::new::<si::watt>(1.0), format_dbg!())
+            .unwrap();
+        dt.update(si::Time::new::<si::second>(1.0), format_dbg!())
+            .unwrap();
         energy
-            .update(*pwr.get().unwrap() * *dt.get().unwrap())
+            .update(*pwr.get().unwrap() * *dt.get().unwrap(), format_dbg!())
             .unwrap();
 
-        pwr.check().unwrap();
-        dt.check().unwrap();
-        energy.check().unwrap();
+        pwr.check_and_reset().unwrap();
+        dt.check_and_reset().unwrap();
+        energy.check_and_reset().unwrap();
 
-        pwr.reset();
-        dt.reset();
-        energy.reset();
-
-        pwr.update(si::Power::new::<si::watt>(1.0)).unwrap();
-        dt.update(si::Time::new::<si::second>(1.0)).unwrap();
+        pwr.update(si::Power::new::<si::watt>(1.0), format_dbg!())
+            .unwrap();
+        dt.update(si::Time::new::<si::second>(1.0), format_dbg!())
+            .unwrap();
         energy
-            .update(*pwr.get().unwrap() * *dt.get().unwrap())
+            .update(*pwr.get().unwrap() * *dt.get().unwrap(), format_dbg!())
             .unwrap();
 
-        pwr.check().unwrap();
-        dt.check().unwrap();
-        energy.check().unwrap();
+        pwr.check_and_reset().unwrap();
+        dt.check_and_reset().unwrap();
+        energy.check_and_reset().unwrap();
     }
 }

@@ -12,7 +12,7 @@ use crate::prelude::*;
         Self::default()
     }
 )]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Solver parameters
@@ -107,7 +107,7 @@ impl Default for SimParams {
         self.to_fastsim2()
     }
 )]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 pub struct SimDrive {
@@ -167,7 +167,7 @@ impl SimDrive {
                 let veh_init = self.veh.clone();
                 loop {
                     self.veh.hev_mut().unwrap().state.soc_bal_iters += 1;
-                    self.walk_once()?;
+                    self.walk_once().with_context(|| format_dbg!())?;
                     let soc_final = self
                         .veh
                         .res()
@@ -219,12 +219,14 @@ impl SimDrive {
         let len = self.cyc.len_checked().with_context(|| format_dbg!())?;
         ensure!(len >= 2, format_dbg!(len < 2));
         self.save_state();
+        self.check_and_reset().with_context(|| format_dbg!())?;
         // to increment `i` to 1 everywhere
         self.step();
         while self.veh.state.i < len {
             self.solve_step()
                 .with_context(|| format!("{}\ntime step: {}", format_dbg!(), self.veh.state.i))?;
             self.save_state();
+            self.check_and_reset().with_context(|| format_dbg!())?;
             self.step();
         }
         Ok(())
@@ -565,7 +567,7 @@ pwr deficit: {} kW
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 // NOTE: consider embedding this in TraceMissOptions::AllowChecked

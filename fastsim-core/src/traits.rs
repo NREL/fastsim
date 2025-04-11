@@ -513,7 +513,7 @@ pub trait StateMethods {
 }
 
 /// Provides methods for getting and setting the save interval
-pub trait HistoryMethods {
+pub trait HistoryMethods: StateMethods {
     /// Recursively sets save interval
     /// # Arguments
     /// - `save_interval`: time step interval at which to save `self.state` to `self.history`

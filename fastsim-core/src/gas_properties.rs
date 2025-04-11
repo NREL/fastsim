@@ -112,7 +112,7 @@ lazy_static! {
     }
 
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 pub struct Air {}
@@ -617,7 +617,7 @@ mod octane_static_props {
         Ok(Self::get_te_from_u(u * uc::J_PER_KG)?.get::<si::degree_celsius>())
     }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[serde(deny_unknown_fields)]
 pub struct Octane {}
 impl Init for Octane {}

@@ -100,7 +100,7 @@ impl SetCumulative for CabinOption {
         Default::default()
     }
 )]
-#[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Basic single thermal capacitance cabin thermal model, including HVAC
