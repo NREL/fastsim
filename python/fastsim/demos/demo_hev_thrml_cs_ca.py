@@ -28,12 +28,16 @@ temp_amb_and_init = -6.7 + celsius_to_kelvin
 
 # load 2021 Hyundai Sonata HEV from file
 veh_dict = fsim.Vehicle.from_file(
-    fsim.package_root() /
-    "../../cal_and_val/thermal/f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml"
+    fsim.package_root()
+    / "../../cal_and_val/thermal/f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml"
 ).to_pydict()
-veh_dict['cabin']['LumpedCabin']['state']['temperature_kelvin'] = temp_amb_and_init
-veh_dict['pt_type']['HybridElectricVehicle']['res']['thrml']['RESLumpedThermal']['state']['temperature_kelvin'] = temp_amb_and_init
-veh_dict['pt_type']['HybridElectricVehicle']['fc']['thrml']['FuelConverterThermal']['state']['temperature_kelvin'] = temp_amb_and_init
+veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_amb_and_init
+veh_dict["pt_type"]["HybridElectricVehicle"]["res"]["thrml"]["RESLumpedThermal"]["state"][
+    "temperature_kelvin"
+] = temp_amb_and_init
+veh_dict["pt_type"]["HybridElectricVehicle"]["fc"]["thrml"]["FuelConverterThermal"]["state"][
+    "temperature_kelvin"
+] = temp_amb_and_init
 veh = fsim.Vehicle.from_pydict(veh_dict)
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
@@ -41,7 +45,7 @@ veh.set_save_interval(1)
 
 # load cycle from file
 cyc_dict = fsim.Cycle.from_resource("udds.csv").to_pydict()
-cyc_dict['temp_amb_air_kelvin'] = [temp_amb_and_init] * len(cyc_dict['time_seconds'])
+cyc_dict["temp_amb_air_kelvin"] = [temp_amb_and_init] * len(cyc_dict["time_seconds"])
 cyc = fsim.Cycle.from_pydict(cyc_dict)
 
 # instantiate `SimDrive` simulation object
@@ -54,8 +58,7 @@ sd.walk()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
-print(
-    f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
+print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
 
 # %%
 df = sd.to_dataframe(allow_partial=True)
@@ -80,14 +83,20 @@ def plot_temperatures() -> Tuple[Figure, Axes]:
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.thrml." +
-            "RESLumpedThermal.history.temperature_kelvin"] - 273.15,
+        df[
+            "veh.pt_type.HybridElectricVehicle.res.thrml."
+            + "RESLumpedThermal.history.temperature_kelvin"
+        ]
+        - 273.15,
         label="res",
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.fc.thrml." +
-            "FuelConverterThermal.history.temperature_kelvin"] - 273.15,
+        df[
+            "veh.pt_type.HybridElectricVehicle.fc.thrml."
+            + "FuelConverterThermal.history.temperature_kelvin"
+        ]
+        - 273.15,
         label="fc",
     )
     ax[0].set_ylabel("Temperatures [°C]")
@@ -122,8 +131,11 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        (df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_prop_watts"] +
-            df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_aux_watts"]) / 1e3,
+        (
+            df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_prop_watts"]
+            + df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_aux_watts"]
+        )
+        / 1e3,
         label="shaft",
     )
     ax[0].plot(
@@ -143,7 +155,7 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     ax[1].plot(
         df["cyc.time_seconds"],
         df["veh.pt_type.HybridElectricVehicle.res.history.soc_disch_buffer"],
-        label='accel buffer',
+        label="accel buffer",
         alpha=0.5,
     )
     # ax[1].plot(
@@ -189,8 +201,11 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        (df["veh.pt_type.HybridElectricVehicle.fc.history.energy_prop_joules"] +
-            df["veh.pt_type.HybridElectricVehicle.fc.history.energy_aux_joules"]) / 1e6,
+        (
+            df["veh.pt_type.HybridElectricVehicle.fc.history.energy_prop_joules"]
+            + df["veh.pt_type.HybridElectricVehicle.fc.history.energy_aux_joules"]
+        )
+        / 1e6,
         label="shaft",
     )
     ax[0].plot(
@@ -229,7 +244,7 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["veh.pt_type.HybridElectricVehicle.res.history.pwr_out_electrical_watts"] / 1e3,
         label="electrical out",
     )
@@ -238,7 +253,7 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
 
     ax[1].set_prop_cycle(get_paired_cycler())
     ax[1].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
         label="soc",
     )
@@ -247,14 +262,14 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
 
     ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["veh.history.speed_ach_meters_per_second"],
-        label='ach',
+        label="ach",
     )
     ax[-1].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["cyc.speed_meters_per_second"],
-        label='cyc',
+        label="cyc",
     )
     ax[-1].legend()
     ax[-1].set_xlabel("Time [s]")
@@ -275,7 +290,7 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["veh.pt_type.HybridElectricVehicle.res.history.energy_out_electrical_joules"] / 1e3,
         label="electrical out",
     )
@@ -284,7 +299,7 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
 
     ax[1].set_prop_cycle(get_paired_cycler())
     ax[1].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
         label="soc",
     )
@@ -293,14 +308,14 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
 
     ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["veh.history.speed_ach_meters_per_second"],
         label="ach",
     )
     ax[-1].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["cyc.speed_meters_per_second"],
-        label='cyc',
+        label="cyc",
     )
     ax[-1].legend()
     ax[-1].set_xlabel("Time [s]")
@@ -321,17 +336,17 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
 
     ax[0].set_prop_cycle(get_uni_cycler())
     ax[0].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
+        df["cyc.time_seconds"][:: veh.save_interval],
         df["veh.history.pwr_drag_watts"] / 1e3,
         label="drag",
     )
     ax[0].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
+        df["cyc.time_seconds"][:: veh.save_interval],
         df["veh.history.pwr_rr_watts"] / 1e3,
         label="rr",
     )
     ax[0].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
+        df["cyc.time_seconds"][:: veh.save_interval],
         df["veh.history.pwr_tractive_watts"] / 1e3,
         label="total",
     )
@@ -340,7 +355,7 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
 
     ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
+        df["cyc.time_seconds"][:: veh.save_interval],
         df["veh.history.speed_ach_meters_per_second"],
         label="ach",
     )
@@ -369,7 +384,8 @@ fig, ax = plot_road_loads()
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
 res = fsim.ReversibleEnergyStorage.from_pydict(
-    sd.to_pydict()['veh']['pt_type']['HybridElectricVehicle']['res'])
+    sd.to_pydict()["veh"]["pt_type"]["HybridElectricVehicle"]["res"]
+)
 res.set_default_pwr_interp()
 
 # %%

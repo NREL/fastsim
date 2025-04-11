@@ -22,7 +22,7 @@ readonly = "0.2.3"
 duplicate = "0.4.1"
 nohash-hasher = "0.2.0"
 eng_fmt = "0.1.2"
-numpy = { workspace = true }
+numpy = { workspace = true, optional = true }
 pyo3 = { workspace = true, features = [
     "extension-module",
     "anyhow",
@@ -47,7 +47,7 @@ pretty_assertions = "1.4.1"
 [features]
 default = [ "resources", "serde-default" ]
 ## Enables `pyo3` to provide fastsim-3 structs, methods, and functions to Python
-pyo3 = ["dep:pyo3", "fastsim-2/pyo3"]
+pyo3 = ["dep:pyo3", "fastsim-2/pyo3", "numpy"]
 ## Compiles external resources (e.g. vehicle files or cycle files) to be
 ## available in the binary
 resources = ["dep:include_dir"]
