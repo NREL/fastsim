@@ -563,57 +563,59 @@ impl Vehicle {
 
 /// Vehicle state for current time step
 #[fastsim_api]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+)]
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct VehicleState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
 
     /// elapsed simulation time since start
-    pub time: si::Time,
+    pub time: TrackedState<si::Time>,
 
     // power and energy fields
     /// maximum forward propulsive power vehicle can produce
-    pub pwr_prop_fwd_max: si::Power,
+    pub pwr_prop_fwd_max: TrackedState<si::Power>,
     /// pwr exerted on wheels by powertrain
     /// maximum backward propulsive power (e.g. regenerative braking) vehicle can produce
-    pub pwr_prop_bwd_max: si::Power,
+    pub pwr_prop_bwd_max: TrackedState<si::Power>,
     /// Tractive power for achieved speed
-    pub pwr_tractive: si::Power,
+    pub pwr_tractive: TrackedState<si::Power>,
     /// Tractive power required for prescribed speed
-    pub pwr_tractive_for_cyc: si::Power,
+    pub pwr_tractive_for_cyc: TrackedState<si::Power>,
     /// integral of [Self::pwr_tractive]
-    pub energy_tractive: si::Energy,
+    pub energy_tractive: TrackedStateWithMemory<si::Energy>,
     /// time varying aux load
-    pub pwr_aux: si::Power,
+    pub pwr_aux: TrackedState<si::Power>,
     /// integral of [Self::pwr_aux]
-    pub energy_aux: si::Energy,
+    pub energy_aux: TrackedStateWithMemory<si::Energy>,
     /// Power applied to aero drag
-    pub pwr_drag: si::Power,
+    pub pwr_drag: TrackedState<si::Power>,
     /// integral of [Self::pwr_drag]
-    pub energy_drag: si::Energy,
+    pub energy_drag: TrackedStateWithMemory<si::Energy>,
     /// Power applied to acceleration (includes deceleration)
-    pub pwr_accel: si::Power,
+    pub pwr_accel: TrackedState<si::Power>,
     /// integral of [Self::pwr_accel]
-    pub energy_accel: si::Energy,
+    pub energy_accel: TrackedStateWithMemory<si::Energy>,
     /// Power applied to grade ascent
-    pub pwr_ascent: si::Power,
+    pub pwr_ascent: TrackedState<si::Power>,
     /// integral of [Self::pwr_ascent]
-    pub energy_ascent: si::Energy,
+    pub energy_ascent: TrackedStateWithMemory<si::Energy>,
     /// Power applied to rolling resistance
-    pub pwr_rr: si::Power,
+    pub pwr_rr: TrackedState<si::Power>,
     /// integral of [Self::pwr_rr]
-    pub energy_rr: si::Energy,
+    pub energy_rr: TrackedStateWithMemory<si::Energy>,
     /// Power applied to wheel and tire inertia
-    pub pwr_whl_inertia: si::Power,
+    pub pwr_whl_inertia: TrackedState<si::Power>,
     /// integral of [Self::pwr_whl_inertia]
-    pub energy_whl_inertia: si::Energy,
+    pub energy_whl_inertia: TrackedStateWithMemory<si::Energy>,
     /// Total braking power including regen
-    pub pwr_brake: si::Power,
+    pub pwr_brake: TrackedState<si::Power>,
     /// integral of [Self::pwr_brake]
-    pub energy_brake: si::Energy,
+    pub energy_brake: TrackedStateWithMemory<si::Energy>,
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in current time step
     // because it should be assumed true in the first time step
@@ -622,19 +624,19 @@ pub struct VehicleState {
     /// in entire cycle
     pub cyc_met_overall: bool,
     /// actual achieved speed
-    pub speed_ach: si::Velocity,
+    pub speed_ach: TrackedStateWithMemory<si::Velocity>,
     /// cumulative distance traveled, integral of [Self::speed_ach]
-    pub dist: si::Length,
+    pub dist: TrackedState<si::Length>,
     /// current grade
-    pub grade_curr: si::Ratio,
+    pub grade_curr: TrackedState<si::Ratio>,
     /// current grade
     // will be overridden during simulation anyway
-    pub elev_curr: si::Length,
+    pub elev_curr: TrackedState<si::Length>,
     /// current air density
-    pub air_density: si::MassDensity,
+    pub air_density: TrackedState<si::MassDensity>,
     /// current mass
     // TODO: make sure this gets updated appropriately
-    pub mass: si::Mass,
+    pub mass: TrackedState<si::Mass>,
 }
 
 impl SerdeAPI for VehicleState {}

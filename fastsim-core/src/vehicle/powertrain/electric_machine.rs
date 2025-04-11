@@ -642,55 +642,63 @@ impl ElectricMachine {
 
 #[fastsim_api]
 #[derive(
-    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    SetCumulative,
+    StateMethods,
 )]
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct ElectricMachineState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
     /// Component efficiency based on current power demand.
-    pub eff: si::Ratio,
+    pub eff: TrackedState<si::Ratio>,
     // Component limits
     /// Maximum possible positive traction power.
-    pub pwr_mech_fwd_out_max: si::Power,
+    pub pwr_mech_fwd_out_max: TrackedState<si::Power>,
     /// efficiency in forward direction at max possible input power from `FuelConverter` and `ReversibleEnergyStorage`
-    pub eff_fwd_at_max_input: si::Ratio,
+    pub eff_fwd_at_max_input: TrackedState<si::Ratio>,
     /// Maximum possible regeneration power going to ReversibleEnergyStorage.
-    pub pwr_mech_regen_max: si::Power,
+    pub pwr_mech_regen_max: TrackedState<si::Power>,
     /// efficiency in backward direction at max possible input power from `FuelConverter` and `ReversibleEnergyStorage`
-    pub eff_at_max_regen: si::Ratio,
+    pub eff_at_max_regen: TrackedState<si::Ratio>,
     /// max ramp-up rate
-    pub pwr_rate_out_max: si::PowerRate,
+    pub pwr_rate_out_max: TrackedState<si::PowerRate>,
 
     // Current values
     /// Raw power requirement from boundary conditions
-    pub pwr_out_req: si::Power,
+    pub pwr_out_req: TrackedState<si::Power>,
     /// Integral of [Self::pwr_out_req]
-    pub energy_out_req: si::Energy,
+    pub energy_out_req: TrackedStateWithMemory<si::Energy>,
     /// Electrical power to propulsion from ReversibleEnergyStorage and Generator.
     /// negative value indicates regenerative braking
-    pub pwr_elec_prop_in: si::Power,
+    pub pwr_elec_prop_in: TrackedState<si::Power>,
     /// Integral of [Self::pwr_elec_prop_in]
-    pub energy_elec_prop_in: si::Energy,
+    pub energy_elec_prop_in: TrackedStateWithMemory<si::Energy>,
     /// Mechanical power to propulsion, corrected by efficiency, from ReversibleEnergyStorage and Generator.
     /// Negative value indicates regenerative braking.
-    pub pwr_mech_prop_out: si::Power,
+    pub pwr_mech_prop_out: TrackedState<si::Power>,
     /// Integral of [Self::pwr_mech_prop_out]
-    pub energy_mech_prop_out: si::Energy,
+    pub energy_mech_prop_out: TrackedStateWithMemory<si::Energy>,
     /// Mechanical power from dynamic braking.  Positive value indicates braking; this should be zero otherwise.
-    pub pwr_mech_dyn_brake: si::Power,
+    pub pwr_mech_dyn_brake: TrackedState<si::Power>,
     /// Integral of [Self::pwr_mech_dyn_brake]
-    pub energy_mech_dyn_brake: si::Energy,
+    pub energy_mech_dyn_brake: TrackedStateWithMemory<si::Energy>,
     /// Electrical power from dynamic braking, dissipated as heat.
-    pub pwr_elec_dyn_brake: si::Power,
+    pub pwr_elec_dyn_brake: TrackedState<si::Power>,
     /// Integral of [Self::pwr_elec_dyn_brake]
-    pub energy_elec_dyn_brake: si::Energy,
+    pub energy_elec_dyn_brake: TrackedStateWithMemory<si::Energy>,
     /// Power lost in regeneratively converting mechanical power to power that can be absorbed by the battery.
-    pub pwr_loss: si::Power,
+    pub pwr_loss: TrackedState<si::Power>,
     /// Integral of [Self::pwr_loss]
-    pub energy_loss: si::Energy,
+    pub energy_loss: TrackedStateWithMemory<si::Energy>,
 }
 
 impl Init for ElectricMachineState {}

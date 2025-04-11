@@ -37,6 +37,9 @@ pub struct HybridElectricVehicle {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub soc_bal_iter_history: Vec<Self>,
+    /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
+    /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
+    pub soc_bal_iters: TrackedStateWithMemory<u32>,
 }
 
 impl HistoryMethods for HybridElectricVehicle {
@@ -407,12 +410,9 @@ impl FCOnCauses {
 #[serde(default)]
 pub struct HEVState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
     /// Vector of posssible reasons the fc is forced on
-    pub fc_on_causes: FCOnCauses,
-    /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
-    /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
-    pub soc_bal_iters: u32,
+    pub fc_on_causes: TrackedState<FCOnCauses>,
 }
 
 impl Init for HEVState {}
@@ -991,20 +991,30 @@ impl Init for RESGreedyWithDynamicBuffers {
 impl SerdeAPI for RESGreedyWithDynamicBuffers {}
 
 #[fastsim_api]
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    SetCumulative,
+    StateMethods,
+)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 /// State for [RESGreedyWithDynamicBuffers ]
 pub struct RGWDBState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
     /// Vector of posssible reasons the fc is forced on
-    pub fc_on_causes: FCOnCauses,
+    pub fc_on_causes: TrackedState<FCOnCauses>,
     /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
     /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
-    pub soc_bal_iters: u32,
+    pub soc_bal_iters: TrackedState<u32>,
     /// buffer at which FC is forced on
-    pub soc_fc_on_buffer: si::Ratio,
+    pub soc_fc_on_buffer: TrackedState<si::Ratio>,
 }
 
 impl Init for RGWDBState {}

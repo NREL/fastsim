@@ -84,7 +84,6 @@ pub struct FuelConverter {
     pub save_interval: Option<usize>,
     /// struct for tracking current state
     #[serde(default)]
-    #[has_state]
     pub state: FuelConverterState,
     /// Custom vector of [Self::state]
     #[serde(
@@ -220,7 +219,9 @@ impl FuelConverter {
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
         self.state.pwr_out_max.update(
-            (self.state.pwr_prop + self.state.pwr_aux + self.pwr_out_max / self.pwr_ramp_lag * dt)
+            (self.state.pwr_prop.get().with_context(|| format_dbg!())?
+                + self.state.pwr_aux.get().with_context(|| format_dbg!())?
+                + self.pwr_out_max / self.pwr_ramp_lag * dt)
                 .min(self.pwr_out_max)
                 .max(self.pwr_out_max_init),
             format_dbg!(),
@@ -481,59 +482,53 @@ impl FuelConverter {
 // }
 
 #[fastsim_api]
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    SetCumulative,
+    StateMethods,
+)]
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct FuelConverterState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
     /// max total output power fc can produce at current time
     pub pwr_out_max: TrackedState<si::Power>,
     /// max propulsion power fc can produce at current time
-    pub pwr_prop_max: si::Power,
+    pub pwr_prop_max: TrackedState<si::Power>,
     /// efficiency evaluated at current demand
-    pub eff: si::Ratio,
+    pub eff: TrackedState<si::Ratio>,
     /// instantaneous power going to drivetrain, not including aux
-    pub pwr_prop: si::Power,
+    pub pwr_prop: TrackedState<si::Power>,
     /// integral of [Self::pwr_prop]
-    pub energy_prop: si::Energy,
+    pub energy_prop: TrackedStateWithMemory<si::Energy>,
     /// power going to auxiliaries
-    pub pwr_aux: si::Power,
+    pub pwr_aux: TrackedState<si::Power>,
     /// Integral of [Self::pwr_aux]
-    pub energy_aux: si::Energy,
+    pub energy_aux: TrackedStateWithMemory<si::Energy>,
     /// instantaneous fuel power flow
-    pub pwr_fuel: si::Power,
+    pub pwr_fuel: TrackedState<si::Power>,
     /// Integral of [Self::pwr_fuel]
-    pub energy_fuel: si::Energy,
+    pub energy_fuel: TrackedStateWithMemory<si::Energy>,
     /// loss power, including idle
-    pub pwr_loss: si::Power,
+    pub pwr_loss: TrackedState<si::Power>,
     /// Integral of [Self::pwr_loss]
-    pub energy_loss: si::Energy,
+    pub energy_loss: TrackedStateWithMemory<si::Energy>,
     /// If true, engine is on, and if false, off (no idle)
     pub fc_on: bool,
     /// Time the engine has been on
-    pub time_on: si::Time,
+    pub time_on: TrackedState<si::Time>,
 }
 
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
-impl SaveState for FuelConverterState {
-    fn save_state(&mut self) {
-        // this does not need to do anything
-    }
-}
-impl TrackedStateMethods for FuelConverterState {
-    fn check_and_reset(&mut self) -> anyhow::Result<()> {
-        self.pwr_out_max.check_and_reset()?;
-        Ok(())
-    }
-}
-impl Step for FuelConverterState {
-    fn step(&mut self) {
-        // this is redundant and should not do anything
-    }
-}
 
 /// Options for handling [FuelConverter] thermal model
 #[derive(
@@ -921,41 +916,41 @@ impl Default for FuelConverterThermal {
 }
 
 #[fastsim_api]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct FuelConverterThermalState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
     /// Adiabatic flame temperature assuming complete (i.e. all fuel is consumed
     /// if fuel lean or stoich or all air is consumed if fuel rich) combustion
-    pub te_adiabatic: si::Temperature,
+    pub te_adiabatic: TrackedState<si::Temperature>,
     /// Current engine thermal mass temperature (lumped engine block and coolant)
-    pub temperature: si::Temperature,
-    /// Engine thermal mass temperature (lumped engine block and coolant) at previous time step
-    pub temp_prev: si::Temperature,
+    pub temperature: TrackedStateWithMemory<si::Temperature>,
     /// thermostat open fraction (1 = fully open, 0 = fully closed)
     pub tstat_open_frac: f64,
     /// Current heat transfer coefficient from [FuelConverter] to ambient
-    pub htc_to_amb: si::HeatTransferCoeff,
+    pub htc_to_amb: TrackedState<si::HeatTransferCoeff>,
     /// Current heat transfer power to ambient
-    pub pwr_thrml_to_amb: si::Power,
+    pub pwr_thrml_to_amb: TrackedState<si::Power>,
     /// Cumulative heat transfer energy to ambient
-    pub energy_thrml_to_amb: si::Energy,
+    pub energy_thrml_to_amb: TrackedStateWithMemory<si::Energy>,
     /// Efficency coefficient, used to modify [FuelConverter] effciency based on temperature
-    pub eff_coeff: si::Ratio,
+    pub eff_coeff: TrackedState<si::Ratio>,
     /// Thermal power flowing from fuel converter to cabin
-    pub pwr_thrml_fc_to_cab: si::Power,
+    pub pwr_thrml_fc_to_cab: TrackedState<si::Power>,
     /// Cumulative thermal energy flowing from fuel converter to cabin
-    pub energy_thrml_fc_to_cab: si::Energy,
+    pub energy_thrml_fc_to_cab: TrackedStateWithMemory<si::Energy>,
     /// Fuel power that is not converted to mechanical work
-    pub pwr_fuel_as_heat: si::Power,
+    pub pwr_fuel_as_heat: TrackedState<si::Power>,
     /// Cumulative fuel energy that is not converted to mechanical work
-    pub energy_fuel_as_heat: si::Energy,
+    pub energy_fuel_as_heat: TrackedStateWithMemory<si::Energy>,
     /// Thermal power flowing from combustion to [FuelConverter] thermal mass
-    pub pwr_thrml_to_tm: si::Power,
+    pub pwr_thrml_to_tm: TrackedState<si::Power>,
     /// Cumulative thermal energy flowing from combustion to [FuelConverter] thermal mass
-    pub energy_thrml_to_tm: si::Energy,
+    pub energy_thrml_to_tm: TrackedStateWithMemory<si::Energy>,
 }
 
 impl Init for FuelConverterThermalState {}
@@ -964,9 +959,8 @@ impl Default for FuelConverterThermalState {
     fn default() -> Self {
         Self {
             i: Default::default(),
-            te_adiabatic: *TE_ADIABATIC_STD,
-            temperature: *TE_STD_AIR,
-            temp_prev: *TE_STD_AIR,
+            te_adiabatic: TrackedState::new(*TE_ADIABATIC_STD),
+            temperature: TrackedStateWithMemory::new(*TE_STD_AIR),
             tstat_open_frac: Default::default(),
             htc_to_amb: Default::default(),
             eff_coeff: uc::R,

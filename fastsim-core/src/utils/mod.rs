@@ -384,13 +384,11 @@ mod tests {
     }
 }
 
-#[allow(dead_code)]
 #[derive(PartialEq, Clone, Debug)]
 /// Struct for storing state variable and ensuring one mutation per
 /// initialization or reset
-pub struct TrackedState<T: std::fmt::Debug + Clone + PartialEq>(Option<T>);
+pub struct TrackedState<T: std::fmt::Debug + Clone + PartialEq + Default>(Option<T>);
 
-#[allow(dead_code)]
 impl<T> TrackedState<T>
 where
     T: std::fmt::Debug + Clone + PartialEq + Default,
@@ -434,6 +432,10 @@ where
             .as_ref()
             .ok_or(anyhow!("State variable was not updated!"))
     }
+
+    pub fn new(value: T) -> Self {
+        Self(Some(value))
+    }
 }
 
 impl<T> Default for TrackedState<T>
@@ -448,7 +450,7 @@ where
 // Custom serialization
 impl<T> Serialize for TrackedState<T>
 where
-    T: std::fmt::Debug + Clone + PartialEq + for<'de> Deserialize<'de> + Serialize,
+    T: std::fmt::Debug + Clone + PartialEq + for<'de> Deserialize<'de> + Serialize + Default,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -460,15 +462,116 @@ where
 
 impl<'de, T> Deserialize<'de> for TrackedState<T>
 where
+    T: std::fmt::Debug + Clone + PartialEq + Deserialize<'de> + Serialize + Default,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value: T = T::deserialize(deserializer)?;
+
+        Ok(Self(Some(value)))
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+/// Struct for storing state variable and ensuring one mutation per
+/// initialization or reset
+pub struct TrackedStateWithMemory<T: std::fmt::Debug + Clone + PartialEq + Default + std::ops::Add>(
+    Option<T>,
+    Option<T>,
+);
+
+impl<T> TrackedStateWithMemory<T>
+where
+    T: std::fmt::Debug + Clone + PartialEq + Default + std::ops::Add,
+{
+    // Not that `anyhow::Error` is fine here because this should result only in
+    // logic errors and not runtime errors for end users
+    /// Update the value of the tracked state
+    /// # Arguments
+    /// - `value`: new value
+    /// - `loc`: file and line number where called
+    pub fn update(&mut self, value: T, loc: String) -> anyhow::Result<()> {
+        ensure!(
+            self.0.is_none(),
+            format!("{}\nState variable has not been reset", loc)
+        );
+        self.0 = Some(value);
+        Ok(())
+    }
+
+    /// Reset the tracked state for the next update
+    pub fn reset(&mut self) {
+        self.1 = self.0.clone();
+        self.0 = None;
+    }
+
+    /// Verify that the state has been updated
+    fn check(&self) -> anyhow::Result<()> {
+        ensure!(self.0.is_some(), "State variable was not updated!");
+        Ok(())
+    }
+
+    /// Run [Self::check] and [Self::reset]
+    pub fn check_and_reset(&mut self) -> anyhow::Result<()> {
+        self.check()?;
+        self.reset();
+        Ok(())
+    }
+
+    /// Check that value has been updated and then return as a result
+    /// # Arguments
+    /// - `loc`: call site location filename and line number
+    pub fn get(&self, loc: String) -> anyhow::Result<&T> {
+        self.0
+            .as_ref()
+            .ok_or(anyhow!("{}\nState variable was not updated!", loc))
+    }
+
+    /// Return previous value
+    pub fn get_prev(&self) -> Option<T> {
+        self.1.clone()
+    }
+
+    pub fn new(value: T) -> Self {
+        Self(Some(value), None)
+    }
+}
+
+impl<T> Default for TrackedStateWithMemory<T>
+where
+    T: std::fmt::Debug + Clone + PartialEq + Default,
+{
+    fn default() -> Self {
+        Self(Some(Default::default()), None)
+    }
+}
+
+// Custom serialization
+impl<T> Serialize for TrackedStateWithMemory<T>
+where
+    T: std::fmt::Debug + Clone + PartialEq + for<'de> Deserialize<'de> + Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for TrackedStateWithMemory<T>
+where
     T: std::fmt::Debug + Clone + PartialEq + Deserialize<'de> + Serialize,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let value: Option<T> = Some(T::deserialize(deserializer)?);
+        let value: T = T::deserialize(deserializer)?;
 
-        Ok(Self(value))
+        Ok(Self(Some(value), None))
     }
 }
 
@@ -479,7 +582,7 @@ mod test_tracked_state {
     #[should_panic]
     fn test_that_update_can_happen_only_once() {
         let mut pwr = TrackedState::<si::Power>::default();
-        let mut energy = TrackedState::<si::Energy>::default();
+        let mut energy = TrackedStateWithMemory::<si::Energy>::default();
         let mut dt = TrackedState::<si::Time>::default();
 
         pwr.update(si::Power::new::<si::watt>(1.0), format_dbg!())
@@ -487,7 +590,10 @@ mod test_tracked_state {
         dt.update(si::Time::new::<si::second>(1.0), format_dbg!())
             .unwrap();
         energy
-            .update(*pwr.get().unwrap() * *dt.get().unwrap(), format_dbg!())
+            .update(
+                *pwr.get().unwrap() * *dt.get().unwrap() + energy.get_prev().unwrap_or_default(),
+                format_dbg!(),
+            )
             .unwrap();
 
         pwr.update(si::Power::new::<si::watt>(2.0), format_dbg!())

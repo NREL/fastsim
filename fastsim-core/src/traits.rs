@@ -549,9 +549,6 @@ impl<T: Default + PartialEq> EqDefault for T {}
 pub trait SetCumulative {
     /// Sets cumulative values based on rate values
     fn set_cumulative(&mut self, dt: si::Time);
-    /// Sets any cumulative values that won't be handled by the macro
-    #[allow(unused_variables)]
-    fn set_custom_cumu_vals(&mut self, dt: si::Time) {}
 }
 
 #[cfg(test)]

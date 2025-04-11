@@ -155,18 +155,28 @@ impl SimDrive {
     /// corrections (e.g. iterate `walk` until SOC balance is achieved -- i.e. initial
     /// and final SOC are nearly identical)
     pub fn walk(&mut self) -> anyhow::Result<()> {
-        self.veh.state.mass = self
-            .veh
-            .mass()
-            .with_context(|| format_dbg!())?
-            .with_context(|| format_dbg!("Expected mass to have been set."))?;
+        self.veh.state.mass.update(
+            self.veh
+                .mass()
+                .with_context(|| format_dbg!())?
+                .with_context(|| format_dbg!("Expected mass to have been set."))?,
+            format_dbg!(),
+        );
+        self.veh
+            .hev_mut()
+            .map(|hev| hev.soc_bal_iters.update(0, format_dbg!()));
         match self.veh.pt_type {
             PowertrainType::HybridElectricVehicle(_) => {
                 // Net battery energy used per amount of fuel used
                 // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
                 let veh_init = self.veh.clone();
                 loop {
-                    self.veh.hev_mut().unwrap().state.soc_bal_iters += 1;
+                    let soc_bal_iters = &mut self.veh.hev_mut().unwrap().soc_bal_iters;
+                    soc_bal_iters.check_and_reset();
+                    self.veh.hev_mut().unwrap().soc_bal_iters.update(
+                        1 + soc_bal_iters.get_prev().unwrap_or_default(),
+                        format_dbg!(),
+                    );
                     self.walk_once().with_context(|| format_dbg!())?;
                     let soc_final = self
                         .veh
@@ -175,15 +185,27 @@ impl SimDrive {
                         .unwrap()
                         .state
                         .soc;
-                    let res_per_fuel = self.veh.res().unwrap().state.energy_out_chemical
-                        / self.veh.fc().unwrap().state.energy_fuel;
-                    if self.veh.hev().unwrap().state.soc_bal_iters
-                        > self.veh.hev().unwrap().sim_params.soc_balance_iter_err
+                    let res_per_fuel = *self
+                        .veh
+                        .res()
+                        .unwrap()
+                        .state
+                        .energy_out_chemical
+                        .get(format_dbg!())?
+                        / *self
+                            .veh
+                            .fc()
+                            .unwrap()
+                            .state
+                            .energy_fuel
+                            .get(format_dbg!())?;
+                    if self.veh.hev().unwrap().soc_bal_iters.get(format_dbg!())?
+                        > &self.veh.hev().unwrap().sim_params.soc_balance_iter_err
                     {
                         bail!(
                             "{}",
                             format_dbg!((
-                                self.veh.hev().unwrap().state.soc_bal_iters,
+                                self.veh.hev().unwrap().soc_bal_iters.clone(),
                                 self.veh.hev().unwrap().sim_params.soc_balance_iter_err
                             ))
                         );
@@ -197,13 +219,9 @@ impl SimDrive {
                         if let Some(&mut ref mut hev) = self.veh.hev_mut() {
                             if hev.sim_params.save_soc_bal_iters {
                                 hev.soc_bal_iter_history.push(hev.clone());
+                                hev.soc_bal_iters.reset();
                             }
                         }
-                        let soc_bal_iters = self.veh.hev().unwrap().state.soc_bal_iters;
-                        // reset vehicle to initial state
-                        self.veh = veh_init.clone();
-                        // retain soc_bal_iters
-                        self.veh.hev_mut().unwrap().state.soc_bal_iters = soc_bal_iters;
                         // start SOC at previous final value
                         self.veh.res_mut().unwrap().state.soc = soc_final;
                     }
@@ -216,15 +234,15 @@ impl SimDrive {
 
     /// Run vehicle simulation once
     pub fn walk_once(&mut self) -> anyhow::Result<()> {
-        let len = self.cyc.len_checked().with_context(|| format_dbg!())?;
-        ensure!(len >= 2, format_dbg!(len < 2));
+        let len = &self.cyc.len_checked().with_context(|| format_dbg!())?;
+        ensure!(len >= &2, format_dbg!(len < &2));
         self.save_state();
         self.check_and_reset().with_context(|| format_dbg!())?;
         // to increment `i` to 1 everywhere
         self.step();
-        while self.veh.state.i < len {
+        while self.veh.state.i.get(format_dbg!())? < len {
             self.solve_step()
-                .with_context(|| format!("{}\ntime step: {}", format_dbg!(), self.veh.state.i))?;
+                .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
             self.save_state();
             self.check_and_reset().with_context(|| format_dbg!())?;
             self.step();
@@ -234,10 +252,9 @@ impl SimDrive {
 
     /// Solves current time step
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
-        let i = self.veh.state.i;
-        self.veh.state.time = self.cyc.time[i];
+        let i = *self.veh.state.i.get(format_dbg!())?;
+        self.veh.state.time.update(self.cyc.time[i], format_dbg!());
         let dt = self.cyc.dt_at_i(i)?;
-        let speed_prev = self.veh.state.speed_ach;
         // maybe make controls like:
         // ```
         // pub enum HVACAuxPriority {
@@ -255,10 +272,10 @@ impl SimDrive {
         self.veh
             .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.set_pwr_prop_for_speed(self.cyc.speed[i], speed_prev, dt)
+        self.set_pwr_prop_for_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.veh.state.pwr_tractive_for_cyc = self.veh.state.pwr_tractive;
-        self.set_ach_speed(self.cyc.speed[i], speed_prev, dt)
+        self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         if self.sim_params.trace_miss_opts.is_allow_checked() {
             self.sim_params.trace_miss_tol.check_trace_miss(
@@ -278,16 +295,15 @@ impl SimDrive {
     /// Sets power required for given prescribed speed
     /// # Arguments
     /// - `speed`: prescribed or achieved speed
-    // - `speed_prev`: previously achieved speed
     /// - `dt`: simulation time step size
     pub fn set_pwr_prop_for_speed(
         &mut self,
         speed: si::Velocity,
-        speed_prev: si::Velocity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
+        let speed_prev = vs.speed_ach.get_prev().unwrap_or_default();
         // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
         let interp_pt_dist: &[f64] = match self.cyc.grade_interp {
             Some(Interpolator::Interp0D(..)) => &[],
@@ -384,17 +400,11 @@ impl SimDrive {
     /// # Arguments
     /// - `cyc_speed`: prescribed speed
     /// - `dt`: simulation time step size
-    /// - `speed_prev`: previously achieved speed
-    pub fn set_ach_speed(
-        &mut self,
-        cyc_speed: si::Velocity,
-        speed_prev: si::Velocity,
-        dt: si::Time,
-    ) -> anyhow::Result<()> {
+    pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
         // borrow state as `vs` for shorthand
         let vs = &mut self.veh.state;
         if vs.cyc_met {
-            vs.speed_ach = cyc_speed;
+            vs.speed_ach.update(cyc_speed, format_dbg!())?;
             return Ok(());
         } else {
             match self.sim_params.trace_miss_opts {

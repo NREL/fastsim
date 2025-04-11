@@ -93,23 +93,25 @@ impl Mass for Transmission {
 }
 
 #[fastsim_api]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+)]
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct TransmissionState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
 
-    pub eff: si::Ratio,
+    pub eff: TrackedState<si::Ratio>,
 
-    pub pwr_out: si::Power,
-    pub pwr_in: si::Power,
+    pub pwr_out: TrackedState<si::Power>,
+    pub pwr_in: TrackedState<si::Power>,
     /// Power loss: [Self::pwr_in] - [Self::pwr_out]
-    pub pwr_loss: si::Power,
+    pub pwr_loss: TrackedState<si::Power>,
 
-    pub energy_out: si::Energy,
-    pub energy_loss: si::Energy,
+    pub energy_out: TrackedStateWithMemory<si::Energy>,
+    pub energy_loss: TrackedStateWithMemory<si::Energy>,
 }
 
 impl Default for TransmissionState {

@@ -729,93 +729,93 @@ impl HVACSystemForLumpedCabinAndRES {
 #[serde(deny_unknown_fields)]
 pub struct HVACSystemForLumpedCabinAndRESState {
     /// time step counter
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
     /// portion of total HVAC cooling/heating (negative/positive) power due to
     /// proportional gain
-    pub pwr_p_cab: si::Power,
+    pub pwr_p_cab: TrackedState<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy
     /// due to proportional gain
-    pub energy_p_cab: si::Energy,
+    pub energy_p_cab: TrackedStateWithMemory<si::Energy>,
     /// portion of total HVAC cooling/heating (negative/positive) power due to
     /// integral gain
-    pub pwr_i_cab: si::Power,
+    pub pwr_i_cab: TrackedState<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy
     /// due to integral gain
-    pub energy_i_cab: si::Energy,
+    pub energy_i_cab: TrackedStateWithMemory<si::Energy>,
     /// portion of total HVAC cooling/heating (negative/positive) power due to
     /// derivative gain
-    pub pwr_d_cab: si::Power,
+    pub pwr_d_cab: TrackedState<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy
     /// due to derivative gain
-    pub energy_d_cab: si::Energy,
+    pub energy_d_cab: TrackedStateWithMemory<si::Energy>,
     /// portion of total HVAC cooling/heating (negative/positive) power to
     /// [ReversibleEnergyStorage::thrml] due to proportional gain
-    pub pwr_p_res: si::Power,
+    pub pwr_p_res: TrackedState<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy
     /// to [ReversibleEnergyStorage::thrml] due to proportional gain
-    pub energy_p_res: si::Energy,
+    pub energy_p_res: TrackedStateWithMemory<si::Energy>,
     /// portion of total HVAC cooling/heating (negative/positive) power to
     /// [ReversibleEnergyStorage::thrml] due to integral gain
-    pub pwr_i_res: si::Power,
+    pub pwr_i_res: TrackedState<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy
     /// to [ReversibleEnergyStorage::thrml] due to integral gain
-    pub energy_i_res: si::Energy,
+    pub energy_i_res: TrackedStateWithMemory<si::Energy>,
     /// portion of total HVAC cooling/heating (negative/positive) power to
     /// [ReversibleEnergyStorage::thrml] due to derivative gain
-    pub pwr_d_res: si::Power,
+    pub pwr_d_res: TrackedState<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy
     /// to [ReversibleEnergyStorage::thrml] due to derivative gain
-    pub energy_d_res: si::Energy,
+    pub energy_d_res: TrackedStateWithMemory<si::Energy>,
     /// coefficient of performance (i.e. efficiency) of vapor compression cycle
-    pub cop: Option<si::Ratio>,
+    pub cop: TrackedState<Option<si::Ratio>>,
     /// Reference temperature used to calculate coefficient of performance (i.e.
     /// efficiency) of vapor compression cycle
     pub te_ref: Option<si::Temperature>,
     /// Requested aux power demand from [Vehicle::hvac] system for cabin thermal
     /// managemement.
-    pub pwr_aux_for_cab_hvac_req: si::Power,
+    pub pwr_aux_for_cab_hvac_req: TrackedState<si::Power>,
     /// Requested thermal power demand from [Vehicle::hvac] system for cabin thermal
     /// managemement.
-    pub pwr_thrml_to_cab_req: si::Power,
+    pub pwr_thrml_to_cab_req: TrackedState<si::Power>,
     /// Requested aux power demand from [Vehicle::hvac] system for res thermal
     /// managemement.
-    pub pwr_aux_for_res_hvac_req: si::Power,
+    pub pwr_aux_for_res_hvac_req: TrackedState<si::Power>,
     /// Requested thermal power demand from [Vehicle::hvac] system for res thermal
     /// managemement.
-    pub pwr_thrml_to_res_req: si::Power,
+    pub pwr_thrml_to_res_req: TrackedState<si::Power>,
     /// Arbitrated power demand from [Vehicle::hvac] system for cabin thermal
     /// managemement
     ///
     /// NOTE: If battery is hot and cabin is cold or vice versa, this is an overestimate.
-    pub pwr_aux_for_cab_hvac: si::Power,
+    pub pwr_aux_for_cab_hvac: TrackedState<si::Power>,
     /// Arbitrated cumulative energy demand from [Vehicle::hvac] system for cabin
     /// thermal managemement
     ///
     /// NOTE: If battery is hot and cabin is cold or vice versa, this is an overestimate.
-    pub energy_aux_for_cab_hvac: si::Energy,
+    pub energy_aux_for_cab_hvac: TrackedStateWithMemory<si::Energy>,
     /// Arbitrated power demand from [Vehicle::hvac] system for res thermal
     /// managemement
     ///
     /// NOTE: If battery is hot and cabin is cold or vice versa, this is an overestimate.
-    pub pwr_aux_for_res_hvac: si::Power,
+    pub pwr_aux_for_res_hvac: TrackedState<si::Power>,
     /// Arbitrated cumulative energy demand from [Vehicle::hvac] system for res
     /// thermal managemement
     ///
     /// NOTE: If battery is hot and cabin is cold or vice versa, this is an overestimate.
-    pub energy_aux_for_res_hvac: si::Energy,
+    pub energy_aux_for_res_hvac: TrackedStateWithMemory<si::Energy>,
     /// Thermal power from HVAC system to cabin, positive is heating the cabin
-    pub pwr_thrml_hvac_to_cabin: si::Power,
+    pub pwr_thrml_hvac_to_cabin: TrackedState<si::Power>,
     /// Cumulative thermal energy from HVAC system to cabin, positive is heating
     /// the cabin
-    pub energy_thrml_hvac_to_cabin: si::Energy,
+    pub energy_thrml_hvac_to_cabin: TrackedStateWithMemory<si::Energy>,
     /// Thermal power from [FuelConverter] to [Cabin]
-    pub pwr_thrml_fc_to_cabin: si::Power,
+    pub pwr_thrml_fc_to_cabin: TrackedState<si::Power>,
     /// Cumulative thermal energy from [FuelConverter] to [Cabin]
-    pub energy_thrml_fc_to_cabin: si::Energy,
+    pub energy_thrml_fc_to_cabin: TrackedStateWithMemory<si::Energy>,
     /// Thermal power from HVAC to [ReversibleEnergyStorage]
-    pub pwr_thrml_hvac_to_res: si::Power,
+    pub pwr_thrml_hvac_to_res: TrackedState<si::Power>,
     /// Cumulative thermal energy from HVAC to [ReversibleEnergyStorage]
-    pub energy_thrml_hvac_to_res: si::Energy,
+    pub energy_thrml_hvac_to_res: TrackedStateWithMemory<si::Energy>,
     pub mode: HvacModeForLumpedCabinAndRes,
 }
 impl Init for HVACSystemForLumpedCabinAndRESState {}

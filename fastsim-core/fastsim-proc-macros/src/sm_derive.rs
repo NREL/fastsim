@@ -23,6 +23,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         })
         .collect();
 
+    // fields that contain nested `state` fields
     let fields_with_state = fields
         .iter()
         .zip(fields_with_state_vec)
@@ -30,9 +31,9 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         .map(|(f, _hsv)| f.ident.as_ref().unwrap())
         .collect::<Vec<_>>();
 
-    let self_state_step: TokenStream2 = if struct_has_state {
+    let self_state_methods: TokenStream2 = if struct_has_state {
         quote! {
-            self.state.i += 1;
+            self.state.step();
         }
     } else {
         quote! {}
@@ -41,7 +42,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
     impl_block.extend::<TokenStream2>(quote! {
         impl Step for #ident {
             fn step(&mut self) {
-                #self_state_step
+                #self_state_methods
                 #(self.#fields_with_state.step();)*
             }
         }

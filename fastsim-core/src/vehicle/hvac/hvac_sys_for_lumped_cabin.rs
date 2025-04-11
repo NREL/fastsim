@@ -357,39 +357,47 @@ impl SerdeAPI for CabinHeatSource {}
     }
 )]
 #[derive(
-    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    SetCumulative,
+    StateMethods,
 )]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct HVACSystemForLumpedCabinState {
     /// time step counter
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
     /// portion of total HVAC cooling/heating (negative/positive) power due to proportional gain
-    pub pwr_p: si::Power,
+    pub pwr_p: TrackedState<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy due to proportional gain
-    pub energy_p: si::Energy,
+    pub energy_p: TrackedStateWithMemory<si::Energy>,
     /// portion of total HVAC cooling/heating (negative/positive) power due to integral gain
-    pub pwr_i: si::Power,
+    pub pwr_i: TrackedState<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy due to integral gain
-    pub energy_i: si::Energy,
+    pub energy_i: TrackedStateWithMemory<si::Energy>,
     /// portion of total HVAC cooling/heating (negative/positive) power due to derivative gain
-    pub pwr_d: si::Power,
+    pub pwr_d: TrackedState<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy due to derivative gain
-    pub energy_d: si::Energy,
+    pub energy_d: TrackedStateWithMemory<si::Energy>,
     /// coefficient of performance (i.e. efficiency) of vapor compression cycle
-    pub cop: si::Ratio,
+    pub cop: TrackedState<si::Ratio>,
     /// Aux power demand from [Vehicle::hvac] system
-    pub pwr_aux_for_hvac: si::Power,
+    pub pwr_aux_for_hvac: TrackedState<si::Power>,
     /// Cumulative aux energy for HVAC system
-    pub energy_aux_for_hvac: si::Energy,
+    pub energy_aux_for_hvac: TrackedStateWithMemory<si::Energy>,
     /// Thermal power from HVAC system to cabin, positive is heating the cabin
-    pub pwr_thrml_hvac_to_cabin: si::Power,
+    pub pwr_thrml_hvac_to_cabin: TrackedState<si::Power>,
     /// Cumulative thermal energy from HVAC system to cabin, positive is heating the cabin
-    pub energy_thrml_hvac_to_cabin: si::Energy,
+    pub energy_thrml_hvac_to_cabin: TrackedStateWithMemory<si::Energy>,
     /// Thermal power from [FuelConverter] to [Cabin]
-    pub pwr_thrml_fc_to_cabin: si::Power,
+    pub pwr_thrml_fc_to_cabin: TrackedState<si::Power>,
     /// Cumulative thermal energy from [FuelConverter] to [Cabin]
-    pub energy_thrml_fc_to_cabin: si::Energy,
+    pub energy_thrml_fc_to_cabin: TrackedStateWithMemory<si::Energy>,
 }
 impl Init for HVACSystemForLumpedCabinState {}
 impl SerdeAPI for HVACSystemForLumpedCabinState {}

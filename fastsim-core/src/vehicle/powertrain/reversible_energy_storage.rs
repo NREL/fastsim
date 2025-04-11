@@ -663,7 +663,9 @@ pub enum SpecificEnergySideEffect {
 }
 
 #[fastsim_api]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 #[serde(default)]
@@ -671,54 +673,54 @@ pub enum SpecificEnergySideEffect {
 pub struct ReversibleEnergyStorageState {
     // limits
     /// max output power for propulsion during positive traction
-    pub pwr_prop_max: si::Power,
+    pub pwr_prop_max: TrackedState<si::Power>,
     /// max regen power for propulsion during negative traction
-    pub pwr_regen_max: si::Power,
+    pub pwr_regen_max: TrackedState<si::Power>,
     /// max discharge power total
-    pub pwr_disch_max: si::Power,
+    pub pwr_disch_max: TrackedState<si::Power>,
     /// max charge power on the output side
-    pub pwr_charge_max: si::Power,
+    pub pwr_charge_max: TrackedState<si::Power>,
 
     /// time step index
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
 
     /// state of charge (SOC)
-    pub soc: si::Ratio,
+    pub soc: TrackedStateWithMemory<si::Ratio>,
     /// SOC at which [ReversibleEnergyStorage] regen power begins linearly
     /// derating as it approaches maximum SOC
-    pub soc_regen_buffer: si::Ratio,
+    pub soc_regen_buffer: TrackedState<si::Ratio>,
     /// SOC at which [ReversibleEnergyStorage] discharge power begins linearly
     /// derating as it approaches minimum SOC
-    pub soc_disch_buffer: si::Ratio,
+    pub soc_disch_buffer: TrackedState<si::Ratio>,
     /// Chemical <-> Electrical conversion efficiency based on current power demand
-    pub eff: si::Ratio,
+    pub eff: TrackedState<si::Ratio>,
     /// State of Health (SOH)
     pub soh: f64,
 
     // TODO: add `pwr_out_neg_electrical` and `pwr_out_pos_electrical` and corresponding energies
     // powers to separately pin negative- and positive-power operation
     /// total electrical power; positive is discharging
-    pub pwr_out_electrical: si::Power,
+    pub pwr_out_electrical: TrackedState<si::Power>,
     /// electrical power going to propulsion
-    pub pwr_out_prop: si::Power,
+    pub pwr_out_prop: TrackedState<si::Power>,
     /// electrical power going to aux loads
-    pub pwr_aux: si::Power,
+    pub pwr_aux: TrackedState<si::Power>,
     /// power dissipated as loss
-    pub pwr_loss: si::Power,
+    pub pwr_loss: TrackedState<si::Power>,
     /// chemical power; positive is discharging
-    pub pwr_out_chemical: si::Power,
+    pub pwr_out_chemical: TrackedState<si::Power>,
 
     // cumulative energies
     /// cumulative total electrical energy; positive is discharging
-    pub energy_out_electrical: si::Energy,
+    pub energy_out_electrical: TrackedStateWithMemory<si::Energy>,
     /// cumulative electrical energy going to propulsion
-    pub energy_out_prop: si::Energy,
+    pub energy_out_prop: TrackedStateWithMemory<si::Energy>,
     /// cumulative electrical energy going to aux loads
-    pub energy_aux: si::Energy,
+    pub energy_aux: TrackedStateWithMemory<si::Energy>,
     /// cumulative energy dissipated as loss
-    pub energy_loss: si::Energy,
+    pub energy_loss: TrackedStateWithMemory<si::Energy>,
     /// cumulative chemical energy; positive is discharging
-    pub energy_out_chemical: si::Energy,
+    pub energy_out_chemical: TrackedStateWithMemory<si::Energy>,
 }
 
 impl Default for ReversibleEnergyStorageState {
@@ -947,31 +949,31 @@ impl RESLumpedThermal {
         Self::default()
     }
 )]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+)]
 #[serde(deny_unknown_fields)]
 pub struct RESLumpedThermalState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
     /// Current thermal mass temperature
-    pub temperature: si::Temperature,
-    /// Thermal mass temperature at previous time step
-    pub temp_prev: si::Temperature,
+    pub temperature: TrackedStateWithMemory<si::Temperature>,
     /// Thermal power flow to [RESLumpedThermal] from cabin
-    pub pwr_thrml_from_cabin: si::Power,
+    pub pwr_thrml_from_cabin: TrackedState<si::Power>,
     /// Cumulative thermal energy flow to [RESLumpedThermal] from cabin
-    pub energy_thrml_from_cabin: si::Energy,
+    pub energy_thrml_from_cabin: TrackedStateWithMemory<si::Energy>,
     /// Thermal power flow to [RESLumpedThermal] from ambient
-    pub pwr_thrml_from_amb: si::Power,
+    pub pwr_thrml_from_amb: TrackedState<si::Power>,
     /// Cumulative thermal energy flow to [RESLumpedThermal] from ambient
-    pub energy_thrml_from_amb: si::Energy,
+    pub energy_thrml_from_amb: TrackedStateWithMemory<si::Energy>,
     /// Thermal power flow to [RESLumpedThermal] from HVAC
-    pub pwr_thrml_hvac_to_res: si::Power,
+    pub pwr_thrml_hvac_to_res: TrackedState<si::Power>,
     /// Cumulative thermal energy flow to [RESLumpedThermal] from HVAC
-    pub energy_thrml_hvac_to_res: si::Energy,
+    pub energy_thrml_hvac_to_res: TrackedStateWithMemory<si::Energy>,
     /// Thermal generation due to losses
-    pub pwr_thrml_loss: si::Power,
+    pub pwr_thrml_loss: TrackedState<si::Power>,
     /// Cumulative thermal energy generation due to losses
-    pub energy_thrml_loss: si::Energy,
+    pub energy_thrml_loss: TrackedStateWithMemory<si::Energy>,
 }
 
 impl Init for RESLumpedThermalState {}
@@ -980,8 +982,7 @@ impl Default for RESLumpedThermalState {
     fn default() -> Self {
         Self {
             i: Default::default(),
-            temperature: *TE_STD_AIR,
-            temp_prev: *TE_STD_AIR,
+            temperature: TrackedStateWithMemory::new(*TE_STD_AIR),
             pwr_thrml_from_cabin: Default::default(),
             energy_thrml_from_cabin: Default::default(),
             pwr_thrml_from_amb: Default::default(),

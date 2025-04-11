@@ -224,44 +224,42 @@ impl LumpedCabin {
 }
 
 #[fastsim_api]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+)]
 #[serde(deny_unknown_fields)]
 pub struct LumpedCabinState {
     /// time step counter
-    pub i: usize,
+    pub i: TrackedStateWithMemory<usize>,
     /// lumped cabin temperature
-    pub temperature: si::Temperature,
-    /// lumped cabin temperature at previous simulation time step
-    // TODO: make sure this gets updated
-    pub temp_prev: si::Temperature,
+    pub temperature: TrackedStateWithMemory<si::Temperature>,
     /// Thermal power coming to cabin from [Vehicle::hvac] system.  Positive indicates
     /// heating, and negative indicates cooling.
-    pub pwr_thrml_from_hvac: si::Power,
+    pub pwr_thrml_from_hvac: TrackedState<si::Power>,
     /// Cumulative thermal energy coming to cabin from [Vehicle::hvac] system.
     /// Positive indicates heating, and negative indicates cooling.
-    pub energy_thrml_from_hvac: si::Energy,
+    pub energy_thrml_from_hvac: TrackedStateWithMemory<si::Energy>,
     /// Thermal power coming to cabin from ambient air.  Positive indicates
     /// heating, and negative indicates cooling.
-    pub pwr_thrml_from_amb: si::Power,
+    pub pwr_thrml_from_amb: TrackedState<si::Power>,
     /// Cumulative thermal energy coming to cabin from ambient air.  Positive indicates
     /// heating, and negative indicates cooling.
-    pub energy_thrml_from_amb: si::Energy,
+    pub energy_thrml_from_amb: TrackedStateWithMemory<si::Energy>,
     /// Thermal power flowing from [Cabin] to [ReversibleEnergyStorage] (zero if
     /// not equipped) due to temperature delta
-    pub pwr_thrml_to_res: si::Power,
+    pub pwr_thrml_to_res: TrackedState<si::Power>,
     /// Cumulative thermal energy flowing from [Cabin] to
     /// [ReversibleEnergyStorage] due to temperature delta
-    pub energy_thrml_to_res: si::Energy,
+    pub energy_thrml_to_res: TrackedStateWithMemory<si::Energy>,
     /// Reynolds number for flow over cabin, treating cabin as a flat plate
-    pub reynolds_for_plate: si::Ratio,
+    pub reynolds_for_plate: TrackedState<si::Ratio>,
 }
 
 impl Default for LumpedCabinState {
     fn default() -> Self {
         Self {
             i: Default::default(),
-            temperature: *TE_STD_AIR,
-            temp_prev: *TE_STD_AIR,
+            temperature: TrackedStateWithMemory::new(*TE_STD_AIR),
             pwr_thrml_from_hvac: Default::default(),
             energy_thrml_from_hvac: Default::default(),
             pwr_thrml_from_amb: Default::default(),
