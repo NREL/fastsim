@@ -387,9 +387,7 @@ mod tests {
 #[derive(PartialEq, Clone, Debug, Default)]
 /// Struct for storing state variable and ensuring one mutation per
 /// initialization or reset
-pub(crate) struct TrackedState<
-    T: std::fmt::Debug + Clone + PartialEq + for<'de> Deserialize<'de> + Serialize,
->(Option<T>);
+pub(crate) struct TrackedState<T: std::fmt::Debug + Clone + PartialEq>(Option<T>);
 
 impl<T> TrackedState<T>
 where
@@ -447,13 +445,13 @@ where
 //     }
 // }
 
-impl<'de, T> serde::Deserialize<'de> for TrackedState<T>
+impl<'de, T> Deserialize<'de> for TrackedState<T>
 where
-    T: serde::Deserialize<'de> + Clone + std::fmt::Debug + PartialEq + Serialize,
+    T: std::fmt::Debug + Clone + PartialEq + Deserialize<'de> + Serialize,
 {
-    fn deserialize<De>(deserializer: De) -> Result<Self, De::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        De: serde::Deserializer<'de>,
+        D: serde::Deserializer<'de>,
     {
         let value: Option<T> = Some(T::deserialize(deserializer)?);
 
