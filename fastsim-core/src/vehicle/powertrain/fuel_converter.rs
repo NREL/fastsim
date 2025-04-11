@@ -518,10 +518,12 @@ pub struct FuelConverterState {
 
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
-impl StateMethods for FuelConverterState {
+impl SaveState for FuelConverterState {
     fn save_state(&mut self) {
         // this does not need to do anything
     }
+}
+impl TrackedStateMethods for FuelConverterState {
     fn check_and_reset(&mut self) -> anyhow::Result<()> {
         self.pwr_out_max.check_and_reset()?;
         Ok(())
@@ -545,13 +547,15 @@ pub enum FuelConverterThermalOption {
     None,
 }
 
-impl StateMethods for FuelConverterThermalOption {
+impl SaveState for FuelConverterThermalOption {
     fn save_state(&mut self) {
         match self {
             Self::FuelConverterThermal(fct) => fct.save_state(),
             Self::None => {}
         }
     }
+}
+impl TrackedStateMethods for FuelConverterThermalOption {
     fn check_and_reset(&mut self) -> anyhow::Result<()> {
         match self {
             Self::FuelConverterThermal(fct) => fct.check_and_reset()?,

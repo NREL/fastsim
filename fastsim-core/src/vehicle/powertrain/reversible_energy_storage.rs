@@ -768,13 +768,15 @@ impl SetCumulative for RESThermalOption {
         }
     }
 }
-impl StateMethods for RESThermalOption {
+impl SaveState for RESThermalOption {
     fn save_state(&mut self) {
         match self {
             Self::RESLumpedThermal(rlt) => rlt.save_state(),
             Self::None => {}
         }
     }
+}
+impl TrackedStateMethods for RESThermalOption {
     fn check_and_reset(&mut self) -> anyhow::Result<()> {
         match self {
             Self::RESLumpedThermal(rlt) => rlt.check_and_reset()?,

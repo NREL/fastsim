@@ -606,13 +606,15 @@ impl Default for HEVPowertrainControls {
     }
 }
 
-impl StateMethods for HEVPowertrainControls {
+impl SaveState for HEVPowertrainControls {
     fn save_state(&mut self) {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_state(),
             HEVPowertrainControls::Placeholder => todo!(),
         }
     }
+}
+impl TrackedStateMethods for HEVPowertrainControls {
     fn check_and_reset(&mut self) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.check_and_reset()?,

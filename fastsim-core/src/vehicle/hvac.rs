@@ -72,7 +72,7 @@ impl HistoryMethods for HVACOption {
         }
     }
 }
-impl StateMethods for HVACOption {
+impl SaveState for HVACOption {
     fn save_state(&mut self) {
         match self {
             Self::LumpedCabin(lc) => lc.save_state(),
@@ -84,6 +84,8 @@ impl StateMethods for HVACOption {
             Self::None => {}
         }
     }
+}
+impl TrackedStateMethods for HVACOption {
     fn check_and_reset(&mut self) -> anyhow::Result<()> {
         match self {
             Self::LumpedCabin(lc) => lc.check_and_reset()?,

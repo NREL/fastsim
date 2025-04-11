@@ -15,7 +15,7 @@ pub enum CabinOption {
     #[default]
     None,
 }
-impl StateMethods for CabinOption {
+impl SaveState for CabinOption {
     fn save_state(&mut self) {
         match self {
             Self::LumpedCabin(lc) => lc.save_state(),
@@ -25,6 +25,8 @@ impl StateMethods for CabinOption {
             Self::None => {}
         }
     }
+}
+impl TrackedStateMethods for CabinOption {
     fn check_and_reset(&mut self) -> anyhow::Result<()> {
         match self {
             Self::LumpedCabin(lc) => lc.check_and_reset()?,

@@ -505,15 +505,18 @@ impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
 
 /// Provides method that saves `self.state` to `self.history` and propagates to any fields with
 /// `state`
-pub trait StateMethods {
+pub trait SaveState {
     /// Saves `self.state` to `self.history` and propagates to any fields with `state`
     fn save_state(&mut self) {}
+}
+/// Provides methods to guarantee that states are updated once and only once per time step
+pub trait TrackedStateMethods {
     /// checks that all tracked state variables have been updated and resets for next time step
     fn check_and_reset(&mut self) -> anyhow::Result<()>;
 }
 
 /// Provides methods for getting and setting the save interval
-pub trait HistoryMethods: StateMethods {
+pub trait HistoryMethods: SaveState {
     /// Recursively sets save interval
     /// # Arguments
     /// - `save_interval`: time step interval at which to save `self.state` to `self.history`
