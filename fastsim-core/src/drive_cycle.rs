@@ -541,7 +541,7 @@ impl Cycle {
         result
     }
 
-    fn to_microtrips(&self, stop_speed: Option<si::Velocity>) -> Vec<Cycle> {
+    pub fn to_microtrips(&self, stop_speed: Option<si::Velocity>) -> Vec<Cycle> {
         let stop_speed = stop_speed.unwrap_or(1e-6 * uc::MPS);
         let mut microtrips = Vec::new();
         let mut current = Cycle {
