@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! check_orphaned_and_set {
     ($struct_self: ident, $field: ident, $value: expr) => {
         // TODO: This seems like it could be used instead, but raises an error
@@ -15,7 +14,6 @@ macro_rules! check_orphaned_and_set {
     };
 }
 
-#[macro_export]
 /// Generates a String similar to output of `dbg` but without printing
 macro_rules! format_dbg {
     ($dbg_expr:expr) => {
