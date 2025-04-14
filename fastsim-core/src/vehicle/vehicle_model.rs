@@ -394,24 +394,31 @@ impl Vehicle {
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         self.pt_type
             .solve(
-                self.state.pwr_tractive,
+                self.state.pwr_tractive.get(format_dbg!())?,
                 self.state,
                 true, // `enabled` should always be true at the powertrain level
                 dt,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.state.pwr_brake =
-            -self.state.pwr_tractive.max(si::Power::ZERO) - self.pt_type.pwr_regen();
+        self.state.pwr_brake = -self
+            .state
+            .pwr_tractive
+            .get(format_dbg!())?
+            .max(si::Power::ZERO)
+            - self.pt_type.pwr_regen();
         Ok(())
     }
 
     pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: account for traction limits here
         self.pt_type
-            .set_curr_pwr_prop_out_max(self.state.pwr_aux, dt, self.state)
+            .set_curr_pwr_prop_out_max(self.state.pwr_aux.get(format_dbg!())?, dt, self.state)
             .with_context(|| anyhow!(format_dbg!()))?;
 
-        (self.state.pwr_prop_fwd_max, self.state.pwr_prop_bwd_max) = self
+        (
+            self.state.pwr_prop_fwd_max.get(format_dbg!())?,
+            self.state.pwr_prop_bwd_max.get(format_dbg!())?,
+        ) = self
             .pt_type
             .get_curr_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -429,7 +436,9 @@ impl Vehicle {
         let pwr_thrml_cab_to_res: si::Power = self
             .res()
             .and_then(|res| match &res.thrml {
-                RESThermalOption::RESLumpedThermal(rlt) => Some(rlt.state.pwr_thrml_from_cabin),
+                RESThermalOption::RESLumpedThermal(rlt) => {
+                    Some(rlt.state.pwr_thrml_from_cabin.get(format_dbg!())?)
+                }
                 RESThermalOption::None => None,
             })
             .unwrap_or_default();
@@ -468,7 +477,9 @@ impl Vehicle {
             Option<si::Temperature>,
         ) = match (&mut self.cabin, &mut self.hvac) {
             (CabinOption::None, HVACOption::None) => {
-                self.state.pwr_aux = self.pwr_aux_base;
+                self.state
+                    .pwr_aux
+                    .update(self.pwr_aux_base, format_dbg!())?;
                 (None, None, None)
             }
             (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabin(hvac)) => {
@@ -484,7 +495,10 @@ impl Vehicle {
                         dt,
                     )
                     .with_context(|| format_dbg!())?;
-                self.state.pwr_aux = self.pwr_aux_base + hvac.state.pwr_aux_for_hvac;
+                self.state.pwr_aux.update(
+                    self.pwr_aux_base + hvac.state.pwr_aux_for_hvac.get(format_dbg!())?,
+                    format_dbg!(),
+                );
                 (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
             }
             (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabinAndRES(hvac)) => {
@@ -510,11 +524,14 @@ impl Vehicle {
                         dt,
                     )
                     .with_context(|| format_dbg!())?;
-                self.state.pwr_aux = self.pwr_aux_base
-                    + hvac.state.pwr_aux_for_cab_hvac
-                    + hvac.state.pwr_aux_for_res_hvac;
+                self.state.pwr_aux.update(
+                    self.pwr_aux_base
+                        + hvac.state.pwr_aux_for_cab_hvac.get(format_dbg!())?
+                        + hvac.state.pwr_aux_for_res_hvac.get(format_dbg!())?,
+                    format_dbg!(),
+                );
                 ensure!(
-                    self.state.pwr_aux > si::Power::ZERO,
+                    *self.state.pwr_aux.get(format_dbg!())? > si::Power::ZERO,
                     format!(
                         "{}\n{}\n{}",
                         format_dbg!(self.state.pwr_aux),
@@ -619,10 +636,10 @@ pub struct VehicleState {
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in current time step
     // because it should be assumed true in the first time step
-    pub cyc_met: bool,
+    pub cyc_met: TrackedState<bool>,
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in entire cycle
-    pub cyc_met_overall: bool,
+    pub cyc_met_overall: TrackedStateWithMemory<bool>,
     /// actual achieved speed
     pub speed_ach: TrackedStateWithMemory<si::Velocity>,
     /// cumulative distance traveled, integral of [Self::speed_ach]

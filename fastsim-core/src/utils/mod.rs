@@ -427,10 +427,12 @@ where
     }
 
     /// Check that value has been updated and then return as a result
-    pub fn get(&self) -> anyhow::Result<&T> {
+    /// # Arguments
+    /// - `loc`: call site location filename and line number
+    pub fn get(&self, loc: String) -> anyhow::Result<&T> {
         self.0
             .as_ref()
-            .ok_or(anyhow!("State variable was not updated!"))
+            .ok_or(anyhow!("{}\nState variable was not updated!", loc))
     }
 
     pub fn new(value: T) -> Self {
@@ -477,14 +479,14 @@ where
 #[derive(PartialEq, Clone, Debug)]
 /// Struct for storing state variable and ensuring one mutation per
 /// initialization or reset
-pub struct TrackedStateWithMemory<T: std::fmt::Debug + Clone + PartialEq + Default + std::ops::Add>(
+pub struct TrackedStateWithMemory<T: std::fmt::Debug + Clone + PartialEq + Default>(
     Option<T>,
     Option<T>,
 );
 
 impl<T> TrackedStateWithMemory<T>
 where
-    T: std::fmt::Debug + Clone + PartialEq + Default + std::ops::Add,
+    T: std::fmt::Debug + Clone + PartialEq + Default,
 {
     // Not that `anyhow::Error` is fine here because this should result only in
     // logic errors and not runtime errors for end users
@@ -551,7 +553,7 @@ where
 // Custom serialization
 impl<T> Serialize for TrackedStateWithMemory<T>
 where
-    T: std::fmt::Debug + Clone + PartialEq + for<'de> Deserialize<'de> + Serialize,
+    T: std::fmt::Debug + Clone + PartialEq + for<'de> Deserialize<'de> + Serialize + Default,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -563,7 +565,7 @@ where
 
 impl<'de, T> Deserialize<'de> for TrackedStateWithMemory<T>
 where
-    T: std::fmt::Debug + Clone + PartialEq + Deserialize<'de> + Serialize,
+    T: std::fmt::Debug + Clone + PartialEq + Deserialize<'de> + Serialize + Default,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -591,7 +593,8 @@ mod test_tracked_state {
             .unwrap();
         energy
             .update(
-                *pwr.get().unwrap() * *dt.get().unwrap() + energy.get_prev().unwrap_or_default(),
+                *pwr.get(format_dbg!()).unwrap() * *dt.get(format_dbg!()).unwrap()
+                    + energy.get_prev().unwrap_or_default(),
                 format_dbg!(),
             )
             .unwrap();
@@ -615,7 +618,10 @@ mod test_tracked_state {
         dt.update(si::Time::new::<si::second>(1.0), format_dbg!())
             .unwrap();
         energy
-            .update(*pwr.get().unwrap() * *dt.get().unwrap(), format_dbg!())
+            .update(
+                *pwr.get(format_dbg!()).unwrap() * *dt.get(format_dbg!()).unwrap(),
+                format_dbg!(),
+            )
             .unwrap();
 
         pwr.check_and_reset().unwrap();
@@ -627,7 +633,10 @@ mod test_tracked_state {
         dt.update(si::Time::new::<si::second>(1.0), format_dbg!())
             .unwrap();
         energy
-            .update(*pwr.get().unwrap() * *dt.get().unwrap(), format_dbg!())
+            .update(
+                *pwr.get(format_dbg!()).unwrap() * *dt.get(format_dbg!()).unwrap(),
+                format_dbg!(),
+            )
             .unwrap();
 
         pwr.check_and_reset().unwrap();

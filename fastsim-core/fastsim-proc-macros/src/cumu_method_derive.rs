@@ -38,7 +38,15 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
         #[automatically_derived]
         impl SetCumulative for #ident {
             fn set_cumulative(&mut self, dt: si::Time) {
-                #(self.#energy_fields.update(self.#pwr_fields.get().with_context(|| format_dbg!())? * dt)?;)*
+                #(self
+                    .#energy_fields
+                    .update(
+                        self.#pwr_fields.get(
+                            format_dbg!()
+                        )? * dt,
+                        format_dbg!()
+                    )?;
+                )*
             }
         }
     };
