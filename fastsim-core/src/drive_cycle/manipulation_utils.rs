@@ -238,6 +238,12 @@ pub fn trapz_step_start_distance(cyc: &Cycle, i: usize) -> si::Length {
     cyc.trapz_step_start_distance(i)
 }
 
+/// The distance traveled during the given step
+/// (i.e., distance from sample point i-1 to i for step i)
+pub fn trapz_distance_for_step(cyc: &Cycle, i: usize) -> si::Length {
+    cyc.trapz_distance_for_step(i)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -360,6 +366,14 @@ mod tests {
         let expected = 40.0 * uc::M;
         // NOTE: using '30' tests we can overshoot the step index with no problem.
         let actual = trapz_step_start_distance(&cyc, 30);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_trapz_distance_for_step() {
+        let cyc = make_triangle_cycle();
+        let expected = 20.0 * uc::M;
+        let actual = trapz_distance_for_step(&cyc, 1);
         assert_eq!(actual, expected);
     }
 }

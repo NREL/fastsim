@@ -691,6 +691,14 @@ impl Cycle {
         }
         distance
     }
+
+    /// The distance traveled during the given step
+    /// (i.e., distance from sample point i-1 to i for step i)
+    pub fn trapz_distance_for_step(&self, step: usize) -> si::Length {
+        let average_speed = self.average_step_speed_at(step);
+        let elapsed_time = self.time[step] - self.time[step - 1];
+        average_speed * elapsed_time
+    }
 }
 
 #[fastsim_api]
