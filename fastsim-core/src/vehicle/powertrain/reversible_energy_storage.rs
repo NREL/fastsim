@@ -125,7 +125,7 @@ pub struct ReversibleEnergyStorage {
 
 impl ReversibleEnergyStorage {
     pub fn solve(&mut self, pwr_out_req: si::Power, dt: si::Time) -> anyhow::Result<()> {
-        let te_res = self.temperature();
+        let te_res: Option<si::Temperature> = self.temperature()?;
         let state = &mut self.state;
 
         ensure!(
@@ -324,7 +324,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         dt: si::Time,
     ) -> anyhow::Result<()> {
         self.thrml
-            .solve(self.state, te_amb, pwr_thrml_hvac_to_res, te_cab, dt)
+            .solve(&mut self.state, te_amb, pwr_thrml_hvac_to_res, te_cab, dt)
             .with_context(|| format_dbg!())
     }
 
@@ -364,18 +364,23 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         let pwr_max_for_dt =
             ((self.max_soc - *self.state.soc.get(format_dbg!())?) * self.energy_capacity / dt)
                 .max(si::Power::ZERO);
-        self.state.pwr_charge_max = if *self.state.soc <= self.state.soc_regen_buffer {
-            self.pwr_out_max
-        } else if *self.state.soc.get(format_dbg!())? < self.max_soc
-            && soc_buffer_delta > si::Ratio::ZERO
-        {
-            self.pwr_out_max * (self.max_soc - *self.state.soc.get(format_dbg!())?)
-                / soc_buffer_delta
-        } else {
-            // current SOC is less than both
-            si::Power::ZERO
-        }
-        .min(pwr_max_for_dt);
+        self.state.pwr_charge_max.update(
+            if *self.state.soc.get(format_dbg!())?
+                <= *self.state.soc_regen_buffer.get(format_dbg!())?
+            {
+                self.pwr_out_max
+            } else if *self.state.soc.get(format_dbg!())? < self.max_soc
+                && soc_buffer_delta > si::Ratio::ZERO
+            {
+                self.pwr_out_max * (self.max_soc - *self.state.soc.get(format_dbg!())?)
+                    / soc_buffer_delta
+            } else {
+                // current SOC is less than both
+                si::Power::ZERO
+            }
+            .min(pwr_max_for_dt),
+            format_dbg!(),
+        )?;
 
         ensure!(
             *self.state.pwr_charge_max.get(format_dbg!())? >= si::Power::ZERO,
@@ -623,27 +628,28 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     }
 
     /// If thermal model is appropriately configured, returns current lumped [Self] temperature
-    pub fn res_thrml_state(&self) -> Option<RESLumpedThermalState> {
+    pub fn res_thrml_state(&self) -> Option<&RESLumpedThermalState> {
         match &self.thrml {
-            RESThermalOption::RESLumpedThermal(rest) => Some(rest.state),
+            RESThermalOption::RESLumpedThermal(rest) => Some(&rest.state),
             RESThermalOption::None => None,
         }
     }
 
     /// If thermal model is appropriately configured, returns current lumped [Self] temperature
-    pub fn temperature(&self) -> Option<si::Temperature> {
+    pub fn temperature(&self) -> anyhow::Result<Option<si::Temperature>> {
         match &self.thrml {
             RESThermalOption::RESLumpedThermal(rest) => {
-                Some(rest.state.temperature.get(format_dbg!())?)
+                Some(rest.state.temperature.get(format_dbg!()).cloned())
             }
             RESThermalOption::None => None,
         }
+        .transpose()
     }
 }
 
 impl SetCumulative for ReversibleEnergyStorage {
-    fn set_cumulative(&mut self, dt: si::Time) {
-        self.state.set_cumulative(dt);
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.state.set_cumulative(dt)
     }
 }
 
@@ -791,7 +797,7 @@ pub struct ReversibleEnergyStorageState {
     /// Chemical <-> Electrical conversion efficiency based on current power demand
     pub eff: TrackedState<si::Ratio>,
     /// State of Health (SOH)
-    pub soh: f64,
+    pub soh: TrackedStateWithMemory<f64>,
 
     // TODO: add `pwr_out_neg_electrical` and `pwr_out_pos_electrical` and corresponding energies
     // powers to separately pin negative- and positive-power operation
@@ -822,26 +828,26 @@ pub struct ReversibleEnergyStorageState {
 impl Default for ReversibleEnergyStorageState {
     fn default() -> Self {
         Self {
-            pwr_prop_max: TrackedState::new(si::Power::ZERO),
-            pwr_regen_max: TrackedState::new(si::Power::ZERO),
-            pwr_disch_max: TrackedState::new(si::Power::ZERO),
-            pwr_charge_max: TrackedState::new(si::Power::ZERO),
+            pwr_prop_max: Default::default(),
+            pwr_regen_max: Default::default(),
+            pwr_disch_max: Default::default(),
+            pwr_charge_max: Default::default(),
             i: Default::default(),
-            soc: TrackedState::new(uc::R * 0.5),
+            soc: TrackedStateWithMemory::new(uc::R * 0.5),
             soc_regen_buffer: TrackedState::new(uc::R * 1.),
-            soc_disch_buffer: TrackedState::new(si::Ratio::ZERO),
-            eff: TrackedState::new(si::Ratio::ZERO),
-            soh: TrackedState::new(0.),
-            pwr_out_electrical: TrackedState::new(si::Power::ZERO),
-            pwr_out_prop: TrackedState::new(si::Power::ZERO),
-            pwr_aux: TrackedState::new(si::Power::ZERO),
-            pwr_loss: TrackedState::new(si::Power::ZERO),
-            pwr_out_chemical: TrackedState::new(si::Power::ZERO),
-            energy_out_electrical: TrackedStateWithMemory::new(si::Energy::ZERO),
-            energy_out_prop: TrackedStateWithMemory::new(si::Energy::ZERO),
-            energy_aux: TrackedStateWithMemory::new(si::Energy::ZERO),
-            energy_loss: TrackedStateWithMemory::new(si::Energy::ZERO),
-            energy_out_chemical: TrackedStateWithMemory::new(si::Energy::ZERO),
+            soc_disch_buffer: Default::default(),
+            eff: Default::default(),
+            soh: TrackedStateWithMemory::new(0.),
+            pwr_out_electrical: Default::default(),
+            pwr_out_prop: Default::default(),
+            pwr_aux: Default::default(),
+            pwr_loss: Default::default(),
+            pwr_out_chemical: Default::default(),
+            energy_out_electrical: Default::default(),
+            energy_out_prop: Default::default(),
+            energy_aux: Default::default(),
+            energy_loss: Default::default(),
+            energy_out_chemical: Default::default(),
         }
     }
 }
@@ -859,19 +865,21 @@ pub enum RESThermalOption {
     None,
 }
 impl SetCumulative for RESThermalOption {
-    fn set_cumulative(&mut self, dt: si::Time) {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
         match self {
-            Self::RESLumpedThermal(rlt) => rlt.set_cumulative(dt),
+            Self::RESLumpedThermal(rlt) => rlt.set_cumulative(dt)?,
             Self::None => {}
         }
+        Ok(())
     }
 }
 impl SaveState for RESThermalOption {
-    fn save_state(&mut self) {
+    fn save_state(&mut self) -> anyhow::Result<()> {
         match self {
-            Self::RESLumpedThermal(rlt) => rlt.save_state(),
+            Self::RESLumpedThermal(rlt) => rlt.save_state()?,
             Self::None => {}
         }
+        Ok(())
     }
 }
 impl TrackedStateMethods for RESThermalOption {
@@ -931,7 +939,7 @@ impl RESThermalOption {
     /// - `dt`: simulation time step size
     fn solve(
         &mut self,
-        res_state: ReversibleEnergyStorageState,
+        res_state: &mut ReversibleEnergyStorageState,
         te_amb: si::Temperature,
         pwr_thrml_hvac_to_res: si::Power,
         te_cab: Option<si::Temperature>,
@@ -988,8 +996,8 @@ pub struct RESLumpedThermal {
     pub save_interval: Option<usize>,
 }
 impl SetCumulative for RESLumpedThermal {
-    fn set_cumulative(&mut self, dt: si::Time) {
-        self.state.set_cumulative(dt);
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.state.set_cumulative(dt)
     }
 }
 impl SerdeAPI for RESLumpedThermal {}
@@ -1009,31 +1017,53 @@ impl HistoryMethods for RESLumpedThermal {
 impl RESLumpedThermal {
     fn solve(
         &mut self,
-        res_state: ReversibleEnergyStorageState,
+        res_state: &mut ReversibleEnergyStorageState,
         te_amb: si::Temperature,
         pwr_thrml_hvac_to_res: si::Power,
         te_cab: si::Temperature,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        self.state.temp_prev = self.state.temperature;
         // TODO: make sure this impacts cabin temperature
-        self.state.pwr_thrml_from_cabin = self.conductance_to_cab
-            * (te_cab.get::<si::degree_celsius>()
-                - self.state.temperature.get::<si::degree_celsius>())
-            * uc::KELVIN_INT;
-        self.state.pwr_thrml_hvac_to_res = pwr_thrml_hvac_to_res;
-        self.state.pwr_thrml_from_amb = self.conductance_to_amb
-            * (te_amb.get::<si::degree_celsius>()
-                - self.state.temperature.get::<si::degree_celsius>())
-            * uc::KELVIN_INT;
-        self.state.pwr_thrml_loss =
-            res_state.pwr_out_electrical.abs() * (1.0 * uc::R - res_state.eff);
-        self.state.temperature += (self.state.pwr_thrml_hvac_to_res
-            + self.state.pwr_thrml_loss
-            + self.state.pwr_thrml_from_cabin
-            + self.state.pwr_thrml_from_amb)
-            / self.heat_capacitance
-            * dt;
+        self.state.pwr_thrml_from_cabin.update(
+            self.conductance_to_cab
+                * (te_cab.get::<si::degree_celsius>()
+                    - self
+                        .state
+                        .temperature
+                        .get(format_dbg!())?
+                        .get::<si::degree_celsius>())
+                * uc::KELVIN_INT,
+            format_dbg!(),
+        )?;
+        self.state
+            .pwr_thrml_hvac_to_res
+            .update(pwr_thrml_hvac_to_res, format_dbg!())?;
+        self.state.pwr_thrml_from_amb.update(
+            self.conductance_to_amb
+                * (te_amb.get::<si::degree_celsius>()
+                    - self
+                        .state
+                        .temperature
+                        .get(format_dbg!())?
+                        .get::<si::degree_celsius>())
+                * uc::KELVIN_INT,
+            format_dbg!(),
+        )?;
+        self.state.pwr_thrml_loss.update(
+            res_state.pwr_out_electrical.get(format_dbg!())?.abs()
+                * (1.0 * uc::R - *res_state.eff.get(format_dbg!())?),
+            format_dbg!(),
+        )?;
+        self.state.temperature.update(
+            *self.state.temperature.get_prev_or_curr(format_dbg!())?
+                + (*self.state.pwr_thrml_hvac_to_res.get(format_dbg!())?
+                    + *self.state.pwr_thrml_loss.get(format_dbg!())?
+                    + *self.state.pwr_thrml_from_cabin.get(format_dbg!())?
+                    + *self.state.pwr_thrml_from_amb.get(format_dbg!())?)
+                    / self.heat_capacitance
+                    * dt,
+            format_dbg!(),
+        )?;
         Ok(())
     }
 }

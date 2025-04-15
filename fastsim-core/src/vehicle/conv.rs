@@ -53,7 +53,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-        _veh_state: VehicleState,
+        _veh_state: &VehicleState,
     ) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
         self.fc
@@ -66,13 +66,16 @@ impl Powertrain for Box<ConventionalVehicle> {
     }
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
-        Ok((self.fc.state.pwr_prop_max, si::Power::ZERO))
+        Ok((
+            *self.fc.state.pwr_prop_max.get(format_dbg!())?,
+            si::Power::ZERO,
+        ))
     }
 
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        _veh_state: VehicleState,
+        _veh_state: &VehicleState,
         _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
@@ -89,8 +92,8 @@ impl Powertrain for Box<ConventionalVehicle> {
         Ok(())
     }
 
-    fn pwr_regen(&self) -> si::Power {
-        si::Power::ZERO
+    fn pwr_regen(&self) -> anyhow::Result<si::Power> {
+        Ok(si::Power::ZERO)
     }
 }
 

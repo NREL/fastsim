@@ -136,61 +136,71 @@ impl ElectricMachine {
             })?
             .set_extrapolate(Extrapolate::Clamp)?;
 
-        self.state.eff_fwd_at_max_input = uc::R
-            * self
-                .eff_interp_at_max_input
-                .as_ref()
-                .map(|interpolator| {
-                    interpolator
-                        .interpolate(&[abs_checked_x_val(
-                            (pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
-                            interpolator.x().map_err(|e| anyhow!(e))?,
-                        )?])
-                        .map_err(|e| anyhow!(e))
-                })
-                .ok_or(anyhow!(
-                    "eff_interp_bwd is None, which should never be the case at this point."
-                ))?
-                .with_context(|| {
-                    anyhow!(
-                        "{}\n failed to calculate {}",
-                        format_dbg!(),
-                        stringify!(eff_pos)
-                    )
-                })?;
-        self.state.eff_at_max_regen = uc::R
-            * self
-                .eff_interp_at_max_input
-                .as_ref()
-                .map(|interpolator| {
-                    interpolator
-                        .interpolate(&[abs_checked_x_val(
-                            (pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
-                            interpolator.x().map_err(|e| anyhow!(e))?,
-                        )?])
-                        .map_err(|e| anyhow!(e))
-                })
-                .ok_or(anyhow!(
-                    "eff_interp_bwd is None, which should never be the case at this point."
-                ))?
-                .with_context(|| {
-                    anyhow!(
-                        "{}\n failed to calculate {}",
-                        format_dbg!(),
-                        stringify!(eff_neg)
-                    )
-                })?;
+        self.state.eff_fwd_at_max_input.update(
+            uc::R
+                * self
+                    .eff_interp_at_max_input
+                    .as_ref()
+                    .map(|interpolator| {
+                        interpolator
+                            .interpolate(&[abs_checked_x_val(
+                                (pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                interpolator.x().map_err(|e| anyhow!(e))?,
+                            )?])
+                            .map_err(|e| anyhow!(e))
+                    })
+                    .ok_or(anyhow!(
+                        "eff_interp_bwd is None, which should never be the case at this point."
+                    ))?
+                    .with_context(|| {
+                        anyhow!(
+                            "{}\n failed to calculate {}",
+                            format_dbg!(),
+                            stringify!(eff_pos)
+                        )
+                    })?,
+            format_dbg!(),
+        )?;
+        self.state.eff_at_max_regen.update(
+            uc::R
+                * self
+                    .eff_interp_at_max_input
+                    .as_ref()
+                    .map(|interpolator| {
+                        interpolator
+                            .interpolate(&[abs_checked_x_val(
+                                (pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                interpolator.x().map_err(|e| anyhow!(e))?,
+                            )?])
+                            .map_err(|e| anyhow!(e))
+                    })
+                    .ok_or(anyhow!(
+                        "eff_interp_bwd is None, which should never be the case at this point."
+                    ))?
+                    .with_context(|| {
+                        anyhow!(
+                            "{}\n failed to calculate {}",
+                            format_dbg!(),
+                            stringify!(eff_neg)
+                        )
+                    })?,
+            format_dbg!(),
+        )?;
 
         // maximum power in forward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power based on what the ReversibleEnergyStorage can provide
-        self.state.pwr_mech_fwd_out_max = self
-            .pwr_out_max
-            .min(pwr_in_fwd_lim * self.state.eff_fwd_at_max_input);
+        self.state.pwr_mech_fwd_out_max.update(
+            self.pwr_out_max
+                .min(pwr_in_fwd_lim * *self.state.eff_fwd_at_max_input.get(format_dbg!())?),
+            format_dbg!(),
+        )?;
         // maximum power in backward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
-        self.state.pwr_mech_regen_max = self
-            .pwr_out_max
-            .min(pwr_in_bwd_lim / self.state.eff_at_max_regen);
+        self.state.pwr_mech_regen_max.update(
+            self.pwr_out_max
+                .min(pwr_in_bwd_lim / *self.state.eff_at_max_regen.get(format_dbg!())?),
+            format_dbg!(),
+        )?;
         Ok(())
     }
 
@@ -214,92 +224,123 @@ impl ElectricMachine {
             ),
         );
         ensure!(
-            almost_le_uom(&pwr_out_req , &self.state.pwr_mech_fwd_out_max, None),
+            almost_le_uom(&pwr_out_req , self.state.pwr_mech_fwd_out_max.get(format_dbg!())?, None),
             format!(
                 "{}\nedrv required propulsion power ({} kW) exceeds current max propulsion power ({} kW) by {} kW",
-                format_dbg!(pwr_out_req <= self.state.pwr_mech_fwd_out_max),
+                format_dbg!(pwr_out_req <= *self.state.pwr_mech_fwd_out_max.get(format_dbg!())?),
                 pwr_out_req.get::<si::kilowatt>().format_eng(Some(6)),
                 self.state
                     .pwr_mech_fwd_out_max
+                    .get(format_dbg!())?
                     .get::<si::kilowatt>()
                     .format_eng(Some(6)),
-                    (pwr_out_req - self.state.pwr_mech_fwd_out_max).get::<si::kilowatt>().format_eng(Some(6))
+                    (pwr_out_req - *self.state.pwr_mech_fwd_out_max.get(format_dbg!())?).get::<si::kilowatt>().format_eng(Some(6))
             ),
         );
         if pwr_out_req < si::Power::ZERO {
             ensure!(
-                almost_le_uom(&pwr_out_req.abs(), &self.state.pwr_mech_regen_max, None),
+                almost_le_uom(
+                    &pwr_out_req.abs(),
+                    self.state.pwr_mech_regen_max.get(format_dbg!())?,
+                    None
+                ),
                 format!(
                     "{}\nedrv charge power ({:.6} kW) exceeds current max charge power ({:.6} kW)",
                     format_dbg!(),
                     -pwr_out_req.get::<si::kilowatt>(),
-                    self.state.pwr_mech_regen_max.get::<si::kilowatt>()
+                    self.state
+                        .pwr_mech_regen_max
+                        .get(format_dbg!())?
+                        .get::<si::kilowatt>()
                 ),
             );
         }
 
-        self.state.pwr_out_req = pwr_out_req;
+        self.state.pwr_out_req.update(pwr_out_req, format_dbg!())?;
 
         // ensuring eff_interp_fwd has Extrapolate set to Error before calculating self.state.eff
         self.eff_interp_achieved
             .set_extrapolate(Extrapolate::Error)?;
 
-        self.state.eff = uc::R
-            * self
-                .eff_interp_achieved
-                .interpolate(
-                    &[{
-                        let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
-                            Ok({
-                                if self
-                                    .eff_interp_achieved
-                                    .x()?
-                                    .first()
-                                    .with_context(|| anyhow!(format_dbg!()))?
-                                    >= &0.
-                                {
-                                    pwr_uncorrected.max(0.)
-                                } else {
-                                    pwr_uncorrected
-                                }
-                            })
-                        };
-                        pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
-                    }], // &self.eff_interp_fwd.x()?,
-                        // &self.eff_interp_fwd,
-                        // Extrapolate::Error,
-                )
-                .with_context(|| {
-                    anyhow!(
-                        "{}\n failed to calculate {}",
-                        format_dbg!(),
-                        stringify!(self.state.eff)
+        self.state.eff.update(
+            uc::R
+                * self
+                    .eff_interp_achieved
+                    .interpolate(
+                        &[{
+                            let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
+                                Ok({
+                                    if self
+                                        .eff_interp_achieved
+                                        .x()?
+                                        .first()
+                                        .with_context(|| anyhow!(format_dbg!()))?
+                                        >= &0.
+                                    {
+                                        pwr_uncorrected.max(0.)
+                                    } else {
+                                        pwr_uncorrected
+                                    }
+                                })
+                            };
+                            pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
+                        }], // &self.eff_interp_fwd.x()?,
+                            // &self.eff_interp_fwd,
+                            // Extrapolate::Error,
                     )
-                })?;
+                    .with_context(|| {
+                        anyhow!(
+                            "{}\n failed to calculate {}",
+                            format_dbg!(),
+                            stringify!(self.state.eff)
+                        )
+                    })?,
+            format_dbg!(),
+        )?;
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
-        self.state.pwr_mech_prop_out = pwr_out_req.max(-self.state.pwr_mech_regen_max);
+        self.state.pwr_mech_prop_out.update(
+            pwr_out_req.max(-*self.state.pwr_mech_regen_max.get(format_dbg!())?),
+            format_dbg!(),
+        )?;
 
-        self.state.pwr_mech_dyn_brake = -(pwr_out_req - self.state.pwr_mech_prop_out);
+        self.state.pwr_mech_dyn_brake.update(
+            -(pwr_out_req - *self.state.pwr_mech_prop_out.get(format_dbg!())?),
+            format_dbg!(),
+        )?;
         ensure!(
-            self.state.pwr_mech_dyn_brake >= si::Power::ZERO,
+            *self.state.pwr_mech_dyn_brake.get(format_dbg!())? >= si::Power::ZERO,
             "Mech Dynamic Brake Power cannot be below 0.0"
         );
 
         // if pwr_out_req is negative, need to multiply by eff
-        self.state.pwr_elec_prop_in = if pwr_out_req > si::Power::ZERO {
-            self.state.pwr_mech_prop_out / self.state.eff
-        } else {
-            self.state.pwr_mech_prop_out * self.state.eff
-        };
+        self.state.pwr_elec_prop_in.update(
+            if pwr_out_req > si::Power::ZERO {
+                *self.state.pwr_mech_prop_out.get(format_dbg!())?
+                    / *self.state.eff.get(format_dbg!())?
+            } else {
+                *self.state.pwr_mech_prop_out.get(format_dbg!())?
+                    * *self.state.eff.get(format_dbg!())?
+            },
+            format_dbg!(),
+        )?;
 
-        self.state.pwr_elec_dyn_brake = self.state.pwr_mech_dyn_brake * self.state.eff;
+        self.state.pwr_elec_dyn_brake.update(
+            *self.state.pwr_mech_dyn_brake.get(format_dbg!())?
+                * *self.state.eff.get(format_dbg!())?,
+            format_dbg!(),
+        )?;
 
         // loss does not account for dynamic braking
-        self.state.pwr_loss = (self.state.pwr_mech_prop_out - self.state.pwr_elec_prop_in).abs();
+        self.state.pwr_loss.update(
+            (*self.state.pwr_mech_prop_out.get(format_dbg!())?
+                - *self.state.pwr_elec_prop_in.get(format_dbg!())?)
+            .abs(),
+            format_dbg!(),
+        );
 
-        Ok(self.state.pwr_elec_prop_in)
+        Ok(*self.state.pwr_elec_prop_in.get(format_dbg!())?)
     }
 }
 
@@ -354,8 +395,9 @@ impl HistoryMethods for ElectricMachine {
 }
 
 impl SetCumulative for ElectricMachine {
-    fn set_cumulative(&mut self, dt: si::Time) {
-        self.state.set_cumulative(dt);
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.state.set_cumulative(dt)?;
+        Ok(())
     }
 }
 

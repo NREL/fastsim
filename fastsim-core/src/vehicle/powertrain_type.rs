@@ -29,7 +29,7 @@ impl Powertrain for PowertrainType {
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-        veh_state: VehicleState,
+        veh_state: &VehicleState,
     ) -> anyhow::Result<()> {
         match self {
             Self::ConventionalVehicle(v) => v.set_curr_pwr_prop_out_max(pwr_aux, dt, veh_state),
@@ -41,7 +41,7 @@ impl Powertrain for PowertrainType {
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        veh_state: VehicleState,
+        veh_state: &VehicleState,
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
@@ -60,7 +60,7 @@ impl Powertrain for PowertrainType {
         }
     }
 
-    fn pwr_regen(&self) -> si::Power {
+    fn pwr_regen(&self) -> anyhow::Result<si::Power> {
         match self {
             Self::ConventionalVehicle(v) => v.pwr_regen(),
             Self::HybridElectricVehicle(v) => v.pwr_regen(),
@@ -309,12 +309,13 @@ impl PowertrainType {
 }
 
 impl SaveState for PowertrainType {
-    fn save_state(&mut self) {
+    fn save_state(&mut self) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => conv.save_state(),
-            Self::HybridElectricVehicle(hev) => hev.save_state(),
-            Self::BatteryElectricVehicle(bev) => bev.save_state(),
+            Self::ConventionalVehicle(conv) => conv.save_state()?,
+            Self::HybridElectricVehicle(hev) => hev.save_state()?,
+            Self::BatteryElectricVehicle(bev) => bev.save_state()?,
         }
+        Ok(())
     }
 }
 impl TrackedStateMethods for PowertrainType {

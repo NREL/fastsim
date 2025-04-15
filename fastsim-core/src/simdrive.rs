@@ -159,7 +159,7 @@ impl SimDrive {
                 .with_context(|| format_dbg!())?
                 .with_context(|| format_dbg!("Expected mass to have been set."))?,
             format_dbg!(),
-        );
+        )?;
         self.veh
             .hev_mut()
             .map(|hev| hev.soc_bal_iters.update(0, format_dbg!()));
@@ -167,14 +167,23 @@ impl SimDrive {
             PowertrainType::HybridElectricVehicle(_) => {
                 // Net battery energy used per amount of fuel used
                 // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
-                let veh_init = self.veh.clone();
                 loop {
-                    let soc_bal_iters = &mut self.veh.hev().unwrap().soc_bal_iters;
-                    soc_bal_iters.check_and_reset();
-                    self.veh.hev_mut().unwrap().soc_bal_iters.update(
-                        1 + soc_bal_iters.get_prev().unwrap_or_default(),
-                        format_dbg!(),
-                    );
+                    self.veh
+                        .hev_mut()
+                        .unwrap()
+                        .soc_bal_iters
+                        .check_and_reset()?;
+                    let soc_bal_iters = self
+                        .veh
+                        .hev_mut()
+                        .unwrap()
+                        .soc_bal_iters
+                        .get_prev_or_default();
+                    self.veh
+                        .hev_mut()
+                        .unwrap()
+                        .soc_bal_iters
+                        .update(1 + soc_bal_iters, format_dbg!())?;
                     self.walk_once().with_context(|| format_dbg!())?;
                     let soc_final = self
                         .veh
@@ -182,7 +191,8 @@ impl SimDrive {
                         // `unwrap` is ok because it's already been checked
                         .unwrap()
                         .state
-                        .soc;
+                        .soc
+                        .clone();
                     let res_per_fuel = *self
                         .veh
                         .res()
@@ -217,7 +227,7 @@ impl SimDrive {
                         if let Some(&mut ref mut hev) = self.veh.hev_mut() {
                             if hev.sim_params.save_soc_bal_iters {
                                 hev.soc_bal_iter_history.push(hev.clone());
-                                hev.soc_bal_iters.reset();
+                                hev.soc_bal_iters.reset()?;
                             }
                         }
                         // start SOC at previous final value
@@ -234,14 +244,14 @@ impl SimDrive {
     pub fn walk_once(&mut self) -> anyhow::Result<()> {
         let len = &self.cyc.len_checked().with_context(|| format_dbg!())?;
         ensure!(len >= &2, format_dbg!(len < &2));
-        self.save_state();
+        self.save_state()?;
         self.check_and_reset().with_context(|| format_dbg!())?;
         // to increment `i` to 1 everywhere
         self.step();
         while self.veh.state.i.get(format_dbg!())? < len {
             self.solve_step()
                 .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
-            self.save_state();
+            self.save_state()?;
             self.check_and_reset().with_context(|| format_dbg!())?;
             self.step();
         }
@@ -251,7 +261,10 @@ impl SimDrive {
     /// Solves current time step
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = *self.veh.state.i.get(format_dbg!())?;
-        self.veh.state.time.update(self.cyc.time[i], format_dbg!());
+        self.veh
+            .state
+            .time
+            .update(self.cyc.time[i], format_dbg!())?;
         let dt = self.cyc.dt_at_i(i)?;
         // maybe make controls like:
         // ```
@@ -272,11 +285,11 @@ impl SimDrive {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_pwr_prop_for_speed(
             self.cyc.speed[i],
-            self.veh.state.speed_ach.get_prev().unwrap_or_default(),
+            self.veh.state.speed_ach.get_prev_or_default(),
             dt,
         )
         .with_context(|| anyhow!(format_dbg!()))?;
-        self.veh.state.pwr_tractive_for_cyc = self.veh.state.pwr_tractive;
+        self.veh.state.pwr_tractive_for_cyc = self.veh.state.pwr_tractive.clone();
         self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         if self.sim_params.trace_miss_opts.is_allow_checked() {
@@ -290,7 +303,7 @@ impl SimDrive {
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.veh.set_cumulative(dt);
+        self.veh.set_cumulative(dt)?;
         Ok(())
     }
 
@@ -428,10 +441,10 @@ impl SimDrive {
                 // the rest of the cycle and should not be manipulated anywhere else
                 false
             } else {
-                vs.cyc_met_overall.get_prev().unwrap_or_default()
+                vs.cyc_met_overall.get_prev_or_default()
             },
             format_dbg!(),
-        );
+        )?;
         Ok(())
     }
 
@@ -442,7 +455,7 @@ impl SimDrive {
     pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
         // borrow state as `vs` for shorthand
         let vs = &mut self.veh.state;
-        let speed_prev = vs.speed_ach.get_prev().unwrap_or_default();
+        let speed_prev = vs.speed_ach.get_prev_or_default();
         if *vs.cyc_met.get(format_dbg!())? {
             // TODO: this update may have already been called and may need
             // special handling (i.e. writing an `update_unchecked` method)
@@ -568,7 +581,7 @@ pwr deficit: {} kW
         let pwr_err = pwr_err_fn(speed_guess);
         if almost_eq_uom(&pwr_err, &(0. * uc::W), Some(1e-6)) {
             // TODO: maybe change to `updated_unchecked`
-            vs.speed_ach.update(cyc_speed, format_dbg!());
+            vs.speed_ach.update(cyc_speed, format_dbg!())?;
             return Ok(());
         }
         let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
@@ -616,7 +629,7 @@ pwr deficit: {} kW
         // Run it again to make sure it has been updated for achieved speed
         self.set_pwr_prop_for_speed(
             *self.veh.state.speed_ach.get(format_dbg!())?,
-            self.veh.state.speed_ach.get_prev().unwrap_or_default(),
+            self.veh.state.speed_ach.get_prev_or_default(),
             dt,
         )
         .with_context(|| format_dbg!())?;
@@ -745,14 +758,14 @@ mod tests {
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
-        assert!(*sd.veh.state.i.get(format!("")).unwrap() == sd.cyc.len_checked().unwrap());
+        assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap());
         assert!(
             *sd.veh
                 .fc()
                 .unwrap()
                 .state
                 .energy_fuel
-                .get(format!(""))
+                .get(String::new())
                 .unwrap()
                 > si::Energy::ZERO
         );
@@ -766,14 +779,14 @@ mod tests {
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
-        assert!(*sd.veh.state.i.get(format!("")).unwrap() == sd.cyc.len_checked().unwrap());
+        assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap());
         assert!(
             *sd.veh
                 .fc()
                 .unwrap()
                 .state
                 .energy_fuel
-                .get(format!(""))
+                .get(String::new())
                 .unwrap()
                 > si::Energy::ZERO
         );
@@ -783,7 +796,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_out_chemical
-                .get(format!(""))
+                .get(String::new())
                 .unwrap()
                 != si::Energy::ZERO
         );
@@ -800,7 +813,7 @@ mod tests {
             sim_params: Default::default(),
         };
         sd.walk().unwrap();
-        assert!(*sd.veh.state.i.get(format!("")).unwrap() == sd.cyc.len_checked().unwrap());
+        assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap());
         assert!(sd.veh.fc().is_none());
         assert!(
             *sd.veh
@@ -808,7 +821,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_out_chemical
-                .get(format!(""))
+                .get(String::new())
                 .unwrap()
                 != si::Energy::ZERO
         );

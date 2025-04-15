@@ -226,18 +226,18 @@ pt_type:
       state:
         i: 0
         pwr_out_max: 0.0
-        pwr_prop_max_watts: 0.0
+        pwr_prop_max: 0.0
         eff: 0.0
-        pwr_prop_watts: 0.0
-        energy_prop_joules: 0.0
-        pwr_aux_watts: 0.0
-        energy_aux_joules: 0.0
-        pwr_fuel_watts: 0.0
-        energy_fuel_joules: 0.0
-        pwr_loss_watts: 0.0
-        energy_loss_joules: 0.0
+        pwr_prop: 0.0
+        energy_prop: 0.0
+        pwr_aux: 0.0
+        energy_aux: 0.0
+        pwr_fuel: 0.0
+        energy_fuel: 0.0
+        pwr_loss: 0.0
+        energy_loss: 0.0
         fc_on: false
-        time_on_seconds: 0.0
+        time_on: 0.0
     transmission:
       mass_kilograms: ~
       eff_interp:
@@ -246,11 +246,11 @@ pt_type:
       state:
         i: 0
         eff: 0.0
-        pwr_out_watts: 0.0
-        pwr_in_watts: 0.0
-        pwr_loss_watts: 0.0
-        energy_out_joules: 0.0
-        energy_loss_joules: 0.0
+        pwr_out: 0.0
+        pwr_in: 0.0
+        pwr_loss: 0.0
+        energy_out: 0.0
+        energy_loss: 0.0
     mass_kilograms: ~
     alt_eff: 1.0
 chassis:
@@ -275,31 +275,31 @@ trans_eff: 0.875
 save_interval: 1
 state:
   i: 0
-  time_seconds: 0.0
-  pwr_prop_fwd_max_watts: 0.0
-  pwr_prop_bwd_max_watts: 0.0
-  pwr_tractive_watts: 0.0
-  pwr_tractive_for_cyc_watts: 0.0
-  energy_tractive_joules: 0.0
-  pwr_aux_watts: 0.0
-  energy_aux_joules: 0.0
-  pwr_drag_watts: 0.0
-  energy_drag_joules: 0.0
-  pwr_accel_watts: 0.0
-  energy_accel_joules: 0.0
-  pwr_ascent_watts: 0.0
-  energy_ascent_joules: 0.0
-  pwr_rr_watts: 0.0
-  energy_rr_joules: 0.0
-  pwr_whl_inertia_watts: 0.0
-  energy_whl_inertia_joules: 0.0
-  pwr_brake_watts: 0.0
-  energy_brake_joules: 0.0
+  time: 0.0
+  pwr_prop_fwd_max: 0.0
+  pwr_prop_bwd_max: 0.0
+  pwr_tractive: 0.0
+  pwr_tractive_for_cyc: 0.0
+  energy_tractive: 0.0
+  pwr_aux: 0.0
+  energy_aux: 0.0
+  pwr_drag: 0.0
+  energy_drag: 0.0
+  pwr_accel: 0.0
+  energy_accel: 0.0
+  pwr_ascent: 0.0
+  energy_ascent: 0.0
+  pwr_rr: 0.0
+  energy_rr: 0.0
+  pwr_whl_inertia: 0.0
+  energy_whl_inertia: 0.0
+  pwr_brake: 0.0
+  energy_brake: 0.0
   cyc_met: true
   cyc_met_overall: true
-  speed_ach_meters_per_second: 0.0
-  dist_meters: 0.0
+  speed_ach: 0.0
+  dist: 0.0
   grade_curr: 0.0
-  elev_curr_meters: 180.0
-  air_density_kilograms_per_cubic_meter: 1.172
-  mass_kilograms: .nan
+  elev_curr: 0.0
+  air_density: 0.0
+  mass: .nan

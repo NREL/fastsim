@@ -15,26 +15,26 @@ pt_type:
       max_soc: 0.98
       save_interval: 1
       state:
-        pwr_prop_max_watts: 0.0
-        pwr_regen_max_watts: 0.0
-        pwr_disch_max_watts: 0.0
-        pwr_charge_max_watts: 0.0
+        pwr_prop_max: 0.0
+        pwr_regen_max: 0.0
+        pwr_disch_max: 0.0
+        pwr_charge_max: 0.0
         i: 0
         soc: 0.5
         soc_regen_buffer: 1.0
         soc_disch_buffer: 0.0
         eff: 0.0
         soh: 0.0
-        pwr_out_electrical_watts: 0.0
-        pwr_out_prop_watts: 0.0
-        pwr_aux_watts: 0.0
-        pwr_loss_watts: 0.0
-        pwr_out_chemical_watts: 0.0
-        energy_out_electrical_joules: 0.0
-        energy_out_prop_joules: 0.0
-        energy_aux_joules: 0.0
-        energy_loss_joules: 0.0
-        energy_out_chemical_joules: 0.0
+        pwr_out_electrical: 0.0
+        pwr_out_prop: 0.0
+        pwr_aux: 0.0
+        pwr_loss: 0.0
+        pwr_out_chemical: 0.0
+        energy_out_electrical: 0.0
+        energy_out_prop: 0.0
+        energy_aux: 0.0
+        energy_loss: 0.0
+        energy_out_chemical: 0.0
     em:
       eff_interp_achieved:
         Interp1D:
@@ -99,23 +99,23 @@ pt_type:
       state:
         i: 0
         eff: 0.0
-        pwr_mech_fwd_out_max_watts: 0.0
+        pwr_mech_fwd_out_max: 0.0
         eff_fwd_at_max_input: 0.0
-        pwr_mech_regen_max_watts: 0.0
+        pwr_mech_regen_max: 0.0
         eff_at_max_regen: 0.0
-        pwr_rate_out_max_watts_per_second: 0.0
-        pwr_out_req_watts: 0.0
-        energy_out_req_joules: 0.0
-        pwr_elec_prop_in_watts: 0.0
-        energy_elec_prop_in_joules: 0.0
-        pwr_mech_prop_out_watts: 0.0
-        energy_mech_prop_out_joules: 0.0
-        pwr_mech_dyn_brake_watts: 0.0
-        energy_mech_dyn_brake_joules: 0.0
-        pwr_elec_dyn_brake_watts: 0.0
-        energy_elec_dyn_brake_joules: 0.0
-        pwr_loss_watts: 0.0
-        energy_loss_joules: 0.0
+        pwr_rate_out_max: 0.0
+        pwr_out_req: 0.0
+        energy_out_req: 0.0
+        pwr_elec_prop_in: 0.0
+        energy_elec_prop_in: 0.0
+        pwr_mech_prop_out: 0.0
+        energy_mech_prop_out: 0.0
+        pwr_mech_dyn_brake: 0.0
+        energy_mech_dyn_brake: 0.0
+        pwr_elec_dyn_brake: 0.0
+        energy_elec_dyn_brake: 0.0
+        pwr_loss: 0.0
+        energy_loss: 0.0
     transmission:
       mass_kilograms: ~
       eff_interp:
@@ -124,11 +124,11 @@ pt_type:
       state:
         i: 0
         eff: 0.0
-        pwr_out_watts: 0.0
-        pwr_in_watts: 0.0
-        pwr_loss_watts: 0.0
-        energy_out_joules: 0.0
-        energy_loss_joules: 0.0
+        pwr_out: 0.0
+        pwr_in: 0.0
+        pwr_loss: 0.0
+        energy_out: 0.0
+        energy_loss: 0.0
     mass_kilograms: ~
 chassis:
   drag_coef: 0.33
@@ -152,31 +152,31 @@ trans_eff: 0.92
 save_interval: 1
 state:
   i: 0
-  time_seconds: 0.0
-  pwr_prop_fwd_max_watts: 0.0
-  pwr_prop_bwd_max_watts: 0.0
-  pwr_tractive_watts: 0.0
-  pwr_tractive_for_cyc_watts: 0.0
-  energy_tractive_joules: 0.0
-  pwr_aux_watts: 0.0
-  energy_aux_joules: 0.0
-  pwr_drag_watts: 0.0
-  energy_drag_joules: 0.0
-  pwr_accel_watts: 0.0
-  energy_accel_joules: 0.0
-  pwr_ascent_watts: 0.0
-  energy_ascent_joules: 0.0
-  pwr_rr_watts: 0.0
-  energy_rr_joules: 0.0
-  pwr_whl_inertia_watts: 0.0
-  energy_whl_inertia_joules: 0.0
-  pwr_brake_watts: 0.0
-  energy_brake_joules: 0.0
+  time: 0.0
+  pwr_prop_fwd_max: 0.0
+  pwr_prop_bwd_max: 0.0
+  pwr_tractive: 0.0
+  pwr_tractive_for_cyc: 0.0
+  energy_tractive: 0.0
+  pwr_aux: 0.0
+  energy_aux: 0.0
+  pwr_drag: 0.0
+  energy_drag: 0.0
+  pwr_accel: 0.0
+  energy_accel: 0.0
+  pwr_ascent: 0.0
+  energy_ascent: 0.0
+  pwr_rr: 0.0
+  energy_rr: 0.0
+  pwr_whl_inertia: 0.0
+  energy_whl_inertia: 0.0
+  pwr_brake: 0.0
+  energy_brake: 0.0
   cyc_met: true
   cyc_met_overall: true
-  speed_ach_meters_per_second: 0.0
-  dist_meters: 0.0
+  speed_ach: 0.0
+  dist: 0.0
   grade_curr: 0.0
-  elev_curr_meters: 180.0
-  air_density_kilograms_per_cubic_meter: 1.172
-  mass_kilograms: .nan
+  elev_curr: 0.0
+  air_density: 0.0
+  mass: .nan

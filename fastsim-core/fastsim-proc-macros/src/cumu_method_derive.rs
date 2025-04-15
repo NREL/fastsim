@@ -37,16 +37,15 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
         // this tells the compiler that the `SetCumulative` trait is not manually derived
         #[automatically_derived]
         impl SetCumulative for #ident {
-            fn set_cumulative(&mut self, dt: si::Time) {
+            fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
                 #(self
                     .#energy_fields
                     .update(
-                        self.#pwr_fields.get(
-                            format_dbg!()
-                        )? * dt,
+                        *self.#pwr_fields.get(format_dbg!())? * dt,
                         format_dbg!()
                     )?;
                 )*
+                Ok(())
             }
         }
     };

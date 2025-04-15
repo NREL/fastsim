@@ -96,8 +96,8 @@ impl Default for HVACSystemForLumpedCabinAndRES {
     }
 }
 impl SetCumulative for HVACSystemForLumpedCabinAndRES {
-    fn set_cumulative(&mut self, dt: si::Time) {
-        self.state.set_cumulative(dt);
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.state.set_cumulative(dt)
     }
 }
 impl Init for HVACSystemForLumpedCabinAndRES {}
@@ -141,23 +141,22 @@ impl HVACSystemForLumpedCabinAndRES {
         &mut self,
         te_amb_air: si::Temperature,
         te_fc: Option<si::Temperature>,
-        cab_state: LumpedCabinState,
+        cab_state: &LumpedCabinState,
         cab_heat_cap: si::HeatCapacity,
         res_thrml_state: RESLumpedThermalState,
         dt: si::Time,
     ) -> anyhow::Result<(si::Power, si::Power, si::Power)> {
         let (res_temp, res_temp_prev): (si::Temperature, si::Temperature) = (
             *res_thrml_state.temperature.get(format_dbg!())?,
-            res_thrml_state
+            *res_thrml_state
                 .temperature
-                .get_prev()
-                .unwrap_or(res_thrml_state.temperature.get(format_dbg!())?),
+                .get_prev_or_curr(format_dbg!())?,
         );
         ensure!(!res_temp.is_nan(), format_dbg!(res_temp));
         ensure!(!res_temp_prev.is_nan(), format_dbg!(res_temp_prev));
 
         let (te_cab_delta_vs_set, te_cab_delta_vs_amb, te_res_delta_vs_set, te_res_delta_vs_amb) =
-            self.get_te_deltas(te_amb_air, cab_state, res_thrml_state);
+            self.get_te_deltas(te_amb_air, cab_state, &res_thrml_state)?;
 
         ensure!(
             te_res_delta_vs_set.is_none() || !(self.res_cooling_source.is_none() && self.res_heat_source.is_none()),
@@ -187,11 +186,10 @@ impl HVACSystemForLumpedCabinAndRES {
             )?;
 
         self.state.te_ref = te_ref;
-        self.state.cop.update(
-            self.get_cop_ideal_vcs(te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb)?
-                .map(|cop_ideal| cop_ideal * self.frac_of_ideal_cop),
-            format_dbg!(),
-        );
+        let cop = self
+            .get_cop_ideal_vcs(te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb)?
+            .map(|cop_ideal| cop_ideal * self.frac_of_ideal_cop);
+        self.state.cop.update(cop, format_dbg!())?;
 
         self.solve_for_cabin(te_fc, cab_state, cab_heat_cap, dt)
             .with_context(|| format_dbg!())?;
@@ -203,32 +201,34 @@ impl HVACSystemForLumpedCabinAndRES {
         // self.state.pwr_thrml_hvac_to_res = pwr_thrml_hvac_to_res;
 
         Ok((
-            self.state.pwr_thrml_hvac_to_cabin.get(format_dbg!())?,
-            self.state.pwr_thrml_fc_to_cabin.get(format_dbg!())?,
-            self.state.pwr_thrml_hvac_to_res.get(format_dbg!())?,
+            *self.state.pwr_thrml_hvac_to_cabin.get(format_dbg!())?,
+            *self.state.pwr_thrml_fc_to_cabin.get(format_dbg!())?,
+            *self.state.pwr_thrml_hvac_to_res.get(format_dbg!())?,
         ))
     }
 
     fn get_te_deltas(
         &mut self,
         te_amb_air: si::Temperature,
-        cab_state: LumpedCabinState,
-        res_thrml_state: RESLumpedThermalState,
-    ) -> (
+        cab_state: &LumpedCabinState,
+        res_thrml_state: &RESLumpedThermalState,
+    ) -> anyhow::Result<(
         Option<si::TemperatureInterval>,
         si::TemperatureInterval,
         Option<si::TemperatureInterval>,
         si::TemperatureInterval,
-    ) {
-        let te_cab_delta_vs_set: Option<si::TemperatureInterval> =
-            self.te_set_cab.map(|te_set_cab| {
+    )> {
+        let te_cab_delta_vs_set: Option<si::TemperatureInterval> = match self.te_set_cab {
+            Some(te_set_cab) => Some(
                 (cab_state
                     .temperature
                     .get(format_dbg!())?
                     .get::<si::degree_celsius>()
                     - te_set_cab.get::<si::degree_celsius>())
-                    * uc::KELVIN_INT
-            });
+                    * uc::KELVIN_INT,
+            ),
+            None => None,
+        };
 
         let te_cab_delta_vs_amb: si::TemperatureInterval = (cab_state
             .temperature
@@ -237,15 +237,17 @@ impl HVACSystemForLumpedCabinAndRES {
             - te_amb_air.get::<si::degree_celsius>())
             * uc::KELVIN_INT;
 
-        let te_res_delta_vs_set: Option<si::TemperatureInterval> =
-            self.te_set_res.map(|te_set_res| {
+        let te_res_delta_vs_set: Option<si::TemperatureInterval> = match self.te_set_res {
+            Some(te_set_res) => Some(
                 (res_thrml_state
-                    .get(format_dbg!())?
                     .temperature
+                    .get(format_dbg!())?
                     .get::<si::degree_celsius>()
                     - te_set_res.get::<si::degree_celsius>())
-                    * uc::KELVIN_INT
-            });
+                    * uc::KELVIN_INT,
+            ),
+            None => None,
+        };
 
         let te_res_delta_vs_amb: si::TemperatureInterval = (res_thrml_state
             .temperature
@@ -253,12 +255,12 @@ impl HVACSystemForLumpedCabinAndRES {
             .get::<si::degree_celsius>()
             - te_amb_air.get::<si::degree_celsius>())
             * uc::KELVIN_INT;
-        (
+        Ok((
             te_cab_delta_vs_set,
             te_cab_delta_vs_amb,
             te_res_delta_vs_set,
             te_res_delta_vs_amb,
-        )
+        ))
     }
 
     /// Returns ideal coefficient of performance (COP) for vapor compression system (VCS)
@@ -326,88 +328,141 @@ impl HVACSystemForLumpedCabinAndRES {
     fn solve_for_cabin(
         &mut self,
         te_fc: Option<si::Temperature>,
-        cab_state: LumpedCabinState,
+        cab_state: &LumpedCabinState,
         cab_heat_cap: si::HeatCapacity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // DO NOT uncomment the following line because this is a cumulative state variable!
-        // self.state.pwr_i_cab = uc::W * f64::NAN;
-        self.state.pwr_p_cab = uc::W * f64::NAN;
-        self.state.pwr_d_cab = uc::W * f64::NAN;
-        self.state.pwr_aux_for_cab_hvac_req = uc::W * f64::NAN;
-        self.state.pwr_aux_for_cab_hvac = uc::W * f64::NAN;
-        self.state.pwr_thrml_hvac_to_cabin = uc::W * f64::NAN;
+        // *self.state.pwr_i_cab.get(format_dbg!())? = uc::W * f64::NAN;
+        self.state
+            .pwr_p_cab
+            .update(uc::W * f64::NAN, format_dbg!())?;
+        self.state
+            .pwr_d_cab
+            .update(uc::W * f64::NAN, format_dbg!())?;
+        self.state
+            .pwr_aux_for_cab_hvac_req
+            .update(uc::W * f64::NAN, format_dbg!())?;
+        self.state
+            .pwr_aux_for_cab_hvac
+            .update(uc::W * f64::NAN, format_dbg!())?;
+        self.state
+            .pwr_thrml_hvac_to_cabin
+            .update(uc::W * f64::NAN, format_dbg!())?;
 
         match self.te_set_cab {
             Some(te_set_cab) => {
                 match self.state.mode.cabin_mode {
                     HvacMode::InsideDeadband => {
-                        self.state.pwr_i_cab = si::Power::ZERO; // reset to 0.0
-                        self.state.pwr_p_cab = si::Power::ZERO;
-                        self.state.pwr_d_cab = si::Power::ZERO;
-                        self.state.pwr_aux_for_cab_hvac_req = si::Power::ZERO;
-                        self.state.pwr_aux_for_cab_hvac = si::Power::ZERO;
-                        self.state.pwr_thrml_hvac_to_cabin = si::Power::ZERO;
+                        self.state
+                            .pwr_i_cab
+                            .update(si::Power::ZERO, format_dbg!())?; // reset to 0.0
+                        self.state
+                            .pwr_p_cab
+                            .update(si::Power::ZERO, format_dbg!())?;
+                        self.state
+                            .pwr_d_cab
+                            .update(si::Power::ZERO, format_dbg!())?;
+                        self.state
+                            .pwr_aux_for_cab_hvac_req
+                            .update(si::Power::ZERO, format_dbg!())?;
+                        self.state
+                            .pwr_aux_for_cab_hvac
+                            .update(si::Power::ZERO, format_dbg!())?;
+                        self.state
+                            .pwr_thrml_hvac_to_cabin
+                            .update(si::Power::ZERO, format_dbg!())?;
                     }
                     HvacMode::Cooling => {
-                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab);
-                        self.state.pwr_thrml_to_cab_req = {
-                            if self.state.pwr_i_cab > si::Power::ZERO {
-                                // If `pwr_i` is greater than zero, reset to switch from heating to cooling
-                                self.state.pwr_i_cab = si::Power::ZERO;
-                            }
-                            let pwr_thrml_hvac_to_cab_req: si::Power = (self.state.pwr_p_cab
-                                + self.state.pwr_i_cab
-                                + self.state.pwr_d_cab)
-                                .max(-self.pwr_thrml_max);
-                            ensure!(
-                                pwr_thrml_hvac_to_cab_req < si::Power::ZERO,
-                                "{}\nHVAC should be cooling cabin",
-                                format_dbg!(pwr_thrml_hvac_to_cab_req)
-                            );
-                            ensure!(
-                                pwr_thrml_hvac_to_cab_req < si::Power::ZERO,
-                                "HVAC should be cooling cabin\n{}\n{}\n{}",
-                                format_dbg!(pwr_thrml_hvac_to_cab_req),
-                                format_dbg!(self.state.pwr_aux_for_cab_hvac),
-                                format_dbg!(self.state.cop)
-                            );
-                            pwr_thrml_hvac_to_cab_req
-                        };
-                        self.state.pwr_aux_for_cab_hvac_req = -self.state.pwr_thrml_to_cab_req
-                            / self.state.cop.with_context(|| {
-                                format!(
-                                    "{}\nExpected `self.state.cop` to be Some.",
-                                    format_dbg!(self.state.cop)
-                                )
-                            })?;
-
-                        // Correct aux power components to account for any limit violations
-                        if self.state.pwr_aux_for_cab_hvac_req > self.pwr_aux_for_hvac_cab_max {
-                            self.state.pwr_aux_for_cab_hvac = self.pwr_aux_for_hvac_cab_max;
-                            self.state.pwr_thrml_hvac_to_cabin = -self.state.pwr_aux_for_cab_hvac
-                                * self.state.cop.with_context(|| {
+                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab)?;
+                        self.state.pwr_thrml_to_cab_req.update(
+                            {
+                                if *self.state.pwr_i_cab.get(format_dbg!())? > si::Power::ZERO {
+                                    // If `pwr_i` is greater than zero, reset to switch from heating to cooling
+                                    self.state
+                                        .pwr_i_cab
+                                        .update(si::Power::ZERO, format_dbg!())?;
+                                }
+                                let pwr_thrml_hvac_to_cab_req: si::Power =
+                                    (*self.state.pwr_p_cab.get(format_dbg!())?
+                                        + *self.state.pwr_i_cab.get(format_dbg!())?
+                                        + *self.state.pwr_d_cab.get(format_dbg!())?)
+                                    .max(-self.pwr_thrml_max);
+                                ensure!(
+                                    pwr_thrml_hvac_to_cab_req < si::Power::ZERO,
+                                    "{}\nHVAC should be cooling cabin",
+                                    format_dbg!(pwr_thrml_hvac_to_cab_req)
+                                );
+                                ensure!(
+                                    pwr_thrml_hvac_to_cab_req < si::Power::ZERO,
+                                    "HVAC should be cooling cabin\n{}\n{}\n{}",
+                                    format_dbg!(pwr_thrml_hvac_to_cab_req),
+                                    format_dbg!(*self
+                                        .state
+                                        .pwr_aux_for_cab_hvac
+                                        .get(format_dbg!())?),
+                                    format_dbg!(*self.state.cop.get(format_dbg!())?)
+                                );
+                                pwr_thrml_hvac_to_cab_req
+                            },
+                            format_dbg!(),
+                        )?;
+                        self.state.pwr_aux_for_cab_hvac_req.update(
+                            -*self.state.pwr_thrml_to_cab_req.get(format_dbg!())?
+                                / self.state.cop.get(format_dbg!())?.with_context(|| {
                                     format!(
                                         "{}\nExpected `self.state.cop` to be Some.",
                                         format_dbg!(self.state.cop)
                                     )
-                                })?;
+                                })?,
+                            format_dbg!(),
+                        )?;
+
+                        // Correct aux power components to account for any limit violations
+                        if *self.state.pwr_aux_for_cab_hvac_req.get(format_dbg!())?
+                            > self.pwr_aux_for_hvac_cab_max
+                        {
+                            self.state
+                                .pwr_aux_for_cab_hvac
+                                .update(self.pwr_aux_for_hvac_cab_max, format_dbg!())?;
+                            self.state.pwr_thrml_hvac_to_cabin.update(
+                                -*self.state.pwr_aux_for_cab_hvac.get(format_dbg!())?
+                                    * self.state.cop.get(format_dbg!())?.with_context(|| {
+                                        format!(
+                                            "{}\nExpected `self.state.cop` to be Some.",
+                                            format_dbg!(self.state.cop)
+                                        )
+                                    })?,
+                                format_dbg!(),
+                            )?;
                         } else {
-                            self.state.pwr_aux_for_cab_hvac = self.state.pwr_aux_for_cab_hvac_req;
-                            self.state.pwr_thrml_hvac_to_cabin = self.state.pwr_thrml_to_cab_req;
+                            self.state.pwr_aux_for_cab_hvac.update(
+                                *self.state.pwr_aux_for_cab_hvac_req.get(format_dbg!())?,
+                                format_dbg!(),
+                            )?;
+                            self.state.pwr_thrml_hvac_to_cabin.update(
+                                *self.state.pwr_thrml_to_cab_req.get(format_dbg!())?,
+                                format_dbg!(),
+                            )?;
                         }
                     }
                     HvacMode::Heating => {
                         self.set_cab_cntrl_state(cab_state, dt, te_set_cab);
-                        if self.state.pwr_i_cab < si::Power::ZERO {
+                        if *self.state.pwr_i_cab.get(format_dbg!())? < si::Power::ZERO {
                             // If `pwr_i` is less than zero reset to switch from cooling to heating
-                            self.state.pwr_i_cab = si::Power::ZERO;
+                            self.state
+                                .pwr_i_cab
+                                .update(si::Power::ZERO, format_dbg!())?;
                         }
-                        self.state.pwr_thrml_to_cab_req =
-                            (self.state.pwr_p_cab + self.state.pwr_i_cab + self.state.pwr_d_cab)
-                                .min(self.pwr_thrml_max);
+                        self.state.pwr_thrml_to_cab_req.update(
+                            (*self.state.pwr_p_cab.get(format_dbg!())?
+                                + *self.state.pwr_i_cab.get(format_dbg!())?
+                                + *self.state.pwr_d_cab.get(format_dbg!())?)
+                            .min(self.pwr_thrml_max),
+                            format_dbg!(),
+                        )?;
                         ensure!(
-                            self.state.pwr_thrml_to_cab_req > si::Power::ZERO,
+                            *self.state.pwr_thrml_to_cab_req.get(format_dbg!())? > si::Power::ZERO,
                             "{}\nHVAC should be heating cabin",
                             format_dbg!(self.state.pwr_thrml_to_cab_req)
                         );
@@ -421,102 +476,168 @@ impl HVACSystemForLumpedCabinAndRES {
                                     );
                             // limit heat transfer to be substantially less than what is physically possible
                             // i.e. the engine can't drop below cabin temperature to heat the cabin
-                            self.state.pwr_thrml_to_cab_req = self.state.pwr_thrml_to_cab_req.get(format_dbg!())?
+                            self.state.pwr_thrml_to_cab_req .update(self.state.pwr_thrml_to_cab_req.get(format_dbg!())?
                                             .min(
                                                 cab_heat_cap *
                                             (te_fc.unwrap().get::<si::degree_celsius>() - cab_state.temperature.get(format_dbg!())?.get::<si::degree_celsius>()) * uc::KELVIN_INT
                                                 * 0.1 // so that it's substantially less
                                                 / dt,
                                             )
-                                            .max(si::Power::ZERO);
+                                            .max(si::Power::ZERO), format_dbg!())?;
                         };
                         ensure!(
-                            self.state.pwr_thrml_to_cab_req >= si::Power::ZERO,
+                            *self.state.pwr_thrml_to_cab_req.get(format_dbg!())? >= si::Power::ZERO,
                             "{}\nHVAC should be heating cabin",
                             format_dbg!(self.state.pwr_thrml_to_cab_req)
                         );
 
-                        self.state.pwr_aux_for_cab_hvac_req =
-                                // Heating
-                                match self.cabin_heat_source {
-                                    CabinHeatSource::FuelConverter => {
-                                        // NOTE: should make this scale with power demand because it does require blower
-                                        si::Power::ZERO
-                                    }
-                                    CabinHeatSource::ResistanceHeater => self.state.pwr_thrml_to_cab_req,
-                                    CabinHeatSource::HeatPump => {
-                                        self.state.pwr_thrml_to_cab_req
-                                            / self.state.cop.with_context(|| {
-                                                format!(
-                                                    "{}\nExpected `self.state.cop` to be Some.",
-                                                    format_dbg!(self.state.cop)
-                                                )
-                                            })?
-                                    }
-                                };
-                        // Correct aux power components to account for any limit violations
-                        if self.state.pwr_aux_for_cab_hvac_req > self.pwr_aux_for_hvac_cab_max {
-                            self.state.pwr_aux_for_cab_hvac = self.pwr_aux_for_hvac_cab_max;
-                            self.state.pwr_thrml_hvac_to_cabin = match self.cabin_heat_source {
+                        self.state.pwr_aux_for_cab_hvac_req.update(
+                            // Heating
+                            match self.cabin_heat_source {
                                 CabinHeatSource::FuelConverter => {
-                                    bail!("{}\nThis should be unreachable", format_dbg!());
+                                    // NOTE: should make this scale with power demand because it does require blower
+                                    si::Power::ZERO
                                 }
                                 CabinHeatSource::ResistanceHeater => {
-                                    self.state.pwr_aux_for_cab_hvac
+                                    *self.state.pwr_thrml_to_cab_req.get(format_dbg!())?
                                 }
                                 CabinHeatSource::HeatPump => {
-                                    self.state.pwr_aux_for_cab_hvac
-                                        * self.state.cop.with_context(|| {
+                                    *self.state.pwr_thrml_to_cab_req.get(format_dbg!())?
+                                        / self.state.cop.get(format_dbg!())?.with_context(|| {
                                             format!(
                                                 "{}\nExpected `self.state.cop` to be Some.",
                                                 format_dbg!(self.state.cop)
                                             )
                                         })?
                                 }
-                            }
+                            },
+                            format_dbg!(),
+                        )?;
+                        // Correct aux power components to account for any limit violations
+                        if *self.state.pwr_aux_for_cab_hvac_req.get(format_dbg!())?
+                            > self.pwr_aux_for_hvac_cab_max
+                        {
+                            self.state
+                                .pwr_aux_for_cab_hvac
+                                .update(self.pwr_aux_for_hvac_cab_max, format_dbg!())?;
+                            self.state.pwr_thrml_hvac_to_cabin.update(
+                                match self.cabin_heat_source {
+                                    CabinHeatSource::FuelConverter => {
+                                        bail!("{}\nThis should be unreachable", format_dbg!());
+                                    }
+                                    CabinHeatSource::ResistanceHeater => {
+                                        *self.state.pwr_aux_for_cab_hvac.get(format_dbg!())?
+                                    }
+                                    CabinHeatSource::HeatPump => {
+                                        *self.state.pwr_aux_for_cab_hvac.get(format_dbg!())?
+                                            * self.state.cop.get(format_dbg!())?.with_context(
+                                                || {
+                                                    format!(
+                                                        "{}\nExpected `self.state.cop` to be Some.",
+                                                        format_dbg!(self.state.cop)
+                                                    )
+                                                },
+                                            )?
+                                    }
+                                },
+                                format_dbg!(),
+                            )?;
                         } else {
-                            self.state.pwr_aux_for_cab_hvac = self.state.pwr_aux_for_cab_hvac_req;
-                            self.state.pwr_thrml_hvac_to_cabin = self.state.pwr_thrml_to_cab_req;
+                            self.state.pwr_aux_for_cab_hvac.update(
+                                *self.state.pwr_aux_for_cab_hvac_req.get(format_dbg!())?,
+                                format_dbg!(),
+                            )?;
+                            self.state.pwr_thrml_hvac_to_cabin.update(
+                                *self.state.pwr_thrml_to_cab_req.get(format_dbg!())?,
+                                format_dbg!(),
+                            )?;
                         }
                     }
                     HvacMode::Inactive => {
-                        self.state.pwr_i_cab = si::Power::ZERO;
-                        self.state.pwr_p_cab = si::Power::ZERO;
-                        self.state.pwr_d_cab = si::Power::ZERO;
-                        self.state.pwr_aux_for_cab_hvac_req = si::Power::ZERO;
-                        self.state.pwr_aux_for_cab_hvac = si::Power::ZERO;
-                        self.state.pwr_thrml_hvac_to_cabin = si::Power::ZERO;
-                    }
-                    HvacMode::Invalid => {
-                        unreachable!();
+                        self.state
+                            .pwr_i_cab
+                            .update(si::Power::ZERO, format_dbg!())?;
+                        self.state
+                            .pwr_p_cab
+                            .update(si::Power::ZERO, format_dbg!())?;
+                        self.state
+                            .pwr_d_cab
+                            .update(si::Power::ZERO, format_dbg!())?;
+                        self.state
+                            .pwr_aux_for_cab_hvac_req
+                            .update(si::Power::ZERO, format_dbg!())?;
+                        self.state
+                            .pwr_aux_for_cab_hvac
+                            .update(si::Power::ZERO, format_dbg!())?;
+                        self.state
+                            .pwr_thrml_hvac_to_cabin
+                            .update(si::Power::ZERO, format_dbg!())?;
                     }
                 };
             }
             None => {
-                self.state.pwr_i_cab = si::Power::ZERO;
-                self.state.pwr_p_cab = si::Power::ZERO;
-                self.state.pwr_d_cab = si::Power::ZERO;
-                self.state.pwr_aux_for_cab_hvac_req = si::Power::ZERO;
-                self.state.pwr_aux_for_cab_hvac = si::Power::ZERO;
-                self.state.pwr_thrml_hvac_to_cabin = si::Power::ZERO;
+                self.state
+                    .pwr_i_cab
+                    .update(si::Power::ZERO, format_dbg!())?;
+                self.state
+                    .pwr_p_cab
+                    .update(si::Power::ZERO, format_dbg!())?;
+                self.state
+                    .pwr_d_cab
+                    .update(si::Power::ZERO, format_dbg!())?;
+                self.state
+                    .pwr_aux_for_cab_hvac_req
+                    .update(si::Power::ZERO, format_dbg!())?;
+                self.state
+                    .pwr_aux_for_cab_hvac
+                    .update(si::Power::ZERO, format_dbg!())?;
+                self.state
+                    .pwr_thrml_hvac_to_cabin
+                    .update(si::Power::ZERO, format_dbg!())?;
             }
         }
         // The following ensures are not likely to occur for users, only for developers
-        ensure!(!self.state.pwr_i_cab.is_nan(), format_dbg!());
-        ensure!(!self.state.pwr_p_cab.is_nan(), format_dbg!());
-        ensure!(!self.state.pwr_d_cab.is_nan(), format_dbg!());
-        ensure!(!self.state.pwr_aux_for_cab_hvac_req.is_nan(), format_dbg!());
-        ensure!(!self.state.pwr_aux_for_cab_hvac.is_nan(), format_dbg!());
-        ensure!(!self.state.pwr_thrml_hvac_to_cabin.is_nan(), format_dbg!());
+        ensure!(
+            !self.state.pwr_i_cab.get(format_dbg!())?.is_nan(),
+            format_dbg!()
+        );
+        ensure!(
+            !self.state.pwr_p_cab.get(format_dbg!())?.is_nan(),
+            format_dbg!()
+        );
+        ensure!(
+            !self.state.pwr_d_cab.get(format_dbg!())?.is_nan(),
+            format_dbg!()
+        );
+        ensure!(
+            !self
+                .state
+                .pwr_aux_for_cab_hvac_req
+                .get(format_dbg!())?
+                .is_nan(),
+            format_dbg!()
+        );
+        ensure!(
+            !self.state.pwr_aux_for_cab_hvac.get(format_dbg!())?.is_nan(),
+            format_dbg!()
+        );
+        ensure!(
+            !self
+                .state
+                .pwr_thrml_hvac_to_cabin
+                .get(format_dbg!())?
+                .is_nan(),
+            format_dbg!()
+        );
         Ok(())
     }
 
     fn set_cab_cntrl_state(
         &mut self,
-        cab_state: LumpedCabinState,
+        cab_state: &LumpedCabinState,
         dt: si::Time,
         te_set_cab: si::Temperature,
-    ) {
+    ) -> anyhow::Result<()> {
         let te_delta_vs_set_cab = (cab_state
             .temperature
             .get(format_dbg!())?
@@ -528,7 +649,7 @@ impl HVACSystemForLumpedCabinAndRES {
             .pwr_p_cab
             .update(-self.p_cabin * te_delta_vs_set_cab, format_dbg!())?;
         self.state.pwr_i_cab.update(
-            (self.state.pwr_i_cab.get_prev().unwrap_or_default()
+            (self.state.pwr_i_cab.get_prev_or_default()
                 - self.i_cabin * uc::W / uc::KELVIN / uc::S * te_delta_vs_set_cab * dt)
                 .max(-self.pwr_i_max_cabin)
                 .min(self.pwr_i_max_cabin),
@@ -542,13 +663,13 @@ impl HVACSystemForLumpedCabinAndRES {
                     .get::<si::degree_celsius>()
                     - cab_state
                         .temperature
-                        .get_prev()
-                        .unwrap_or(cab_state.temperature.get(format_dbg!())?)
+                        .get_prev_or_curr(format_dbg!())?
                         .get::<si::degree_celsius>())
                     * uc::KELVIN_INT
                     / dt),
             format_dbg!(),
         )?;
+        Ok(())
     }
 
     /// Solve for thermal power for [RESLumpedThermal]
@@ -603,34 +724,38 @@ impl HVACSystemForLumpedCabinAndRES {
                             .update(si::Power::ZERO, format_dbg!())?;
                     }
                     HvacMode::Cooling => {
-                        self.set_res_cntrl_state(res_temp, res_temp_prev, dt, te_set_res);
+                        self.set_res_cntrl_state(res_temp, res_temp_prev, dt, te_set_res)?;
 
-                        if self.state.pwr_i_res > si::Power::ZERO {
+                        if *self.state.pwr_i_res.get(format_dbg!())? > si::Power::ZERO {
                             // If `pwr_i_res` is greater than zero, reset to switch from heating to cooling
                             self.state
                                 .pwr_i_res
                                 .update(si::Power::ZERO, format_dbg!())?;
                         }
-                        self.state.pwr_thrml_to_res_req =
-                            (self.state.pwr_p_res + self.state.pwr_i_res + self.state.pwr_d_res)
-                                .max(-self.pwr_thrml_max);
+                        self.state.pwr_thrml_to_res_req.update(
+                            (*self.state.pwr_p_res.get(format_dbg!())?
+                                + *self.state.pwr_i_res.get(format_dbg!())?
+                                + *self.state.pwr_d_res.get(format_dbg!())?)
+                            .max(-self.pwr_thrml_max),
+                            format_dbg!(),
+                        )?;
                         ensure!(
-                            self.state.pwr_thrml_to_res_req < si::Power::ZERO,
+                            *self.state.pwr_thrml_to_res_req.get(format_dbg!())? < si::Power::ZERO,
                             "{}\nHVAC should be cooling RES",
-                            format_dbg!(self.state.pwr_thrml_to_res_req)
+                            format_dbg!(*self.state.pwr_thrml_to_res_req.get(format_dbg!())?)
                         );
                         ensure!(
-                            self.state.pwr_thrml_to_res_req < si::Power::ZERO,
+                            *self.state.pwr_thrml_to_res_req.get(format_dbg!())? < si::Power::ZERO,
                             "HVAC should be cooling RES\n{}\n{}\n{}",
-                            format_dbg!(self.state.pwr_thrml_to_res_req),
-                            format_dbg!(self.state.pwr_aux_for_res_hvac),
-                            format_dbg!(self.state.cop)
+                            format_dbg!(*self.state.pwr_thrml_to_res_req.get(format_dbg!())?),
+                            format_dbg!(*self.state.pwr_aux_for_res_hvac.get(format_dbg!())?),
+                            format_dbg!(*self.state.cop.get(format_dbg!())?)
                         );
                         self.state.pwr_aux_for_res_hvac_req.update(
                             match self.res_cooling_source {
                                 RESCoolingSource::HVAC => {
-                                    -self.state.pwr_thrml_to_res_req
-                                        / self.state.cop.with_context(|| {
+                                    -*self.state.pwr_thrml_to_res_req.get(format_dbg!())?
+                                        / self.state.cop.get(format_dbg!())?.with_context(|| {
                                             format!(
                                                 "{}\nExpected `self.state.cop` to be Some.",
                                                 format_dbg!(self.state.cop)
@@ -643,20 +768,24 @@ impl HVACSystemForLumpedCabinAndRES {
                         )?;
 
                         // Correct aux power components to account for any limit violations
-                        if self.state.pwr_aux_for_res_hvac_req > self.pwr_aux_for_hvac_res_max {
+                        if *self.state.pwr_aux_for_res_hvac_req.get(format_dbg!())?
+                            > self.pwr_aux_for_hvac_res_max
+                        {
                             self.state
                                 .pwr_aux_for_res_hvac
                                 .update(self.pwr_aux_for_hvac_res_max, format_dbg!())?;
                             self.state.pwr_thrml_hvac_to_res.update(
                                 match self.res_cooling_source {
                                     RESCoolingSource::HVAC => {
-                                        -self.state.pwr_aux_for_res_hvac
-                                            * self.state.cop.with_context(|| {
-                                                format!(
-                                                    "{}\nExpected `self.state.cop` to be Some.",
-                                                    format_dbg!(self.state.cop)
-                                                )
-                                            })?
+                                        -*self.state.pwr_aux_for_res_hvac.get(format_dbg!())?
+                                            * self.state.cop.get(format_dbg!())?.with_context(
+                                                || {
+                                                    format!(
+                                                        "{}\nExpected `self.state.cop` to be Some.",
+                                                        format_dbg!(self.state.cop)
+                                                    )
+                                                },
+                                            )?
                                     }
                                     RESCoolingSource::None => {
                                         bail!("{}\nThis should be unreachable", format_dbg!());
@@ -665,39 +794,43 @@ impl HVACSystemForLumpedCabinAndRES {
                                 format_dbg!(),
                             );
                         } else {
-                            self.state
-                                .pwr_aux_for_res_hvac
-                                .update(self.state.pwr_aux_for_res_hvac_req, format_dbg!())?;
-                            self.state
-                                .pwr_thrml_hvac_to_res
-                                .update(self.state.pwr_thrml_to_res_req, format_dbg!())?;
+                            self.state.pwr_aux_for_res_hvac.update(
+                                *self.state.pwr_aux_for_res_hvac_req.get(format_dbg!())?,
+                                format_dbg!(),
+                            )?;
+                            self.state.pwr_thrml_hvac_to_res.update(
+                                *self.state.pwr_thrml_to_res_req.get(format_dbg!())?,
+                                format_dbg!(),
+                            )?;
                         };
                     }
                     HvacMode::Heating => {
-                        self.set_res_cntrl_state(res_temp, res_temp_prev, dt, te_set_res);
+                        self.set_res_cntrl_state(res_temp, res_temp_prev, dt, te_set_res)?;
 
                         self.state.pwr_thrml_to_res_req.update(
                             {
                                 // HEATING MODE, format_dbg!())?; Reversible Energy Storage is colder than set point
 
-                                if self.state.pwr_i_res < si::Power::ZERO {
+                                if *self.state.pwr_i_res.get(format_dbg!())? < si::Power::ZERO {
                                     // If `pwr_i_res` is less than zero reset to switch from cooling to heating
                                     self.state
                                         .pwr_i_res
                                         .update(si::Power::ZERO, format_dbg!())?;
                                 }
-                                (self.state.pwr_p_res + self.state.pwr_i_res + self.state.pwr_d_res)
-                                    .min(self.pwr_thrml_max)
+                                (*self.state.pwr_p_res.get(format_dbg!())?
+                                    + *self.state.pwr_i_res.get(format_dbg!())?
+                                    + *self.state.pwr_d_res.get(format_dbg!())?)
+                                .min(self.pwr_thrml_max)
                             },
                             format_dbg!(),
                         );
                         ensure!(
-                            self.state.pwr_thrml_to_res_req > si::Power::ZERO,
+                            *self.state.pwr_thrml_to_res_req.get(format_dbg!())? > si::Power::ZERO,
                             "{}\nHVAC should be heating RES",
                             format_dbg!(self.state.pwr_thrml_to_res_req)
                         );
                         ensure!(
-                            self.state.pwr_thrml_to_res_req > si::Power::ZERO,
+                            *self.state.pwr_thrml_to_res_req.get(format_dbg!())? > si::Power::ZERO,
                             "HVAC should be heating RES\n{}\n{}\n{}",
                             format_dbg!(self.state.pwr_thrml_to_res_req),
                             format_dbg!(self.state.pwr_aux_for_res_hvac),
@@ -705,12 +838,14 @@ impl HVACSystemForLumpedCabinAndRES {
                         );
                         self.state.pwr_aux_for_res_hvac_req.update(
                             match self.res_heat_source {
-                                RESHeatSource::ResistanceHeater => self.state.pwr_thrml_to_res_req,
+                                RESHeatSource::ResistanceHeater => {
+                                    *self.state.pwr_thrml_to_res_req.get(format_dbg!())?
+                                }
                                 RESHeatSource::HeatPump => {
-                                    self.state.pwr_thrml_to_res_req
-                                        / self.state.cop.with_context(|| {
+                                    *self.state.pwr_thrml_to_res_req.get(format_dbg!())?
+                                        / self.state.cop.get(format_dbg!())?.with_context(|| {
                                             format!(
-                                                "{}\nExpected `self.state.cop` to be Some.",
+                                                "{}\nExpected `*self.state.cop` to be Some.",
                                                 format_dbg!(self.state.cop)
                                             )
                                         })?
@@ -721,23 +856,27 @@ impl HVACSystemForLumpedCabinAndRES {
                         )?;
 
                         // Correct aux power components to account for any limit violations
-                        if self.state.pwr_aux_for_res_hvac_req > self.pwr_aux_for_hvac_res_max {
+                        if *self.state.pwr_aux_for_res_hvac_req.get(format_dbg!())?
+                            > self.pwr_aux_for_hvac_res_max
+                        {
                             self.state
                                 .pwr_aux_for_res_hvac
                                 .update(self.pwr_aux_for_hvac_res_max, format_dbg!())?;
                             self.state.pwr_thrml_hvac_to_res.update(
                                 match self.res_heat_source {
                                     RESHeatSource::ResistanceHeater => {
-                                        self.state.pwr_aux_for_res_hvac
+                                        *self.state.pwr_aux_for_res_hvac.get(format_dbg!())?
                                     }
                                     RESHeatSource::HeatPump => {
-                                        self.state.pwr_aux_for_res_hvac
-                                            * self.state.cop.with_context(|| {
-                                                format!(
-                                                    "{}\nExpected `self.state.cop` to be Some.",
-                                                    format_dbg!(self.state.cop)
-                                                )
-                                            })?
+                                        *self.state.pwr_aux_for_res_hvac.get(format_dbg!())?
+                                            * self.state.cop.get(format_dbg!())?.with_context(
+                                                || {
+                                                    format!(
+                                                        "{}\nExpected `self.state.cop` to be Some.",
+                                                        format_dbg!(self.state.cop)
+                                                    )
+                                                },
+                                            )?
                                     }
                                     RESHeatSource::None => {
                                         bail!("{}\nThis should be unreachable", format_dbg!());
@@ -746,35 +885,17 @@ impl HVACSystemForLumpedCabinAndRES {
                                 format_dbg!(),
                             )?
                         } else {
-                            self.state
-                                .pwr_aux_for_res_hvac
-                                .update(self.state.pwr_aux_for_res_hvac_req, format_dbg!())?;
-                            self.state
-                                .pwr_thrml_hvac_to_res
-                                .update(self.state.pwr_thrml_to_res_req, format_dbg!())?;
+                            self.state.pwr_aux_for_res_hvac.update(
+                                *self.state.pwr_aux_for_res_hvac_req.get(format_dbg!())?,
+                                format_dbg!(),
+                            )?;
+                            self.state.pwr_thrml_hvac_to_res.update(
+                                *self.state.pwr_thrml_to_res_req.get(format_dbg!())?,
+                                format_dbg!(),
+                            )?;
                         };
                     }
                     HvacMode::Inactive => {
-                        self.state
-                            .pwr_i_res
-                            .update(si::Power::ZERO, format_dbg!())?;
-                        self.state
-                            .pwr_p_res
-                            .update(si::Power::ZERO, format_dbg!())?;
-                        self.state
-                            .pwr_d_res
-                            .update(si::Power::ZERO, format_dbg!())?;
-                        self.state
-                            .pwr_aux_for_res_hvac_req
-                            .update(si::Power::ZERO, format_dbg!())?;
-                        self.state
-                            .pwr_aux_for_res_hvac
-                            .update(si::Power::ZERO, format_dbg!())?;
-                        self.state
-                            .pwr_thrml_hvac_to_res
-                            .update(si::Power::ZERO, format_dbg!())?;
-                    }
-                    HvacMode::Invalid => {
                         self.state
                             .pwr_i_res
                             .update(si::Power::ZERO, format_dbg!())?;
@@ -827,7 +948,7 @@ impl HVACSystemForLumpedCabinAndRES {
         res_temp_prev: si::Temperature,
         dt: si::Time,
         te_set_res: si::Temperature,
-    ) {
+    ) -> anyhow::Result<()> {
         let te_delta_vs_set = (res_temp.get::<si::degree_celsius>()
             - te_set_res.get::<si::degree_celsius>())
             * uc::KELVIN_INT;
@@ -835,21 +956,36 @@ impl HVACSystemForLumpedCabinAndRES {
             .pwr_p_res
             .update(-self.p_res * te_delta_vs_set, format_dbg!())?;
         self.state.pwr_i_res.update(
-            self.state.pwr_i_res.get_prev().unwrap_or_default()
-                - self.i_res * uc::W / uc::KELVIN / uc::S
-                    * te_delta_vs_set
-                    * dt.max(-self.pwr_i_max_res).min(self.pwr_i_max_res),
+            (self.state.pwr_i_res.get_prev_or_default()
+                - self.i_res * uc::W / uc::KELVIN / uc::S * te_delta_vs_set * dt)
+                .max(-self.pwr_i_max_res)
+                .min(self.pwr_i_max_res),
             format_dbg!(),
         );
-        self.state.pwr_d_res = -self.d_res * uc::J / uc::KELVIN
-            * ((res_temp.get::<si::degree_celsius>() - res_temp_prev.get::<si::degree_celsius>())
-                * uc::KELVIN_INT
-                / dt);
+        self.state.pwr_d_res.update(
+            -self.d_res * uc::J / uc::KELVIN
+                * ((res_temp.get::<si::degree_celsius>()
+                    - res_temp_prev.get::<si::degree_celsius>())
+                    * uc::KELVIN_INT
+                    / dt),
+            format_dbg!(),
+        )?;
+        Ok(())
     }
 }
 
 #[fastsim_api]
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    SetCumulative,
+    StateMethods,
+)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct HVACSystemForLumpedCabinAndRESState {
@@ -863,7 +999,7 @@ pub struct HVACSystemForLumpedCabinAndRESState {
     pub energy_p_cab: TrackedStateWithMemory<si::Energy>,
     /// portion of total HVAC cooling/heating (negative/positive) power due to
     /// integral gain
-    pub pwr_i_cab: TrackedState<si::Power>,
+    pub pwr_i_cab: TrackedStateWithMemory<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy
     /// due to integral gain
     pub energy_i_cab: TrackedStateWithMemory<si::Energy>,
@@ -881,7 +1017,7 @@ pub struct HVACSystemForLumpedCabinAndRESState {
     pub energy_p_res: TrackedStateWithMemory<si::Energy>,
     /// portion of total HVAC cooling/heating (negative/positive) power to
     /// [ReversibleEnergyStorage::thrml] due to integral gain
-    pub pwr_i_res: TrackedState<si::Power>,
+    pub pwr_i_res: TrackedStateWithMemory<si::Power>,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy
     /// to [ReversibleEnergyStorage::thrml] due to integral gain
     pub energy_i_res: TrackedStateWithMemory<si::Energy>,
@@ -965,7 +1101,7 @@ impl SerdeAPI for HvacModeForLumpedCabinAndRes {}
 impl HvacModeForLumpedCabinAndRes {
     fn set_mode_and_get_te_for_cop(
         &mut self,
-        cab_state: LumpedCabinState,
+        cab_state: &LumpedCabinState,
         res_thrml_state: RESLumpedThermalState,
         te_deltas: (
             Option<si::TemperatureInterval>,
@@ -985,10 +1121,6 @@ impl HvacModeForLumpedCabinAndRes {
 
         let (cabin_heat_source, te_deadband_cab) = cab_params;
         let (res_heat_source, res_cooling_source, te_deadband_res) = res_params;
-
-        self.cabin_mode = HvacMode::Invalid;
-        self.res_mode = HvacMode::Invalid;
-        self.te_ref_component = TeRefComp::Invalid;
 
         // NOTE: if `_` is used, order of match statements has an effect on
         // which mode gets set because the `_` are greedy!
@@ -1300,18 +1432,6 @@ impl HvacModeForLumpedCabinAndRes {
                 self.te_ref_component = TeRefComp::None;
             }
         }
-        ensure!(
-            !self.te_ref_component.is_invalid(),
-            format!("{}\n`te_ref_component` has not been updated", format_dbg!())
-        );
-        ensure!(
-            !self.cabin_mode.is_invalid(),
-            format!("{}\n`cabin_mode` has not been updated", format_dbg!())
-        );
-        ensure!(
-            !self.res_mode.is_invalid(),
-            format!("{}\n`res_mode` has not been updated", format_dbg!())
-        );
 
         let (te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb): (
             Option<si::Temperature>,
@@ -1319,17 +1439,16 @@ impl HvacModeForLumpedCabinAndRes {
             Option<si::TemperatureInterval>,
         ) = match self.te_ref_component {
             TeRefComp::Cabin => (
-                Some(cab_state.temperature.get(format_dbg!())?),
+                Some(*cab_state.temperature.get(format_dbg!())?),
                 te_cab_delta_vs_set,
                 Some(te_cab_delta_vs_amb),
             ),
             TeRefComp::RES => (
-                Some(res_thrml_state.temperature.get(format_dbg!())?),
+                Some(*res_thrml_state.temperature.get(format_dbg!())?),
                 te_res_delta_vs_set,
                 Some(te_res_delta_vs_amb),
             ),
             TeRefComp::None => (None, None, None),
-            TeRefComp::Invalid => unreachable!(),
         };
 
         Ok((te_ref, te_ref_delta_vs_set, te_ref_delta_vs_amb))
@@ -1383,10 +1502,8 @@ pub enum TeRefComp {
     /// ReversibleEnergyStorage
     RES,
     /// Vapor compression system is inactive
-    None,
     #[default]
-    /// Used for debugging
-    Invalid,
+    None,
 }
 impl Init for TeRefComp {}
 impl SerdeAPI for TeRefComp {}

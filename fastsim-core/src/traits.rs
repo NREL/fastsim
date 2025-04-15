@@ -507,7 +507,7 @@ impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
 /// `state`
 pub trait SaveState {
     /// Saves `self.state` to `self.history` and propagates to any fields with `state`
-    fn save_state(&mut self) {}
+    fn save_state(&mut self) -> anyhow::Result<()>;
 }
 /// Provides methods to guarantee that states are updated once and only once per time step
 pub trait TrackedStateMethods {
@@ -548,7 +548,7 @@ impl<T: Default + PartialEq> EqDefault for T {}
 /// Trait for setting cumulative values based on rate values
 pub trait SetCumulative {
     /// Sets cumulative values based on rate values
-    fn set_cumulative(&mut self, dt: si::Time);
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()>;
 }
 
 #[cfg(test)]

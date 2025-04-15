@@ -14,7 +14,7 @@ pub trait Powertrain {
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-        veh_state: VehicleState,
+        veh_state: &VehicleState,
     ) -> anyhow::Result<()>;
 
     /// Returns maximum achievable positive and negative propulsion powers after
@@ -30,11 +30,11 @@ pub trait Powertrain {
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        veh_state: VehicleState,
+        veh_state: &VehicleState,
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()>;
 
     /// Returns regen power after `Powertrain::solve` has been called
-    fn pwr_regen(&self) -> si::Power;
+    fn pwr_regen(&self) -> anyhow::Result<si::Power>;
 }

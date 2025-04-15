@@ -207,12 +207,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         history: Default::default(),
                     },
                     pt_cntrl,
+                    fc_on_causes: Default::default(),
                     mass: None,
                     sim_params: Default::default(),
                     aux_cntrl: Default::default(),
-                    state: Default::default(),
-                    history: Default::default(),
                     soc_bal_iter_history: Default::default(),
+                    soc_bal_iters: Default::default(),
                 };
                 hev.init()?;
                 Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))

@@ -73,16 +73,17 @@ impl HistoryMethods for HVACOption {
     }
 }
 impl SaveState for HVACOption {
-    fn save_state(&mut self) {
+    fn save_state(&mut self) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.save_state(),
-            Self::LumpedCabinAndRES(lcr) => lcr.save_state(),
+            Self::LumpedCabin(lc) => lc.save_state()?,
+            Self::LumpedCabinAndRES(lcr) => lcr.save_state()?,
             Self::LumpedCabinWithShell => {
                 todo!()
             }
             Self::ReversibleEnergyStorageOnly => todo!(),
             Self::None => {}
         }
+        Ok(())
     }
 }
 impl TrackedStateMethods for HVACOption {
