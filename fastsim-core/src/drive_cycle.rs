@@ -714,6 +714,9 @@ impl Cycle {
         distance
     }
 
+    /// Calculate the time in a cycle spent moving
+    /// - stopped_speed_m_per_s: the speed above which we are considered to be moving
+    /// RETURN: the time spent moving in seconds
     pub fn time_spent_moving(&self, stopped_speed: Option<si::Velocity>) -> si::Time {
         let stop_speed = stopped_speed.unwrap_or(0.0 * uc::MPS);
         let mut result = 0.0 * uc::S;

@@ -250,6 +250,9 @@ pub fn trapz_distance_over_range(cyc: &Cycle, i_start: usize, i_end: usize) -> s
     cyc.trapz_distance_over_range(i_start, i_end)
 }
 
+/// Calculate the time in a cycle spent moving
+/// - stopped_speed_m_per_s: the speed above which we are considered to be moving
+/// RETURN: the time spent moving in seconds
 pub fn time_spent_moving(cyc: &Cycle, stopped_speed: Option<si::Velocity>) -> si::Time {
     cyc.time_spent_moving(stopped_speed)
 }
