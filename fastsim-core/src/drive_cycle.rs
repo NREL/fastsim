@@ -543,6 +543,10 @@ impl Cycle {
         result
     }
 
+    /// Convert cycle into a vector of "microtrips".
+    /// A microtrip is a start to a subsequent stop plus any idle time.
+    /// - stop_speed: the speed at or below which vehicle is considered "stopped"
+    /// RETURN: vector of cycles with each cycle being a "microtrip".
     pub fn to_microtrips(&self, stop_speed: Option<si::Velocity>) -> Vec<Cycle> {
         let stop_speed = stop_speed.unwrap_or(1e-6 * uc::MPS);
         let mut microtrips = Vec::new();
