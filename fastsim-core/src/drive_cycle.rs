@@ -699,6 +699,20 @@ impl Cycle {
         let elapsed_time = self.time[step] - self.time[step - 1];
         average_speed * elapsed_time
     }
+
+    /// Calculate the distance from step i_start to the start of step i_end
+    /// (i.e., distance from sample point i_start - 1 to i_end - 1)
+    pub fn trapz_distance_over_range(&self, step0: usize, step1: usize) -> si::Length {
+        let distances = self.trapz_step_distances();
+        let last_i = cmp::max(distances.len() - 1, 0);
+        let i_start = cmp::min(step0, last_i);
+        let i_end = cmp::min(step1, last_i);
+        let mut distance = 0.0 * uc::M;
+        for i in cmp::min(i_start, i_end)..cmp::max(i_start, i_end) {
+            distance += distances[i];
+        }
+        distance
+    }
 }
 
 #[fastsim_api]

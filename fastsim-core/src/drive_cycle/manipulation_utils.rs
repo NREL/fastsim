@@ -244,6 +244,12 @@ pub fn trapz_distance_for_step(cyc: &Cycle, i: usize) -> si::Length {
     cyc.trapz_distance_for_step(i)
 }
 
+/// Calculate the distance from step i_start to the start of step i_end
+/// (i.e., distance from sample point i_start - 1 to i_end - 1)
+pub fn trapz_distance_over_range(cyc: &Cycle, i_start: usize, i_end: usize) -> si::Length {
+    cyc.trapz_distance_over_range(i_start, i_end)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -374,6 +380,15 @@ mod tests {
         let cyc = make_triangle_cycle();
         let expected = 20.0 * uc::M;
         let actual = trapz_distance_for_step(&cyc, 1);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_trapz_distance_over_range() {
+        let cyc = make_triangle_cycle();
+        let expected = 40.0 * uc::M;
+        // NOTE: the high end step is meant to test out-of-bounds indices.
+        let actual = trapz_distance_over_range(&cyc, 0, 1000);
         assert_eq!(actual, expected);
     }
 }
