@@ -257,6 +257,15 @@ pub fn time_spent_moving(cyc: &Cycle, stopped_speed: Option<si::Velocity>) -> si
     cyc.time_spent_moving(stopped_speed)
 }
 
+pub fn create_distance_and_target_speeds_by_microtrip(
+    cyc: &Cycle,
+    stop_speed: Option<si::Velocity>,
+    blend_factor: f64,
+    min_target_speed: si::Velocity,
+) -> Vec<(si::Length, si::Velocity)> {
+    cyc.distance_and_target_speeds_by_microtrip(stop_speed, blend_factor, min_target_speed)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,5 +414,18 @@ mod tests {
         let expected = 20.0 * uc::S;
         let actual = time_spent_moving(&cyc, None);
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_distance_and_target_speeds_by_microtrip() {
+        let cyc = make_triangle_cycle();
+        let expected = vec![(0.0 * uc::M, (40.0 / 30.0) * uc::MPS)];
+        let v0 = 0.0 * uc::MPS;
+        let actual = create_distance_and_target_speeds_by_microtrip(&cyc, None, 0.0, v0);
+        assert_eq!(actual.len(), expected.len());
+        for i in 0..expected.len() {
+            assert_eq!(actual[i].0, expected[i].0);
+            assert_eq!(actual[i].1, expected[i].1);
+        }
     }
 }

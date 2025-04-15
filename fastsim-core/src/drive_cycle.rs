@@ -753,7 +753,7 @@ impl Cycle {
     ///
     /// * target speed per microtrip is not allowed to be
     ///   below the `min_target_speed`
-    pub fn create_distance_and_target_speeds_by_microtrip(
+    pub fn distance_and_target_speeds_by_microtrip(
         &self,
         stop_speed: Option<si::Velocity>,
         blend_factor: f64,
@@ -955,13 +955,13 @@ mod tests {
     }
 
     #[test]
-    fn test_create_distance_and_target_speeds_by_microtrip() {
+    fn test_distance_and_target_speeds_by_microtrip() {
         let cyc = make_two_triangles_cycle();
         let expected = vec![
             (0.0 * uc::M, (40.0 / 20.0) * uc::MPS),
             (40.0 * uc::M, (50.0 / 20.0) * uc::MPS),
         ];
-        let actual = cyc.create_distance_and_target_speeds_by_microtrip(None, 1.0, 0.0 * uc::MPS);
+        let actual = cyc.distance_and_target_speeds_by_microtrip(None, 1.0, 0.0 * uc::MPS);
         assert_eq!(actual.len(), expected.len());
         for i in 0..expected.len() {
             assert_eq!(actual[i].0, expected[i].0);
@@ -971,7 +971,7 @@ mod tests {
             (0.0 * uc::M, (40.0 / 30.0) * uc::MPS),
             (40.0 * uc::M, (50.0 / 20.0) * uc::MPS),
         ];
-        let actual = cyc.create_distance_and_target_speeds_by_microtrip(None, 0.0, 0.0 * uc::MPS);
+        let actual = cyc.distance_and_target_speeds_by_microtrip(None, 0.0, 0.0 * uc::MPS);
         assert_eq!(actual.len(), expected.len());
         for i in 0..expected.len() {
             assert_eq!(actual[i].0, expected[i].0);
