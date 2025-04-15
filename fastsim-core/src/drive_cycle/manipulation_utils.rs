@@ -217,12 +217,13 @@ pub fn accel_array_for_constant_jerk(n: usize, a0: f64, k: f64, dt: f64) -> Vec<
 /// - cyc: an instance of the cycle to get average step speeds for.
 /// RETURN: vector of velocities representing average step speeds.
 pub fn average_step_speeds(cyc: &Cycle) -> Vec<si::Velocity> {
-    let mut result = Vec::with_capacity(cyc.time.len());
-    result.push(0.0 * uc::MPS);
-    for i in 1..cyc.time.len() {
-        result.push(0.5 * (cyc.speed[i] + cyc.speed[i - 1]));
-    }
-    result
+    cyc.average_step_speeds()
+}
+
+/// Calculate the average step speed at step i
+/// (i.e., from sample point i-1 to i)
+pub fn average_step_speed_at(cyc: &Cycle, i: usize) -> si::Velocity {
+    cyc.average_step_speed_at(i)
 }
 
 #[cfg(test)]
@@ -230,6 +231,22 @@ mod tests {
     use super::*;
     use crate::drive_cycle::Cycle;
 
+    fn make_triangle_cycle() -> Cycle {
+        Cycle {
+            name: String::from("Triangle"),
+            init_elev: None,
+            time: vec![0.0 * uc::S, 10.0 * uc::S, 20.0 * uc::S, 30.0 * uc::S],
+            speed: vec![0.0 * uc::MPS, 4.0 * uc::MPS, 0.0 * uc::MPS, 0.0 * uc::MPS],
+            dist: vec![],
+            grade: vec![],
+            elev: vec![],
+            pwr_max_chrg: vec![],
+            grade_interp: Default::default(),
+            elev_interp: Default::default(),
+            temp_amb_air: Default::default(),
+            pwr_solar_load: Default::default(),
+        }
+    }
     fn make_test_trajectory() -> ConstantJerkTrajectory {
         let n = 2;
         let d0_m = 0.0;
@@ -297,25 +314,20 @@ mod tests {
     }
     #[test]
     fn test_average_step_speeds() {
-        let cyc = Cycle {
-            name: String::from("Triangle"),
-            init_elev: None,
-            time: vec![0.0 * uc::S, 10.0 * uc::S, 20.0 * uc::S, 30.0 * uc::S],
-            speed: vec![0.0 * uc::MPS, 4.0 * uc::MPS, 0.0 * uc::MPS, 0.0 * uc::MPS],
-            dist: vec![],
-            grade: vec![],
-            elev: vec![],
-            pwr_max_chrg: vec![],
-            grade_interp: Default::default(),
-            elev_interp: Default::default(),
-            temp_amb_air: Default::default(),
-            pwr_solar_load: Default::default(),
-        };
+        let cyc = make_triangle_cycle();
         let expected = vec![0.0 * uc::MPS, 2.0 * uc::MPS, 2.0 * uc::MPS, 0.0 * uc::MPS];
         let actual = average_step_speeds(&cyc);
         assert_eq!(actual.len(), expected.len());
         for i in 0..expected.len() {
             assert_eq!(actual[i], expected[i]);
         }
+    }
+
+    #[test]
+    fn test_average_step_speed_at() {
+        let cyc = make_triangle_cycle();
+        let expected = 2.0 * uc::MPS;
+        let actual = average_step_speed_at(&cyc, 1);
+        assert_eq!(actual, expected);
     }
 }

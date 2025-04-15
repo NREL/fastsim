@@ -643,6 +643,27 @@ impl Cycle {
         }
         microtrips
     }
+
+    /// Return the average step speeds of the cycle as vector of velicities.
+    /// NOTE: the average speed from sample i-1 to i will appear as entry i.
+    /// RETURN: vector of velocities representing average step speeds.
+    pub fn average_step_speeds(&self) -> Vec<si::Velocity> {
+        let mut result = Vec::with_capacity(self.time.len());
+        result.push(0.0 * uc::MPS);
+        for i in 1..self.time.len() {
+            result.push(0.5 * (self.speed[i] + self.speed[i - 1]));
+        }
+        result
+    }
+
+    /// Calculate the average step speed at step i
+    /// (i.e., from sample point i-1 to i)
+    pub fn average_step_speed_at(&self, i: usize) -> si::Velocity {
+        if i >= self.speed.len() {
+            return 0.0 * uc::MPS;
+        }
+        0.5 * (self.speed[i] + self.speed[i - 1])
+    }
 }
 
 #[fastsim_api]
