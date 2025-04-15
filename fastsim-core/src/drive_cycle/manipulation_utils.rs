@@ -250,6 +250,10 @@ pub fn trapz_distance_over_range(cyc: &Cycle, i_start: usize, i_end: usize) -> s
     cyc.trapz_distance_over_range(i_start, i_end)
 }
 
+pub fn time_spent_moving(cyc: &Cycle, stopped_speed: Option<si::Velocity>) -> si::Time {
+    cyc.time_spent_moving(stopped_speed)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -389,6 +393,14 @@ mod tests {
         let expected = 40.0 * uc::M;
         // NOTE: the high end step is meant to test out-of-bounds indices.
         let actual = trapz_distance_over_range(&cyc, 0, 1000);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_time_spent_moving() {
+        let cyc = make_triangle_cycle();
+        let expected = 20.0 * uc::S;
+        let actual = time_spent_moving(&cyc, None);
         assert_eq!(actual, expected);
     }
 }

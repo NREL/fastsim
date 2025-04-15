@@ -713,6 +713,18 @@ impl Cycle {
         }
         distance
     }
+
+    pub fn time_spent_moving(&self, stopped_speed: Option<si::Velocity>) -> si::Time {
+        let stop_speed = stopped_speed.unwrap_or(0.0 * uc::MPS);
+        let mut result = 0.0 * uc::S;
+        for i in 1..self.time.len() {
+            let step_time = self.time[i] - self.time[i - 1];
+            if self.speed[i] > stop_speed || self.speed[i - 1] > stop_speed {
+                result += step_time;
+            }
+        }
+        result
+    }
 }
 
 #[fastsim_api]
