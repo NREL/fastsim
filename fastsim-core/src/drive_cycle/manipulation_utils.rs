@@ -213,9 +213,8 @@ pub fn accel_array_for_constant_jerk(n: usize, a0: f64, k: f64, dt: f64) -> Vec<
 
 #[cfg(test)]
 mod tests {
-    use fastsim_2::cycle::speed_for_constant_jerk;
-
     use super::*;
+
     fn make_test_trajectory() -> ConstantJerkTrajectory {
         let n = 2;
         let d0_m = 0.0;
