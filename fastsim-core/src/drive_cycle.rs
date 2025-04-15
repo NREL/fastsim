@@ -3,6 +3,7 @@ use crate::prelude::*;
 #[cfg(feature = "pyo3")]
 use crate::resources;
 use fastsim_2::cycle::RustCycle as Cycle2;
+use std::cmp;
 
 pub mod manipulation_utils;
 
@@ -665,6 +666,8 @@ impl Cycle {
         0.5 * (self.speed[i] + self.speed[i - 1])
     }
 
+    /// The distances traveled over each step using trapezoidal
+    /// integration.
     pub fn trapz_step_distances(&self) -> Vec<si::Length> {
         let mut result = Vec::with_capacity(self.time.len());
         result.push(0.0 * uc::M);
@@ -674,6 +677,19 @@ impl Cycle {
             result.push(step_time * average_speed);
         }
         result
+    }
+
+    /// The distance traveled from start to the beginning of step i
+    /// (i.e., distance traveled up to sample point i-1)
+    pub fn trapz_step_start_distance(&self, step: usize) -> si::Length {
+        let mut distance = 0.0 * uc::M;
+        let step_max = cmp::min(step, self.time.len());
+        for i in 1..step_max {
+            let step_time = self.time[i] - self.time[i - 1];
+            let average_speed = 0.5 * (self.speed[i] + self.speed[i - 1]);
+            distance += step_time * average_speed;
+        }
+        distance
     }
 }
 
