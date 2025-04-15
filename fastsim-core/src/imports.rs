@@ -26,6 +26,7 @@ pub(crate) use anyhow::{anyhow, bail, ensure, Context};
 pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
 pub(crate) use ndarray::prelude::*;
+pub(crate) use ndarray::{IxDynImpl, OwnedRepr};
 pub(crate) use ninterp::*;
 pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use std::cmp::{self, Ordering};
