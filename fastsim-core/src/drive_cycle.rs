@@ -4,6 +4,8 @@ use crate::prelude::*;
 use crate::resources;
 use fastsim_2::cycle::RustCycle as Cycle2;
 
+pub mod manipulation_utils;
+
 #[fastsim_api(
     #[pyo3(name = "list_resources")]
     #[staticmethod]
