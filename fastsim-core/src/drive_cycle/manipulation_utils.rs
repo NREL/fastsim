@@ -212,6 +212,10 @@ pub fn accel_array_for_constant_jerk(n: usize, a0: f64, k: f64, dt: f64) -> Vec<
     trajectory.all_accelerations()
 }
 
+/// Return the average step speeds of the cycle as vector of velicities.
+/// NOTE: the average speed from sample i-1 to i will appear as entry i.
+/// - cyc: an instance of the cycle to get average step speeds for.
+/// RETURN: vector of velocities representing average step speeds.
 pub fn average_step_speeds(cyc: &Cycle) -> Vec<si::Velocity> {
     let mut result = Vec::with_capacity(cyc.time.len());
     result.push(0.0 * uc::MPS);
