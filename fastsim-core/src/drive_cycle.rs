@@ -728,6 +728,78 @@ impl Cycle {
         }
         result
     }
+
+    /// Create distance and target speeds by microtrip.
+    /// Splits cycle into microtrips and returns a list of
+    /// 2-tuples of:
+    /// (distance from start in meters, target speed in m/s)
+    /// The distance is measured to the start of the microtrip.
+    ///
+    /// # Parameters
+    ///
+    /// * `blend_factor`: from 0.0 to 1.0
+    ///    - if 0.0, use the average speed of the microtrip
+    ///    - if 1.0, use the average speed while moving (i.e., no stopped time)
+    ///    - otherwise, something in between
+    /// * `min_target_speed`: the minimum target speed allowed
+    ///
+    /// # Result
+    ///
+    /// List of 2-tuple of (distance from start, target speed).
+    /// A tuple represents the distance from start of the start
+    /// of the given microtrip and its target speed.
+    ///
+    /// # Notes
+    ///
+    /// * target speed per microtrip is not allowed to be
+    ///   below the `min_target_speed`
+    pub fn create_distance_and_target_speeds_by_microtrip(
+        &self,
+        stop_speed: Option<si::Velocity>,
+        blend_factor: f64,
+        min_target_speed: si::Velocity,
+    ) -> Vec<(si::Length, si::Velocity)> {
+        let blend_factor = blend_factor.clamp(0.0, 1.0);
+        let mut result = Vec::new();
+        let microtrips = self.to_microtrips(stop_speed);
+        let mut distance_at_start = 0.0 * uc::M;
+        let t0 = 0.0 * uc::S;
+        let v0 = 0.0 * uc::MPS;
+        let d0 = 0.0 * uc::M;
+        for mt in microtrips {
+            let distance = mt
+                .trapz_step_distances()
+                .iter()
+                .fold(0.0 * uc::M, |total, dist| total + *dist);
+            let last_index = cmp::max(mt.time.len() - 1, 0);
+            let end_time = mt.time[last_index];
+            let start_time = mt.time[0];
+            let total_time = end_time - start_time;
+            let moving_time = mt.time_spent_moving(stop_speed);
+            let average_speed = if total_time > t0 {
+                distance / total_time
+            } else {
+                v0
+            };
+            let moving_average_speed = if moving_time > t0 {
+                distance / moving_time
+            } else {
+                v0
+            };
+            let target_speed =
+                blend_factor * (moving_average_speed - average_speed) + average_speed;
+            let target_speed = if target_speed > min_target_speed {
+                target_speed
+            } else {
+                min_target_speed
+            };
+            if distance > d0 {
+                result.push((distance_at_start, target_speed));
+                distance_at_start += distance;
+            }
+        }
+        result
+    }
 }
 
 #[fastsim_api]
@@ -782,41 +854,7 @@ mod tests {
         cyc
     }
 
-    #[test]
-    fn test_init() {
-        let cyc = mock_cyc_len_2();
-        assert_eq!(
-            cyc.dist,
-            [0., 1., 3.] // meters
-                .iter()
-                .map(|x| *x * uc::M)
-                .collect::<Vec<si::Length>>()
-        );
-        assert_eq!(
-            cyc.elev,
-            [121.92, 121.93, 121.99000000000001] // meters
-                .iter()
-                .map(|x| *x * uc::M)
-                .collect::<Vec<si::Length>>()
-        );
-    }
-
-    #[test]
-    fn test_to_elements() {
-        let cyc = mock_cyc_len_2();
-        let elements = cyc.to_elements();
-        assert_eq!(elements.len(), 3);
-        assert_eq!(elements[0].time, 0.0 * uc::S);
-        assert_eq!(elements[2].time, cyc.time[2]);
-        assert_eq!(elements[2].speed, cyc.speed[2]);
-        assert_eq!(elements[2].grade.unwrap(), 0.02 * uc::R);
-        assert!(elements[2].pwr_max_charge.is_none());
-        assert_eq!(elements[2].temp_amb_air.unwrap(), *TE_STD_AIR);
-        assert!(elements[2].pwr_solar_load.is_none());
-    }
-
-    #[test]
-    fn test_to_microtrips() {
+    fn make_two_triangles_cycle() -> Cycle {
         let mut cyc = Cycle {
             name: String::from("Two Triangles"),
             init_elev: None,
@@ -853,6 +891,45 @@ mod tests {
             pwr_solar_load: Default::default(),
         };
         cyc.init().unwrap();
+        cyc
+    }
+
+    #[test]
+    fn test_init() {
+        let cyc = mock_cyc_len_2();
+        assert_eq!(
+            cyc.dist,
+            [0., 1., 3.] // meters
+                .iter()
+                .map(|x| *x * uc::M)
+                .collect::<Vec<si::Length>>()
+        );
+        assert_eq!(
+            cyc.elev,
+            [121.92, 121.93, 121.99000000000001] // meters
+                .iter()
+                .map(|x| *x * uc::M)
+                .collect::<Vec<si::Length>>()
+        );
+    }
+
+    #[test]
+    fn test_to_elements() {
+        let cyc = mock_cyc_len_2();
+        let elements = cyc.to_elements();
+        assert_eq!(elements.len(), 3);
+        assert_eq!(elements[0].time, 0.0 * uc::S);
+        assert_eq!(elements[2].time, cyc.time[2]);
+        assert_eq!(elements[2].speed, cyc.speed[2]);
+        assert_eq!(elements[2].grade.unwrap(), 0.02 * uc::R);
+        assert!(elements[2].pwr_max_charge.is_none());
+        assert_eq!(elements[2].temp_amb_air.unwrap(), *TE_STD_AIR);
+        assert!(elements[2].pwr_solar_load.is_none());
+    }
+
+    #[test]
+    fn test_to_microtrips() {
+        let cyc = make_two_triangles_cycle();
         let actual = cyc.to_microtrips(Some(0.01 * uc::MPH));
         assert_eq!(actual.len(), 2);
         let cyc0 = &actual[0];
@@ -875,5 +952,30 @@ mod tests {
             vec![0.0 * uc::MPS, 5.0 * uc::MPS, 0.0 * uc::MPS]
         );
         assert_eq!(cyc1.grade, vec![0.0 * uc::R, 1.0 * uc::R, 1.0 * uc::R]);
+    }
+
+    #[test]
+    fn test_create_distance_and_target_speeds_by_microtrip() {
+        let cyc = make_two_triangles_cycle();
+        let expected = vec![
+            (0.0 * uc::M, (40.0 / 20.0) * uc::MPS),
+            (40.0 * uc::M, (50.0 / 20.0) * uc::MPS),
+        ];
+        let actual = cyc.create_distance_and_target_speeds_by_microtrip(None, 1.0, 0.0 * uc::MPS);
+        assert_eq!(actual.len(), expected.len());
+        for i in 0..expected.len() {
+            assert_eq!(actual[i].0, expected[i].0);
+            assert_eq!(actual[i].1, expected[i].1);
+        }
+        let expected = vec![
+            (0.0 * uc::M, (40.0 / 30.0) * uc::MPS),
+            (40.0 * uc::M, (50.0 / 20.0) * uc::MPS),
+        ];
+        let actual = cyc.create_distance_and_target_speeds_by_microtrip(None, 0.0, 0.0 * uc::MPS);
+        assert_eq!(actual.len(), expected.len());
+        for i in 0..expected.len() {
+            assert_eq!(actual[i].0, expected[i].0);
+            assert_eq!(actual[i].1, expected[i].1);
+        }
     }
 }
