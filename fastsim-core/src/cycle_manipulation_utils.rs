@@ -3,12 +3,19 @@ use crate::imports::*;
 #[fastsim_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(deny_unknown_fields)]
+/// Data describing a trajectory with a "constant jerk"
 pub struct ConstantJerkTrajectory {
+    /// number of steps in the trajectory
     pub steps: usize,
+    /// initial elapsed distance at trajectory start (m)
     pub distance_m: f64,
+    /// initial speed of the trajectory (m/s)
     pub speed_m_per_s: f64,
+    /// initial acceleration of the trajectory (m/s2)
     pub acceleration_m_per_s2: f64,
+    /// constant jerk of the trajectory (m/s3)
     pub jerk_m_per_s3: f64,
+    /// duration of a single step in seconds
     pub step_duration_s: f64,
 }
 
