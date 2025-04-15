@@ -226,6 +226,12 @@ pub fn average_step_speed_at(cyc: &Cycle, i: usize) -> si::Velocity {
     cyc.average_step_speed_at(i)
 }
 
+/// The distances traveled over each step using trapezoidal
+/// integration.
+pub fn trapz_step_distances(cyc: &Cycle) -> Vec<si::Length> {
+    cyc.trapz_step_distances()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -329,5 +335,16 @@ mod tests {
         let expected = 2.0 * uc::MPS;
         let actual = average_step_speed_at(&cyc, 1);
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_trapz_step_distances() {
+        let cyc = make_triangle_cycle();
+        let expected = vec![0.0 * uc::M, 20.0 * uc::M, 20.0 * uc::M, 0.0 * uc::M];
+        let actual = trapz_step_distances(&cyc);
+        assert_eq!(actual.len(), expected.len());
+        for i in 0..expected.len() {
+            assert_eq!(actual[i], expected[i]);
+        }
     }
 }

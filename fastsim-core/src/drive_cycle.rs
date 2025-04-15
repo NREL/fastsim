@@ -664,6 +664,17 @@ impl Cycle {
         }
         0.5 * (self.speed[i] + self.speed[i - 1])
     }
+
+    pub fn trapz_step_distances(&self) -> Vec<si::Length> {
+        let mut result = Vec::with_capacity(self.time.len());
+        result.push(0.0 * uc::M);
+        for i in 1..self.time.len() {
+            let step_time = self.time[i] - self.time[i - 1];
+            let average_speed = 0.5 * (self.speed[i] + self.speed[i - 1]);
+            result.push(step_time * average_speed);
+        }
+        result
+    }
 }
 
 #[fastsim_api]
