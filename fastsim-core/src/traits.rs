@@ -1,3 +1,4 @@
+use crate::error::Error;
 use crate::imports::*;
 
 pub trait Linspace {
@@ -152,7 +153,7 @@ impl Max for Interpolator {
 pub trait Init {
     /// Specialized code to execute upon initialization.  For any struct with fields
     /// that implement `Init`, this should propagate down the hierarchy.
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -183,15 +184,19 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     ///
     /// * `filepath` - Filepath, relative to the top of the `resources` folder (excluding any relevant prefix), from which to read the object
     #[cfg(feature = "resources")]
-    fn from_resource<P: AsRef<Path>>(filepath: P, skip_init: bool) -> anyhow::Result<Self> {
+    fn from_resource<P: AsRef<Path>>(filepath: P, skip_init: bool) -> Result<Self, Error> {
         let filepath = Path::new(Self::RESOURCE_PREFIX).join(filepath);
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
+            .ok_or_else(|| {
+                Error::SerdeError(format!("File extension could not be parsed: {filepath:?}"))
+            })?;
         let file = crate::resources::RESOURCES_DIR
             .get_file(&filepath)
-            .with_context(|| format!("File not found in resources: {filepath:?}"))?;
+            .ok_or_else(|| {
+                Error::SerdeError(format!("File not found in resources: {filepath:?}"))
+            })?;
         Self::from_reader(&mut file.contents(), extension, skip_init)
     }
 
@@ -202,7 +207,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     /// Note: The URL needs to be a URL pointing directly to a file, for example
     /// a raw github URL.
     #[cfg(feature = "web")]
-    fn from_url<S: AsRef<str>>(url: S, skip_init: bool) -> anyhow::Result<Self> {
+    fn from_url<S: AsRef<str>>(url: S, skip_init: bool) -> Result<Self, Error> {
         let url = url::Url::parse(url.as_ref())?;
         let format = url
             .path_segments()
@@ -222,13 +227,18 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     ///
     /// * `filepath` - The filepath at which to write the object
     ///
-    fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
+    fn to_file<P: AsRef<Path>>(&self, filepath: P) -> Result<(), Error> {
         let filepath = filepath.as_ref();
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-        self.to_writer(File::create(filepath)?, extension)
+            .ok_or_else(|| {
+                Error::SerdeError(format!("File extension could not be parsed: {filepath:?}"))
+            })?;
+        self.to_writer(
+            File::create(filepath).map_err(|err| Error::SerdeError(format!("{err}")))?,
+            extension,
+        )
     }
 
     /// Read (deserialize) an object from a file.
@@ -238,19 +248,23 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     ///
     /// * `filepath`: The filepath from which to read the object
     ///
-    fn from_file<P: AsRef<Path>>(filepath: P, skip_init: bool) -> anyhow::Result<Self> {
+    fn from_file<P: AsRef<Path>>(filepath: P, skip_init: bool) -> Result<Self, Error> {
         let filepath = filepath.as_ref();
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-        let mut file = File::open(filepath).with_context(|| {
-            if !filepath.exists() {
-                format!("File not found: {filepath:?}")
-            } else {
-                format!("Could not open file: {filepath:?}")
-            }
-        })?;
+            .ok_or_else(|| {
+                Error::SerdeError(format!("File extension could not be parsed: {filepath:?}"))
+            })?;
+        let mut file = File::open(filepath)
+            .with_context(|| {
+                if !filepath.exists() {
+                    format!("File not found: {filepath:?}")
+                } else {
+                    format!("Could not open file: {filepath:?}")
+                }
+            })
+            .map_err(|err| Error::SerdeError(format!("{err}")))?;
         Self::from_reader(&mut file, extension, skip_init)
     }
 
@@ -261,21 +275,26 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     /// * `wtr` - The writer into which to write object data
     /// * `format` - The target format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
     ///
-    fn to_writer<W: std::io::Write>(&self, mut wtr: W, format: &str) -> anyhow::Result<()> {
+    fn to_writer<W: std::io::Write>(&self, mut wtr: W, format: &str) -> Result<(), Error> {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             #[cfg(feature = "yaml")]
-            "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
+            "yaml" | "yml" => serde_yaml::to_writer(wtr, self)
+                .map_err(|err| Error::SerdeError(format!("{err}")))?,
             #[cfg(feature = "json")]
-            "json" => serde_json::to_writer(wtr, self)?,
+            "json" => serde_json::to_writer(wtr, self)
+                .map_err(|err| Error::SerdeError(format!("{err}")))?,
             #[cfg(feature = "toml")]
             "toml" => {
-                let toml_string = self.to_toml()?;
-                wtr.write_all(toml_string.as_bytes())?;
+                let toml_string = self
+                    .to_toml()
+                    .map_err(|err| Error::SerdeError(format!("{err}")))?;
+                wtr.write_all(toml_string.as_bytes())
+                    .map_err(|err| Error::SerdeError(format!("{err}")))?;
             }
-            _ => bail!(
+            _ => Err(Error::SerdeError(format!(
                 "Unsupported format {format:?}, must be one of {:?}",
                 Self::ACCEPTED_BYTE_FORMATS
-            ),
+            )))?,
         }
         Ok(())
     }
@@ -291,25 +310,31 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
         rdr: &mut R,
         format: &str,
         skip_init: bool,
-    ) -> anyhow::Result<Self> {
-        let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
-            #[cfg(feature = "yaml")]
-            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
-            #[cfg(feature = "json")]
-            "json" => serde_json::from_reader(rdr)?,
-            #[cfg(feature = "msgpack")]
-            "msgpack" => rmp_serde::decode::from_read(rdr)?,
-            #[cfg(feature = "toml")]
-            "toml" => {
-                let mut buf = String::new();
-                rdr.read_to_string(&mut buf)?;
-                Self::from_toml(buf, skip_init)?
-            }
-            _ => bail!(
-                "Unsupported format {format:?}, must be one of {:?}",
-                Self::ACCEPTED_BYTE_FORMATS
-            ),
-        };
+    ) -> Result<Self, Error> {
+        let mut deserialized: Self =
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                #[cfg(feature = "yaml")]
+                "yaml" | "yml" => serde_yaml::from_reader(rdr)
+                    .map_err(|err| Error::SerdeError(format!("{err}")))?,
+                #[cfg(feature = "json")]
+                "json" => serde_json::from_reader(rdr)
+                    .map_err(|err| Error::SerdeError(format!("{err}")))?,
+                #[cfg(feature = "msgpack")]
+                "msgpack" => rmp_serde::decode::from_read(rdr)
+                    .map_err(|err| Error::SerdeError(format!("{err}")))?,
+                #[cfg(feature = "toml")]
+                "toml" => {
+                    let mut buf = String::new();
+                    rdr.read_to_string(&mut buf)
+                        .map_err(|err| Error::SerdeError(format!("{err}")))?;
+                    Self::from_toml(buf, skip_init)
+                        .map_err(|err| Error::SerdeError(format!("{err}")))?
+                }
+                _ => Err(Error::SerdeError(format!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_BYTE_FORMATS,
+                )))?,
+            };
         if !skip_init {
             deserialized.init()?;
         }
@@ -448,7 +473,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
 
 impl<T: SerdeAPI> SerdeAPI for Vec<T> {}
 impl<T: Init> Init for Vec<T> {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         for val in self {
             val.init()?
         }
@@ -486,7 +511,7 @@ pub trait SaveState {
 }
 
 /// Provides methods for getting and setting the save interval
-pub trait SaveInterval {
+pub trait HistoryMethods {
     /// Recursively sets save interval
     /// # Arguments
     /// - `save_interval`: time step interval at which to save `self.state` to `self.history`
@@ -494,6 +519,8 @@ pub trait SaveInterval {
     /// Returns save interval for `self` but does not guarantee recursive consistency in nested
     /// objects
     fn save_interval(&self) -> anyhow::Result<Option<usize>>;
+    /// Remove all history
+    fn clear(&mut self);
 }
 
 /// Trait that provides method for incrementing `i` field of this and all contained structs,

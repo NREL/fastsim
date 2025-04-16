@@ -14,6 +14,7 @@ use crate::prelude::*;
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Solver parameters
 pub struct SimParams {
     #[serde(default = "SimParams::def_ach_speed_max_iter")]
@@ -108,6 +109,7 @@ impl Default for SimParams {
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct SimDrive {
     #[has_state]
     pub veh: Vehicle,
@@ -117,12 +119,16 @@ pub struct SimDrive {
 
 impl SerdeAPI for SimDrive {}
 impl Init for SimDrive {
-    fn init(&mut self) -> anyhow::Result<()> {
-        self.veh.init().with_context(|| anyhow!(format_dbg!()))?;
-        self.cyc.init().with_context(|| anyhow!(format_dbg!()))?;
+    fn init(&mut self) -> Result<(), Error> {
+        self.veh
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.cyc
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.sim_params
             .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }
@@ -239,6 +245,8 @@ impl SimDrive {
         //     Proportional
         // }
         // ```
+
+        // `solve_thermal` must happen before the other methods because it impacts aux power demand
         self.veh
             .solve_thermal(self.cyc.temp_amb_air[i], dt)
             .with_context(|| format_dbg!())?;
@@ -558,6 +566,7 @@ pwr deficit: {} kW
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 // NOTE: consider embedding this in TraceMissOptions::AllowChecked
 pub struct TraceMissTolerance {
@@ -634,7 +643,9 @@ impl Default for TraceMissTolerance {
     }
 }
 
-#[derive(Clone, Default, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum TraceMissOptions {
     /// Allow trace miss without any fanfare
     Allow,

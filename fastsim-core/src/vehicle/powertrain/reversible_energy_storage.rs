@@ -89,6 +89,7 @@ const TOL: f64 = 1e-3;
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
 pub struct ReversibleEnergyStorage {
     /// [Self] Thermal plant, including thermal management controls
@@ -390,22 +391,25 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
 
         ensure!(
             pwr_aux <= state.pwr_disch_max,
-            "`{}` ({} W) must always be less than or equal to {} ({} W)\nsoc:{}",
+            "{}\n`{}` ({} W) must always be less than or equal to {} ({} W)\nsoc:{}",
+            format_dbg!(),
             stringify!(pwr_aux),
             pwr_aux.get::<si::watt>().format_eng(None),
             stringify!(state.pwr_disch_max),
             state.pwr_disch_max.get::<si::watt>().format_eng(None),
-            state.soc.get::<si::ratio>()
+            state.soc.get::<si::ratio>().format_eng(None)
         );
         ensure!(
             state.pwr_prop_max >= si::Power::ZERO,
-            "`{}` ({} W) must be greater than or equal to zero",
+            "{}\n`{}` ({} W) must be greater than or equal to zero",
+            format_dbg!(),
             stringify!(state.pwr_prop_max),
             state.pwr_prop_max.get::<si::watt>().format_eng(None)
         );
         ensure!(
             state.pwr_regen_max >= si::Power::ZERO,
-            "`{}` ({} W) must be greater than or equal to zero",
+            "{}\n`{}` ({} W) must be greater than or equal to zero",
+            format_dbg!(),
             stringify!(state.pwr_regen_max),
             state.pwr_regen_max.get::<si::watt>().format_eng(None)
         );
@@ -550,18 +554,17 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     }
 
     /// If thermal model is appropriately configured, returns current lumped [Self] temperature
-    pub fn temperature(&self) -> Option<si::Temperature> {
+    pub fn res_thrml_state(&self) -> Option<RESLumpedThermalState> {
         match &self.thrml {
-            RESThermalOption::RESLumpedThermal(rest) => Some(rest.state.temperature),
+            RESThermalOption::RESLumpedThermal(rest) => Some(rest.state),
             RESThermalOption::None => None,
         }
     }
 
-    /// If thermal model is appropriately configured, returns lumped [Self]
-    /// temperature at previous time step
-    pub fn temp_prev(&self) -> Option<si::Temperature> {
+    /// If thermal model is appropriately configured, returns current lumped [Self] temperature
+    pub fn temperature(&self) -> Option<si::Temperature> {
         match &self.thrml {
-            RESThermalOption::RESLumpedThermal(rest) => Some(rest.state.temp_prev),
+            RESThermalOption::RESLumpedThermal(rest) => Some(rest.state.temperature),
             RESThermalOption::None => None,
         }
     }
@@ -639,24 +642,43 @@ impl Mass for ReversibleEnergyStorage {
 
 impl SerdeAPI for ReversibleEnergyStorage {}
 impl Init for ReversibleEnergyStorage {
-    fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
-        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
+    fn init(&mut self) -> Result<(), Error> {
+        let _ = self
+            .mass()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.state
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         // TODO: make some kind of data validation framework to replace this code.
-        ensure!(
-            self.max_soc > self.min_soc,
-            format!(
+        if self.max_soc <= self.min_soc {
+            return Err(Error::InitError(format!(
                 "{}\n`max_soc`: {} must be greater than `min_soc`: {}`",
                 format_dbg!(),
                 self.max_soc.get::<si::ratio>(),
                 self.min_soc.get::<si::ratio>(),
-            )
-        );
+            )));
+        };
         Ok(())
     }
 }
+impl HistoryMethods for ReversibleEnergyStorage {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        self.thrml.set_save_interval(save_interval)?;
+        Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+        self.thrml.clear();
+    }
+}
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 /// Controls which parameter to update when setting specific energy
 pub enum SpecificEnergySideEffect {
     /// update mass
@@ -668,6 +690,7 @@ pub enum SpecificEnergySideEffect {
 #[fastsim_api]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 #[serde(default)]
 /// ReversibleEnergyStorage state variables
 pub struct ReversibleEnergyStorageState {
@@ -752,7 +775,9 @@ impl Default for ReversibleEnergyStorageState {
 impl Init for ReversibleEnergyStorageState {}
 impl SerdeAPI for ReversibleEnergyStorageState {}
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum RESThermalOption {
     /// Basic thermal plant for [ReversibleEnergyStorage]
     RESLumpedThermal(Box<RESLumpedThermal>),
@@ -785,7 +810,7 @@ impl Step for RESThermalOption {
     }
 }
 impl Init for RESThermalOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::RESLumpedThermal(rest) => rest.init()?,
             Self::None => {}
@@ -794,6 +819,26 @@ impl Init for RESThermalOption {
     }
 }
 impl SerdeAPI for RESThermalOption {}
+impl HistoryMethods for RESThermalOption {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            RESThermalOption::RESLumpedThermal(rlt) => rlt.save_interval(),
+            RESThermalOption::None => Ok(None),
+        }
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            RESThermalOption::RESLumpedThermal(rlt) => rlt.set_save_interval(save_interval),
+            RESThermalOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            RESThermalOption::RESLumpedThermal(rlt) => rlt.clear(),
+            RESThermalOption::None => {}
+        }
+    }
+}
 impl RESThermalOption {
     /// Solve change in temperature and other thermal effects
     /// # Arguments
@@ -840,6 +885,7 @@ impl RESThermalOption {
     }
 )]
 #[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[serde(deny_unknown_fields)]
 /// Struct for modeling [ReversibleEnergyStorage] (e.g. battery) thermal plant
 pub struct RESLumpedThermal {
     /// [ReversibleEnergyStorage] thermal capacitance
@@ -857,7 +903,7 @@ pub struct RESLumpedThermal {
         skip_serializing_if = "RESLumpedThermalStateHistoryVec::is_empty"
     )]
     pub history: RESLumpedThermalStateHistoryVec,
-    // TODO: add `save_interval` and associated methods
+    pub save_interval: Option<usize>,
 }
 impl SetCumulative for RESLumpedThermal {
     fn set_cumulative(&mut self, dt: si::Time) {
@@ -866,6 +912,18 @@ impl SetCumulative for RESLumpedThermal {
 }
 impl SerdeAPI for RESLumpedThermal {}
 impl Init for RESLumpedThermal {}
+impl HistoryMethods for RESLumpedThermal {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear()
+    }
+}
 impl RESLumpedThermal {
     fn solve(
         &mut self,
@@ -906,7 +964,7 @@ impl RESLumpedThermal {
     }
 )]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct RESLumpedThermalState {
     /// time step index
     pub i: usize,
@@ -952,16 +1010,18 @@ impl Default for RESLumpedThermalState {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 /// Determines what [ReversibleEnergyStorage] state variables to use in calculating efficiency
 pub enum RESEffInterpInputs {
     /// Efficiency is constant
     Constant,
     /// Efficiency = f(C-rate)
     CRate,
-    /// Efficiency = f(C-rate, temperature)
-    CRateSOCTemperature,
     /// Efficiency = f(C-rate, soc, temperature)
+    CRateSOCTemperature,
+    /// Efficiency = f(C-rate, temperature)
     CRateTemperature,
     /// Efficiency = f(C-rate, soc)
     CRateSOC,

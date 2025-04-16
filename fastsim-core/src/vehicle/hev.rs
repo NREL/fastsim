@@ -4,6 +4,7 @@ use crate::prelude::ElectricMachineState;
 #[fastsim_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Hybrid vehicle with both engine and reversible energy storage (aka battery)
 /// This type of vehicle is not likely to be widely prevalent due to modularity of consists.
 pub struct HybridElectricVehicle {
@@ -14,7 +15,8 @@ pub struct HybridElectricVehicle {
     pub fc: FuelConverter,
     #[has_state]
     pub em: ElectricMachine,
-    // TODO: put a transmission here
+    #[has_state]
+    pub transmission: Transmission,
     /// control strategy for distributing power demand between `fc` and `res`
     #[serde(default)]
     pub pt_cntrl: HEVPowertrainControls,
@@ -37,26 +39,49 @@ pub struct HybridElectricVehicle {
     pub soc_bal_iter_history: Vec<Self>,
 }
 
-impl SaveInterval for HybridElectricVehicle {
+impl HistoryMethods for HybridElectricVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         bail!("`save_interval` is not implemented in HybridElectricVehicle")
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
-        self.res.save_interval = save_interval;
-        self.em.save_interval = save_interval;
+        self.res.set_save_interval(save_interval)?;
+        // self.fs.set_save_interval(save_interval)?;
+        self.fc.set_save_interval(save_interval)?;
+        self.em.set_save_interval(save_interval)?;
+        self.transmission.set_save_interval(save_interval)?;
+        self.pt_cntrl.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.res.clear();
+        // self.fs.clear();
+        self.fc.clear();
+        self.em.clear();
+        self.transmission.clear();
+        self.pt_cntrl.clear();
     }
 }
 
 impl Init for HybridElectricVehicle {
-    fn init(&mut self) -> anyhow::Result<()> {
-        self.fc.init().with_context(|| anyhow!(format_dbg!()))?;
-        self.res.init().with_context(|| anyhow!(format_dbg!()))?;
-        self.em.init().with_context(|| anyhow!(format_dbg!()))?;
+    fn init(&mut self) -> Result<(), Error> {
+        self.fc
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.res
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.em
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.transmission
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.pt_cntrl
             .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
-        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.state
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }
@@ -176,14 +201,23 @@ impl Powertrain for Box<HybridElectricVehicle> {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // TODO: address these concerns
-        // - add a transmission here
         // - what happens when the fc is on and producing more power than the
         //   transmission requires? It seems like the excess goes straight to the battery,
         //   but it should probably go thourgh the em somehow.
+        let pwr_in_transmission = self
+            .transmission
+            .get_pwr_in_req(pwr_out_req)
+            .with_context(|| anyhow!(format_dbg!()))?;
+
+        // TODO: use an enum with a match here to determine whether power is shared by
+        // - fc and em (e.g. for ICE HEV)
+        //   or
+        // - fc and res (e.g. for H2FC HEV)
+
         let (fc_pwr_out_req, em_pwr_out_req) = self
             .pt_cntrl
             .get_pwr_fc_and_em(
-                pwr_out_req,
+                pwr_in_transmission,
                 veh_state,
                 &mut self.state,
                 &self.fc,
@@ -308,11 +342,21 @@ impl Mass for HybridElectricVehicle {
         let fs_mass = self.fs.mass().with_context(|| anyhow!(format_dbg!()))?;
         let res_mass = self.res.mass().with_context(|| anyhow!(format_dbg!()))?;
         let em_mass = self.em.mass().with_context(|| anyhow!(format_dbg!()))?;
-        match (fc_mass, fs_mass, res_mass, em_mass) {
-            (Some(fc_mass), Some(fs_mass), Some(res_mass), Some(em_mass)) => {
-                Ok(Some(fc_mass + fs_mass + em_mass + res_mass))
-            }
-            (None, None, None, None) => Ok(None),
+        let transmission_mass = self
+            .transmission
+            .mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
+        match (fc_mass, fs_mass, res_mass, em_mass, transmission_mass) {
+            (
+                Some(fc_mass),
+                Some(fs_mass),
+                Some(res_mass),
+                Some(em_mass),
+                Some(transmission_mass),
+            ) => Ok(Some(
+                fc_mass + fs_mass + res_mass + em_mass + transmission_mass,
+            )),
+            (None, None, None, None, None) => Ok(None),
             _ => bail!(
                 "`{}` field masses are not consistently set to `Some` or `None`",
                 stringify!(HybridElectricVehicle)
@@ -325,6 +369,7 @@ impl Mass for HybridElectricVehicle {
         self.fs.expunge_mass_fields();
         self.res.expunge_mass_fields();
         self.em.expunge_mass_fields();
+        self.transmission.expunge_mass_fields();
         self.mass = None;
     }
 }
@@ -358,6 +403,7 @@ impl FCOnCauses {
 #[fastsim_api]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 #[serde(default)]
 pub struct HEVState {
     /// time step index
@@ -467,7 +513,16 @@ impl std::fmt::Display for FCOnCauses {
 
 #[fastsim_enum_api]
 #[derive(
-    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto, FromStr,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    IsVariant,
+    derive_more::From,
+    TryInto,
+    FromStr,
 )]
 pub enum FCOnCause {
     /// Engine must be on to self heat if thermal model is enabled
@@ -499,6 +554,7 @@ impl fmt::Display for FCOnCause {
 /// Options for controlling simulation behavior
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct HEVSimulationParams {
     /// [ReversibleEnergyStorage] per [FuelConverter]
     pub res_per_fuel_lim: si::Ratio,
@@ -521,7 +577,9 @@ impl Default for HEVSimulationParams {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, PartialEq, Deserialize, Serialize, Default, IsVariant, derive_more::From, TryInto,
+)]
 pub enum HEVAuxControls {
     /// If feasible, use [ReversibleEnergyStorage] to handle aux power demand
     #[default]
@@ -530,7 +588,9 @@ pub enum HEVAuxControls {
     AuxOnFcPriority,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, PartialEq, Deserialize, Serialize, IsVariant, derive_more::From, TryInto,
+)]
 pub enum HEVPowertrainControls {
     /// Greedily uses [ReversibleEnergyStorage] with buffers that derate charge
     /// and discharge power inside of static min and max SOC range.  Also, includes
@@ -546,8 +606,30 @@ impl Default for HEVPowertrainControls {
     }
 }
 
+impl HistoryMethods for HEVPowertrainControls {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => Ok(rgwdb.set_save_interval(save_interval)?),
+            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
+        }
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_interval(),
+            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.clear(),
+            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
+        }
+    }
+}
+
 impl Init for HEVPowertrainControls {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::RGWDB(rgwb) => rgwb.init()?,
             Self::Placeholder => {
@@ -712,7 +794,7 @@ fn handle_fc_on_causes_for_low_soc(
     veh_state: VehicleState,
 ) -> anyhow::Result<()> {
     rgwdb.state.soc_fc_on_buffer = {
-        let energy_delta_to_buffer_speed = 0.5
+        let energy_delta_to_buffer_speed: si::Energy = 0.5
             * veh_state.mass
             * (rgwdb
                 .speed_soc_fc_on_buffer
@@ -796,6 +878,7 @@ for an HEV equipped with thermal models or superfluous otherwise",
 #[fastsim_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct RESGreedyWithDynamicBuffers {
     /// RES energy delta from minimum SOC corresponding to kinetic energy of
     /// vehicle at this speed that triggers ramp down in RES discharge.
@@ -831,7 +914,8 @@ pub struct RESGreedyWithDynamicBuffers {
     // NOTE: this is inherited from fastsim-2 and has no effect here.  After
     // further thought, either remove it or use it.
     pub frac_res_chrg_for_fc: si::Ratio,
-    // TODO: put `save_interval` in here
+    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
     // NOTE: this is inherited from fastsim-2 and has no effect here.  After
     // further thought, either remove it or use it.
     /// Fraction of available discharging capacity to use toward running the
@@ -851,23 +935,38 @@ pub struct RESGreedyWithDynamicBuffers {
     pub history: RGWDBStateHistoryVec,
 }
 
+impl HistoryMethods for RESGreedyWithDynamicBuffers {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+
+    fn clear(&mut self) {
+        self.history.clear();
+    }
+}
+
 impl Init for RESGreedyWithDynamicBuffers {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         // TODO: make sure these values propagate to the documented defaults above
-        self.speed_soc_disch_buffer = self.speed_soc_disch_buffer.or(Some(40.0 * uc::MPH));
-        self.speed_soc_disch_buffer_coeff = self.speed_soc_disch_buffer_coeff.or(Some(1.0 * uc::R));
-        self.speed_soc_fc_on_buffer = self
-            .speed_soc_fc_on_buffer
-            .or(Some(self.speed_soc_disch_buffer.unwrap() * 1.1));
-        self.speed_soc_fc_on_buffer_coeff = self.speed_soc_fc_on_buffer_coeff.or(Some(1.0 * uc::R));
-        self.speed_soc_regen_buffer = self.speed_soc_regen_buffer.or(Some(30. * uc::MPH));
-        self.speed_soc_regen_buffer_coeff = self.speed_soc_regen_buffer_coeff.or(Some(1.0 * uc::R));
-        self.fc_min_time_on = self.fc_min_time_on.or(Some(uc::S * 5.0));
-        self.speed_fc_forced_on = self.speed_fc_forced_on.or(Some(uc::MPH * 75.));
-        self.frac_pwr_demand_fc_forced_on =
-            self.frac_pwr_demand_fc_forced_on.or(Some(uc::R * 0.75));
-        self.frac_of_most_eff_pwr_to_run_fc =
-            self.frac_of_most_eff_pwr_to_run_fc.or(Some(1.0 * uc::R));
+        init_opt_default!(self, speed_soc_disch_buffer, 40.0 * uc::MPH);
+        init_opt_default!(self, speed_soc_disch_buffer_coeff, 1.0 * uc::R);
+        init_opt_default!(
+            self,
+            speed_soc_fc_on_buffer,
+            self.speed_soc_disch_buffer.unwrap() * 1.1
+        );
+        init_opt_default!(self, speed_soc_fc_on_buffer_coeff, 1.0 * uc::R);
+        init_opt_default!(self, speed_soc_regen_buffer, 30. * uc::MPH);
+        init_opt_default!(self, speed_soc_regen_buffer_coeff, 1.0 * uc::R);
+        init_opt_default!(self, fc_min_time_on, uc::S * 5.0);
+        init_opt_default!(self, speed_fc_forced_on, uc::MPH * 75.);
+        init_opt_default!(self, frac_pwr_demand_fc_forced_on, uc::R * 0.75);
+        init_opt_default!(self, frac_of_most_eff_pwr_to_run_fc, 1.0 * uc::R);
         Ok(())
     }
 }
@@ -876,6 +975,7 @@ impl SerdeAPI for RESGreedyWithDynamicBuffers {}
 #[fastsim_api]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 /// State for [RESGreedyWithDynamicBuffers ]
 pub struct RGWDBState {
     /// time step index

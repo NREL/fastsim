@@ -15,6 +15,7 @@ use super::*;
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct FuelStorage {
     /// max power output
     pub pwr_out_max: si::Power,

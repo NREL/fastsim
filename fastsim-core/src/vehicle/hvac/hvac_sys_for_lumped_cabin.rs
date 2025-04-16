@@ -8,6 +8,7 @@ use super::*;
     }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[serde(deny_unknown_fields)]
 /// HVAC system for [LumpedCabin]
 pub struct HVACSystemForLumpedCabin {
     /// set point temperature, `None` means HVAC is inactive
@@ -42,6 +43,7 @@ pub struct HVACSystemForLumpedCabin {
         skip_serializing_if = "HVACSystemForLumpedCabinStateHistoryVec::is_empty"
     )]
     pub history: HVACSystemForLumpedCabinStateHistoryVec,
+    pub save_interval: Option<usize>,
 }
 impl Default for HVACSystemForLumpedCabin {
     fn default() -> Self {
@@ -58,6 +60,7 @@ impl Default for HVACSystemForLumpedCabin {
             pwr_aux_for_hvac_max: uc::KW * 5.,
             state: Default::default(),
             history: Default::default(),
+            save_interval: Some(1),
         }
     }
 }
@@ -68,6 +71,18 @@ impl SetCumulative for HVACSystemForLumpedCabin {
 }
 impl Init for HVACSystemForLumpedCabin {}
 impl SerdeAPI for HVACSystemForLumpedCabin {}
+impl HistoryMethods for HVACSystemForLumpedCabin {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+    }
+}
 impl HVACSystemForLumpedCabin {
     /// # Arguments
     /// - `te_amb_air`: ambient air temperature
@@ -132,7 +147,7 @@ impl HVACSystemForLumpedCabin {
                     // cop_ideal is t_c / (t_h - t_c) for cooling
 
                     // divide-by-zero protection and realistic limit on COP
-                    let cop_ideal = if te_delta_vs_amb.abs() < 5.0 * uc::KELVIN_INT {
+                    let cop_ideal = if -te_delta_vs_amb < 5.0 * uc::KELVIN_INT {
                         // cabin is cooler than ambient + threshold
                         // TODO: make this `5.0` not hardcoded
                         cab_state.temperature / (5.0 * uc::KELVIN)
@@ -156,7 +171,7 @@ impl HVACSystemForLumpedCabin {
                         format_dbg!(pwr_thrml_hvac_to_cab)
                     );
 
-                    if (pwr_thrml_hvac_to_cab / cop).abs() > self.pwr_aux_for_hvac_max {
+                    if (pwr_thrml_hvac_to_cab * cop).abs() > self.pwr_aux_for_hvac_max {
                         self.state.pwr_aux_for_hvac = self.pwr_aux_for_hvac_max;
                         // correct if limit is exceeded
                         pwr_thrml_hvac_to_cab = -self.state.pwr_aux_for_hvac * cop;
@@ -295,7 +310,7 @@ impl HVACSystemForLumpedCabin {
 
                 // divide-by-zero protection and realistic limit on COP
                 // TODO: make sure this is consist with above commented equation for heating!
-                let cop_ideal = if te_delta_vs_amb.abs() < 5.0 * uc::KELVIN_INT {
+                let cop_ideal = if te_delta_vs_amb < 5.0 * uc::KELVIN_INT {
                     // cabin is cooler than ambient + threshold
                     // TODO: make this `5.0` not hardcoded
                     cab_state.temperature / (5.0 * uc::KELVIN)
@@ -320,7 +335,9 @@ impl HVACSystemForLumpedCabin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum CabinHeatSource {
     /// [FuelConverter], if applicable, provides heat for HVAC system
     FuelConverter,
@@ -343,9 +360,10 @@ impl SerdeAPI for CabinHeatSource {}
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct HVACSystemForLumpedCabinState {
     /// time step counter
-    pub i: u32,
+    pub i: usize,
     /// portion of total HVAC cooling/heating (negative/positive) power due to proportional gain
     pub pwr_p: si::Power,
     /// portion of total HVAC cooling/heating (negative/positive) cumulative energy due to proportional gain

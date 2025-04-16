@@ -46,8 +46,7 @@ sd.walk()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
-print(
-    f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
+print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
 df = sd.to_dataframe()
 sd_dict = sd.to_pydict(flatten=True)
 
@@ -61,8 +60,7 @@ sd_no_save.walk()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si_none = t1 - t0
-print(
-    f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsim3_si_none:.2e} s")
+print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsim3_si_none:.2e} s")
 
 # %%
 # # `fastsim-2` benchmarking
@@ -73,10 +71,14 @@ sd2.sim_drive()
 t1 = time.perf_counter()
 t_fsim2 = t1 - t0
 print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
-print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:")
-print(f"{t_fsim2/t_fsim3_si1:.3g}x")
-print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of `None`:")
-print(f"{t_fsim2/t_fsim3_si_none:.3g}x")
+print(
+    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:"
+)
+print(f"{t_fsim2 / t_fsim3_si1:.3g}x")
+print(
+    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of `None`:"
+)
+print(f"{t_fsim2 / t_fsim3_si_none:.3g}x")
 
 # # Visualize results
 
@@ -87,23 +89,26 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
-        df['cyc.time_seconds'],
-        (df["veh.pt_type.ConventionalVehicle.fc.history.pwr_prop_watts"] +
-            df["veh.pt_type.ConventionalVehicle.fc.history.pwr_aux_watts"]) / 1e3,
+        df["cyc.time_seconds"],
+        (
+            df["veh.pt_type.ConventionalVehicle.fc.history.pwr_prop_watts"]
+            + df["veh.pt_type.ConventionalVehicle.fc.history.pwr_aux_watts"]
+        )
+        / 1e3,
         label="f3 shaft",
     )
     ax[0].plot(
-        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.cyc.time_s.tolist())[:: veh.save_interval],
         np.array(sd2.fc_kw_out_ach.tolist()),
         label="f2 shaft",
     )
     ax[0].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["veh.pt_type.ConventionalVehicle.fc.history.pwr_fuel_watts"] / 1e3,
         label="f3 fuel",
     )
     ax[0].plot(
-        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.cyc.time_s.tolist())[:: veh.save_interval],
         np.array(sd2.fs_kw_out_ach.tolist()),
         label="f2 fuel",
     )
@@ -112,15 +117,19 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
 
     ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
-        df['cyc.time_seconds'],
-        (df["veh.pt_type.ConventionalVehicle.fc.history.pwr_prop_watts"] +
-            df["veh.pt_type.ConventionalVehicle.fc.history.pwr_aux_watts"]) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
+        df["cyc.time_seconds"],
+        (
+            df["veh.pt_type.ConventionalVehicle.fc.history.pwr_prop_watts"]
+            + df["veh.pt_type.ConventionalVehicle.fc.history.pwr_aux_watts"]
+        )
+        / 1e3
+        - np.array(sd2.fc_kw_out_ach.tolist()),
         label="shaft",
     )
     ax[1].plot(
-        df['cyc.time_seconds'],
-        df["veh.pt_type.ConventionalVehicle.fc.history.pwr_fuel_watts"] /
-        1e3 - np.array(sd2.fs_kw_out_ach.tolist()),
+        df["cyc.time_seconds"],
+        df["veh.pt_type.ConventionalVehicle.fc.history.pwr_fuel_watts"] / 1e3
+        - np.array(sd2.fs_kw_out_ach.tolist()),
         label="fuel",
     )
     ax[1].set_ylabel("FC Power\nDelta (f3-f2) [kW]")
@@ -128,7 +137,7 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
 
     ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
-        df['cyc.time_seconds'],
+        df["cyc.time_seconds"],
         df["veh.history.speed_ach_meters_per_second"],
         label="f3",
     )
@@ -156,23 +165,26 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
-        (df["veh.pt_type.ConventionalVehicle.fc.history.energy_prop_joules"] +
-            df["veh.pt_type.ConventionalVehicle.fc.history.energy_aux_joules"]) / 1e6,
+        df["cyc.time_seconds"][:: veh.save_interval],
+        (
+            df["veh.pt_type.ConventionalVehicle.fc.history.energy_prop_joules"]
+            + df["veh.pt_type.ConventionalVehicle.fc.history.energy_aux_joules"]
+        )
+        / 1e6,
         label="f3 shaft",
     )
     ax[0].plot(
-        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.cyc.time_s.tolist())[:: veh.save_interval],
         np.array(sd2.fc_cumu_mj_out_ach.tolist()),
         label="f2 shaft",
     )
     ax[0].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
+        df["cyc.time_seconds"][:: veh.save_interval],
         df["veh.pt_type.ConventionalVehicle.fc.history.energy_fuel_joules"] / 1e6,
         label="f3 fuel",
     )
     ax[0].plot(
-        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.cyc.time_s.tolist())[:: veh.save_interval],
         np.array(sd2.fs_cumu_mj_out_ach.tolist()),
         label="f2 fuel",
     )
@@ -181,25 +193,33 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
 
     ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
-        (df["veh.pt_type.ConventionalVehicle.fc.history.energy_prop_joules"] +
-            df["veh.pt_type.ConventionalVehicle.fc.history.energy_aux_joules"]) / 1e6 - np.array(sd2.fc_cumu_mj_out_ach.tolist()),
+        df["cyc.time_seconds"][:: veh.save_interval],
+        (
+            df["veh.pt_type.ConventionalVehicle.fc.history.energy_prop_joules"]
+            + df["veh.pt_type.ConventionalVehicle.fc.history.energy_aux_joules"]
+        )
+        / 1e6
+        - np.array(sd2.fc_cumu_mj_out_ach.tolist()),
         label="shaft",
     )
     ax[1].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
-        df["veh.pt_type.ConventionalVehicle.fc.history.energy_fuel_joules"] /
-        1e6 - np.array(sd2.fs_cumu_mj_out_ach.tolist()),
+        df["cyc.time_seconds"][:: veh.save_interval],
+        df["veh.pt_type.ConventionalVehicle.fc.history.energy_fuel_joules"] / 1e6
+        - np.array(sd2.fs_cumu_mj_out_ach.tolist()),
         label="fuel",
     )
-    ax[1].set_ylim((-sd_dict["veh.pt_type.ConventionalVehicle.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
-                    sd_dict["veh.pt_type.ConventionalVehicle.fc.state.energy_fuel_joules"] * 1e-6 * 0.1))
+    ax[1].set_ylim(
+        (
+            -sd_dict["veh.pt_type.ConventionalVehicle.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
+            sd_dict["veh.pt_type.ConventionalVehicle.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
+        )
+    )
     ax[1].set_ylabel("FC Energy\nDelta (f3-f2) [MJ]\n+/- 10% Range")
     ax[1].legend()
 
     ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
+        df["cyc.time_seconds"][:: veh.save_interval],
         df["veh.history.speed_ach_meters_per_second"],
         label="f3",
     )
@@ -227,22 +247,22 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
+        df["cyc.time_seconds"][:: veh.save_interval],
         df["veh.history.pwr_drag_watts"] / 1e3,
         label="f3 drag",
     )
     ax[0].plot(
-        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.cyc.time_s.tolist())[:: veh.save_interval],
         np.array(sd2.drag_kw.tolist()),
         label="f2 drag",
     )
     ax[0].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
+        df["cyc.time_seconds"][:: veh.save_interval],
         df["veh.history.pwr_rr_watts"] / 1e3,
         label="f3 rr",
     )
     ax[0].plot(
-        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.cyc.time_s.tolist())[:: veh.save_interval],
         np.array(sd2.rr_kw.tolist()),
         label="f2 rr",
     )
@@ -251,16 +271,14 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
 
     ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
-        df["veh.history.pwr_drag_watts"] /
-        1e3 - np.array(sd2.drag_kw.tolist()),
+        df["cyc.time_seconds"][:: veh.save_interval],
+        df["veh.history.pwr_drag_watts"] / 1e3 - np.array(sd2.drag_kw.tolist()),
         label="drag",
         linestyle=BASE_LINE_STYLES[0],
     )
     ax[1].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
-        df["veh.history.pwr_rr_watts"] /
-        1e3 - np.array(sd2.rr_kw.tolist()),
+        df["cyc.time_seconds"][:: veh.save_interval],
+        df["veh.history.pwr_rr_watts"] / 1e3 - np.array(sd2.rr_kw.tolist()),
         label="rr",
         linestyle=BASE_LINE_STYLES[1],
     )
@@ -269,7 +287,7 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
 
     ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
-        df["cyc.time_seconds"][::veh.save_interval],
+        df["cyc.time_seconds"][:: veh.save_interval],
         df["veh.history.speed_ach_meters_per_second"],
         label="f3",
     )

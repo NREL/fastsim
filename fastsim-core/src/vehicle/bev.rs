@@ -3,6 +3,7 @@ use super::*;
 #[fastsim_api]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Battery electric vehicle
 pub struct BatteryElectricVehicle {
     #[has_state]
@@ -15,12 +16,16 @@ pub struct BatteryElectricVehicle {
 }
 
 impl Init for BatteryElectricVehicle {
-    fn init(&mut self) -> anyhow::Result<()> {
-        self.res.init().with_context(|| anyhow!(format_dbg!()))?;
-        self.em.init().with_context(|| anyhow!(format_dbg!()))?;
+    fn init(&mut self) -> Result<(), Error> {
+        self.res
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.em
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.transmission
             .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         Ok(())
     }
 }
@@ -107,15 +112,20 @@ impl Mass for BatteryElectricVehicle {
     }
 }
 
-impl SaveInterval for BatteryElectricVehicle {
+impl HistoryMethods for BatteryElectricVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         bail!("`save_interval` is not implemented in BatteryElectricVehicle")
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
-        self.res.save_interval = save_interval;
-        self.em.save_interval = save_interval;
-        self.transmission.save_interval = save_interval;
+        self.res.set_save_interval(save_interval)?;
+        self.em.set_save_interval(save_interval)?;
+        self.transmission.set_save_interval(save_interval)?;
         Ok(())
+    }
+    fn clear(&mut self) {
+        self.res.clear();
+        self.em.clear();
+        self.transmission.clear();
     }
 }
 
@@ -155,7 +165,6 @@ impl Powertrain for BatteryElectricVehicle {
         _veh_state: VehicleState,
     ) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
-        // TODO: change these to something other than zero
         let disch_buffer = si::Energy::ZERO;
         let chrg_buffer = si::Energy::ZERO;
         self.res

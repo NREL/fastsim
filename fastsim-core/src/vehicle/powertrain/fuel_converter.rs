@@ -54,6 +54,7 @@ use std::f64::consts::PI;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling [FuelConverter] (e.g. engine, fuel cell.) thermal plant
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct FuelConverter {
     /// [Self] Thermal plant, including thermal management controls
     #[serde(default, skip_serializing_if = "FuelConverterThermalOption::is_none")]
@@ -76,7 +77,7 @@ pub struct FuelConverter {
     pub eff_interp_from_pwr_out: Interpolator,
     /// power at which peak efficiency occurs
     #[serde(skip)]
-    pub pwr_for_peak_eff: si::Power,
+    pub(crate) pwr_for_peak_eff: si::Power,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     pub pwr_idle_fuel: si::Power,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
@@ -100,26 +101,46 @@ impl SetCumulative for FuelConverter {
 
 impl SerdeAPI for FuelConverter {}
 impl Init for FuelConverter {
-    fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+    fn init(&mut self) -> Result<(), Error> {
+        let _ = self
+            .mass()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.thrml.init()?;
-        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
-        let eff_max = self.eff_max()?;
+        self.state
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        let eff_max = self
+            .eff_max()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.pwr_for_peak_eff = *self
             .eff_interp_from_pwr_out
             .x()
-            .with_context(|| format_dbg!())?
+            .map_err(|err| Error::InitError(format_dbg!(err)))?
             .get(
                 self.eff_interp_from_pwr_out
                     .f_x()
                     .unwrap()
                     .iter()
                     .position(|&eff| eff * uc::R == eff_max)
-                    .with_context(|| format_dbg!())?,
+                    .ok_or_else(|| Error::InitError(format_dbg!()))?,
             )
-            .with_context(|| format_dbg!())?
+            .ok_or_else(|| Error::InitError(format_dbg!()))?
             * self.pwr_out_max;
         Ok(())
+    }
+}
+impl HistoryMethods for FuelConverter {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        self.thrml.set_save_interval(save_interval)?;
+        Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+        self.thrml.clear();
     }
 }
 
@@ -183,16 +204,6 @@ impl Mass for FuelConverter {
     fn expunge_mass_fields(&mut self) {
         self.mass = None;
         self.specific_pwr = None;
-    }
-}
-
-impl SaveInterval for FuelConverter {
-    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
-        Ok(self.save_interval)
-    }
-    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
-        self.save_interval = save_interval;
-        Ok(())
     }
 }
 
@@ -371,7 +382,17 @@ impl FuelConverter {
         eff_max: f64,
         scaling: Option<ScalingMethods>,
     ) -> anyhow::Result<()> {
-        self.eff_interp_from_pwr_out.set_max(eff_max, scaling)
+        if (0.0..=1.0).contains(&eff_max) {
+            self.eff_interp_from_pwr_out.set_max(eff_max, scaling);
+        } else {
+            return Err(anyhow!(
+                "`eff_max` ({:.3}) must be between 0.0 and 1.0",
+                eff_max,
+            ));
+        }
+        // to update any dependent fields
+        self.init().map_err(|err| anyhow!("{:?}", err))?;
+        Ok(())
     }
 
     /// Scales eff_interp_fwd and eff_interp_bwd by ratio of new `eff_min` per
@@ -388,7 +409,14 @@ impl FuelConverter {
     /// changing max such that max - min is equal to new range.  Will change max
     /// if needed to ensure no values are less than zero.
     pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        self.eff_interp_from_pwr_out.set_range(eff_range)
+        if eff_range <= 1.0 && eff_range >= 0. {
+            self.eff_interp_from_pwr_out.set_range(eff_range)
+        } else {
+            Err(anyhow!(format!(
+                "`eff_range` ({:.3}) must be between 0.0 and 1.0",
+                eff_range,
+            )))
+        }
     }
 }
 
@@ -403,6 +431,7 @@ impl FuelConverter {
 )]
 #[non_exhaustive]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct FuelConverterState {
     /// time step index
     pub i: usize,
@@ -438,7 +467,9 @@ impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
 
 /// Options for handling [FuelConverter] thermal model
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum FuelConverterThermalOption {
     /// Basic thermal plant for [FuelConverter]
     FuelConverterThermal(Box<FuelConverterThermal>),
@@ -464,7 +495,7 @@ impl Step for FuelConverterThermalOption {
     }
 }
 impl Init for FuelConverterThermalOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::FuelConverterThermal(fct) => fct.init()?,
             Self::None => {}
@@ -478,6 +509,30 @@ impl SetCumulative for FuelConverterThermalOption {
         match self {
             Self::FuelConverterThermal(fct) => fct.set_cumulative(dt),
             Self::None => {}
+        }
+    }
+}
+impl HistoryMethods for FuelConverterThermalOption {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            FuelConverterThermalOption::FuelConverterThermal(fct) => fct.save_interval(),
+            FuelConverterThermalOption::None => Ok(None),
+        }
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            FuelConverterThermalOption::FuelConverterThermal(fct) => {
+                fct.set_save_interval(save_interval)
+            }
+            FuelConverterThermalOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            FuelConverterThermalOption::FuelConverterThermal(fct) => {
+                fct.clear();
+            }
+            FuelConverterThermalOption::None => {}
         }
     }
 }
@@ -536,6 +591,7 @@ impl FuelConverterThermalOption {
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for modeling Fuel Converter (e.g. engine, fuel cell.)
 pub struct FuelConverterThermal {
     /// [FuelConverter] thermal capacitance
@@ -570,7 +626,20 @@ pub struct FuelConverterThermal {
         skip_serializing_if = "FuelConverterThermalStateHistoryVec::is_empty"
     )]
     pub history: FuelConverterThermalStateHistoryVec,
-    // TODO: add `save_interval` and associated methods
+    pub save_interval: Option<usize>,
+}
+
+impl HistoryMethods for FuelConverterThermal {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+    }
 }
 
 /// Dummy interpolator that will be overridden in [FuelConverterThermal::init]
@@ -725,7 +794,7 @@ impl SetCumulative for FuelConverterThermal {
     }
 }
 impl Init for FuelConverterThermal {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         self.tstat_te_sto = self
             .tstat_te_sto
             .or(Some((85. + uc::CELSIUS_TO_KELVIN) * uc::KELVIN));
@@ -740,7 +809,14 @@ impl Init for FuelConverterThermal {
             Strategy::Linear,
             Extrapolate::Clamp,
         )
-        .with_context(|| format_dbg!((self.tstat_te_sto, self.tstat_te_delta)))?;
+        .map_err(|err| {
+            Error::InitError(format!(
+                "{}\n{}\n{}",
+                err,
+                format_dbg!(self.tstat_te_sto),
+                format_dbg!(self.tstat_te_delta)
+            ))
+        })?;
         Ok(())
     }
 }
@@ -759,6 +835,7 @@ impl Default for FuelConverterThermal {
             fc_eff_model: Default::default(),
             state: Default::default(),
             history: Default::default(),
+            save_interval: Some(1),
         };
         fct.init().unwrap();
         fct
@@ -768,6 +845,7 @@ impl Default for FuelConverterThermal {
 #[fastsim_api]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct FuelConverterThermalState {
     /// time step index
     pub i: usize,
@@ -827,7 +905,9 @@ impl Default for FuelConverterThermalState {
 }
 
 /// Model variants for how FC efficiency depends on temperature
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Debug, Clone, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum FCTempEffModel {
     /// Linear temperature dependence
     Linear(FCTempEffModelLinear),
@@ -842,6 +922,7 @@ impl Default for FCTempEffModel {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct FCTempEffModelLinear {
     pub offset: si::Ratio,
     /// Change in efficiency factor per change in temperature /[K/]
@@ -860,6 +941,7 @@ impl Default for FCTempEffModelLinear {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct FCTempEffModelExponential {
     /// temperature at which `fc_eta_temp_coeff` begins to grow
     pub offset: si::Temperature,

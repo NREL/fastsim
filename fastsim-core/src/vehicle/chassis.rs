@@ -1,7 +1,9 @@
 pub use super::*;
 
 /// Possible drive wheel configurations for traction limit calculations
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum DriveTypes {
     /// Rear-wheel drive
     RWD,
@@ -19,6 +21,7 @@ impl Init for DriveTypes {}
 #[fastsim_api]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle
 pub struct Chassis {
     /// Aerodynamic drag coefficient

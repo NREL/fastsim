@@ -34,6 +34,7 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
         .unzip();
 
     let impl_block: TokenStream2 = quote! {
+        // this tells the compiler that the `SetCumulative` trait is not manually derived
         #[automatically_derived]
         impl SetCumulative for #ident {
             fn set_cumulative(&mut self, dt: si::Time) {

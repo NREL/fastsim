@@ -1,48 +1,15 @@
-# https://www.anl.gov/taps/d3-2020-chevrolet-bolt
 ---
 name: 2020 Chevrolet Bolt EV
 year: 2020
-cabin: 
-  LumpedCabin:
-    # 0.05 is Chad's uncalibrated estimate
-    cab_shell_htc_to_amb_watts_per_square_meter_kelvin: 0.05
-    # 0.05 is Chad's uncalibrated estimate
-    cab_htc_to_amb_stop_watts_per_square_meter_kelvin: 0.05
-    # 200,000 is Chad's uncalibrated estimate
-    heat_capacitance_joules_per_kelvin: 200000
-    # TODO: get actual vehicle length, but calibrate this later
-    length_meters: 2.5
-    # 1.765 meters (69.5 in). Source: https://www.edmunds.com/chevrolet/bolt-ev/2020/features-specs/
-    width_meters: 1.765
-hvac: 
-  LumpedCabinAndRES:
-    te_set_kelvin: 295.15
-    te_deadband_kelvin: 0.5
-    p_cabin_watts_per_kelvin: 0.0
-    i_cabin: 0.0
-    pwr_i_max_cabin_watts: 5000.0
-    d_cabin: 0.0
-    p_res_watts_per_kelvin: 0.0
-    i_res: 0.0
-    pwr_i_max_res_watts: 5000.0
-    d_res: 0.0
-    pwr_thrml_max_watts: 10000.0
-    frac_of_ideal_cop: 0.15
-    cabin_heat_source: ResistanceHeater
-    res_heat_source: ResistanceHeater
-    res_cooling_source: HVAC
-    pwr_aux_for_hvac_max_watts: 5000.0
 pt_type:
   BatteryElectricVehicle:
     res:
-      thrml: 
+      thrml:
         RESLumpedThermal:
-          # 200,000 is Chad's uncalibrated estimate
-          heat_capacitance_joules_per_kelvin: 200000
-          # 0.1 is Chad's uncalibrated estimate
-          conductance_to_amb_watts_per_kelvin: 0.1
-          # 0.5 is Chad's uncalibrated estimate
-          conductance_to_cab_watts_per_kelvin: 0.5
+          heat_capacitance_joules_per_kelvin: 193522.1016501104
+          conductance_to_amb_watts_per_kelvin: 58.28484647188246
+          conductance_to_cab_watts_per_kelvin: 1.2079495090412669
+          save_interval: 1
       mass_kilograms: ~
       specific_energy_joules_per_kilogram: ~
       pwr_out_max_watts: 165000.0
@@ -62,52 +29,64 @@ pt_type:
             - 3.0
             - 5.0
           y:
+            - 0.0
             - 23.0
             - 30.0
             - 45.0
             - 55.0
           f_xy:
-            - - 0.892085814015878
+            - - 0.8218399999999999
+              - 0.892085814015878
               - 0.91092
               - 0.929788
               - 0.929788
-            - - 0.935630351894604
+            - - 0.893546
+              - 0.935630351894604
               - 0.946773
               - 0.957986
               - 0.957986
-            - - 0.978612548997097
+            - - 0.964596
+              - 0.978612548997097
               - 0.982298
               - 0.986015
               - 0.986015
-            - - 0.989309767361546
+            - - 0.982302
+              - 0.989309767361546
               - 0.991151
               - 0.993009
               - 0.993009
-            - - 0.997862182940346
+            - - 0.9964599999999999
+              - 0.997862182940346
               - 0.99823
               - 0.998602
               - 0.998602
-            - - 0.997883658588665
+            - - 0.996494
+              - 0.997883658588665
               - 0.998247
               - 0.998645
               - 0.998618
-            - - 0.989234853052088
+            - - 0.982216
+              - 0.989234853052088
               - 0.991108
               - 0.993153
               - 0.993014
-            - - 0.977987897893482
+            - - 0.9637800000000001
+              - 0.977987897893482
               - 0.98189
               - 0.986113
               - 0.985827
-            - - 0.953873809588552
+            - - 0.9247559999999999
+              - 0.953873809588552
               - 0.962378
               - 0.971415
               - 0.970809
-            - - 0.927243266086586
+            - - 0.88249
+              - 0.927243266086586
               - 0.941245
               - 0.955812
               - 0.954845
-            - - 0.864025853742296
+            - - 0.785868
+              - 0.864025853742296
               - 0.892934
               - 0.921423
               - 0.919576
@@ -133,17 +112,17 @@ pt_type:
             - 0.8
             - 1.0
           f_x:
-            - 0.83
-            - 0.85
-            - 0.87
-            - 0.89
-            - 0.9
-            - 0.91
-            - 0.93
-            - 0.94
-            - 0.94
-            - 0.93
-            - 0.92
+            - 0.8736113907685258
+            - 0.894336709838892
+            - 0.9150620289092581
+            - 0.9357873479796243
+            - 0.9461500075148074
+            - 0.9565126670499905
+            - 0.9772379861203567
+            - 0.9876006456555396
+            - 0.9876006456555396
+            - 0.9772379861203567
+            - 0.9668753265851735
           strategy: Linear
           extrapolate: Error
       pwr_out_max_watts: 149139.974
@@ -155,7 +134,7 @@ pt_type:
       eff_interp:
         Interp0D: 0.98
       save_interval: 1
-    mass: ~
+    mass_kilograms: ~
 chassis:
   drag_coef: 0.309
   frontal_area_square_meters: 2.396898
@@ -163,40 +142,46 @@ chassis:
   wheel_inertia_kilogram_square_meters: 0.815
   num_wheels: 4
   wheel_radius_meters: 0.3234
+  tire_code: ~
   cg_height_meters: 0.53
   wheel_fric_coef: 0.7
   drive_type: FWD
   drive_axle_weight_frac: 0.59
   wheel_base_meters: 2.60096
+  mass_kilograms: ~
+  glider_mass_kilograms: ~
+  cargo_mass_kilograms: ~
+cabin:
+  LumpedCabin:
+    cab_shell_htc_to_amb_watts_per_square_meter_kelvin: 15.029023813975158
+    cab_htc_to_amb_stop_watts_per_square_meter_kelvin: 234.7984978369895
+    heat_capacitance_joules_per_kelvin: 74366.53201351284
+    length_meters: 5.70338144631797
+    width_meters: 1.765
+    save_interval: 1
+hvac:
+  LumpedCabinAndRES:
+    te_set_cab_kelvin: 295.15
+    te_deadband_cab_kelvin: 0.5
+    p_cabin_watts_per_kelvin: 881.6321317014631
+    i_cabin: 34.0671708520381
+    pwr_i_max_cabin_watts: 15000.0
+    d_cabin: 10.0
+    te_set_res_kelvin: 295.15
+    te_deadband_res_kelvin: 15.0
+    p_res_watts_per_kelvin: 7.776638335865715
+    i_res: 1.014641941728727
+    pwr_i_max_res_watts: 15000.0
+    d_res: 10.0
+    pwr_thrml_max_watts: 15000.0
+    frac_of_ideal_cop: 0.1672948274768393
+    cabin_heat_source: ResistanceHeater
+    res_heat_source: ResistanceHeater
+    res_cooling_source: HVAC
+    pwr_aux_for_hvac_cab_max_watts: 5000.0
+    pwr_aux_for_hvac_res_max_watts: 5000.0
+    save_interval: 1
 mass_kilograms: 1626.129
 pwr_aux_base_watts: 250.0
 trans_eff: 0.98
 save_interval: 1
-state:
-  i: 0
-  pwr_prop_fwd_max_watts: 0.0
-  pwr_prop_bwd_max_watts: 0.0
-  pwr_tractive_watts: 0.0
-  pwr_tractive_for_cyc_watts: 0.0
-  energy_tractive_joules: 0.0
-  pwr_aux_watts: 0.0
-  energy_aux_joules: 0.0
-  pwr_drag_watts: 0.0
-  energy_drag_joules: 0.0
-  pwr_accel_watts: 0.0
-  energy_accel_joules: 0.0
-  pwr_ascent_watts: 0.0
-  energy_ascent_joules: 0.0
-  pwr_rr_watts: 0.0
-  energy_rr_joules: 0.0
-  pwr_whl_inertia_watts: 0.0
-  energy_whl_inertia_joules: 0.0
-  pwr_brake_watts: 0.0
-  energy_brake_joules: 0.0
-  cyc_met: true
-  cyc_met_overall: true
-  speed_ach_meters_per_second: 0.0
-  dist_meters: 0.0
-  grade_curr: 0.0
-  elev_curr_meters: .nan
-  mass_kilograms: .nan

@@ -19,6 +19,7 @@
 pub mod macros;
 
 pub mod drive_cycle;
+pub mod error;
 pub mod gas_properties;
 pub mod imports;
 pub mod prelude;

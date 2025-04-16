@@ -1,16 +1,21 @@
 use super::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum PowertrainType {
+    // #[serde(rename = "Conv")]
     ConventionalVehicle(Box<ConventionalVehicle>),
+    // #[serde(rename = "HEV")]
     HybridElectricVehicle(Box<HybridElectricVehicle>),
+    // #[serde(rename = "BEV")]
     BatteryElectricVehicle(Box<BatteryElectricVehicle>),
-    // TODO: add PHEV here
+    // TODO: add PHEV here or maybe as an option in the HybridElectricVehicle
 }
 
 impl SerdeAPI for PowertrainType {}
 impl Init for PowertrainType {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::ConventionalVehicle(conv) => conv.init(),
             Self::HybridElectricVehicle(hev) => hev.init(),
@@ -64,7 +69,7 @@ impl Powertrain for PowertrainType {
     }
 }
 
-impl SaveInterval for PowertrainType {
+impl HistoryMethods for PowertrainType {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             PowertrainType::ConventionalVehicle(v) => v.save_interval(),
@@ -77,6 +82,13 @@ impl SaveInterval for PowertrainType {
             PowertrainType::ConventionalVehicle(v) => v.set_save_interval(save_interval),
             PowertrainType::HybridElectricVehicle(v) => v.set_save_interval(save_interval),
             PowertrainType::BatteryElectricVehicle(v) => v.set_save_interval(save_interval),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            PowertrainType::ConventionalVehicle(v) => v.clear(),
+            PowertrainType::HybridElectricVehicle(v) => v.clear(),
+            PowertrainType::BatteryElectricVehicle(v) => v.clear(),
         }
     }
 }

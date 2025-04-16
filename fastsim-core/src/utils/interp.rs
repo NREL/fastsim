@@ -108,42 +108,69 @@ impl InterpolatorMethods for Interpolator {
         let old_max = self.max()?;
         let old_range = old_max - self.min()?;
         ensure!(old_range != 0., "Cannot modify range when min == max");
-        match self {
-            Interpolator::Interp0D(..) => unreachable!("The above `ensure` should trigger"),
-            Interpolator::Interp1D(..) => Ok(self.set_f_x(
-                self.f_x()?
-                    .iter()
-                    .map(|x| old_max + (x - old_max) * range / old_range)
-                    .collect(),
-            )?),
-            Interpolator::Interp2D(..) => Ok(self.set_f_xy(
-                self.f_xy()?
-                    .iter()
-                    .map(|v| {
-                        v.iter()
-                            .map(|x| old_max + (x - old_max) * range / old_range)
-                            .collect()
-                    })
-                    .collect(),
-            )?),
-            Interpolator::Interp3D(..) => Ok(self.set_f_xyz(
-                self.f_xyz()?
-                    .iter()
-                    .map(|v0| {
-                        v0.iter()
-                            .map(|v1| {
-                                v1.iter()
-                                    .map(|x| old_max + (x - old_max) * range / old_range)
-                                    .collect()
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            )?),
-            Interpolator::InterpND(..) => Ok(self.set_values(
-                self.values()?
-                    .map(|x| old_max + (x - old_max) * range / old_range),
-            )?),
+        // if the new range is 0., chooses the max as the value for all elements of the array
+        if range == 0. {
+            match self {
+                Interpolator::Interp0D(..) => unreachable!("The above `ensure` should trigger"),
+                Interpolator::Interp1D(..) => {
+                    Ok(self.set_f_x(self.f_x()?.iter().map(|x| old_max).collect())?)
+                }
+                Interpolator::Interp2D(..) => Ok(self.set_f_xy(
+                    self.f_xy()?
+                        .iter()
+                        .map(|v| v.iter().map(|x| old_max).collect())
+                        .collect(),
+                )?),
+                Interpolator::Interp3D(..) => Ok(self.set_f_xyz(
+                    self.f_xyz()?
+                        .iter()
+                        .map(|v0| {
+                            v0.iter()
+                                .map(|v1| v1.iter().map(|x| old_max).collect())
+                                .collect()
+                        })
+                        .collect(),
+                )?),
+                Interpolator::InterpND(..) => Ok(self.set_values(self.values()?.map(|x| old_max))?),
+            }
+        } else {
+            match self {
+                Interpolator::Interp0D(..) => unreachable!("The above `ensure` should trigger"),
+                Interpolator::Interp1D(..) => Ok(self.set_f_x(
+                    self.f_x()?
+                        .iter()
+                        .map(|x| old_max + (x - old_max) * range / old_range)
+                        .collect(),
+                )?),
+                Interpolator::Interp2D(..) => Ok(self.set_f_xy(
+                    self.f_xy()?
+                        .iter()
+                        .map(|v| {
+                            v.iter()
+                                .map(|x| old_max + (x - old_max) * range / old_range)
+                                .collect()
+                        })
+                        .collect(),
+                )?),
+                Interpolator::Interp3D(..) => Ok(self.set_f_xyz(
+                    self.f_xyz()?
+                        .iter()
+                        .map(|v0| {
+                            v0.iter()
+                                .map(|v1| {
+                                    v1.iter()
+                                        .map(|x| old_max + (x - old_max) * range / old_range)
+                                        .collect()
+                                })
+                                .collect()
+                        })
+                        .collect(),
+                )?),
+                Interpolator::InterpND(..) => Ok(self.set_values(
+                    self.values()?
+                        .map(|x| old_max + (x - old_max) * range / old_range),
+                )?),
+            }
         }
     }
     fn get_min(&self) -> anyhow::Result<f64> {
@@ -158,11 +185,12 @@ impl InterpolatorMethods for Interpolator {
 }
 
 impl Init for Interpolator {
-    fn init(&mut self) -> anyhow::Result<()> {
-        Ok(self.validate()?)
+    fn init(&mut self) -> Result<(), Error> {
+        Ok(self.validate().map_err(ninterp::error::Error::from)?)
     }
 }
 impl SerdeAPI for Interpolator {
+    #[cfg(feature = "resources")]
     const RESOURCE_PREFIX: &'static str = "interpolators";
 }
 

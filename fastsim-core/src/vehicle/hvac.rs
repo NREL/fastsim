@@ -1,5 +1,8 @@
 use super::*;
 
+pub mod hvac_utils;
+pub use hvac_utils::*;
+
 pub mod hvac_sys_for_lumped_cabin;
 pub use hvac_sys_for_lumped_cabin::*;
 
@@ -7,7 +10,9 @@ pub mod hvac_sys_for_lumped_cabin_and_res;
 pub use hvac_sys_for_lumped_cabin_and_res::*;
 
 /// Options for handling HVAC system
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum HVACOption {
     /// HVAC system for [LumpedCabin]
     LumpedCabin(Box<HVACSystemForLumpedCabin>),
@@ -22,7 +27,7 @@ pub enum HVACOption {
     None,
 }
 impl Init for HVACOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::LumpedCabin(cab) => cab.init()?,
             Self::LumpedCabinAndRES(cab) => cab.init()?,
@@ -38,6 +43,35 @@ impl Init for HVACOption {
     }
 }
 impl SerdeAPI for HVACOption {}
+impl HistoryMethods for HVACOption {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            HVACOption::LumpedCabin(lc) => lc.save_interval(),
+            HVACOption::LumpedCabinAndRES(lcr) => lcr.save_interval(),
+            HVACOption::LumpedCabinWithShell => todo!(),
+            HVACOption::ReversibleEnergyStorageOnly => todo!(),
+            HVACOption::None => Ok(None),
+        }
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            HVACOption::LumpedCabin(lc) => lc.set_save_interval(save_interval),
+            HVACOption::LumpedCabinAndRES(lcr) => lcr.set_save_interval(save_interval),
+            HVACOption::LumpedCabinWithShell => todo!(),
+            HVACOption::ReversibleEnergyStorageOnly => todo!(),
+            HVACOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            HVACOption::LumpedCabin(lc) => lc.clear(),
+            HVACOption::LumpedCabinAndRES(lcr) => lcr.clear(),
+            HVACOption::LumpedCabinWithShell => todo!(),
+            HVACOption::ReversibleEnergyStorageOnly => todo!(),
+            HVACOption::None => {}
+        }
+    }
+}
 impl SaveState for HVACOption {
     fn save_state(&mut self) {
         match self {

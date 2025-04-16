@@ -2,7 +2,9 @@ use super::*;
 // TODO: add parameters and/or cabin model variant for solar heat load
 
 /// Options for handling cabin thermal model
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, From, TryInto)]
+#[derive(
+    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+)]
 pub enum CabinOption {
     /// Basic single thermal capacitance cabin thermal model, including HVAC
     /// system and controls
@@ -36,7 +38,7 @@ impl Step for CabinOption {
     }
 }
 impl Init for CabinOption {
-    fn init(&mut self) -> anyhow::Result<()> {
+    fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::LumpedCabin(scc) => scc.init()?,
             Self::LumpedCabinWithShell => {
@@ -48,6 +50,29 @@ impl Init for CabinOption {
     }
 }
 impl SerdeAPI for CabinOption {}
+impl HistoryMethods for CabinOption {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            CabinOption::LumpedCabin(lc) => lc.save_interval(),
+            CabinOption::LumpedCabinWithShell => todo!(),
+            CabinOption::None => Ok(None),
+        }
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            CabinOption::LumpedCabin(lc) => lc.set_save_interval(save_interval),
+            CabinOption::LumpedCabinWithShell => todo!(),
+            CabinOption::None => Ok(()),
+        }
+    }
+    fn clear(&mut self) {
+        match self {
+            CabinOption::LumpedCabin(lc) => lc.clear(),
+            CabinOption::LumpedCabinWithShell => todo!(),
+            CabinOption::None => {}
+        }
+    }
+}
 impl SetCumulative for CabinOption {
     fn set_cumulative(&mut self, dt: si::Time) {
         match self {
@@ -67,6 +92,7 @@ impl SetCumulative for CabinOption {
 )]
 #[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Basic single thermal capacitance cabin thermal model, including HVAC
 /// system and controls
 pub struct LumpedCabin {
@@ -85,7 +111,8 @@ pub struct LumpedCabin {
     pub state: LumpedCabinState,
     #[serde(default, skip_serializing_if = "LumpedCabinStateHistoryVec::is_empty")]
     pub history: LumpedCabinStateHistoryVec,
-    // TODO: add `save_interval` and associated method
+    /// Time step interval at which history is saved
+    pub save_interval: Option<usize>,
 }
 impl SetCumulative for LumpedCabin {
     fn set_cumulative(&mut self, dt: si::Time) {
@@ -94,6 +121,18 @@ impl SetCumulative for LumpedCabin {
 }
 impl SerdeAPI for LumpedCabin {}
 impl Init for LumpedCabin {}
+impl HistoryMethods for LumpedCabin {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
+    }
+}
 
 impl LumpedCabin {
     /// Solve temperatures, HVAC powers, and cumulative energies of cabin and HVAC system
@@ -174,10 +213,10 @@ impl LumpedCabin {
 
 #[fastsim_api]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct LumpedCabinState {
     /// time step counter
-    pub i: u32,
+    pub i: usize,
     /// lumped cabin temperature
     pub temperature: si::Temperature,
     /// lumped cabin temperature at previous simulation time step

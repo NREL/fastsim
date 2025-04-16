@@ -57,6 +57,7 @@ use crate::pyo3::*;
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 /// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
 /// electronics.
 pub struct ElectricMachine {
@@ -304,16 +305,20 @@ impl ElectricMachine {
 
 impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
-    fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+    fn init(&mut self) -> Result<(), Error> {
+        let _ = self
+            .mass()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         let _ = check_interp_frac_data(self.eff_interp_achieved.x()?, InterpRange::Either)
-            .with_context(||
-                format!(
+            .map_err(|err|
+                Error::InitError(format!(
                     "{}\nInvalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1].",
-                    format_dbg!()
+                    format_dbg!(err)
                 )
-             )?;
-        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
+             ))?;
+        self.state
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
         // TODO: what should the default strategy be for eff_interp_bwd?
         let eff_interp_at_max_input = Interpolator::new_1d(
@@ -329,9 +334,22 @@ impl Init for ElectricMachine {
             // Extrapolate and Strategy types?
             self.eff_interp_achieved.strategy()?.to_owned(),
             self.eff_interp_achieved.extrapolate()?.to_owned(),
-        )?;
+        )
+        .map_err(ninterp::error::Error::from)?;
         self.eff_interp_at_max_input = Some(eff_interp_at_max_input);
         Ok(())
+    }
+}
+impl HistoryMethods for ElectricMachine {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+    fn clear(&mut self) {
+        self.history.clear();
     }
 }
 
@@ -628,6 +646,7 @@ impl ElectricMachine {
 )]
 #[non_exhaustive]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct ElectricMachineState {
     /// time step index
     pub i: usize,
