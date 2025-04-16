@@ -245,16 +245,15 @@ impl SimDrive {
         let len = &self.cyc.len_checked().with_context(|| format_dbg!())?;
         ensure!(len >= &2, format_dbg!(len < &2));
         self.save_state()?;
-        self.veh.check_and_reset().with_context(|| format_dbg!())?;
+        self.check_and_reset().with_context(|| format_dbg!())?;
         // to increment `i` to 1 everywhere
-        self.step();
+        self.step()?;
         while self.veh.state.i.get(format_dbg!())? < len {
-            let i = *self.veh.state.i.get(format_dbg!())?;
             self.solve_step()
-                .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), i))?;
+                .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
             self.save_state()?;
-            self.veh.check_and_reset().with_context(|| format_dbg!())?;
-            self.step();
+            self.check_and_reset().with_context(|| format_dbg!())?;
+            self.step()?;
         }
         Ok(())
     }

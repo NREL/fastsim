@@ -40,13 +40,13 @@ impl TrackedStateMethods for CabinOption {
     }
 }
 impl Step for CabinOption {
-    fn step(&mut self) {
+    fn step(&mut self) -> anyhow::Result<()> {
         match self {
             Self::LumpedCabin(lc) => lc.step(),
             Self::LumpedCabinWithShell => {
                 todo!()
             }
-            Self::None => {}
+            Self::None => Ok(()),
         }
     }
 }

@@ -892,10 +892,10 @@ impl TrackedStateMethods for RESThermalOption {
     }
 }
 impl Step for RESThermalOption {
-    fn step(&mut self) {
+    fn step(&mut self) -> anyhow::Result<()> {
         match self {
             Self::RESLumpedThermal(rlt) => rlt.step(),
-            Self::None => {}
+            Self::None => Ok(()),
         }
     }
 }

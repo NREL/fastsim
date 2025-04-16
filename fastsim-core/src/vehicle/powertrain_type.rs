@@ -330,7 +330,7 @@ impl TrackedStateMethods for PowertrainType {
 }
 
 impl Step for PowertrainType {
-    fn step(&mut self) {
+    fn step(&mut self) -> anyhow::Result<()> {
         match self {
             Self::ConventionalVehicle(conv) => conv.step(),
             Self::HybridElectricVehicle(hev) => hev.step(),

@@ -576,10 +576,10 @@ impl TrackedStateMethods for FuelConverterThermalOption {
     }
 }
 impl Step for FuelConverterThermalOption {
-    fn step(&mut self) {
+    fn step(&mut self) -> anyhow::Result<()> {
         match self {
             Self::FuelConverterThermal(fct) => fct.step(),
-            Self::None => {}
+            Self::None => Ok(()),
         }
     }
 }

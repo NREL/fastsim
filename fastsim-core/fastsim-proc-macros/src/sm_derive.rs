@@ -35,9 +35,13 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         .map(|f| f.ident.as_ref().unwrap())
         .collect::<Vec<_>>();
 
-    let self_state_methods: TokenStream2 = if struct_has_state {
+    let self_step: TokenStream2 = if struct_has_state {
         quote! {
-            self.state.step();
+            self.state.step()?;
+        }
+    } else if struct_is_state {
+        quote! {
+            self.i.update(self.i.get_prev_or_default() + 1, format_dbg!())?;
         }
     } else {
         quote! {}
@@ -45,9 +49,10 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
 
     impl_block.extend::<TokenStream2>(quote! {
         impl Step for #ident {
-            fn step(&mut self) {
-                #self_state_methods
-                #(self.#fields_with_state.step();)*
+            fn step(&mut self) -> anyhow::Result<()> {
+                #self_step
+                #(self.#fields_with_state.step()?;)*
+                Ok(())
             }
         }
     });

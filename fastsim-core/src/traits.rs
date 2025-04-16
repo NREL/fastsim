@@ -532,7 +532,7 @@ pub trait HistoryMethods: SaveState {
 /// recursively
 pub trait Step {
     /// Increments `i` field of this and all contained structs, recursively
-    fn step(&mut self) {}
+    fn step(&mut self) -> anyhow::Result<()>;
 }
 
 /// Provides method for checking if struct is default

@@ -101,7 +101,7 @@ impl TrackedStateMethods for HVACOption {
     }
 }
 impl Step for HVACOption {
-    fn step(&mut self) {
+    fn step(&mut self) -> anyhow::Result<()> {
         match self {
             Self::LumpedCabin(lc) => lc.step(),
             Self::LumpedCabinAndRES(lcr) => lcr.step(),
@@ -109,7 +109,7 @@ impl Step for HVACOption {
                 todo!()
             }
             Self::ReversibleEnergyStorageOnly => todo!(),
-            Self::None => {}
+            Self::None => Ok(()),
         }
     }
 }
