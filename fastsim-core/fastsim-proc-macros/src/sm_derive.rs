@@ -66,8 +66,8 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
     if struct_is_state {
         impl_block.extend::<TokenStream2>(quote! {
             impl TrackedStateMethods for #ident {
-                fn check_and_reset(&mut self) -> anyhow::Result<()> {
-                    #(self.#all_fields.check_and_reset()?;)*
+                fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+                    #(self.#all_fields.check_and_reset(format!("{loc}\n{}", stringify!(#all_fields)))?;)*
                     Ok(())
                 }
             }
@@ -75,9 +75,9 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
     } else if struct_has_state {
         impl_block.extend::<TokenStream2>(quote! {
             impl TrackedStateMethods for #ident {
-                fn check_and_reset(&mut self) -> anyhow::Result<()> {
-                    self.state.check_and_reset()?;
-                    #(self.#fields_with_state.check_and_reset()?;)*
+                fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+                    self.state.check_and_reset(format!("{loc}\n{}", format_dbg!()))?;
+                    #(self.#fields_with_state.check_and_reset(format!("{loc}\n{}", stringify!(#fields_with_state)))?;)*
                     Ok(())
                 }
             }
@@ -85,8 +85,8 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
     } else {
         impl_block.extend::<TokenStream2>(quote! {
             impl TrackedStateMethods for #ident {
-                fn check_and_reset(&mut self) -> anyhow::Result<()> {
-                    #(self.#fields_with_state.check_and_reset()?;)*
+                fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+                    #(self.#fields_with_state.check_and_reset(format!("{loc}\n{}", stringify!(#fields_with_state)))?;)*
                     Ok(())
                 }
             }

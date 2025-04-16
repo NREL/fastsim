@@ -494,9 +494,11 @@ impl SaveState for HEVPowertrainControls {
     }
 }
 impl TrackedStateMethods for HEVPowertrainControls {
-    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
         match self {
-            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.check_and_reset()?,
+            HEVPowertrainControls::RGWDB(rgwdb) => {
+                rgwdb.check_and_reset(format!("{loc}\n{}", format_dbg!()))?
+            }
             HEVPowertrainControls::Placeholder => todo!(),
         }
         Ok(())

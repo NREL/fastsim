@@ -512,7 +512,9 @@ pub trait SaveState {
 /// Provides methods to guarantee that states are updated once and only once per time step
 pub trait TrackedStateMethods {
     /// checks that all tracked state variables have been updated and resets for next time step
-    fn check_and_reset(&mut self) -> anyhow::Result<()>;
+    /// # Arguments
+    /// - `loc`: file and line number where called
+    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()>;
 }
 
 /// Provides methods for getting and setting the save interval

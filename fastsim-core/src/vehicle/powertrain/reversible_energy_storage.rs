@@ -815,7 +815,7 @@ pub struct ReversibleEnergyStorageState {
     /// Chemical <-> Electrical conversion efficiency based on current power demand
     pub eff: TrackedState<si::Ratio>,
     /// State of Health (SOH)
-    pub soh: TrackedStateWithMemory<f64>,
+    pub soh: UntrackedState<f64>,
 
     // TODO: add `pwr_out_neg_electrical` and `pwr_out_pos_electrical` and corresponding energies
     // powers to separately pin negative- and positive-power operation
@@ -855,7 +855,7 @@ impl Default for ReversibleEnergyStorageState {
             soc_regen_buffer: TrackedState::new(uc::R * 1.),
             soc_disch_buffer: Default::default(),
             eff: Default::default(),
-            soh: TrackedStateWithMemory::new(0.),
+            soh: Default::default(),
             pwr_out_electrical: Default::default(),
             pwr_out_prop: Default::default(),
             pwr_aux: Default::default(),
@@ -901,9 +901,11 @@ impl SaveState for RESThermalOption {
     }
 }
 impl TrackedStateMethods for RESThermalOption {
-    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
         match self {
-            Self::RESLumpedThermal(rlt) => rlt.check_and_reset()?,
+            Self::RESLumpedThermal(rlt) => {
+                rlt.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
+            }
             Self::None => {}
         }
         Ok(())

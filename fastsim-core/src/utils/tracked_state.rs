@@ -10,8 +10,8 @@ where
     T: std::fmt::Debug + Clone + PartialEq + Default,
 {
     /// Run [Self::check] and [Self::reset]
-    fn check_and_reset(&mut self) -> anyhow::Result<()> {
-        self.check()?;
+    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+        self.check().with_context(|| loc)?;
         self.reset();
         Ok(())
     }
@@ -105,7 +105,7 @@ where
     T: std::fmt::Debug + Clone + PartialEq + Default,
 {
     /// Run [Self::check] and [Self::reset]
-    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+    fn check_and_reset(&mut self, _loc: String) -> anyhow::Result<()> {
         // this probably should not do anything
         Ok(())
     }
@@ -133,13 +133,6 @@ where
 
     /// Verify that the state has been updated
     pub fn check(&self) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    /// Run [Self::check] and [Self::reset]
-    pub fn check_and_reset(&mut self) -> anyhow::Result<()> {
-        self.check()?;
-        self.reset();
         Ok(())
     }
 
@@ -206,8 +199,8 @@ where
     T: std::fmt::Debug + Clone + PartialEq + Default,
 {
     /// Run [Self::check] and [Self::reset]
-    fn check_and_reset(&mut self) -> anyhow::Result<()> {
-        self.check()?;
+    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+        self.check().with_context(|| loc)?;
         self.reset()?;
         Ok(())
     }
@@ -347,9 +340,9 @@ mod test_tracked_state {
         let mut energy = TrackedState::<si::Energy>::default();
         let mut dt = TrackedState::<si::Time>::default();
 
-        pwr.check_and_reset().unwrap();
-        dt.check_and_reset().unwrap();
-        energy.check_and_reset().unwrap();
+        pwr.check_and_reset(format_dbg!()).unwrap();
+        dt.check_and_reset(format_dbg!()).unwrap();
+        energy.check_and_reset(format_dbg!()).unwrap();
 
         pwr.update(si::Power::new::<si::watt>(1.0), format_dbg!())
             .unwrap();
@@ -362,9 +355,9 @@ mod test_tracked_state {
             )
             .unwrap();
 
-        pwr.check_and_reset().unwrap();
-        dt.check_and_reset().unwrap();
-        energy.check_and_reset().unwrap();
+        pwr.check_and_reset(format_dbg!()).unwrap();
+        dt.check_and_reset(format_dbg!()).unwrap();
+        energy.check_and_reset(format_dbg!()).unwrap();
 
         pwr.update(si::Power::new::<si::watt>(1.0), format_dbg!())
             .unwrap();
@@ -377,8 +370,8 @@ mod test_tracked_state {
             )
             .unwrap();
 
-        pwr.check_and_reset().unwrap();
-        dt.check_and_reset().unwrap();
-        energy.check_and_reset().unwrap();
+        pwr.check_and_reset(format_dbg!()).unwrap();
+        dt.check_and_reset(format_dbg!()).unwrap();
+        energy.check_and_reset(format_dbg!()).unwrap();
     }
 }

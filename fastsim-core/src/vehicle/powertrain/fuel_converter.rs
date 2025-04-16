@@ -557,9 +557,11 @@ impl SaveState for FuelConverterThermalOption {
     }
 }
 impl TrackedStateMethods for FuelConverterThermalOption {
-    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
         match self {
-            Self::FuelConverterThermal(fct) => fct.check_and_reset()?,
+            Self::FuelConverterThermal(fct) => {
+                fct.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
+            }
             Self::None => {}
         }
         Ok(())

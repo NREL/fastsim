@@ -319,11 +319,17 @@ impl SaveState for PowertrainType {
     }
 }
 impl TrackedStateMethods for PowertrainType {
-    fn check_and_reset(&mut self) -> anyhow::Result<()> {
+    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => conv.check_and_reset()?,
-            Self::HybridElectricVehicle(hev) => hev.check_and_reset()?,
-            Self::BatteryElectricVehicle(bev) => bev.check_and_reset()?,
+            Self::ConventionalVehicle(conv) => {
+                conv.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
+            }
+            Self::HybridElectricVehicle(hev) => {
+                hev.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
+            }
+            Self::BatteryElectricVehicle(bev) => {
+                bev.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
+            }
         }
         Ok(())
     }
