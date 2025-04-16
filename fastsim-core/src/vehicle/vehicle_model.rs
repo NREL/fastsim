@@ -550,7 +550,7 @@ impl Vehicle {
                         + *hvac.state.pwr_aux_for_cab_hvac.get(format_dbg!())?
                         + *hvac.state.pwr_aux_for_res_hvac.get(format_dbg!())?,
                     format_dbg!(),
-                );
+                )?;
                 ensure!(
                     *self.state.pwr_aux.get(format_dbg!())? > si::Power::ZERO,
                     format!(
@@ -674,7 +674,7 @@ pub struct VehicleState {
     pub air_density: TrackedState<si::MassDensity>,
     /// current mass
     // TODO: make sure this gets updated appropriately
-    pub mass: TrackedState<si::Mass>,
+    pub mass: UntrackedState<si::Mass>,
 }
 
 impl SerdeAPI for VehicleState {}
@@ -712,7 +712,7 @@ impl Default for VehicleState {
             // note that this value will be overwritten
             elev_curr: Default::default(),
             air_density: Default::default(),
-            mass: TrackedState::new(uc::KG * f64::NAN),
+            mass: UntrackedState::new(uc::KG * f64::NAN),
         }
     }
 }

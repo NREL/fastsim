@@ -268,7 +268,7 @@ impl FuelConverter {
         fc_on: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        self.state.fc_on = fc_on;
+        self.state.fc_on.update(fc_on, format_dbg!())?;
         self.state.time_on.update(
             if fc_on {
                 *self.state.time_on.get(format_dbg!())? + dt
@@ -276,7 +276,7 @@ impl FuelConverter {
                 si::Time::ZERO
             },
             format_dbg!(),
-        );
+        )?;
         // NOTE: think about the possibility of engine braking, not urgent
         ensure!(
             pwr_out_req >= si::Power::ZERO,
@@ -333,7 +333,7 @@ impl FuelConverter {
         );
 
         self.state.pwr_fuel.update(
-            if self.state.fc_on {
+            if *self.state.fc_on.get(format_dbg!())? {
                 ((pwr_out_req + *self.state.pwr_aux.get(format_dbg!())?)
                     / *self.state.eff.get(format_dbg!())?)
                 .max(self.pwr_idle_fuel)
@@ -341,11 +341,11 @@ impl FuelConverter {
                 si::Power::ZERO
             },
             format_dbg!(),
-        );
+        )?;
         self.state.pwr_loss.update(
             *self.state.pwr_fuel.get(format_dbg!())? - *self.state.pwr_prop.get(format_dbg!())?,
             format_dbg!(),
-        );
+        )?;
 
         // TODO: put this in `SetCumulative::set_custom_cumulative`
         // ensure!(
@@ -537,7 +537,7 @@ pub struct FuelConverterState {
     /// Integral of [Self::pwr_loss]
     pub energy_loss: TrackedStateWithMemory<si::Energy>,
     /// If true, engine is on, and if false, off (no idle)
-    pub fc_on: bool,
+    pub fc_on: TrackedStateWithMemory<bool>,
     /// Time the engine has been on
     pub time_on: TrackedState<si::Time>,
 }
@@ -837,7 +837,7 @@ impl FuelConverterThermal {
                 *self.state.tstat_open_frac.get(format_dbg!())? * htc_to_amb_sphere
             },
             format_dbg!(),
-        );
+        )?;
 
         self.state.pwr_thrml_to_amb.update(
             *self.state.htc_to_amb.get(format_dbg!())?

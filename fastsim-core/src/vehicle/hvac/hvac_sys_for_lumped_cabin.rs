@@ -145,7 +145,7 @@ impl HVACSystemForLumpedCabin {
                             .max(-self.pwr_i_max)
                             .min(self.pwr_i_max),
                     format_dbg!(),
-                );
+                )?;
                 ensure!(
                     *self.state.pwr_i.get(format_dbg!())? != si::Power::ZERO,
                     format_dbg!()
@@ -222,7 +222,7 @@ impl HVACSystemForLumpedCabin {
                         } else {
                             self.state
                                 .pwr_aux_for_hvac
-                                .update(-pwr_thrml_hvac_to_cab / cop, format_dbg!());
+                                .update(-pwr_thrml_hvac_to_cab / cop, format_dbg!())?;
                             ensure!(
                                 *self.state.pwr_aux_for_hvac.get(format_dbg!())? > si::Power::ZERO,
                                 format_dbg!(self.state.pwr_aux_for_hvac)

@@ -112,7 +112,7 @@ lazy_static! {
     }
 
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 pub struct Air {}

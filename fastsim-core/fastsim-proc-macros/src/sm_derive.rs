@@ -8,11 +8,10 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
     let fields = item_struct.fields;
 
     let struct_has_state = fields.iter().any(|x| *x.ident.as_ref().unwrap() == "state");
-
+    let struct_is_state = ident.to_string().contains("State");
     let struct_has_save_interval = fields
         .iter()
         .any(|x| *x.ident.as_ref().unwrap() == "save_interval");
-
     let fields_with_state_vec: Vec<bool> = fields
         .iter()
         .map(|field| {
@@ -29,6 +28,11 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         .zip(fields_with_state_vec)
         .filter(|(_f, hsv)| *hsv)
         .map(|(f, _hsv)| f.ident.as_ref().unwrap())
+        .collect::<Vec<_>>();
+
+    let all_fields = fields
+        .iter()
+        .map(|f| f.ident.as_ref().unwrap())
         .collect::<Vec<_>>();
 
     let self_state_methods: TokenStream2 = if struct_has_state {
@@ -54,6 +58,36 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         quote! {}
     };
 
+    if struct_is_state {
+        impl_block.extend::<TokenStream2>(quote! {
+            impl TrackedStateMethods for #ident {
+                fn check_and_reset(&mut self) -> anyhow::Result<()> {
+                    #(self.#all_fields.check_and_reset()?;)*
+                    Ok(())
+                }
+            }
+        });
+    } else if struct_has_state {
+        impl_block.extend::<TokenStream2>(quote! {
+            impl TrackedStateMethods for #ident {
+                fn check_and_reset(&mut self) -> anyhow::Result<()> {
+                    self.state.check_and_reset()?;
+                    #(self.#fields_with_state.check_and_reset()?;)*
+                    Ok(())
+                }
+            }
+        });
+    } else {
+        impl_block.extend::<TokenStream2>(quote! {
+            impl TrackedStateMethods for #ident {
+                fn check_and_reset(&mut self) -> anyhow::Result<()> {
+                    #(self.#fields_with_state.check_and_reset()?;)*
+                    Ok(())
+                }
+            }
+        });
+    }
+
     if struct_has_save_interval {
         impl_block.extend::<TokenStream2>(quote! {
             impl SaveState for #ident {
@@ -70,12 +104,6 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
                     Ok(())
                 }
             }
-            impl TrackedStateMethods for #ident {
-                fn check_and_reset(&mut self) -> anyhow::Result<()> {
-                    #(self.#fields_with_state.check_and_reset()?;)*
-                    Ok(())
-                }
-            }
         });
     } else {
         impl_block.extend::<TokenStream2>(quote! {
@@ -84,12 +112,6 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
                 fn save_state(&mut self) -> anyhow::Result<()> {
                     #self_save_state
                     #(self.#fields_with_state.save_state()?;)*
-                    Ok(())
-                }
-            }
-            impl TrackedStateMethods for #ident {
-                fn check_and_reset(&mut self) -> anyhow::Result<()> {
-                    #(self.#fields_with_state.check_and_reset()?;)*
                     Ok(())
                 }
             }

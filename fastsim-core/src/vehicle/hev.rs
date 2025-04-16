@@ -98,7 +98,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         // TODO: account for transmission efficiency in here
         match &self.pt_cntrl {
             HEVPowertrainControls::RGWDB(rgwb) => {
-                self.fc_on_causes.on_time_too_short.update(self.fc.state.fc_on && *self.fc.state.time_on.get(format_dbg!())?
+                self.fc_on_causes.on_time_too_short.update(self.fc.state.fc_on.get_prev_or_default() && *self.fc.state.time_on.get(format_dbg!())?
                     < rgwb.fc_min_time_on.with_context(|| {
                     anyhow!(
                         "{}\n Expected `ResGreedyWithBuffers::init` to have been called beforehand.",
@@ -721,7 +721,7 @@ fn handle_fc_on_causes_for_low_soc(
     fc_on_causes.charging_for_low_soc.update(
         *res.state.soc.get(format_dbg!())? < *rgwdb.state.soc_fc_on_buffer.get(format_dbg!())?,
         format_dbg!(),
-    );
+    )?;
     Ok(())
 }
 

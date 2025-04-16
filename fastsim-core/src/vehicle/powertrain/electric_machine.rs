@@ -338,7 +338,7 @@ impl ElectricMachine {
                 - *self.state.pwr_elec_prop_in.get(format_dbg!())?)
             .abs(),
             format_dbg!(),
-        );
+        )?;
 
         Ok(*self.state.pwr_elec_prop_in.get(format_dbg!())?)
     }

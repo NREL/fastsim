@@ -447,7 +447,7 @@ impl HVACSystemForLumpedCabinAndRES {
                         }
                     }
                     HvacMode::Heating => {
-                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab);
+                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab)?;
                         if *self.state.pwr_i_cab.get(format_dbg!())? < si::Power::ZERO {
                             // If `pwr_i` is less than zero reset to switch from cooling to heating
                             self.state
@@ -654,7 +654,7 @@ impl HVACSystemForLumpedCabinAndRES {
                 .max(-self.pwr_i_max_cabin)
                 .min(self.pwr_i_max_cabin),
             format_dbg!(),
-        );
+        )?;
         self.state.pwr_d_cab.update(
             -self.d_cabin * uc::J / uc::KELVIN
                 * ((cab_state
@@ -792,7 +792,7 @@ impl HVACSystemForLumpedCabinAndRES {
                                     }
                                 },
                                 format_dbg!(),
-                            );
+                            )?;
                         } else {
                             self.state.pwr_aux_for_res_hvac.update(
                                 *self.state.pwr_aux_for_res_hvac_req.get(format_dbg!())?,
@@ -823,7 +823,7 @@ impl HVACSystemForLumpedCabinAndRES {
                                 .min(self.pwr_thrml_max)
                             },
                             format_dbg!(),
-                        );
+                        )?;
                         ensure!(
                             *self.state.pwr_thrml_to_res_req.get(format_dbg!())? > si::Power::ZERO,
                             "{}\nHVAC should be heating RES",
@@ -961,7 +961,7 @@ impl HVACSystemForLumpedCabinAndRES {
                 .max(-self.pwr_i_max_res)
                 .min(self.pwr_i_max_res),
             format_dbg!(),
-        );
+        )?;
         self.state.pwr_d_res.update(
             -self.d_res * uc::J / uc::KELVIN
                 * ((res_temp.get::<si::degree_celsius>()
