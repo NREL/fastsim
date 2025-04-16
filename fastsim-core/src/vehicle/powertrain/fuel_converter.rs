@@ -218,22 +218,12 @@ impl FuelConverter {
             // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
-        self.state.pwr_out_max.update(
-            (*self
-                .state
-                .pwr_prop
-                .get(format_dbg!())
-                .with_context(|| format_dbg!())?
-                + *self
-                    .state
-                    .pwr_aux
-                    .get(format_dbg!())
-                    .with_context(|| format_dbg!())?
-                + self.pwr_out_max / self.pwr_ramp_lag * dt)
-                .min(self.pwr_out_max)
-                .max(self.pwr_out_max_init),
-            format_dbg!(),
-        )?;
+        let pwr_out_max = (self.state.pwr_prop.get_prev_or_default()
+            + self.state.pwr_aux.get_prev_or_default()
+            + self.pwr_out_max / self.pwr_ramp_lag * dt)
+            .min(self.pwr_out_max)
+            .max(self.pwr_out_max_init);
+        self.state.pwr_out_max.update(pwr_out_max, format_dbg!())?;
         Ok(())
     }
 
@@ -365,9 +355,9 @@ impl FuelConverter {
         veh_state: &mut VehicleState,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        let veh_speed = veh_state.speed_ach.get(format_dbg!())?;
+        let veh_speed = veh_state.speed_ach.get_prev_or_default();
         self.thrml
-            .solve(&self.state, te_amb, pwr_thrml_fc_to_cab, *veh_speed, dt)
+            .solve(&self.state, te_amb, pwr_thrml_fc_to_cab, veh_speed, dt)
             .with_context(|| format_dbg!())
     }
 
@@ -521,11 +511,11 @@ pub struct FuelConverterState {
     /// efficiency evaluated at current demand
     pub eff: TrackedState<si::Ratio>,
     /// instantaneous power going to drivetrain, not including aux
-    pub pwr_prop: TrackedState<si::Power>,
+    pub pwr_prop: TrackedStateWithMemory<si::Power>,
     /// integral of [Self::pwr_prop]
     pub energy_prop: TrackedStateWithMemory<si::Energy>,
     /// power going to auxiliaries
-    pub pwr_aux: TrackedState<si::Power>,
+    pub pwr_aux: TrackedStateWithMemory<si::Power>,
     /// Integral of [Self::pwr_aux]
     pub energy_aux: TrackedStateWithMemory<si::Energy>,
     /// instantaneous fuel power flow
