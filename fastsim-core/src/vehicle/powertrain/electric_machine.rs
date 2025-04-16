@@ -711,8 +711,6 @@ pub struct ElectricMachineState {
     pub pwr_mech_regen_max: TrackedState<si::Power>,
     /// efficiency in backward direction at max possible input power from `FuelConverter` and `ReversibleEnergyStorage`
     pub eff_at_max_regen: TrackedState<si::Ratio>,
-    /// max ramp-up rate
-    pub pwr_rate_out_max: TrackedState<si::PowerRate>,
 
     // Current values
     /// Raw power requirement from boundary conditions
