@@ -5,50 +5,48 @@ pub trait InterpolatorMethods {
     fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()>;
     fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()>;
     fn set_range(&mut self, range: f64) -> anyhow::Result<()>;
-    fn get_min(&self) -> anyhow::Result<f64>;
-    fn get_max(&self) -> anyhow::Result<f64>;
-    fn get_range(&self) -> anyhow::Result<f64>;
+    // fn get_min(&self) -> anyhow::Result<f64>;
+    // fn get_max(&self) -> anyhow::Result<f64>;
+    fn range(&self) -> anyhow::Result<f64>;
 }
 
-impl InterpolatorMethods for Interpolator {
+impl InterpolatorMethods for InterpolatorEnumOwned<f64> {
     #[allow(unused)]
     // scale all values so that the min is the new min
     // (Note: this may change the max, depending on what scaling method is chosen)
     fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
         let scaling = scaling.unwrap_or_default();
-        let old_min = self.min()?;
+        let old_min = *self.min()?;
         match scaling {
             utils::interp::ScalingMethods::Proportional => {
                 ensure!(
                     old_min != 0.,
-                    "Cannot modify min using default calculation when min = 0."
+                    "Cannot modify min proportionally when old_min == 0."
                 );
                 match self {
-                    Interpolator::Interp0D(value) => {
-                        *value = min;
+                    Self::Interp0D(Interp0D(v)) => {
+                        *v = min;
                         Ok(())
                     }
-                    Interpolator::Interp1D(..) => {
-                        Ok(self.set_f_x(self.f_x()?.iter().map(|x| x * min / old_min).collect())?)
+                    Self::Interp1D(interp) => {
+                        interp.data.values.map_inplace(|v| *v *= min / old_min);
+                        interp.validate()?;
+                        Ok(())
                     }
-                    Interpolator::Interp2D(..) => Ok(self.set_f_xy(
-                        self.f_xy()?
-                            .iter()
-                            .map(|v| v.iter().map(|x| x * min / old_min).collect())
-                            .collect(),
-                    )?),
-                    Interpolator::Interp3D(..) => Ok(self.set_f_xyz(
-                        self.f_xyz()?
-                            .iter()
-                            .map(|v0| {
-                                v0.iter()
-                                    .map(|v1| v1.iter().map(|x| x * min / old_min).collect())
-                                    .collect()
-                            })
-                            .collect(),
-                    )?),
-                    Interpolator::InterpND(..) => {
-                        Ok(self.set_values(self.values()?.map(|x| x * min / old_min))?)
+                    Self::Interp2D(interp) => {
+                        interp.data.values.map_inplace(|v| *v *= min / old_min);
+                        interp.validate()?;
+                        Ok(())
+                    }
+                    Self::Interp3D(interp) => {
+                        interp.data.values.map_inplace(|v| *v *= min / old_min);
+                        interp.validate()?;
+                        Ok(())
+                    }
+                    Self::InterpND(interp) => {
+                        interp.data.values.map_inplace(|v| *v *= min / old_min);
+                        interp.validate()?;
+                        Ok(())
                     }
                 }
             }
@@ -64,37 +62,41 @@ impl InterpolatorMethods for Interpolator {
     // scale all values so that the max is the new max
     // (Note: may change the min, depending on what scaling method is chosen)
     fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
-        let old_max = self.max()?;
         let scaling = scaling.unwrap_or_default();
+        let old_max = *self.max()?;
         match scaling {
-            utils::interp::ScalingMethods::Proportional => match self {
-                Interpolator::Interp0D(value) => {
-                    *value = max;
-                    Ok(())
+            utils::interp::ScalingMethods::Proportional => {
+                ensure!(
+                    old_max != 0.,
+                    "Cannot modify max proportionally when old_max == 0."
+                );
+                match self {
+                    Self::Interp0D(Interp0D(v)) => {
+                        *v = max;
+                        Ok(())
+                    }
+                    Self::Interp1D(interp) => {
+                        interp.data.values.map_inplace(|v| *v *= max / old_max);
+                        interp.validate()?;
+                        Ok(())
+                    }
+                    Self::Interp2D(interp) => {
+                        interp.data.values.map_inplace(|v| *v *= max / old_max);
+                        interp.validate()?;
+                        Ok(())
+                    }
+                    Self::Interp3D(interp) => {
+                        interp.data.values.map_inplace(|v| *v *= max / old_max);
+                        interp.validate()?;
+                        Ok(())
+                    }
+                    Self::InterpND(interp) => {
+                        interp.data.values.map_inplace(|v| *v *= max / old_max);
+                        interp.validate()?;
+                        Ok(())
+                    }
                 }
-                Interpolator::Interp1D(..) => {
-                    Ok(self.set_f_x(self.f_x()?.iter().map(|x| x * max / old_max).collect())?)
-                }
-                Interpolator::Interp2D(..) => Ok(self.set_f_xy(
-                    self.f_xy()?
-                        .iter()
-                        .map(|v| v.iter().map(|x| x * max / old_max).collect())
-                        .collect(),
-                )?),
-                Interpolator::Interp3D(..) => Ok(self.set_f_xyz(
-                    self.f_xyz()?
-                        .iter()
-                        .map(|v0| {
-                            v0.iter()
-                                .map(|v1| v1.iter().map(|x| x * max / old_max).collect())
-                                .collect()
-                        })
-                        .collect(),
-                )?),
-                Interpolator::InterpND(..) => {
-                    Ok(self.set_values(self.values()?.map(|x| x * max / old_max))?)
-                }
-            },
+            }
             utils::interp::ScalingMethods::AnchoredProportional => {
                 todo!()
             }
@@ -111,17 +113,17 @@ impl InterpolatorMethods for Interpolator {
         // if the new range is 0., chooses the max as the value for all elements of the array
         if range == 0. {
             match self {
-                Interpolator::Interp0D(..) => unreachable!("The above `ensure` should trigger"),
-                Interpolator::Interp1D(..) => {
+                Self::Interp0D(..) => unreachable!("The above `ensure` should trigger"),
+                Self::Interp1D(..) => {
                     Ok(self.set_f_x(self.f_x()?.iter().map(|x| old_max).collect())?)
                 }
-                Interpolator::Interp2D(..) => Ok(self.set_f_xy(
+                Self::Interp2D(..) => Ok(self.set_f_xy(
                     self.f_xy()?
                         .iter()
                         .map(|v| v.iter().map(|x| old_max).collect())
                         .collect(),
                 )?),
-                Interpolator::Interp3D(..) => Ok(self.set_f_xyz(
+                Self::Interp3D(..) => Ok(self.set_f_xyz(
                     self.f_xyz()?
                         .iter()
                         .map(|v0| {
@@ -131,18 +133,18 @@ impl InterpolatorMethods for Interpolator {
                         })
                         .collect(),
                 )?),
-                Interpolator::InterpND(..) => Ok(self.set_values(self.values()?.map(|x| old_max))?),
+                Self::InterpND(..) => Ok(self.set_values(self.values()?.map(|x| old_max))?),
             }
         } else {
             match self {
-                Interpolator::Interp0D(..) => unreachable!("The above `ensure` should trigger"),
-                Interpolator::Interp1D(..) => Ok(self.set_f_x(
+                Self::Interp0D(..) => unreachable!("The above `ensure` should trigger"),
+                Self::Interp1D(..) => Ok(self.set_f_x(
                     self.f_x()?
                         .iter()
                         .map(|x| old_max + (x - old_max) * range / old_range)
                         .collect(),
                 )?),
-                Interpolator::Interp2D(..) => Ok(self.set_f_xy(
+                Self::Interp2D(..) => Ok(self.set_f_xy(
                     self.f_xy()?
                         .iter()
                         .map(|v| {
@@ -152,7 +154,7 @@ impl InterpolatorMethods for Interpolator {
                         })
                         .collect(),
                 )?),
-                Interpolator::Interp3D(..) => Ok(self.set_f_xyz(
+                Self::Interp3D(..) => Ok(self.set_f_xyz(
                     self.f_xyz()?
                         .iter()
                         .map(|v0| {
@@ -166,30 +168,50 @@ impl InterpolatorMethods for Interpolator {
                         })
                         .collect(),
                 )?),
-                Interpolator::InterpND(..) => Ok(self.set_values(
+                Self::InterpND(..) => Ok(self.set_values(
                     self.values()?
                         .map(|x| old_max + (x - old_max) * range / old_range),
                 )?),
             }
         }
     }
-    fn get_min(&self) -> anyhow::Result<f64> {
-        return self.min();
-    }
-    fn get_max(&self) -> anyhow::Result<f64> {
-        return self.max();
-    }
-    fn get_range(&self) -> anyhow::Result<f64> {
+    // fn get_min(&self) -> anyhow::Result<f64> {
+    //     return self.min();
+    // }
+    // fn get_max(&self) -> anyhow::Result<f64> {
+    //     return self.max();
+    // }
+    fn range(&self) -> anyhow::Result<f64> {
         return Ok(self.max()? - self.min()?);
     }
 }
 
-impl Init for Interpolator {
+impl<D> Init for InterpolatorEnum<D>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: ninterp::num_traits::Num
+        + ninterp::num_traits::Euclid
+        + PartialOrd
+        + Copy
+        + std::fmt::Debug,
+{
     fn init(&mut self) -> Result<(), Error> {
-        Ok(self.validate().map_err(ninterp::error::Error::from)?)
+        Ok(self
+            .validate()
+            .map_err(ninterp::error::ValidateError::from)?)
     }
 }
-impl SerdeAPI for Interpolator {
+impl<D> SerdeAPI for InterpolatorEnum<D>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone + ndarray::DataOwned,
+    D::Elem: ninterp::num_traits::Num
+        + ninterp::num_traits::Euclid
+        + PartialOrd
+        + Copy
+        + std::fmt::Debug
+        + Serialize
+        + serde::de::DeserializeOwned,
+{
     #[cfg(feature = "resources")]
     const RESOURCE_PREFIX: &'static str = "interpolators";
 }
@@ -210,40 +232,36 @@ mod tests {
     use super::*;
     #[test]
     fn test_min() {
-        let x: Vec<f64> = vec![0.05, 0.10, 0.15];
-        let y: Vec<f64> = vec![0.10, 0.20, 0.30];
-        let z: Vec<f64> = vec![0.20, 0.40, 0.60];
-        let f_xy: Vec<Vec<f64>> = vec![vec![0.1, 1., 2.], vec![3., 4., 5.], vec![6., 7., 8.]];
-        let f_xyz: Vec<Vec<Vec<f64>>> = vec![
-            vec![vec![0.1, 1., 2.], vec![3., 4., 5.], vec![6., 7., 8.]],
-            vec![vec![9., 10., 11.], vec![12., 13., 14.], vec![15., 16., 17.]],
-            vec![
-                vec![18., 19., 20.],
-                vec![21., 22., 23.],
-                vec![24., 25., 26.],
-            ],
+        let x = array![0.05, 0.10, 0.15];
+        let y = array![0.10, 0.20, 0.30];
+        let z = array![0.20, 0.40, 0.60];
+        let f_xy = array![[0.1, 1., 2.], [3., 4., 5.], [6., 7., 8.]];
+        let f_xyz = array![
+            [[0.1, 1., 2.], [3., 4., 5.], [6., 7., 8.]],
+            [[9., 10., 11.], [12., 13., 14.], [15., 16., 17.]],
+            [[18., 19., 20.], [21., 22., 23.], [24., 25., 26.],],
         ];
-        let mut interp_1d = Interpolator::new_1d(
-            vec![85.0, 90.0],
-            vec![0.2, 1.0],
-            Strategy::Linear,
+        let mut interp_1d = InterpolatorEnum::new_1d(
+            array![85.0, 90.0],
+            array![0.2, 1.0],
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        let mut interp_2d = Interpolator::new_2d(
-            x.clone(),
-            y.clone(),
-            f_xy,
-            Strategy::Linear,
+        let mut interp_2d = InterpolatorEnum::new_2d(
+            x.view(),
+            y.view(),
+            f_xy.view(),
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        let mut interp_3d = Interpolator::new_3d(
-            x.clone(),
-            y.clone(),
-            z.clone(),
-            f_xyz,
-            Strategy::Linear,
+        let mut interp_3d = InterpolatorEnum::new_3d(
+            x.view(),
+            y.view(),
+            z.view(),
+            f_xyz.view(),
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
@@ -263,40 +281,36 @@ mod tests {
 
     #[test]
     fn test_max() {
-        let x: Vec<f64> = vec![0.05, 0.10, 0.15];
-        let y: Vec<f64> = vec![0.10, 0.20, 0.30];
-        let z: Vec<f64> = vec![0.20, 0.40, 0.60];
-        let f_xy: Vec<Vec<f64>> = vec![vec![0., 1., 2.], vec![3., 4., 5.], vec![6., 7., 8.]];
-        let f_xyz: Vec<Vec<Vec<f64>>> = vec![
-            vec![vec![0., 1., 2.], vec![3., 4., 5.], vec![6., 7., 8.]],
-            vec![vec![9., 10., 11.], vec![12., 13., 14.], vec![15., 16., 17.]],
-            vec![
-                vec![18., 19., 20.],
-                vec![21., 22., 23.],
-                vec![24., 25., 26.],
-            ],
+        let x = array![0.05, 0.10, 0.15];
+        let y = array![0.10, 0.20, 0.30];
+        let z = array![0.20, 0.40, 0.60];
+        let f_xy = array![[0., 1., 2.], [3., 4., 5.], [6., 7., 8.]];
+        let f_xyz = array![
+            [[0., 1., 2.], [3., 4., 5.], [6., 7., 8.]],
+            [[9., 10., 11.], [12., 13., 14.], [15., 16., 17.]],
+            [[18., 19., 20.], [21., 22., 23.], [24., 25., 26.]],
         ];
-        let mut interp_1d = Interpolator::new_1d(
-            vec![85.0, 90.0],
-            vec![0.2, 1.0],
-            Strategy::Linear,
+        let mut interp_1d = InterpolatorEnum::new_1d(
+            array![85.0, 90.0],
+            array![0.2, 1.0],
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        let mut interp_2d = Interpolator::new_2d(
-            x.clone(),
-            y.clone(),
-            f_xy,
-            Strategy::Linear,
+        let mut interp_2d = InterpolatorEnum::new_2d(
+            x.view(),
+            y.view(),
+            f_xy.view(),
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        let mut interp_3d = Interpolator::new_3d(
-            x.clone(),
-            y.clone(),
-            z.clone(),
-            f_xyz,
-            Strategy::Linear,
+        let mut interp_3d = InterpolatorEnum::new_3d(
+            x.view(),
+            y.view(),
+            z.view(),
+            f_xyz.view(),
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
@@ -316,40 +330,36 @@ mod tests {
 
     #[test]
     fn test_range() {
-        let x: Vec<f64> = vec![0.05, 0.10, 0.15];
-        let y: Vec<f64> = vec![0.10, 0.20, 0.30];
-        let z: Vec<f64> = vec![0.20, 0.40, 0.60];
-        let f_xy: Vec<Vec<f64>> = vec![vec![0., 1., 2.], vec![3., 4., 5.], vec![6., 7., 8.]];
-        let f_xyz: Vec<Vec<Vec<f64>>> = vec![
-            vec![vec![0., 1., 2.], vec![3., 4., 5.], vec![6., 7., 8.]],
-            vec![vec![9., 10., 11.], vec![12., 13., 14.], vec![15., 16., 17.]],
-            vec![
-                vec![18., 19., 20.],
-                vec![21., 22., 23.],
-                vec![24., 25., 26.],
-            ],
+        let x = array![0.05, 0.10, 0.15];
+        let y = array![0.10, 0.20, 0.30];
+        let z = array![0.20, 0.40, 0.60];
+        let f_xy = array![[0., 1., 2.], [3., 4., 5.], [6., 7., 8.]];
+        let f_xyz = array![
+            [[0., 1., 2.], [3., 4., 5.], [6., 7., 8.]],
+            [[9., 10., 11.], [12., 13., 14.], [15., 16., 17.]],
+            [[18., 19., 20.], [21., 22., 23.], [24., 25., 26.]],
         ];
-        let mut interp_1d = Interpolator::new_1d(
-            vec![85.0, 90.0],
-            vec![0.2, 1.0],
-            Strategy::Linear,
+        let mut interp_1d = InterpolatorEnum::new_1d(
+            array![85.0, 90.0],
+            array![0.2, 1.0],
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        let mut interp_2d = Interpolator::new_2d(
-            x.clone(),
-            y.clone(),
-            f_xy,
-            Strategy::Linear,
+        let mut interp_2d = InterpolatorEnum::new_2d(
+            x.view(),
+            y.view(),
+            f_xy.view(),
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        let mut interp_3d = Interpolator::new_3d(
-            x.clone(),
-            y.clone(),
-            z.clone(),
-            f_xyz,
-            Strategy::Linear,
+        let mut interp_3d = InterpolatorEnum::new_3d(
+            x.view(),
+            y.view(),
+            z.view(),
+            f_xyz.view(),
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();

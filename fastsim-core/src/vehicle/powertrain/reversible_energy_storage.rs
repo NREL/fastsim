@@ -108,7 +108,7 @@ pub struct ReversibleEnergyStorage {
     pub energy_capacity: si::Energy,
 
     /// interpolator for calculating [Self] efficiency
-    pub eff_interp: Interpolator,
+    pub eff_interp: InterpolatorEnumOwned<f64>,
 
     /// what state variables to use in calculating efficiency
     pub eff_interp_inputs: RESEffInterpInputs,
@@ -210,25 +210,23 @@ impl ReversibleEnergyStorage {
                 )
             );
         }
-        let interp_pt: &[f64] = match (&self.eff_interp, &self.eff_interp_inputs) {
-            (Interpolator::Interp0D(..), RESEffInterpInputs::Constant) => &[],
-            (Interpolator::Interp1D(..), RESEffInterpInputs::CRate) => {
-                &[state.pwr_out_electrical.get::<si::watt>()
-                    / self.energy_capacity.get::<si::watt_hour>()]
-            }
-            (Interpolator::Interp2D(..), RESEffInterpInputs::CRateSOC) => &[
+        let interp_pt: &[f64] = match (&self.eff_interp.ndim(), &self.eff_interp_inputs) {
+            (0, RESEffInterpInputs::Constant) => &[],
+            (1, RESEffInterpInputs::CRate) => &[state.pwr_out_electrical.get::<si::watt>()
+                / self.energy_capacity.get::<si::watt_hour>()],
+            (2, RESEffInterpInputs::CRateSOC) => &[
                 state.pwr_out_electrical.get::<si::watt>()
                     / self.energy_capacity.get::<si::watt_hour>(),
                 state.soc.get::<si::ratio>(),
             ],
-            (Interpolator::Interp2D(..), RESEffInterpInputs::CRateTemperature) => &[
+            (2, RESEffInterpInputs::CRateTemperature) => &[
                 state.pwr_out_electrical.get::<si::watt>()
                     / self.energy_capacity.get::<si::watt_hour>(),
                 te_res
                     .with_context(|| format_dbg!("Expected thermal model to be configured"))?
                     .get::<si::degree_celsius>(),
             ],
-            (Interpolator::Interp3D(..), RESEffInterpInputs::CRateSOCTemperature) => &[
+            (3, RESEffInterpInputs::CRateSOCTemperature) => &[
                 state.pwr_out_electrical.get::<si::watt>()
                     / self.energy_capacity.get::<si::watt_hour>(),
                 state.soc.get::<si::ratio>(),
@@ -549,7 +547,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     pub fn set_default_pwr_soc_and_temp_interp(&mut self) -> anyhow::Result<()> {
         self.eff_interp_inputs = RESEffInterpInputs::CRateSOCTemperature;
         self.eff_interp =
-            ninterp::Interpolator::from_resource("res/default_pwr_soc_and_temp.yaml", false)?;
+            InterpolatorEnum::from_resource("res/default_pwr_soc_and_temp.yaml", false)?;
         Ok(())
     }
 

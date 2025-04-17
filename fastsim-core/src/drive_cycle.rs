@@ -128,7 +128,7 @@ impl Init for Cycle {
                 Interpolator::new_1d(
                     self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
                     self.grade.iter().map(|y| y.get::<si::ratio>()).collect(),
-                    Strategy::Linear,
+                    strategy::Linear,
                     Extrapolate::Error,
                 )
                 .map_err(ninterp::error::Error::from)?,
@@ -138,7 +138,7 @@ impl Init for Cycle {
                 Interpolator::new_1d(
                     self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
                     self.elev.iter().map(|y| y.get::<si::meter>()).collect(),
-                    Strategy::Linear,
+                    strategy::Linear,
                     Extrapolate::Error,
                 )
                 .map_err(ninterp::error::Error::from)?,

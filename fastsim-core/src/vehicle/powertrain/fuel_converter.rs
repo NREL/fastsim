@@ -647,7 +647,7 @@ fn tstat_interp_default() -> Interpolator {
     Interpolator::new_1d(
         vec![85.0, 90.0],
         vec![0.0, 1.0],
-        Strategy::Linear,
+        strategy::Linear,
         Extrapolate::Clamp,
     )
     .unwrap()
@@ -806,7 +806,7 @@ impl Init for FuelConverterThermal {
                     + self.tstat_te_delta.unwrap().get::<si::kelvin>(),
             ],
             vec![0.0, 1.0],
-            Strategy::Linear,
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .map_err(|err| {

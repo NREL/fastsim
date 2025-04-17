@@ -87,8 +87,8 @@ fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
     }
 }
 
-impl SerdeAPI for Extrapolate {}
-impl Init for Extrapolate {}
+impl<T> SerdeAPI for Extrapolate<T> {}
+impl<T> Init for Extrapolate<T> {}
 
 /// Returns absolute value of `x_val`
 pub fn abs_checked_x_val(x_val: f64, x_data: &[f64]) -> anyhow::Result<f64> {

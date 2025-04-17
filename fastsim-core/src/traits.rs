@@ -22,130 +22,158 @@ pub trait Linspace {
 
 impl Linspace for Vec<f64> {}
 
-pub trait Min {
-    fn min(&self) -> anyhow::Result<f64>;
+pub trait Min<T> {
+    fn min(&self) -> anyhow::Result<&T>;
 }
-impl Min for &[f64] {
-    fn min(&self) -> anyhow::Result<f64> {
-        Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
-    }
-}
-impl Min for Vec<f64> {
-    fn min(&self) -> anyhow::Result<f64> {
-        self.as_slice().min()
-    }
-}
-impl Min for &[&f64] {
-    fn min(&self) -> anyhow::Result<f64> {
-        Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(**curr)))
-    }
-}
-impl Min for Vec<&f64> {
-    fn min(&self) -> anyhow::Result<f64> {
-        self.as_slice().min()
-    }
-}
-impl Min for &[Vec<f64>] {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T: PartialOrd> Min<T> for [T] {
+    fn min(&self) -> anyhow::Result<&T> {
         self.iter()
-            .map(|v| v.min())
-            .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| anyhow!("Empty slice has no minimum"))
     }
 }
-impl Min for Vec<Vec<f64>> {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T: PartialOrd> Min<T> for Vec<T> {
+    fn min(&self) -> anyhow::Result<&T> {
         self.as_slice().min()
     }
 }
-impl Min for &[Vec<Vec<f64>>] {
-    fn min(&self) -> anyhow::Result<f64> {
+// impl Min for &[&f64] {
+//     fn min(&self) -> anyhow::Result<f64> {
+//         Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(**curr)))
+//     }
+// }
+// impl Min for Vec<&f64> {
+//     fn min(&self) -> anyhow::Result<f64> {
+//         self.as_slice().min()
+//     }
+// }
+// impl Min for &[Vec<f64>] {
+//     fn min(&self) -> anyhow::Result<f64> {
+//         self.iter()
+//             .map(|v| v.min())
+//             .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
+//     }
+// }
+// impl Min for Vec<Vec<f64>> {
+//     fn min(&self) -> anyhow::Result<f64> {
+//         self.as_slice().min()
+//     }
+// }
+// impl Min for &[Vec<Vec<f64>>] {
+//     fn min(&self) -> anyhow::Result<f64> {
+//         self.iter()
+//             .map(|v| v.min())
+//             .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
+//     }
+// }
+// impl Min for Vec<Vec<Vec<f64>>> {
+//     fn min(&self) -> anyhow::Result<f64> {
+//         self.as_slice().min()
+//     }
+// }
+impl<S, D> Min<S::Elem> for ArrayBase<S, D>
+where
+    S: ndarray::Data,
+    S::Elem: PartialOrd,
+    D: ndarray::Dimension,
+{
+    fn min(&self) -> anyhow::Result<&S::Elem> {
         self.iter()
-            .map(|v| v.min())
-            .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| anyhow!("Empty slice has no minimum"))
     }
 }
-impl Min for Vec<Vec<Vec<f64>>> {
-    fn min(&self) -> anyhow::Result<f64> {
-        self.as_slice().min()
-    }
-}
-impl Min for Interpolator {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<D> Min<D::Elem> for InterpolatorEnum<D>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
+{
+    fn min(&self) -> anyhow::Result<&D::Elem> {
         match self {
-            Interpolator::Interp0D(value) => Ok(*value),
-            Interpolator::Interp1D(..) => self.f_x()?.min(),
-            Interpolator::Interp2D(..) => self.f_xy()?.min(),
-            Interpolator::Interp3D(..) => self.f_xyz()?.min(),
-            Interpolator::InterpND(..) => Ok(self
-                .values()?
-                .iter()
-                .fold(f64::INFINITY, |acc, x| acc.min(*x))),
+            Self::Interp0D(Interp0D(value)) => Ok(value),
+            Self::Interp1D(interp) => interp.data.values.min(),
+            Self::Interp2D(interp) => interp.data.values.min(),
+            Self::Interp3D(interp) => interp.data.values.min(),
+            Self::InterpND(interp) => interp.data.values.min(),
         }
     }
 }
 
-pub trait Max {
-    fn max(&self) -> anyhow::Result<f64>;
+pub trait Max<T> {
+    fn max(&self) -> anyhow::Result<&T>;
 }
-impl Max for &[f64] {
-    fn max(&self) -> anyhow::Result<f64> {
-        Ok(self
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
-    }
-}
-impl Max for Vec<f64> {
-    fn max(&self) -> anyhow::Result<f64> {
-        self.as_slice().max()
-    }
-}
-impl Max for &[&f64] {
-    fn max(&self) -> anyhow::Result<f64> {
-        Ok(self
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(**curr)))
-    }
-}
-impl Max for Vec<&f64> {
-    fn max(&self) -> anyhow::Result<f64> {
-        self.as_slice().max()
-    }
-}
-impl Max for &[Vec<f64>] {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<T: PartialOrd> Max<T> for [T] {
+    fn max(&self) -> anyhow::Result<&T> {
         self.iter()
-            .map(|v| v.max())
-            .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| anyhow!("Empty slice has no maximum"))
     }
 }
-impl Max for Vec<Vec<f64>> {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<T: PartialOrd> Max<T> for Vec<T> {
+    fn max(&self) -> anyhow::Result<&T> {
         self.as_slice().max()
     }
 }
-impl Max for &[Vec<Vec<f64>>] {
-    fn max(&self) -> anyhow::Result<f64> {
+// impl Max for &[&f64] {
+//     fn max(&self) -> anyhow::Result<f64> {
+//         Ok(self
+//             .iter()
+//             .fold(f64::NEG_INFINITY, |acc, curr| acc.max(**curr)))
+//     }
+// }
+// impl Max for Vec<&f64> {
+//     fn max(&self) -> anyhow::Result<f64> {
+//         self.as_slice().max()
+//     }
+// }
+// impl Max for &[Vec<f64>] {
+//     fn max(&self) -> anyhow::Result<f64> {
+//         self.iter()
+//             .map(|v| v.max())
+//             .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
+//     }
+// }
+// impl Max for Vec<Vec<f64>> {
+//     fn max(&self) -> anyhow::Result<f64> {
+//         self.as_slice().max()
+//     }
+// }
+// impl Max for &[Vec<Vec<f64>>] {
+//     fn max(&self) -> anyhow::Result<f64> {
+//         self.iter()
+//             .map(|v| v.max())
+//             .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
+//     }
+// }
+// impl Max for Vec<Vec<Vec<f64>>> {
+//     fn max(&self) -> anyhow::Result<f64> {
+//         self.as_slice().max()
+//     }
+// }
+impl<S, D> Max<S::Elem> for ArrayBase<S, D>
+where
+    S: ndarray::Data,
+    S::Elem: PartialOrd,
+    D: ndarray::Dimension,
+{
+    fn max(&self) -> anyhow::Result<&S::Elem> {
         self.iter()
-            .map(|v| v.max())
-            .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| anyhow!("Empty slice has no maximum"))
     }
 }
-impl Max for Vec<Vec<Vec<f64>>> {
-    fn max(&self) -> anyhow::Result<f64> {
-        self.as_slice().max()
-    }
-}
-impl Max for Interpolator {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<D> Max<D::Elem> for InterpolatorEnum<D>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
+{
+    fn max(&self) -> anyhow::Result<&D::Elem> {
         match self {
-            Interpolator::Interp0D(value) => Ok(*value),
-            Interpolator::Interp1D(..) => self.f_x()?.max(),
-            Interpolator::Interp2D(..) => self.f_xy()?.max(),
-            Interpolator::Interp3D(..) => self.f_xyz()?.max(),
-            Interpolator::InterpND(..) => Ok(self
-                .values()?
-                .iter()
-                .fold(f64::NEG_INFINITY, |acc, x| acc.max(*x))),
+            Self::Interp0D(Interp0D(value)) => Ok(value),
+            Self::Interp1D(interp) => interp.data.values.max(),
+            Self::Interp2D(interp) => interp.data.values.max(),
+            Self::Interp3D(interp) => interp.data.values.max(),
+            Self::InterpND(interp) => interp.data.values.max(),
         }
     }
 }
@@ -560,11 +588,11 @@ mod tests {
 
     #[test]
     fn test_max_for_vec_f64() {
-        assert_eq!(Vec::linspace(-10., 12., 5).max().unwrap(), 12.);
+        assert_eq!(Vec::linspace(-10., 12., 5).max().unwrap(), &12.);
     }
     #[test]
     fn test_min_for_vec_f64() {
-        assert_eq!(Vec::linspace(-10., 12., 5).min().unwrap(), -10.);
+        assert_eq!(Vec::linspace(-10., 12., 5).min().unwrap(), &-10.);
     }
 
     #[test]
