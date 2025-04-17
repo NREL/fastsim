@@ -104,13 +104,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         // TODO: account for transmission efficiency in here
         let (disch_buffer, chrg_buffer) = match &mut self.pt_cntrl {
             HEVPowertrainControls::RGWDB(rgwdb) => {
-                rgwdb.state.on_time_too_short.update(self.fc.state.fc_on.get_prev_or_default() && self.fc.state.time_on.get_prev_or_default()
-                    < rgwdb.fc_min_time_on.with_context(|| {
-                    anyhow!(
-                        "{}\n Expected `ResGreedyWithBuffers::init` to have been called beforehand.",
-                        format_dbg!()
-                    )
-                })?, format_dbg!())?;
+                rgwdb.handle_fc_on_causes(&self.fc, veh_state, &self.res, &self.em.state)?;
 
                 let disch_buffer = (0.5
                     * *veh_state.mass.get(format_dbg!())?
@@ -211,7 +205,6 @@ impl Powertrain for Box<HybridElectricVehicle> {
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        veh_state: &VehicleState,
         _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
@@ -231,13 +224,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
         let (fc_pwr_out_req, em_pwr_out_req) = self
             .pt_cntrl
-            .get_pwr_fc_and_em(
-                pwr_in_transmission,
-                veh_state,
-                &self.fc,
-                &self.em.state,
-                &self.res,
-            )
+            .get_pwr_fc_and_em(pwr_in_transmission, &self.fc, &self.em.state, &self.res)
             .with_context(|| format_dbg!())?;
         let fc_on: bool = self.pt_cntrl.engine_on()?;
 
@@ -407,7 +394,7 @@ impl Mass for HybridElectricVehicle {
 )]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
-pub struct FCOnCausesState {
+pub struct RGWDBState {
     /// time step index
     pub i: TrackedStateWithMemory<usize>,
     /// Engine must be on to self heat if thermal model is enabled
@@ -428,10 +415,10 @@ pub struct FCOnCausesState {
     /// buffer at which FC is forced on
     pub soc_fc_on_buffer: TrackedState<si::Ratio>,
 }
-impl SerdeAPI for FCOnCausesState {}
-impl Init for FCOnCausesState {}
+impl SerdeAPI for RGWDBState {}
+impl Init for RGWDBState {}
 
-impl FCOnCausesState {
+impl RGWDBState {
     /// If any of the causes are true, engine must be on
     fn engine_on(&self) -> anyhow::Result<bool> {
         Ok(*self.fc_temperature_too_low.get(format_dbg!())?
@@ -576,7 +563,6 @@ impl HEVPowertrainControls {
     fn get_pwr_fc_and_em(
         &mut self,
         pwr_prop_req: si::Power,
-        veh_state: &VehicleState,
         fc: &FuelConverter,
         em_state: &ElectricMachineState,
         res: &ReversibleEnergyStorage,
@@ -616,9 +602,7 @@ impl HEVPowertrainControls {
         // TODO: make sure idle fuel gets converted to heat correctly
 
         match self {
-            Self::RGWDB(rgwdb) => {
-                rgwdb.get_pwr_fc_and_em(fc, veh_state, res, pwr_prop_req, em_state)
-            }
+            Self::RGWDB(rgwdb) => rgwdb.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
             Self::Placeholder => todo!(),
         }
     }
@@ -689,10 +673,10 @@ pub struct RESGreedyWithDynamicBuffers {
     pub temp_fc_allowed_off: Option<si::Temperature>,
     /// current state of control variables
     #[serde(default)]
-    pub state: FCOnCausesState,
-    #[serde(default, skip_serializing_if = "FCOnCausesStateHistoryVec::is_empty")]
+    pub state: RGWDBState,
+    #[serde(default, skip_serializing_if = "RGWDBStateHistoryVec::is_empty")]
     /// history of current state
-    pub history: FCOnCausesStateHistoryVec,
+    pub history: RGWDBStateHistoryVec,
 }
 
 impl HistoryMethods for RESGreedyWithDynamicBuffers {
@@ -718,7 +702,7 @@ impl Init for RESGreedyWithDynamicBuffers {
         init_opt_default!(
             self,
             speed_soc_fc_on_buffer,
-            self.speed_soc_disch_buffer.unwrap() * 1.1
+            self.speed_soc_disch_buffer.unwrap() * 1.5
         );
         init_opt_default!(self, speed_soc_fc_on_buffer_coeff, 1.0 * uc::R);
         init_opt_default!(self, speed_soc_regen_buffer, 30. * uc::MPH);
@@ -726,7 +710,7 @@ impl Init for RESGreedyWithDynamicBuffers {
         init_opt_default!(self, fc_min_time_on, uc::S * 5.0);
         init_opt_default!(self, speed_fc_forced_on, uc::MPH * 75.);
         init_opt_default!(self, frac_pwr_demand_fc_forced_on, uc::R * 0.75);
-        init_opt_default!(self, frac_of_most_eff_pwr_to_run_fc, 1.0 * uc::R);
+        init_opt_default!(self, frac_of_most_eff_pwr_to_run_fc, 1.5 * uc::R);
         Ok(())
     }
 }
@@ -736,21 +720,13 @@ impl RESGreedyWithDynamicBuffers {
     fn get_pwr_fc_and_em(
         &mut self,
         fc: &FuelConverter,
-        veh_state: &VehicleState,
-        res: &ReversibleEnergyStorage,
         pwr_prop_req: si::Power,
         em_state: &ElectricMachineState,
     ) -> anyhow::Result<(si::Power, si::Power)> {
-        self.handle_fc_on_causes_for_temp(fc)?;
-        self.handle_fc_on_causes_for_speed(veh_state)?;
-        self.handle_fc_on_causes_for_low_soc(res, veh_state)?;
-        // `handle_fc_*` below here are asymmetrical for positive tractive power only
-        self.handle_fc_on_causes_for_pwr_demand(pwr_prop_req, em_state, &fc.state)?;
-
         // Tractive power `em` must provide before deciding power
         // split, cannot exceed ElectricMachine max output power.
-        // Excess demand will be handled by `fc`.  Favors drawing
-        // power from `em` before engine
+        // Excess demand will be handled by `fc`.  Favors drawing power from
+        // `em` before engine
         let em_pwr = pwr_prop_req
             .min(*em_state.pwr_mech_fwd_out_max.get(format_dbg!())?)
             .max(-*em_state.pwr_mech_regen_max.get(format_dbg!())?);
@@ -802,11 +778,41 @@ impl RESGreedyWithDynamicBuffers {
         Ok((fc_pwr, em_pwr))
     }
 
+    fn handle_fc_on_causes(
+        &mut self,
+        fc: &FuelConverter,
+        veh_state: &VehicleState,
+        res: &ReversibleEnergyStorage,
+        em_state: &ElectricMachineState,
+    ) -> Result<(), anyhow::Error> {
+        self.handle_fc_on_causes_for_temp(fc)?;
+        self.handle_fc_on_causes_for_speed(veh_state)?;
+        self.handle_fc_on_causes_for_low_soc(res, veh_state)?;
+        self.handle_fc_on_causes_for_pwr_demand(
+            *veh_state.pwr_tractive.get_prev_or_curr(format_dbg!())?,
+            em_state,
+            &fc.state,
+        )?;
+        self.handle_fc_on_causes_for_on_time(fc)?;
+        Ok(())
+    }
+
+    fn handle_fc_on_causes_for_on_time(&mut self, fc: &FuelConverter) -> Result<(), anyhow::Error> {
+        self.state.on_time_too_short.update(fc.state.fc_on.get_prev_or_default() && fc.state.time_on.get_prev_or_default()
+                    < self.fc_min_time_on.with_context(|| {
+                    anyhow!(
+                        "{}\n Expected `ResGreedyWithBuffers::init` to have been called beforehand.",
+                        format_dbg!()
+                    )
+                })?, format_dbg!())?;
+        Ok(())
+    }
+
     /// Determines whether power demand requires engine to be on.  Not needed during
     /// negative traction.
     fn handle_fc_on_causes_for_pwr_demand(
         &mut self,
-        pwr_out_req: si::Power,
+        pwr_out_req_for_cyc: si::Power,
         em_state: &ElectricMachineState,
         fc_state: &FuelConverterState,
     ) -> Result<(), anyhow::Error> {
@@ -814,14 +820,20 @@ impl RESGreedyWithDynamicBuffers {
             .frac_pwr_demand_fc_forced_on
             .with_context(|| format_dbg!())?;
         self.state.propulsion_power_demand_soft.update(
-            pwr_out_req
+            pwr_out_req_for_cyc
                 > frac_pwr_demand_fc_forced_on
-                    * (*em_state.pwr_mech_fwd_out_max.get(format_dbg!())?
-                        + *fc_state.pwr_out_max.get(format_dbg!())?),
+                    * (*em_state
+                        .pwr_mech_fwd_out_max
+                        .get_prev_or_curr(format_dbg!())?
+                        + *fc_state.pwr_out_max.get_prev_or_curr(format_dbg!())?),
             format_dbg!(),
         )?;
         self.state.propulsion_power_demand.update(
-            pwr_out_req - *em_state.pwr_mech_fwd_out_max.get(format_dbg!())? >= si::Power::ZERO,
+            pwr_out_req_for_cyc
+                - *em_state
+                    .pwr_mech_fwd_out_max
+                    .get_prev_or_curr(format_dbg!())?
+                >= si::Power::ZERO,
             format_dbg!(),
         )?;
         Ok(())
@@ -843,7 +855,7 @@ impl RESGreedyWithDynamicBuffers {
                         .powi(typenum::P2::new())
                         - veh_state
                             .speed_ach
-                            .get(format_dbg!())?
+                            .get_prev_or_curr(format_dbg!())?
                             .powi(typenum::P2::new()));
                 energy_delta_to_buffer_speed.max(si::Energy::ZERO)
                     * self
@@ -864,7 +876,7 @@ impl RESGreedyWithDynamicBuffers {
     /// Determines whether enigne must be on for high speed
     fn handle_fc_on_causes_for_speed(&mut self, veh_state: &VehicleState) -> anyhow::Result<()> {
         self.state.vehicle_speed_too_high.update(
-            *veh_state.speed_ach.get(format_dbg!())?
+            *veh_state.speed_ach.get_prev_or_curr(format_dbg!())?
                 > self.speed_fc_forced_on.with_context(|| format_dbg!())?,
             format_dbg!(),
         )?;

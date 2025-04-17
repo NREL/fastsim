@@ -391,7 +391,6 @@ impl Vehicle {
         self.pt_type
             .solve(
                 *self.state.pwr_tractive.get(format_dbg!())?,
-                &self.state,
                 true, // `enabled` should always be true at the powertrain level
                 dt,
             )
@@ -613,7 +612,7 @@ pub struct VehicleState {
     /// maximum backward propulsive power (e.g. regenerative braking) vehicle can produce
     pub pwr_prop_bwd_max: TrackedState<si::Power>,
     /// Tractive power for achieved speed
-    pub pwr_tractive: TrackedState<si::Power>,
+    pub pwr_tractive: TrackedStateWithMemory<si::Power>,
     /// Tractive power required for prescribed speed
     pub pwr_tractive_for_cyc: TrackedState<si::Power>,
     /// integral of [Self::pwr_tractive]
@@ -731,7 +730,6 @@ pub(crate) mod tests {
         veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
             .unwrap();
         assert!(veh.pt_type.is_conventional_vehicle());
-        veh.fc().unwrap().state.pwr_out_max.check().unwrap();
         veh
     }
 

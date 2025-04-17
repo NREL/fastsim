@@ -704,7 +704,7 @@ pub struct ElectricMachineState {
     pub eff: TrackedState<si::Ratio>,
     // Component limits
     /// Maximum possible positive traction power.
-    pub pwr_mech_fwd_out_max: TrackedState<si::Power>,
+    pub pwr_mech_fwd_out_max: TrackedStateWithMemory<si::Power>,
     /// efficiency in forward direction at max possible input power from `FuelConverter` and `ReversibleEnergyStorage`
     pub eff_fwd_at_max_input: TrackedState<si::Ratio>,
     /// Maximum possible regeneration power going to ReversibleEnergyStorage.

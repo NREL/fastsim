@@ -505,7 +505,7 @@ pub struct FuelConverterState {
     /// time step index
     pub i: TrackedStateWithMemory<usize>,
     /// max total output power fc can produce at current time
-    pub pwr_out_max: TrackedState<si::Power>,
+    pub pwr_out_max: TrackedStateWithMemory<si::Power>,
     /// max propulsion power fc can produce at current time
     pub pwr_prop_max: TrackedState<si::Power>,
     /// efficiency evaluated at current demand

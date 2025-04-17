@@ -27,13 +27,7 @@ pub trait Powertrain {
     /// - `veh_state`: state of vehicle
     /// - `enabled`: whether the component is active in current time step (e.g. engine idling v. shut off)
     /// - `dt`: simulation time step size
-    fn solve(
-        &mut self,
-        pwr_out_req: si::Power,
-        veh_state: &VehicleState,
-        enabled: bool,
-        dt: si::Time,
-    ) -> anyhow::Result<()>;
+    fn solve(&mut self, pwr_out_req: si::Power, enabled: bool, dt: si::Time) -> anyhow::Result<()>;
 
     /// Returns regen power after `Powertrain::solve` has been called
     fn pwr_regen(&self) -> anyhow::Result<si::Power>;

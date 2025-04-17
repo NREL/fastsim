@@ -48,20 +48,15 @@ impl Powertrain for PowertrainType {
         }
     }
 
-    fn solve(
-        &mut self,
-        pwr_out_req: si::Power,
-        veh_state: &VehicleState,
-        enabled: bool,
-        dt: si::Time,
-    ) -> anyhow::Result<()> {
+    fn solve(&mut self, pwr_out_req: si::Power, enabled: bool, dt: si::Time) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, veh_state, enabled, dt),
-            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, veh_state, enabled, dt),
-            Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, veh_state, enabled, dt),
+            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, enabled, dt),
+            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
+            Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
         }
     }
 
+    /// Returns max power for forward direction and backward direction
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         match self {
             Self::ConventionalVehicle(v) => v.get_curr_pwr_prop_out_max(),

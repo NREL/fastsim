@@ -2,6 +2,7 @@ use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
 use crate::imports::*;
 use crate::prelude::*;
+use crate::vehicle::hev::HEVPowertrainControls;
 
 #[fastsim_api(
     #[staticmethod]
@@ -281,16 +282,20 @@ impl SimDrive {
         self.veh
             .solve_thermal(self.cyc.temp_amb_air[i], dt)
             .with_context(|| format_dbg!())?;
-        self.veh
-            .set_curr_pwr_out_max(dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
         self.set_pwr_prop_for_speed(
             self.cyc.speed[i],
             self.veh.state.speed_ach.get_prev_or_default(),
             dt,
         )
         .with_context(|| anyhow!(format_dbg!()))?;
-        self.veh.state.pwr_tractive_for_cyc = self.veh.state.pwr_tractive.clone();
+        self.veh.state.pwr_tractive_for_cyc.update(
+            *self.veh.state.pwr_tractive.get(format_dbg!())?,
+            format_dbg!(),
+        )?;
+        self.veh
+            // TODO: feed in something different for first arg when CAVs stuff is active @MOK
+            .set_curr_pwr_out_max(dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         if self.sim_params.trace_miss_opts.is_allow_checked() {
@@ -432,6 +437,15 @@ impl SimDrive {
                 + *vs.pwr_drag.get(format_dbg!())?,
             format_dbg!(),
         )?;
+        Ok(())
+    }
+
+    /// Sets achieved speed based on known current max power
+    /// # Arguments
+    /// - `cyc_speed`: prescribed speed
+    /// - `dt`: simulation time step size
+    pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
+        let vs = &mut self.veh.state;
         vs.cyc_met.update(
             vs.pwr_tractive.get(format_dbg!())? <= vs.pwr_prop_fwd_max.get(format_dbg!())?,
             format_dbg!(),
@@ -446,21 +460,10 @@ impl SimDrive {
             },
             format_dbg!(),
         )?;
-        Ok(())
-    }
-
-    /// Sets achieved speed based on known current max power
-    /// # Arguments
-    /// - `cyc_speed`: prescribed speed
-    /// - `dt`: simulation time step size
-    pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
-        // borrow state as `vs` for shorthand
-        let vs = &mut self.veh.state;
-        let speed_prev = vs.speed_ach.get_prev_or_default();
-        if *vs.cyc_met.get(format_dbg!())? {
-            // TODO: this update may have already been called and may need
-            // special handling (i.e. writing an `update_unchecked` method)
-            vs.speed_ach.update(cyc_speed, format_dbg!())?;
+        let veh = &mut self.veh;
+        let speed_prev = veh.state.speed_ach.get_prev_or_default();
+        if *veh.state.cyc_met.get(format_dbg!())? {
+            veh.state.speed_ach.update(cyc_speed, format_dbg!())?;
             return Ok(());
         } else {
             match self.sim_params.trace_miss_opts {
@@ -472,33 +475,33 @@ impl SimDrive {
                 }
                 TraceMissOptions::Error => bail!(
                     "{}\nFailed to meet speed trace.
-prescribed speed: {} mph
-achieved speed: {} mph
-pwr for prescribed speed: {} kW
-pwr for achieved speed: {} kW
-pwr available: {} kW,
-pwr deficit: {} kW
+cyc_speed: {} m/s
+
+vehicle state: {:?} 
+
+fc state: {:?}
+
+res state: {:?}
+
+hev rgwdb controls state: {:?}
 ",
                     format_dbg!(),
-                    cyc_speed.get::<si::mile_per_hour>(),
-                    vs.speed_ach
-                        .get_prev_or_default()
-                        .get::<si::mile_per_hour>(),
-                    vs.pwr_tractive_for_cyc
-                        .get(format_dbg!())?
-                        .get::<si::kilowatt>(),
-                    vs.pwr_tractive.get(format_dbg!())?.get::<si::kilowatt>(),
-                    vs.pwr_prop_fwd_max
-                        .get(format_dbg!())?
-                        .get::<si::kilowatt>(),
-                    (*vs.pwr_tractive.get(format_dbg!())?
-                        - *vs.pwr_prop_fwd_max.get(format_dbg!())?)
-                    .get::<si::kilowatt>()
-                    .format_eng(None)
+                    cyc_speed.get::<si::meter_per_second>(),
+                    veh.state,
+                    veh.fc().map(|fc| fc.state.clone()),
+                    veh.res().map(|res| res.state.clone()),
+                    veh.hev().map(|hev| {
+                        if let HEVPowertrainControls::RGWDB(rgwdb) = &hev.pt_cntrl {
+                            Some(rgwdb.state.clone())
+                        } else {
+                            None
+                        }
+                    })
                 ),
                 TraceMissOptions::Correct => todo!(),
             }
         }
+        let vs = &mut self.veh.state;
         let mass = self
             .veh
             .mass
@@ -596,6 +599,7 @@ pwr deficit: {} kW
         // speed achieved iteration counter
         let mut spd_ach_iter_counter = 1;
         let mut converged = pwr_err <= si::Power::ZERO;
+        let mut speed_ach: si::Velocity = Default::default();
         while &spd_ach_iter_counter < max_iter && !converged {
             let speed_guess = *speed_guesses.iter().last().with_context(|| format_dbg!())?
                 * (1.0 - g)
@@ -620,14 +624,13 @@ pwr deficit: {} kW
             spd_ach_iter_counter += 1;
 
             // TODO: verify that assuming `speed_guesses.iter().last()` is the correct solution
-            vs.speed_ach.update(
-                speed_guesses
-                    .last()
-                    .with_context(|| format_dbg!("should have had at least one element"))?
-                    .max(0.0 * uc::MPS),
-                format_dbg!(),
-            )?;
+            speed_ach = speed_guesses
+                .last()
+                .with_context(|| format_dbg!("should have had at least one element"))?
+                .max(0.0 * uc::MPS);
         }
+
+        vs.speed_ach.update(speed_ach, format_dbg!())?;
 
         // Run it again to make sure it has been updated for achieved speed
         self.set_pwr_prop_for_speed(
