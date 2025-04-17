@@ -64,6 +64,11 @@ impl Transmission {
         Ok(*state.pwr_in.get(format_dbg!())?)
     }
 }
+impl SetCumulative for Transmission {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.state.set_cumulative(dt)
+    }
+}
 impl HistoryMethods for Transmission {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)

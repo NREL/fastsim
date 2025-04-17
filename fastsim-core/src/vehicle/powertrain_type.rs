@@ -24,6 +24,16 @@ impl Init for PowertrainType {
     }
 }
 
+impl SetCumulative for PowertrainType {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => conv.set_cumulative(dt),
+            Self::HybridElectricVehicle(hev) => hev.set_cumulative(dt),
+            Self::BatteryElectricVehicle(bev) => bev.set_cumulative(dt),
+        }
+    }
+}
+
 impl Powertrain for PowertrainType {
     fn set_curr_pwr_prop_out_max(
         &mut self,

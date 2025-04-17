@@ -207,7 +207,6 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         history: Default::default(),
                     },
                     pt_cntrl,
-                    fc_on_causes: Default::default(),
                     mass: None,
                     sim_params: Default::default(),
                     aux_cntrl: Default::default(),

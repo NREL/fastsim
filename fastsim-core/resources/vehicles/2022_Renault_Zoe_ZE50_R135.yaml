@@ -103,7 +103,6 @@ pt_type:
         eff_fwd_at_max_input: 0.0
         pwr_mech_regen_max: 0.0
         eff_at_max_regen: 0.0
-        pwr_rate_out_max: 0.0
         pwr_out_req: 0.0
         energy_out_req: 0.0
         pwr_elec_prop_in: 0.0

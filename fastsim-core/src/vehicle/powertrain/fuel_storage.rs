@@ -35,6 +35,13 @@ pub struct FuelStorage {
 impl SerdeAPI for FuelStorage {}
 impl Init for FuelStorage {}
 
+impl SetCumulative for FuelStorage {
+    fn set_cumulative(&mut self, _dt: si::Time) -> anyhow::Result<()> {
+        // self.state.set_cumulative(dt)
+        Ok(())
+    }
+}
+
 impl Mass for FuelStorage {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self

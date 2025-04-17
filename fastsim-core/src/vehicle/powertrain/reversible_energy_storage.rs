@@ -438,7 +438,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
                 > *self.state.soc_disch_buffer.get(format_dbg!())?
             {
                 self.pwr_out_max
-            } else if *self.state.soc.get(format_dbg!())? > self.min_soc
+            } else if *self.state.soc.get_prev_or_curr(format_dbg!())? > self.min_soc
                 && soc_buffer_delta > si::Ratio::ZERO
             {
                 self.pwr_out_max * (*self.state.soc.get(format_dbg!())? - self.min_soc)

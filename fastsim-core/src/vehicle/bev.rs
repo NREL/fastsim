@@ -32,6 +32,15 @@ impl Init for BatteryElectricVehicle {
 
 impl SerdeAPI for BatteryElectricVehicle {}
 
+impl SetCumulative for BatteryElectricVehicle {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.em.set_cumulative(dt)?;
+        self.res.set_cumulative(dt)?;
+        self.transmission.set_cumulative(dt)?;
+        Ok(())
+    }
+}
+
 impl Mass for BatteryElectricVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self

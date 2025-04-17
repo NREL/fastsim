@@ -31,6 +31,14 @@ impl Init for ConventionalVehicle {
         Ok(())
     }
 }
+impl SetCumulative for ConventionalVehicle {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.fc.set_cumulative(dt)?;
+        self.fs.set_cumulative(dt)?;
+        self.transmission.set_cumulative(dt)?;
+        Ok(())
+    }
+}
 
 impl HistoryMethods for ConventionalVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {

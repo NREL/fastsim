@@ -270,15 +270,7 @@ const BEV: &str = "BEV";
 impl SetCumulative for Vehicle {
     fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
         self.state.set_cumulative(dt)?;
-        if let Some(fc) = self.fc_mut() {
-            fc.set_cumulative(dt)?;
-        }
-        if let Some(res) = self.res_mut() {
-            res.set_cumulative(dt)?;
-        }
-        if let Some(em) = self.em_mut() {
-            em.set_cumulative(dt)?;
-        }
+        self.pt_type.set_cumulative(dt)?;
         self.cabin.set_cumulative(dt)?;
         self.state.dist.update(
             self.state.dist.get_prev_or_default() + *self.state.speed_ach.get(format_dbg!())? * dt,

@@ -261,7 +261,7 @@ impl FuelConverter {
         self.state.fc_on.update(fc_on, format_dbg!())?;
         self.state.time_on.update(
             if fc_on {
-                *self.state.time_on.get(format_dbg!())? + dt
+                self.state.time_on.get_prev_or_default() + dt
             } else {
                 si::Time::ZERO
             },
@@ -529,7 +529,7 @@ pub struct FuelConverterState {
     /// If true, engine is on, and if false, off (no idle)
     pub fc_on: TrackedStateWithMemory<bool>,
     /// Time the engine has been on
-    pub time_on: TrackedState<si::Time>,
+    pub time_on: TrackedStateWithMemory<si::Time>,
 }
 
 impl SerdeAPI for FuelConverterState {}

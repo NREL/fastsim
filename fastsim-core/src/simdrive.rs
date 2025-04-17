@@ -245,17 +245,16 @@ impl SimDrive {
         let len = &self.cyc.len_checked().with_context(|| format_dbg!())?;
         ensure!(len >= &2, format_dbg!(len < &2));
         self.save_state()?;
-        self.check_and_reset(format_dbg!())
-            .with_context(|| format_dbg!())?;
-        // to increment `i` to 1 everywhere
-        self.step()?;
-        while self.veh.state.i.get(format_dbg!())? < len {
-            self.solve_step()
-                .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
-            self.save_state()?;
+        loop {
             self.check_and_reset(format_dbg!())
                 .with_context(|| format_dbg!())?;
             self.step()?;
+            self.solve_step()
+                .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
+            self.save_state()?;
+            if *self.veh.state.i.get(format_dbg!())? == len - 1 {
+                break;
+            }
         }
         Ok(())
     }
@@ -482,7 +481,9 @@ pwr deficit: {} kW
 ",
                     format_dbg!(),
                     cyc_speed.get::<si::mile_per_hour>(),
-                    vs.speed_ach.get(format_dbg!())?.get::<si::mile_per_hour>(),
+                    vs.speed_ach
+                        .get_prev_or_default()
+                        .get::<si::mile_per_hour>(),
                     vs.pwr_tractive_for_cyc
                         .get(format_dbg!())?
                         .get::<si::kilowatt>(),
@@ -760,7 +761,7 @@ mod tests {
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
-        assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap());
+        assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap() - 1);
         assert!(
             *sd.veh
                 .fc()
@@ -780,8 +781,8 @@ mod tests {
         let _veh = mock_hev();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
-        sd.walk().unwrap();
-        assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap());
+        sd.walk_once().unwrap();
+        assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap() - 1);
         assert!(
             *sd.veh
                 .fc()
@@ -815,7 +816,7 @@ mod tests {
             sim_params: Default::default(),
         };
         sd.walk().unwrap();
-        assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap());
+        assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap() - 1);
         assert!(sd.veh.fc().is_none());
         assert!(
             *sd.veh
