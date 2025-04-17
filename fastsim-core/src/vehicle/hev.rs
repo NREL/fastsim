@@ -34,6 +34,7 @@ pub struct HybridElectricVehicle {
     pub soc_bal_iter_history: Vec<Self>,
     /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
     /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
+    #[serde(default)]
     pub soc_bal_iters: TrackedStateWithMemory<u32>,
 }
 
@@ -655,16 +656,8 @@ pub struct RESGreedyWithDynamicBuffers {
     pub frac_of_most_eff_pwr_to_run_fc: Option<si::Ratio>,
     /// Fraction of available charging capacity to use toward running the engine
     /// efficiently.
-    // NOTE: this is inherited from fastsim-2 and has no effect here.  After
-    // further thought, either remove it or use it.
-    pub frac_res_chrg_for_fc: si::Ratio,
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
-    // NOTE: this is inherited from fastsim-2 and has no effect here.  After
-    // further thought, either remove it or use it.
-    /// Fraction of available discharging capacity to use toward running the
-    /// engine efficiently.
-    pub frac_res_dschrg_for_fc: si::Ratio,
     /// temperature at which engine is forced on to warm up
     #[serde(default)]
     pub temp_fc_forced_on: Option<si::Temperature>,
@@ -697,7 +690,7 @@ impl HistoryMethods for RESGreedyWithDynamicBuffers {
 impl Init for RESGreedyWithDynamicBuffers {
     fn init(&mut self) -> Result<(), Error> {
         // TODO: make sure these values propagate to the documented defaults above
-        init_opt_default!(self, speed_soc_disch_buffer, 40.0 * uc::MPH);
+        init_opt_default!(self, speed_soc_disch_buffer, 70.0 * uc::MPH);
         init_opt_default!(self, speed_soc_disch_buffer_coeff, 1.0 * uc::R);
         init_opt_default!(
             self,
@@ -710,7 +703,7 @@ impl Init for RESGreedyWithDynamicBuffers {
         init_opt_default!(self, fc_min_time_on, uc::S * 5.0);
         init_opt_default!(self, speed_fc_forced_on, uc::MPH * 75.);
         init_opt_default!(self, frac_pwr_demand_fc_forced_on, uc::R * 0.75);
-        init_opt_default!(self, frac_of_most_eff_pwr_to_run_fc, 1.5 * uc::R);
+        init_opt_default!(self, frac_of_most_eff_pwr_to_run_fc, 1.0 * uc::R);
         Ok(())
     }
 }

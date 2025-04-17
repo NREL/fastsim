@@ -2,7 +2,6 @@ use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
 use crate::imports::*;
 use crate::prelude::*;
-use crate::vehicle::hev::HEVPowertrainControls;
 
 #[fastsim_api(
     #[staticmethod]
@@ -154,20 +153,11 @@ impl SimDrive {
     /// corrections (e.g. iterate `walk` until SOC balance is achieved -- i.e. initial
     /// and final SOC are nearly identical)
     pub fn walk(&mut self) -> anyhow::Result<()> {
-        self.veh.state.mass.update(
-            self.veh
-                .mass()
-                .with_context(|| format_dbg!())?
-                .with_context(|| format_dbg!("Expected mass to have been set."))?,
-            format_dbg!(),
-        )?;
-        self.veh
-            .hev_mut()
-            .map(|hev| hev.soc_bal_iters.update(0, format_dbg!()));
         match self.veh.pt_type {
             PowertrainType::HybridElectricVehicle(_) => {
                 // Net battery energy used per amount of fuel used
                 // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
+                let veh_init = self.veh.clone();
                 loop {
                     self.veh
                         .hev_mut()
@@ -231,6 +221,8 @@ impl SimDrive {
                                 hev.soc_bal_iters.reset()?;
                             }
                         }
+                        // reset vehicle to initial state
+                        self.veh = veh_init.clone();
                         // start SOC at previous final value
                         self.veh.res_mut().unwrap().state.soc = soc_final;
                     }
@@ -246,6 +238,15 @@ impl SimDrive {
         let len = &self.cyc.len_checked().with_context(|| format_dbg!())?;
         ensure!(len >= &2, format_dbg!(len < &2));
         self.save_state()?;
+
+        self.veh.state.mass.update(
+            self.veh
+                .mass()
+                .with_context(|| format_dbg!())?
+                .with_context(|| format_dbg!("Expected mass to have been set."))?,
+            format_dbg!(),
+        )?;
+
         loop {
             self.check_and_reset(format_dbg!())
                 .with_context(|| format_dbg!())?;
@@ -475,28 +476,35 @@ impl SimDrive {
                 }
                 TraceMissOptions::Error => bail!(
                     "{}\nFailed to meet speed trace.
-cyc_speed: {} m/s
-
-vehicle state: {:?} 
-
-fc state: {:?}
-
-res state: {:?}
-
-hev rgwdb controls state: {:?}
+prescribed speed: {} mph
+speed_ach: {} mph
+pwr_tractive_for_cyc: {} kW
+pwr_tractive: {} kW
+pwr_prop_fwd_max: {} kW,
+pwr deficit: {} kW
 ",
                     format_dbg!(),
-                    cyc_speed.get::<si::meter_per_second>(),
-                    veh.state,
-                    veh.fc().map(|fc| fc.state.clone()),
-                    veh.res().map(|res| res.state.clone()),
-                    veh.hev().map(|hev| {
-                        if let HEVPowertrainControls::RGWDB(rgwdb) = &hev.pt_cntrl {
-                            Some(rgwdb.state.clone())
-                        } else {
-                            None
-                        }
-                    })
+                    cyc_speed.get::<si::mile_per_hour>(),
+                    veh.state
+                        .speed_ach
+                        .get_prev_or_default()
+                        .get::<si::mile_per_hour>(),
+                    veh.state
+                        .pwr_tractive_for_cyc
+                        .get(format_dbg!())?
+                        .get::<si::kilowatt>(),
+                    veh.state
+                        .pwr_tractive
+                        .get(format_dbg!())?
+                        .get::<si::kilowatt>(),
+                    veh.state
+                        .pwr_prop_fwd_max
+                        .get(format_dbg!())?
+                        .get::<si::kilowatt>(),
+                    (*veh.state.pwr_tractive.get(format_dbg!())?
+                        - *veh.state.pwr_prop_fwd_max.get(format_dbg!())?)
+                    .get::<si::kilowatt>()
+                    .format_eng(None)
                 ),
                 TraceMissOptions::Correct => todo!(),
             }
@@ -784,7 +792,7 @@ mod tests {
         let _veh = mock_hev();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
-        sd.walk_once().unwrap();
+        sd.walk().unwrap();
         assert!(*sd.veh.state.i.get(String::new()).unwrap() == sd.cyc.len_checked().unwrap() - 1);
         assert!(
             *sd.veh

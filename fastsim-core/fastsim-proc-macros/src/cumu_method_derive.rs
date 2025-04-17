@@ -41,7 +41,7 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
                 #(self
                     .#energy_fields
                     .update(
-                        *self.#pwr_fields.get(format_dbg!())? * dt,
+                        *self.#pwr_fields.get(format_dbg!())? * dt + self.#energy_fields.get_prev_or_default(),
                         format_dbg!()
                     )?;
                 )*

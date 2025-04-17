@@ -433,7 +433,10 @@ impl Vehicle {
     ) -> anyhow::Result<()> {
         let te_fc: Option<si::Temperature> = self
             .fc()
-            .and_then(|fc| fc.temperature().map(|fct| fct.get(format_dbg!())))
+            .and_then(|fc| {
+                fc.temperature()
+                    .map(|fct| fct.get_prev_or_curr(format_dbg!()))
+            })
             .transpose()
             .with_context(|| {
                 format!(
@@ -444,9 +447,10 @@ impl Vehicle {
             .copied();
         let pwr_thrml_cab_to_res: si::Power = match self.res() {
             Some(res) => match &res.thrml {
-                RESThermalOption::RESLumpedThermal(rlt) => {
-                    *rlt.state.pwr_thrml_from_cabin.get(format_dbg!())?
-                }
+                RESThermalOption::RESLumpedThermal(rlt) => *rlt
+                    .state
+                    .pwr_thrml_from_cabin
+                    .get_prev_or_curr(format_dbg!())?,
                 RESThermalOption::None => si::Power::ZERO,
             },
             None => si::Power::ZERO,

@@ -55,7 +55,7 @@ sd = sd0.copy()
 # simulation start time
 t0 = time.perf_counter()
 # run simulation
-sd.walk_once()
+sd.walk()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0

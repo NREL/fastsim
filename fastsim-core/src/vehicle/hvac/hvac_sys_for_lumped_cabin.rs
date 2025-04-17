@@ -106,8 +106,9 @@ impl HVACSystemForLumpedCabin {
             None => return Ok((si::Power::ZERO, si::Power::ZERO)),
         };
         let (pwr_thrml_hvac_to_cabin, pwr_thrml_fc_to_cabin, cop) =
-            if *cab_state.temperature.get(format_dbg!())? <= te_set + self.te_deadband
-                && *cab_state.temperature.get(format_dbg!())? >= te_set - self.te_deadband
+            if *cab_state.temperature.get_prev_or_curr(format_dbg!())? <= te_set + self.te_deadband
+                && *cab_state.temperature.get_prev_or_curr(format_dbg!())?
+                    >= te_set - self.te_deadband
             {
                 // inside deadband; no hvac power is needed
 

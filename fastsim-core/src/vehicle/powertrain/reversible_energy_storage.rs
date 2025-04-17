@@ -386,10 +386,11 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
                 <= *self.state.soc_regen_buffer.get(format_dbg!())?
             {
                 self.pwr_out_max
-            } else if *self.state.soc.get(format_dbg!())? < self.max_soc
+            } else if *self.state.soc.get_prev_or_curr(format_dbg!())? < self.max_soc
                 && soc_buffer_delta > si::Ratio::ZERO
             {
-                self.pwr_out_max * (self.max_soc - *self.state.soc.get(format_dbg!())?)
+                self.pwr_out_max
+                    * (self.max_soc - *self.state.soc.get_prev_or_curr(format_dbg!())?)
                     / soc_buffer_delta
             } else {
                 // current SOC is less than both
@@ -441,7 +442,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
             } else if *self.state.soc.get_prev_or_curr(format_dbg!())? > self.min_soc
                 && soc_buffer_delta > si::Ratio::ZERO
             {
-                self.pwr_out_max * (*self.state.soc.get(format_dbg!())? - self.min_soc)
+                self.pwr_out_max * (*self.state.soc.get_prev_or_curr(format_dbg!())? - self.min_soc)
                     / soc_buffer_delta
             } else {
                 // current SOC is less than both
@@ -1105,7 +1106,7 @@ pub struct RESLumpedThermalState {
     /// Current thermal mass temperature
     pub temperature: TrackedStateWithMemory<si::Temperature>,
     /// Thermal power flow to [RESLumpedThermal] from cabin
-    pub pwr_thrml_from_cabin: TrackedState<si::Power>,
+    pub pwr_thrml_from_cabin: TrackedStateWithMemory<si::Power>,
     /// Cumulative thermal energy flow to [RESLumpedThermal] from cabin
     pub energy_thrml_from_cabin: TrackedStateWithMemory<si::Energy>,
     /// Thermal power flow to [RESLumpedThermal] from ambient

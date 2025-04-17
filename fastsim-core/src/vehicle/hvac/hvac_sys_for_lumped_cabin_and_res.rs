@@ -147,7 +147,9 @@ impl HVACSystemForLumpedCabinAndRES {
         dt: si::Time,
     ) -> anyhow::Result<(si::Power, si::Power, si::Power)> {
         let (res_temp, res_temp_prev): (si::Temperature, si::Temperature) = (
-            *res_thrml_state.temperature.get(format_dbg!())?,
+            *res_thrml_state
+                .temperature
+                .get_prev_or_curr(format_dbg!())?,
             *res_thrml_state
                 .temperature
                 .get_prev_or_curr(format_dbg!())?,
@@ -223,7 +225,7 @@ impl HVACSystemForLumpedCabinAndRES {
             Some(te_set_cab) => Some(
                 (cab_state
                     .temperature
-                    .get(format_dbg!())?
+                    .get_prev_or_curr(format_dbg!())?
                     .get::<si::degree_celsius>()
                     - te_set_cab.get::<si::degree_celsius>())
                     * uc::KELVIN_INT,

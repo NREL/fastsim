@@ -43,7 +43,7 @@ where
 
     /// Verify that the state has been updated
     pub fn check(&self) -> anyhow::Result<()> {
-        ensure!(self.0.is_some(), "State variable was not updated!");
+        ensure!(self.0.is_some(), "State variable was not updated");
         Ok(())
     }
 
@@ -51,9 +51,10 @@ where
     /// # Arguments
     /// - `loc`: call site location filename and line number
     pub fn get(&self, loc: String) -> anyhow::Result<&T> {
-        self.0
-            .as_ref()
-            .ok_or(anyhow!("{}\nState variable was not updated!", loc))
+        self.0.as_ref().ok_or(anyhow!(
+            "{}\nState variable has not been updated in current time step",
+            loc
+        ))
     }
 
     pub fn new(value: T) -> Self {
@@ -140,9 +141,10 @@ where
     /// # Arguments
     /// - `loc`: call site location filename and line number
     pub fn get(&self, loc: String) -> anyhow::Result<&T> {
-        self.0
-            .as_ref()
-            .ok_or(anyhow!("{}\nState variable was not updated!", loc))
+        self.0.as_ref().ok_or(anyhow!(
+            "{}\nState variable has not been updated in current time step",
+            loc
+        ))
     }
 
     pub fn new(value: T) -> Self {
@@ -234,7 +236,7 @@ where
 
     /// Verify that the state has been updated
     fn check(&self) -> anyhow::Result<()> {
-        ensure!(self.0.is_some(), "State variable was not updated!");
+        ensure!(self.0.is_some(), "State variable was not updated");
         Ok(())
     }
 
@@ -242,14 +244,10 @@ where
     /// # Arguments
     /// - `loc`: call site location filename and line number
     pub fn get(&self, loc: String) -> anyhow::Result<&T> {
-        self.0
-            .as_ref()
-            .ok_or(anyhow!("{}\nState variable was not updated!", loc))
-    }
-
-    /// Return previous value
-    pub fn get_prev(&self) -> Option<T> {
-        self.1.clone()
+        self.0.as_ref().ok_or(anyhow!(
+            "{}\nState variable has not been updated in current time step",
+            loc
+        ))
     }
 
     /// Return previous value or default

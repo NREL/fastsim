@@ -232,8 +232,6 @@ pt_type:
         speed_fc_forced_on_meters_per_second: 33.528
         frac_pwr_demand_fc_forced_on: 0.4216108997716131
         frac_of_most_eff_pwr_to_run_fc: 0.9464819140013936
-        frac_res_chrg_for_fc: 0.0
-        frac_res_dschrg_for_fc: 1.0
         temp_fc_forced_on_kelvin: 335.15
         temp_fc_allowed_off_kelvin: 338.15
     aux_cntrl: AuxOnResPriority
