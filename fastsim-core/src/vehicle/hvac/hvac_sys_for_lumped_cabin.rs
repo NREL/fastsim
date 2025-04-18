@@ -141,7 +141,7 @@ impl HVACSystemForLumpedCabin {
                     format_dbg!()
                 );
                 self.state.pwr_i.update(
-                    self.state.pwr_i.get_prev_or_default()
+                    self.state.pwr_i.get_stale(format_dbg!())
                         - (self.i * uc::W / uc::KELVIN / uc::S * te_delta_vs_set * dt)
                             .max(-self.pwr_i_max)
                             .min(self.pwr_i_max),

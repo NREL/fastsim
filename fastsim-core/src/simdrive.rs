@@ -169,7 +169,7 @@ impl SimDrive {
                         .hev_mut()
                         .unwrap()
                         .soc_bal_iters
-                        .get_prev_or_default();
+                        .get_stale(format_dbg!());
                     self.veh
                         .hev_mut()
                         .unwrap()
@@ -285,7 +285,7 @@ impl SimDrive {
             .with_context(|| format_dbg!())?;
         self.set_pwr_prop_for_speed(
             self.cyc.speed[i],
-            self.veh.state.speed_ach.get_prev_or_default(),
+            self.veh.state.speed_ach.get_stale(format_dbg!()),
             dt,
         )
         .with_context(|| anyhow!(format_dbg!()))?;
@@ -457,12 +457,12 @@ impl SimDrive {
                 // the rest of the cycle and should not be manipulated anywhere else
                 false
             } else {
-                vs.cyc_met_overall.get_prev_or_default()
+                vs.cyc_met_overall.get_stale(format_dbg!())
             },
             format_dbg!(),
         )?;
         let veh = &mut self.veh;
-        let speed_prev = veh.state.speed_ach.get_prev_or_default();
+        let speed_prev = veh.state.speed_ach.get_stale(format_dbg!());
         if *veh.state.cyc_met.get_fresh(format_dbg!())? {
             veh.state.speed_ach.update(cyc_speed, format_dbg!())?;
             return Ok(());
@@ -487,7 +487,7 @@ pwr deficit: {} kW
                     cyc_speed.get::<si::mile_per_hour>(),
                     veh.state
                         .speed_ach
-                        .get_prev_or_default()
+                        .get_stale(format_dbg!())
                         .get::<si::mile_per_hour>(),
                     veh.state
                         .pwr_tractive_for_cyc
@@ -643,7 +643,7 @@ pwr deficit: {} kW
         // Run it again to make sure it has been updated for achieved speed
         self.set_pwr_prop_for_speed(
             *self.veh.state.speed_ach.get_fresh(format_dbg!())?,
-            self.veh.state.speed_ach.get_prev_or_default(),
+            self.veh.state.speed_ach.get_stale(format_dbg!()),
             dt,
         )
         .with_context(|| format_dbg!())?;

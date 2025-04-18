@@ -652,7 +652,7 @@ impl HVACSystemForLumpedCabinAndRES {
             .pwr_p_cab
             .update(-self.p_cabin * te_delta_vs_set_cab, format_dbg!())?;
         self.state.pwr_i_cab.update(
-            (self.state.pwr_i_cab.get_prev_or_default()
+            (self.state.pwr_i_cab.get_stale(format_dbg!())
                 - self.i_cabin * uc::W / uc::KELVIN / uc::S * te_delta_vs_set_cab * dt)
                 .max(-self.pwr_i_max_cabin)
                 .min(self.pwr_i_max_cabin),
@@ -959,7 +959,7 @@ impl HVACSystemForLumpedCabinAndRES {
             .pwr_p_res
             .update(-self.p_res * te_delta_vs_set, format_dbg!())?;
         self.state.pwr_i_res.update(
-            (self.state.pwr_i_res.get_prev_or_default()
+            (self.state.pwr_i_res.get_stale(format_dbg!())
                 - self.i_res * uc::W / uc::KELVIN / uc::S * te_delta_vs_set * dt)
                 .max(-self.pwr_i_max_res)
                 .min(self.pwr_i_max_res),

@@ -218,8 +218,8 @@ impl FuelConverter {
             // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
-        let pwr_out_max = (self.state.pwr_prop.get_prev_or_default()
-            + self.state.pwr_aux.get_prev_or_default()
+        let pwr_out_max = (self.state.pwr_prop.get_stale(format_dbg!())
+            + self.state.pwr_aux.get_stale(format_dbg!())
             + self.pwr_out_max / self.pwr_ramp_lag * dt)
             .min(self.pwr_out_max)
             .max(self.pwr_out_max_init);
@@ -261,7 +261,7 @@ impl FuelConverter {
         self.state.fc_on.update(fc_on, format_dbg!())?;
         self.state.time_on.update(
             if fc_on {
-                self.state.time_on.get_prev_or_default() + dt
+                self.state.time_on.get_stale(format_dbg!()) + dt
             } else {
                 si::Time::ZERO
             },
@@ -355,7 +355,7 @@ impl FuelConverter {
         veh_state: &mut VehicleState,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        let veh_speed = veh_state.speed_ach.get_prev_or_default();
+        let veh_speed = veh_state.speed_ach.get_stale(format_dbg!());
         self.thrml
             .solve(&self.state, te_amb, pwr_thrml_fc_to_cab, veh_speed, dt)
             .with_context(|| format_dbg!())

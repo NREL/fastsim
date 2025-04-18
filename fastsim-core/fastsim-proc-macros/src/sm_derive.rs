@@ -41,7 +41,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         }
     } else if struct_is_state {
         quote! {
-            self.i.update(self.i.get_prev_or_default() + 1, format_dbg!())?;
+            self.i.update(self.i.get_stale(format_dbg!()) + 1, format_dbg!())?;
         }
     } else {
         quote! {}

@@ -273,7 +273,7 @@ impl SetCumulative for Vehicle {
         self.pt_type.set_cumulative(dt)?;
         self.cabin.set_cumulative(dt)?;
         self.state.dist.update(
-            self.state.dist.get_prev_or_default() + *self.state.speed_ach.get_fresh(format_dbg!())? * dt,
+            self.state.dist.get_stale(format_dbg!()) + *self.state.speed_ach.get_fresh(format_dbg!())? * dt,
             format_dbg!(),
         )?;
         Ok(())

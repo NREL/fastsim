@@ -115,7 +115,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                         .powi(typenum::P2::new())
                         - veh_state
                             .speed_ach
-                            .get_prev_or_default()
+                            .get_stale(format_dbg!())
                             .powi(typenum::P2::new())))
                 .max(si::Energy::ZERO)
                     * rgwdb
@@ -126,7 +126,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     * *veh_state.mass.get_fresh(format_dbg!())?
                     * (veh_state
                         .speed_ach
-                        .get_prev_or_default()
+                        .get_stale(format_dbg!())
                         .powi(typenum::P2::new())
                         - rgwdb
                             .speed_soc_regen_buffer
@@ -791,7 +791,7 @@ impl RESGreedyWithDynamicBuffers {
     }
 
     fn handle_fc_on_causes_for_on_time(&mut self, fc: &FuelConverter) -> Result<(), anyhow::Error> {
-        self.state.on_time_too_short.update(fc.state.fc_on.get_prev_or_default() && fc.state.time_on.get_prev_or_default()
+        self.state.on_time_too_short.update(fc.state.fc_on.get_stale(format_dbg!()) && fc.state.time_on.get_stale(format_dbg!())
                     < self.fc_min_time_on.with_context(|| {
                     anyhow!(
                         "{}\n Expected `ResGreedyWithBuffers::init` to have been called beforehand.",
