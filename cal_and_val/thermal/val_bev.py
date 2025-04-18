@@ -14,9 +14,9 @@ from cal_bev import get_mod_soc_delta, get_exp_soc_delta
 from cal_bev import pt_type_var, cabin_type_var, hvac_type_var
 
 # unless environment var `SHOW_PLOTS=true` is set, no plots are shown
-SHOW_PLOTS = os.environ.get_fresh("SHOW_PLOTS", "false").lower() == "true"
+SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "false").lower() == "true"
 # if environment var `OVERWRITE_VEH=true` is set, vehicle file is overwritten
-OVERWRITE_VEH = os.environ.get_fresh("OVERWRITE_VEH", "false").lower() == "true"
+OVERWRITE_VEH = os.environ.get("OVERWRITE_VEH", "false").lower() == "true"
 
 res_df_orig = pd.read_csv(save_path / "pymoo_res_df.csv")
 res_df = deepcopy(res_df_orig)
