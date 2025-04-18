@@ -191,14 +191,14 @@ impl ElectricMachine {
         // power based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_fwd_out_max.update(
             self.pwr_out_max
-                .min(pwr_in_fwd_lim * *self.state.eff_fwd_at_max_input.get(format_dbg!())?),
+                .min(pwr_in_fwd_lim * *self.state.eff_fwd_at_max_input.get_fresh(format_dbg!())?),
             format_dbg!(),
         )?;
         // maximum power in backward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_regen_max.update(
             self.pwr_out_max
-                .min(pwr_in_bwd_lim / *self.state.eff_at_max_regen.get(format_dbg!())?),
+                .min(pwr_in_bwd_lim / *self.state.eff_at_max_regen.get_fresh(format_dbg!())?),
             format_dbg!(),
         )?;
         Ok(())
@@ -224,24 +224,24 @@ impl ElectricMachine {
             ),
         );
         ensure!(
-            almost_le_uom(&pwr_out_req , self.state.pwr_mech_fwd_out_max.get(format_dbg!())?, None),
+            almost_le_uom(&pwr_out_req , self.state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?, None),
             format!(
                 "{}\nedrv required propulsion power ({} kW) exceeds current max propulsion power ({} kW) by {} kW",
-                format_dbg!(pwr_out_req <= *self.state.pwr_mech_fwd_out_max.get(format_dbg!())?),
+                format_dbg!(pwr_out_req <= *self.state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?),
                 pwr_out_req.get::<si::kilowatt>().format_eng(Some(6)),
                 self.state
                     .pwr_mech_fwd_out_max
-                    .get(format_dbg!())?
+                    .get_fresh(format_dbg!())?
                     .get::<si::kilowatt>()
                     .format_eng(Some(6)),
-                    (pwr_out_req - *self.state.pwr_mech_fwd_out_max.get(format_dbg!())?).get::<si::kilowatt>().format_eng(Some(6))
+                    (pwr_out_req - *self.state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?).get::<si::kilowatt>().format_eng(Some(6))
             ),
         );
         if pwr_out_req < si::Power::ZERO {
             ensure!(
                 almost_le_uom(
                     &pwr_out_req.abs(),
-                    self.state.pwr_mech_regen_max.get(format_dbg!())?,
+                    self.state.pwr_mech_regen_max.get_fresh(format_dbg!())?,
                     None
                 ),
                 format!(
@@ -250,7 +250,7 @@ impl ElectricMachine {
                     -pwr_out_req.get::<si::kilowatt>(),
                     self.state
                         .pwr_mech_regen_max
-                        .get(format_dbg!())?
+                        .get_fresh(format_dbg!())?
                         .get::<si::kilowatt>()
                 ),
             );
@@ -301,46 +301,46 @@ impl ElectricMachine {
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
         self.state.pwr_mech_prop_out.update(
-            pwr_out_req.max(-*self.state.pwr_mech_regen_max.get(format_dbg!())?),
+            pwr_out_req.max(-*self.state.pwr_mech_regen_max.get_fresh(format_dbg!())?),
             format_dbg!(),
         )?;
 
         self.state.pwr_mech_dyn_brake.update(
-            -(pwr_out_req - *self.state.pwr_mech_prop_out.get(format_dbg!())?),
+            -(pwr_out_req - *self.state.pwr_mech_prop_out.get_fresh(format_dbg!())?),
             format_dbg!(),
         )?;
         ensure!(
-            *self.state.pwr_mech_dyn_brake.get(format_dbg!())? >= si::Power::ZERO,
+            *self.state.pwr_mech_dyn_brake.get_fresh(format_dbg!())? >= si::Power::ZERO,
             "Mech Dynamic Brake Power cannot be below 0.0"
         );
 
         // if pwr_out_req is negative, need to multiply by eff
         self.state.pwr_elec_prop_in.update(
             if pwr_out_req > si::Power::ZERO {
-                *self.state.pwr_mech_prop_out.get(format_dbg!())?
-                    / *self.state.eff.get(format_dbg!())?
+                *self.state.pwr_mech_prop_out.get_fresh(format_dbg!())?
+                    / *self.state.eff.get_fresh(format_dbg!())?
             } else {
-                *self.state.pwr_mech_prop_out.get(format_dbg!())?
-                    * *self.state.eff.get(format_dbg!())?
+                *self.state.pwr_mech_prop_out.get_fresh(format_dbg!())?
+                    * *self.state.eff.get_fresh(format_dbg!())?
             },
             format_dbg!(),
         )?;
 
         self.state.pwr_elec_dyn_brake.update(
-            *self.state.pwr_mech_dyn_brake.get(format_dbg!())?
-                * *self.state.eff.get(format_dbg!())?,
+            *self.state.pwr_mech_dyn_brake.get_fresh(format_dbg!())?
+                * *self.state.eff.get_fresh(format_dbg!())?,
             format_dbg!(),
         )?;
 
         // loss does not account for dynamic braking
         self.state.pwr_loss.update(
-            (*self.state.pwr_mech_prop_out.get(format_dbg!())?
-                - *self.state.pwr_elec_prop_in.get(format_dbg!())?)
+            (*self.state.pwr_mech_prop_out.get_fresh(format_dbg!())?
+                - *self.state.pwr_elec_prop_in.get_fresh(format_dbg!())?)
             .abs(),
             format_dbg!(),
         )?;
 
-        Ok(*self.state.pwr_elec_prop_in.get(format_dbg!())?)
+        Ok(*self.state.pwr_elec_prop_in.get_fresh(format_dbg!())?)
     }
 }
 
@@ -699,12 +699,12 @@ impl ElectricMachine {
 #[serde(deny_unknown_fields)]
 pub struct ElectricMachineState {
     /// time step index
-    pub i: TrackedStateWithMemory<usize>,
+    pub i: TrackedState<usize>,
     /// Component efficiency based on current power demand.
     pub eff: TrackedState<si::Ratio>,
     // Component limits
     /// Maximum possible positive traction power.
-    pub pwr_mech_fwd_out_max: TrackedStateWithMemory<si::Power>,
+    pub pwr_mech_fwd_out_max: TrackedState<si::Power>,
     /// efficiency in forward direction at max possible input power from `FuelConverter` and `ReversibleEnergyStorage`
     pub eff_fwd_at_max_input: TrackedState<si::Ratio>,
     /// Maximum possible regeneration power going to ReversibleEnergyStorage.
@@ -716,29 +716,29 @@ pub struct ElectricMachineState {
     /// Raw power requirement from boundary conditions
     pub pwr_out_req: TrackedState<si::Power>,
     /// Integral of [Self::pwr_out_req]
-    pub energy_out_req: TrackedStateWithMemory<si::Energy>,
+    pub energy_out_req: TrackedState<si::Energy>,
     /// Electrical power to propulsion from ReversibleEnergyStorage and Generator.
     /// negative value indicates regenerative braking
     pub pwr_elec_prop_in: TrackedState<si::Power>,
     /// Integral of [Self::pwr_elec_prop_in]
-    pub energy_elec_prop_in: TrackedStateWithMemory<si::Energy>,
+    pub energy_elec_prop_in: TrackedState<si::Energy>,
     /// Mechanical power to propulsion, corrected by efficiency, from ReversibleEnergyStorage and Generator.
     /// Negative value indicates regenerative braking.
     pub pwr_mech_prop_out: TrackedState<si::Power>,
     /// Integral of [Self::pwr_mech_prop_out]
-    pub energy_mech_prop_out: TrackedStateWithMemory<si::Energy>,
+    pub energy_mech_prop_out: TrackedState<si::Energy>,
     /// Mechanical power from dynamic braking.  Positive value indicates braking; this should be zero otherwise.
     pub pwr_mech_dyn_brake: TrackedState<si::Power>,
     /// Integral of [Self::pwr_mech_dyn_brake]
-    pub energy_mech_dyn_brake: TrackedStateWithMemory<si::Energy>,
+    pub energy_mech_dyn_brake: TrackedState<si::Energy>,
     /// Electrical power from dynamic braking, dissipated as heat.
     pub pwr_elec_dyn_brake: TrackedState<si::Power>,
     /// Integral of [Self::pwr_elec_dyn_brake]
-    pub energy_elec_dyn_brake: TrackedStateWithMemory<si::Energy>,
+    pub energy_elec_dyn_brake: TrackedState<si::Energy>,
     /// Power lost in regeneratively converting mechanical power to power that can be absorbed by the battery.
     pub pwr_loss: TrackedState<si::Power>,
     /// Integral of [Self::pwr_loss]
-    pub energy_loss: TrackedStateWithMemory<si::Energy>,
+    pub energy_loss: TrackedState<si::Energy>,
 }
 
 impl Init for ElectricMachineState {}

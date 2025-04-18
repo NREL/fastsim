@@ -273,7 +273,7 @@ impl SetCumulative for Vehicle {
         self.pt_type.set_cumulative(dt)?;
         self.cabin.set_cumulative(dt)?;
         self.state.dist.update(
-            self.state.dist.get_prev_or_default() + *self.state.speed_ach.get(format_dbg!())? * dt,
+            self.state.dist.get_prev_or_default() + *self.state.speed_ach.get_fresh(format_dbg!())? * dt,
             format_dbg!(),
         )?;
         Ok(())
@@ -390,7 +390,7 @@ impl Vehicle {
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         self.pt_type
             .solve(
-                *self.state.pwr_tractive.get(format_dbg!())?,
+                *self.state.pwr_tractive.get_fresh(format_dbg!())?,
                 true, // `enabled` should always be true at the powertrain level
                 dt,
             )
@@ -399,7 +399,7 @@ impl Vehicle {
             -self
                 .state
                 .pwr_tractive
-                .get(format_dbg!())?
+                .get_fresh(format_dbg!())?
                 .max(si::Power::ZERO)
                 - self.pt_type.pwr_regen().with_context(|| format_dbg!())?,
             format_dbg!(),
@@ -410,7 +410,7 @@ impl Vehicle {
     pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: account for traction limits here
         self.pt_type
-            .set_curr_pwr_prop_out_max(*self.state.pwr_aux.get(format_dbg!())?, dt, &self.state)
+            .set_curr_pwr_prop_out_max(*self.state.pwr_aux.get_fresh(format_dbg!())?, dt, &self.state)
             .with_context(|| anyhow!(format_dbg!()))?;
         let pwr_prop_maxes = self
             .pt_type
@@ -512,7 +512,7 @@ impl Vehicle {
                     )
                     .with_context(|| format_dbg!())?;
                 self.state.pwr_aux.update(
-                    self.pwr_aux_base + *hvac.state.pwr_aux_for_hvac.get(format_dbg!())?,
+                    self.pwr_aux_base + *hvac.state.pwr_aux_for_hvac.get_fresh(format_dbg!())?,
                     format_dbg!(),
                 )?;
                 (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
@@ -542,12 +542,12 @@ impl Vehicle {
                     .with_context(|| format_dbg!())?;
                 self.state.pwr_aux.update(
                     self.pwr_aux_base
-                        + *hvac.state.pwr_aux_for_cab_hvac.get(format_dbg!())?
-                        + *hvac.state.pwr_aux_for_res_hvac.get(format_dbg!())?,
+                        + *hvac.state.pwr_aux_for_cab_hvac.get_fresh(format_dbg!())?
+                        + *hvac.state.pwr_aux_for_res_hvac.get_fresh(format_dbg!())?,
                     format_dbg!(),
                 )?;
                 ensure!(
-                    *self.state.pwr_aux.get(format_dbg!())? > si::Power::ZERO,
+                    *self.state.pwr_aux.get_fresh(format_dbg!())? > si::Power::ZERO,
                     format!(
                         "{}\n{}\n{}",
                         format_dbg!(self.state.pwr_aux),
@@ -604,7 +604,7 @@ impl Vehicle {
 #[serde(deny_unknown_fields)]
 pub struct VehicleState {
     /// time step index
-    pub i: TrackedStateWithMemory<usize>,
+    pub i: TrackedState<usize>,
 
     /// elapsed simulation time since start
     pub time: TrackedState<si::Time>,
@@ -616,50 +616,50 @@ pub struct VehicleState {
     /// maximum backward propulsive power (e.g. regenerative braking) vehicle can produce
     pub pwr_prop_bwd_max: TrackedState<si::Power>,
     /// Tractive power for achieved speed
-    pub pwr_tractive: TrackedStateWithMemory<si::Power>,
+    pub pwr_tractive: TrackedState<si::Power>,
     /// Tractive power required for prescribed speed
     pub pwr_tractive_for_cyc: TrackedState<si::Power>,
     /// integral of [Self::pwr_tractive]
-    pub energy_tractive: TrackedStateWithMemory<si::Energy>,
+    pub energy_tractive: TrackedState<si::Energy>,
     /// time varying aux load
     pub pwr_aux: TrackedState<si::Power>,
     /// integral of [Self::pwr_aux]
-    pub energy_aux: TrackedStateWithMemory<si::Energy>,
+    pub energy_aux: TrackedState<si::Energy>,
     /// Power applied to aero drag
     pub pwr_drag: TrackedState<si::Power>,
     /// integral of [Self::pwr_drag]
-    pub energy_drag: TrackedStateWithMemory<si::Energy>,
+    pub energy_drag: TrackedState<si::Energy>,
     /// Power applied to acceleration (includes deceleration)
     pub pwr_accel: TrackedState<si::Power>,
     /// integral of [Self::pwr_accel]
-    pub energy_accel: TrackedStateWithMemory<si::Energy>,
+    pub energy_accel: TrackedState<si::Energy>,
     /// Power applied to grade ascent
     pub pwr_ascent: TrackedState<si::Power>,
     /// integral of [Self::pwr_ascent]
-    pub energy_ascent: TrackedStateWithMemory<si::Energy>,
+    pub energy_ascent: TrackedState<si::Energy>,
     /// Power applied to rolling resistance
     pub pwr_rr: TrackedState<si::Power>,
     /// integral of [Self::pwr_rr]
-    pub energy_rr: TrackedStateWithMemory<si::Energy>,
+    pub energy_rr: TrackedState<si::Energy>,
     /// Power applied to wheel and tire inertia
     pub pwr_whl_inertia: TrackedState<si::Power>,
     /// integral of [Self::pwr_whl_inertia]
-    pub energy_whl_inertia: TrackedStateWithMemory<si::Energy>,
+    pub energy_whl_inertia: TrackedState<si::Energy>,
     /// Total braking power including regen
     pub pwr_brake: TrackedState<si::Power>,
     /// integral of [Self::pwr_brake]
-    pub energy_brake: TrackedStateWithMemory<si::Energy>,
+    pub energy_brake: TrackedState<si::Energy>,
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in current time step
     // because it should be assumed true in the first time step
     pub cyc_met: TrackedState<bool>,
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in entire cycle
-    pub cyc_met_overall: TrackedStateWithMemory<bool>,
+    pub cyc_met_overall: TrackedState<bool>,
     /// actual achieved speed
-    pub speed_ach: TrackedStateWithMemory<si::Velocity>,
+    pub speed_ach: TrackedState<si::Velocity>,
     /// cumulative distance traveled, integral of [Self::speed_ach]
-    pub dist: TrackedStateWithMemory<si::Length>,
+    pub dist: TrackedState<si::Length>,
     /// current grade
     pub grade_curr: TrackedState<si::Ratio>,
     /// current grade
@@ -669,7 +669,7 @@ pub struct VehicleState {
     pub air_density: TrackedState<si::MassDensity>,
     /// current mass
     // TODO: make sure this gets updated appropriately
-    pub mass: UntrackedState<si::Mass>,
+    pub mass: TrackedState<si::Mass>,
 }
 
 impl SerdeAPI for VehicleState {}
@@ -677,7 +677,7 @@ impl Init for VehicleState {}
 impl Default for VehicleState {
     fn default() -> Self {
         Self {
-            i: TrackedStateWithMemory::new(Default::default()),
+            i: TrackedState::new(Default::default()),
             time: Default::default(),
             pwr_prop_fwd_max: Default::default(),
             pwr_prop_bwd_max: Default::default(),
@@ -699,7 +699,7 @@ impl Default for VehicleState {
             pwr_brake: Default::default(),
             energy_brake: Default::default(),
             cyc_met: TrackedState::new(true),
-            cyc_met_overall: TrackedStateWithMemory::new(true),
+            cyc_met_overall: TrackedState::new(true),
             speed_ach: Default::default(),
             dist: Default::default(),
             // note that this value will be overwritten
@@ -707,7 +707,7 @@ impl Default for VehicleState {
             // note that this value will be overwritten
             elev_curr: Default::default(),
             air_density: Default::default(),
-            mass: UntrackedState::new(uc::KG * f64::NAN),
+            mass: TrackedState::new(uc::KG * f64::NAN),
         }
     }
 }

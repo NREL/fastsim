@@ -40,8 +40,8 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
             fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
                 #(self
                     .#energy_fields
-                    .update(
-                        *self.#pwr_fields.get(format_dbg!())? * dt + self.#energy_fields.get_prev_or_default(),
+                    .increment(
+                        *self.#pwr_fields.get_fresh(format_dbg!())? * dt,
                         format_dbg!()
                     )?;
                 )*

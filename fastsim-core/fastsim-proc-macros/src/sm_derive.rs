@@ -67,7 +67,8 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         impl_block.extend::<TokenStream2>(quote! {
             impl TrackedStateMethods for #ident {
                 fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
-                    #(self.#all_fields.check_and_reset(format!("{loc}\n{}", stringify!(#all_fields)))?;)*
+                    #(self.#all_fields.ensure_fresh(format!("{loc}\n{}", stringify!(#all_fields)));)*
+                    #(self.#all_fields.reset(format!("{loc}\n{}", stringify!(#all_fields)))?;)*
                     Ok(())
                 }
             }
@@ -77,16 +78,18 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
             impl TrackedStateMethods for #ident {
                 fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
                     self.state.check_and_reset(format!("{loc}\n{}", format_dbg!()))?;
-                    #(self.#fields_with_state.check_and_reset(format!("{loc}\n{}", stringify!(#fields_with_state)))?;)*
+                    #(self.#fields_with_state.ensure_fresh(format!("{loc}\n{}", stringify!(#fields_with_state)));)*
+                    #(self.#fields_with_state.reset(format!("{loc}\n{}", stringify!(#fields_with_state)))?;)*
                     Ok(())
                 }
             }
         });
     } else {
         impl_block.extend::<TokenStream2>(quote! {
-            impl TrackedStateMethods for #ident {
+            impl #ident {
                 fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
-                    #(self.#fields_with_state.check_and_reset(format!("{loc}\n{}", stringify!(#fields_with_state)))?;)*
+                    #(self.#fields_with_state.ensure_fresh(format!("{loc}\n{}", stringify!(#fields_with_state)));)*
+                    #(self.#fields_with_state.reset(format!("{loc}\n{}", stringify!(#fields_with_state)))?;)*
                     Ok(())
                 }
             }
@@ -99,8 +102,8 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
                 /// Implementation for structs with `save_interval`
                 fn save_state(&mut self) -> anyhow::Result<()> {
                     if let Some(interval) = self.save_interval {
-                        if *self.state.i.get(format_dbg!())? % interval == (0 as usize)
-                            || *self.state.i.get(format_dbg!())? == (1 as usize)
+                        if *self.state.i.get_fresh(format_dbg!())? % interval == (0 as usize)
+                            || *self.state.i.get_fresh(format_dbg!())? == (1 as usize)
                         {
                             #self_save_state
                             #(self.#fields_with_state.save_state()?;)*

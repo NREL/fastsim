@@ -161,8 +161,8 @@ impl Powertrain for BatteryElectricVehicle {
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         Ok((
-            *self.em.state.pwr_mech_fwd_out_max.get(format_dbg!())?,
-            *self.em.state.pwr_mech_regen_max.get(format_dbg!())?,
+            *self.em.state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?,
+            *self.em.state.pwr_mech_regen_max.get_fresh(format_dbg!())?,
         ))
     }
 
@@ -184,8 +184,8 @@ impl Powertrain for BatteryElectricVehicle {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.em
             .set_curr_pwr_prop_out_max(
-                *self.res.state.pwr_prop_max.get(format_dbg!())?,
-                *self.res.state.pwr_regen_max.get(format_dbg!())?,
+                *self.res.state.pwr_prop_max.get_fresh(format_dbg!())?,
+                *self.res.state.pwr_regen_max.get_fresh(format_dbg!())?,
                 dt,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -202,7 +202,7 @@ impl Powertrain for BatteryElectricVehicle {
             .em
             .state
             .pwr_mech_prop_out
-            .get(format_dbg!())?
+            .get_fresh(format_dbg!())?
             .max(si::Power::ZERO))
     }
 }

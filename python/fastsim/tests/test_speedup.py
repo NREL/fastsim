@@ -4,7 +4,7 @@ import fastsim as fsim
 import os
 
 n_iters = 5
-run_tests = os.environ.get("RUN_SPEEDUP", "false").lower() == "true"
+run_tests = os.environ.get_fresh("RUN_SPEEDUP", "false").lower() == "true"
 
 if run_tests:
 

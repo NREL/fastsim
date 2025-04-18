@@ -35,7 +35,7 @@ pub struct HybridElectricVehicle {
     /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
     /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
     #[serde(default)]
-    pub soc_bal_iters: TrackedStateWithMemory<u32>,
+    pub soc_bal_iters: TrackedState<u32>,
 }
 
 impl SetCumulative for HybridElectricVehicle {
@@ -108,7 +108,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                 rgwdb.handle_fc_on_causes(&self.fc, veh_state, &self.res, &self.em.state)?;
 
                 let disch_buffer = (0.5
-                    * *veh_state.mass.get(format_dbg!())?
+                    * *veh_state.mass.get_fresh(format_dbg!())?
                     * (rgwdb
                         .speed_soc_disch_buffer
                         .with_context(|| format_dbg!())?
@@ -123,7 +123,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                         .with_context(|| format_dbg!())?;
 
                 let chrg_buffer = (0.5
-                    * *veh_state.mass.get(format_dbg!())?
+                    * *veh_state.mass.get_fresh(format_dbg!())?
                     * (veh_state
                         .speed_ach
                         .get_prev_or_default()
@@ -155,7 +155,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         let (pwr_aux_res, pwr_aux_fc) = {
             match self.aux_cntrl {
                 HEVAuxControls::AuxOnResPriority => {
-                    if pwr_aux <= *self.res.state.pwr_disch_max.get(format_dbg!())? {
+                    if pwr_aux <= *self.res.state.pwr_disch_max.get_fresh(format_dbg!())? {
                         (pwr_aux, si::Power::ZERO)
                     } else {
                         (si::Power::ZERO, pwr_aux)
@@ -186,8 +186,8 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .set_curr_pwr_prop_out_max(
                 // TODO: add means of controlling whether fc can provide power to em and also how much
                 // Try out a 'power out type' enum field on the fuel converter with variants for mechanical and electrical
-                *self.res.state.pwr_prop_max.get(format_dbg!())?,
-                *self.res.state.pwr_regen_max.get(format_dbg!())?,
+                *self.res.state.pwr_prop_max.get_fresh(format_dbg!())?,
+                *self.res.state.pwr_regen_max.get_fresh(format_dbg!())?,
                 dt,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -197,9 +197,9 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         Ok((
-            *self.em.state.pwr_mech_fwd_out_max.get(format_dbg!())?
-                + *self.fc.state.pwr_prop_max.get(format_dbg!())?,
-            *self.em.state.pwr_mech_regen_max.get(format_dbg!())?,
+            *self.em.state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?
+                + *self.fc.state.pwr_prop_max.get_fresh(format_dbg!())?,
+            *self.em.state.pwr_mech_regen_max.get_fresh(format_dbg!())?,
         ))
     }
 
@@ -252,7 +252,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .em
             .state
             .pwr_mech_prop_out
-            .get(format_dbg!())?
+            .get_fresh(format_dbg!())?
             .max(si::Power::ZERO))
     }
 }
@@ -397,14 +397,14 @@ impl Mass for HybridElectricVehicle {
 #[serde(deny_unknown_fields)]
 pub struct RGWDBState {
     /// time step index
-    pub i: TrackedStateWithMemory<usize>,
+    pub i: TrackedState<usize>,
     /// Engine must be on to self heat if thermal model is enabled
     pub fc_temperature_too_low: TrackedState<bool>,
     /// Engine must be on for high vehicle speed to ensure powertrain can meet
     /// any spikes in power demand
     pub vehicle_speed_too_high: TrackedState<bool>,
     /// Engine has not been on long enough (usually 30 s)
-    pub on_time_too_short: TrackedStateWithMemory<bool>,
+    pub on_time_too_short: TrackedState<bool>,
     /// Powertrain power demand exceeds motor and/or battery capabilities
     pub propulsion_power_demand: TrackedState<bool>,
     /// Powertrain power demand exceeds optimal motor and/or battery output
@@ -422,13 +422,13 @@ impl Init for RGWDBState {}
 impl RGWDBState {
     /// If any of the causes are true, engine must be on
     fn engine_on(&self) -> anyhow::Result<bool> {
-        Ok(*self.fc_temperature_too_low.get(format_dbg!())?
-            || *self.vehicle_speed_too_high.get(format_dbg!())?
-            || *self.on_time_too_short.get(format_dbg!())?
-            || *self.propulsion_power_demand.get(format_dbg!())?
-            || *self.propulsion_power_demand_soft.get(format_dbg!())?
-            || *self.aux_power_demand.get(format_dbg!())?
-            || *self.charging_for_low_soc.get(format_dbg!())?)
+        Ok(*self.fc_temperature_too_low.get_fresh(format_dbg!())?
+            || *self.vehicle_speed_too_high.get_fresh(format_dbg!())?
+            || *self.on_time_too_short.get_fresh(format_dbg!())?
+            || *self.propulsion_power_demand.get_fresh(format_dbg!())?
+            || *self.propulsion_power_demand_soft.get_fresh(format_dbg!())?
+            || *self.aux_power_demand.get_fresh(format_dbg!())?
+            || *self.charging_for_low_soc.get_fresh(format_dbg!())?)
     }
 }
 
@@ -573,8 +573,8 @@ impl HEVPowertrainControls {
             // `almost` is in case of negligible numerical precision discrepancies
             almost_le_uom(
                 &pwr_prop_req,
-                &(*em_state.pwr_mech_fwd_out_max.get(format_dbg!())?
-                    + *fc_state.pwr_prop_max.get(format_dbg!())?),
+                &(*em_state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?
+                    + *fc_state.pwr_prop_max.get_fresh(format_dbg!())?),
                 None
             ),
             "{}
@@ -586,13 +586,13 @@ impl HEVPowertrainControls {
             pwr_prop_req.get::<si::kilowatt>(),
             em_state
                 .pwr_mech_fwd_out_max
-                .get(format_dbg!())?
+                .get_fresh(format_dbg!())?
                 .get::<si::kilowatt>(),
             fc_state
                 .pwr_prop_max
-                .get(format_dbg!())?
+                .get_fresh(format_dbg!())?
                 .get::<si::kilowatt>(),
-            res.state.soc.get(format_dbg!())?.get::<si::ratio>()
+            res.state.soc.get_fresh(format_dbg!())?.get::<si::ratio>()
         );
 
         // # Brain dump for thermal stuff
@@ -721,8 +721,8 @@ impl RESGreedyWithDynamicBuffers {
         // Excess demand will be handled by `fc`.  Favors drawing power from
         // `em` before engine
         let em_pwr = pwr_prop_req
-            .min(*em_state.pwr_mech_fwd_out_max.get(format_dbg!())?)
-            .max(-*em_state.pwr_mech_regen_max.get(format_dbg!())?);
+            .min(*em_state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?)
+            .max(-*em_state.pwr_mech_regen_max.get_fresh(format_dbg!())?);
         // tractive power handled by fc
         let (fc_pwr, em_pwr) = if !self.state.engine_on()? {
             // engine is off, and `em_pwr` has already been limited within bounds
@@ -735,7 +735,7 @@ impl RESGreedyWithDynamicBuffers {
             let fc_pwr = if pwr_prop_req < si::Power::ZERO {
                 // negative tractive power
                 // max power system can receive from engine during negative traction
-                (*em_state.pwr_mech_regen_max.get(format_dbg!())? + pwr_prop_req)
+                (*em_state.pwr_mech_regen_max.get_fresh(format_dbg!())? + pwr_prop_req)
                     // or peak efficiency power if it's lower than above
                     .min(fc.pwr_for_peak_eff * frac_of_pwr_for_peak_eff)
                     // but not negative
@@ -757,15 +757,15 @@ impl RESGreedyWithDynamicBuffers {
                         .max(fc.pwr_for_peak_eff * frac_of_pwr_for_peak_eff)
                         // but don't exceed what what the battery can
                         // absorb + tractive demand
-                        .min(pwr_prop_req + *em_state.pwr_mech_regen_max.get(format_dbg!())?)
+                        .min(pwr_prop_req + *em_state.pwr_mech_regen_max.get_fresh(format_dbg!())?)
                 }
             }
             // and don't exceed what the fc can do
-            .min(*fc.state.pwr_prop_max.get(format_dbg!())?);
+            .min(*fc.state.pwr_prop_max.get_fresh(format_dbg!())?);
 
             // recalculate `em_pwr` based on `fc_pwr`
             let em_pwr_corrected =
-                (pwr_prop_req - fc_pwr).max(-*em_state.pwr_mech_regen_max.get(format_dbg!())?);
+                (pwr_prop_req - fc_pwr).max(-*em_state.pwr_mech_regen_max.get_fresh(format_dbg!())?);
             (fc_pwr, em_pwr_corrected)
         };
         Ok((fc_pwr, em_pwr))
@@ -841,7 +841,7 @@ impl RESGreedyWithDynamicBuffers {
         self.state.soc_fc_on_buffer.update(
             {
                 let energy_delta_to_buffer_speed: si::Energy = 0.5
-                    * *veh_state.mass.get(format_dbg!())?
+                    * *veh_state.mass.get_fresh(format_dbg!())?
                     * (self
                         .speed_soc_fc_on_buffer
                         .with_context(|| format_dbg!())?
@@ -860,7 +860,7 @@ impl RESGreedyWithDynamicBuffers {
         )?;
         self.state.charging_for_low_soc.update(
             *res.state.soc.get_prev_or_curr(format_dbg!())?
-                < *self.state.soc_fc_on_buffer.get(format_dbg!())?,
+                < *self.state.soc_fc_on_buffer.get_fresh(format_dbg!())?,
             format_dbg!(),
         )?;
         Ok(())
@@ -881,7 +881,7 @@ impl RESGreedyWithDynamicBuffers {
     fn handle_fc_on_causes_for_temp(&mut self, fc: &FuelConverter) -> anyhow::Result<()> {
         match (
             match fc.temperature() {
-                Some(fct) => Some(*fct.get(format_dbg!())?),
+                Some(fct) => Some(*fct.get_fresh(format_dbg!())?),
                 None => None,
             },
             match fc.temperature() {

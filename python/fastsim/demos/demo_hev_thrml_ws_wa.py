@@ -17,9 +17,9 @@ sns.set_theme()
 
 
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
-SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
+SHOW_PLOTS = os.environ.get_fresh("SHOW_PLOTS", "true").lower() == "true"
 # if environment var `SAVE_FIGS=true` is set, save plots
-SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
+SAVE_FIGS = os.environ.get_fresh("SAVE_FIGS", "false").lower() == "true"
 
 celsius_to_kelvin = 273.15
 temp_amb = 38.0 + celsius_to_kelvin

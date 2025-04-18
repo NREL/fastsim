@@ -35,33 +35,33 @@ impl Transmission {
             format_dbg!(),
         )?;
         ensure!(
-            *state.eff.get(format_dbg!())? >= 0.0 * uc::R
-                && *state.eff.get(format_dbg!())? <= 1.0 * uc::R,
+            *state.eff.get_fresh(format_dbg!())? >= 0.0 * uc::R
+                && *state.eff.get_fresh(format_dbg!())? <= 1.0 * uc::R,
             format!(
                 "{}\nTransmission efficiency ({}) must be between 0 and 1",
                 format_dbg!(
-                    *state.eff.get(format_dbg!())? >= 0.0 * uc::R
-                        && *state.eff.get(format_dbg!())? <= 1.0 * uc::R
+                    *state.eff.get_fresh(format_dbg!())? >= 0.0 * uc::R
+                        && *state.eff.get_fresh(format_dbg!())? <= 1.0 * uc::R
                 ),
-                state.eff.get(format_dbg!())?.get::<si::ratio>()
+                state.eff.get_fresh(format_dbg!())?.get::<si::ratio>()
             )
         );
 
         state.pwr_out.update(pwr_out_req, format_dbg!())?;
         state.pwr_in.update(
-            if *state.pwr_out.get(format_dbg!())? > si::Power::ZERO {
-                *state.pwr_out.get(format_dbg!())? / *state.eff.get(format_dbg!())?
+            if *state.pwr_out.get_fresh(format_dbg!())? > si::Power::ZERO {
+                *state.pwr_out.get_fresh(format_dbg!())? / *state.eff.get_fresh(format_dbg!())?
             } else {
-                *state.pwr_out.get(format_dbg!())? * *state.eff.get(format_dbg!())?
+                *state.pwr_out.get_fresh(format_dbg!())? * *state.eff.get_fresh(format_dbg!())?
             },
             format_dbg!(),
         )?;
         state.pwr_loss.update(
-            (*state.pwr_in.get(format_dbg!())? - *state.pwr_out.get(format_dbg!())?).abs(),
+            (*state.pwr_in.get_fresh(format_dbg!())? - *state.pwr_out.get_fresh(format_dbg!())?).abs(),
             format_dbg!(),
         )?;
 
-        Ok(*state.pwr_in.get(format_dbg!())?)
+        Ok(*state.pwr_in.get_fresh(format_dbg!())?)
     }
 }
 impl SetCumulative for Transmission {
@@ -127,7 +127,7 @@ impl Mass for Transmission {
 #[serde(deny_unknown_fields)]
 pub struct TransmissionState {
     /// time step index
-    pub i: TrackedStateWithMemory<usize>,
+    pub i: TrackedState<usize>,
 
     pub eff: TrackedState<si::Ratio>,
 
@@ -136,8 +136,8 @@ pub struct TransmissionState {
     /// Power loss: [Self::pwr_in] - [Self::pwr_out]
     pub pwr_loss: TrackedState<si::Power>,
 
-    pub energy_out: TrackedStateWithMemory<si::Energy>,
-    pub energy_loss: TrackedStateWithMemory<si::Energy>,
+    pub energy_out: TrackedState<si::Energy>,
+    pub energy_loss: TrackedState<si::Energy>,
 }
 
 impl Init for TransmissionState {}

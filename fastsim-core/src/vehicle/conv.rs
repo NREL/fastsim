@@ -75,7 +75,7 @@ impl Powertrain for Box<ConventionalVehicle> {
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         Ok((
-            *self.fc.state.pwr_prop_max.get(format_dbg!())?,
+            *self.fc.state.pwr_prop_max.get_fresh(format_dbg!())?,
             si::Power::ZERO,
         ))
     }

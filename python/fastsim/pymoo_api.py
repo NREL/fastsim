@@ -326,7 +326,7 @@ if PYMOO_AVAILABLE:
             super().update(algorithm)
             self.n_nds.set(len(algorithm.opt))
             self.t_s.set(f"{(time.perf_counter() - self.t_gen_start):.3g}")
-            f = algorithm.pop.get("F")
+            f = algorithm.pop.get_fresh("F")
             euclid_min = np.sqrt((np.array(f) ** 2).sum(axis=1)).min()
             self.euclid_min.set(f"{euclid_min:.3g}")
 
