@@ -16,9 +16,9 @@ pub enum CabinOption {
     None,
 }
 impl SaveState for CabinOption {
-    fn save_state(&mut self) -> anyhow::Result<()> {
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.save_state()?,
+            Self::LumpedCabin(lc) => lc.save_state(loc)?,
             Self::LumpedCabinWithShell => {
                 todo!()
             }
@@ -27,10 +27,12 @@ impl SaveState for CabinOption {
         Ok(())
     }
 }
-impl TrackedStateMethods for CabinOption {
-    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+impl CheckAndResetState for CabinOption {
+    fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.check_and_reset(format!("{}\n{loc}", format_dbg!()))?,
+            Self::LumpedCabin(lc) => {
+                lc.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::LumpedCabinWithShell => {
                 todo!()
             }
@@ -40,9 +42,9 @@ impl TrackedStateMethods for CabinOption {
     }
 }
 impl Step for CabinOption {
-    fn step(&mut self) -> anyhow::Result<()> {
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.step(),
+            Self::LumpedCabin(lc) => lc.step(|| format!("{}\n{}", loc(), format_dbg!())),
             Self::LumpedCabinWithShell => {
                 todo!()
             }
@@ -168,62 +170,62 @@ impl LumpedCabin {
     ) -> anyhow::Result<si::Temperature> {
         self.state
             .pwr_thrml_from_hvac
-            .update(pwr_thrml_from_hvac, format_dbg!())?;
+            .update(pwr_thrml_from_hvac, || format_dbg!())?;
         self.state
             .pwr_thrml_to_res
-            .update(pwr_thrml_to_res, format_dbg!())?;
+            .update(pwr_thrml_to_res, || format_dbg!())?;
         // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
         // Transfer, 7th Edition
         let cab_te_film_ext: si::Temperature = 0.5
             * (self
                 .state
                 .temperature
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::kelvin_abs>()
                 + te_amb_air.get::<si::kelvin_abs>())
             * uc::KELVIN;
         self.state.reynolds_for_plate.update(
             Air::get_density(
                 Some(cab_te_film_ext),
-                Some(*veh_state.elev_curr.get_fresh(format_dbg!())?),
-            ) * *veh_state.speed_ach.get_fresh(format_dbg!())?
+                Some(*veh_state.elev_curr.get_fresh(|| format_dbg!())?),
+            ) * *veh_state.speed_ach.get_fresh(|| format_dbg!())?
                 * self.length
                 / Air::get_dyn_visc(cab_te_film_ext).with_context(|| format_dbg!())?,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         let re_l_crit = 5.0e5 * uc::R; // critical Re for transition to turbulence
 
-        let nu_l_bar: si::Ratio = if *self.state.reynolds_for_plate.get_fresh(format_dbg!())? < re_l_crit
-        {
-            // equation 7.30
-            0.664
-                * self
-                    .state
-                    .reynolds_for_plate
-                    .get_fresh(format_dbg!())?
-                    .get::<si::ratio>()
-                    .powf(0.5)
-                * Air::get_pr(cab_te_film_ext)
-                    .with_context(|| format_dbg!())?
-                    .get::<si::ratio>()
-                    .powf(1.0 / 3.0)
-                * uc::R
-        } else {
-            // equation 7.38
-            let a = 871.0; // equation 7.39
-            (0.037
-                * self
-                    .state
-                    .reynolds_for_plate
-                    .get_fresh(format_dbg!())?
-                    .get::<si::ratio>()
-                    .powf(0.8)
-                - a)
-                * Air::get_pr(cab_te_film_ext).with_context(|| format_dbg!())?
-        };
+        let nu_l_bar: si::Ratio =
+            if *self.state.reynolds_for_plate.get_fresh(|| format_dbg!())? < re_l_crit {
+                // equation 7.30
+                0.664
+                    * self
+                        .state
+                        .reynolds_for_plate
+                        .get_fresh(|| format_dbg!())?
+                        .get::<si::ratio>()
+                        .powf(0.5)
+                    * Air::get_pr(cab_te_film_ext)
+                        .with_context(|| format_dbg!())?
+                        .get::<si::ratio>()
+                        .powf(1.0 / 3.0)
+                    * uc::R
+            } else {
+                // equation 7.38
+                let a = 871.0; // equation 7.39
+                (0.037
+                    * self
+                        .state
+                        .reynolds_for_plate
+                        .get_fresh(|| format_dbg!())?
+                        .get::<si::ratio>()
+                        .powf(0.8)
+                    - a)
+                    * Air::get_pr(cab_te_film_ext).with_context(|| format_dbg!())?
+            };
 
         self.state.pwr_thrml_from_amb.update(
-            if *veh_state.speed_ach.get_fresh(format_dbg!())? > 2.0 * uc::MPH {
+            if *veh_state.speed_ach.get_fresh(|| format_dbg!())? > 2.0 * uc::MPH {
                 let htc_overall_moving: si::HeatTransferCoeff = 1.0
                     / (1.0
                         / (nu_l_bar
@@ -237,7 +239,7 @@ impl LumpedCabin {
                         - self
                             .state
                             .temperature
-                            .get_fresh(format_dbg!())?
+                            .get_fresh(|| format_dbg!())?
                             .get::<si::degree_celsius>())
                     * uc::KELVIN_INT
             } else {
@@ -247,23 +249,23 @@ impl LumpedCabin {
                         - self
                             .state
                             .temperature
-                            .get_fresh(format_dbg!())?
+                            .get_fresh(|| format_dbg!())?
                             .get::<si::degree_celsius>())
                     * uc::KELVIN_INT
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         self.state.temperature.update(
-            *self.state.temperature.get_stale(format_dbg!())?
-                + (*self.state.pwr_thrml_from_hvac.get_fresh(format_dbg!())?
-                    + *self.state.pwr_thrml_from_amb.get_fresh(format_dbg!())?
-                    - *self.state.pwr_thrml_to_res.get_fresh(format_dbg!())?)
+            *self.state.temperature.get_stale(|| format_dbg!())?
+                + (*self.state.pwr_thrml_from_hvac.get_fresh(|| format_dbg!())?
+                    + *self.state.pwr_thrml_from_amb.get_fresh(|| format_dbg!())?
+                    - *self.state.pwr_thrml_to_res.get_fresh(|| format_dbg!())?)
                     / self.heat_capacitance
                     * dt,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
-        Ok(*self.state.temperature.get_fresh(format_dbg!())?)
+        Ok(*self.state.temperature.get_fresh(|| format_dbg!())?)
     }
 }
 

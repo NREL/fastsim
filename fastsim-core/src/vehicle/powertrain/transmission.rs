@@ -32,36 +32,40 @@ impl Transmission {
                 Interpolator::Interp0D(eff) => eff * uc::R,
                 _ => unimplemented!(),
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         ensure!(
-            *state.eff.get_fresh(format_dbg!())? >= 0.0 * uc::R
-                && *state.eff.get_fresh(format_dbg!())? <= 1.0 * uc::R,
+            *state.eff.get_fresh(|| format_dbg!())? >= 0.0 * uc::R
+                && *state.eff.get_fresh(|| format_dbg!())? <= 1.0 * uc::R,
             format!(
                 "{}\nTransmission efficiency ({}) must be between 0 and 1",
                 format_dbg!(
-                    *state.eff.get_fresh(format_dbg!())? >= 0.0 * uc::R
-                        && *state.eff.get_fresh(format_dbg!())? <= 1.0 * uc::R
+                    *state.eff.get_fresh(|| format_dbg!())? >= 0.0 * uc::R
+                        && *state.eff.get_fresh(|| format_dbg!())? <= 1.0 * uc::R
                 ),
-                state.eff.get_fresh(format_dbg!())?.get::<si::ratio>()
+                state.eff.get_fresh(|| format_dbg!())?.get::<si::ratio>()
             )
         );
 
-        state.pwr_out.update(pwr_out_req, format_dbg!())?;
+        state.pwr_out.update(pwr_out_req, || format_dbg!())?;
         state.pwr_in.update(
-            if *state.pwr_out.get_fresh(format_dbg!())? > si::Power::ZERO {
-                *state.pwr_out.get_fresh(format_dbg!())? / *state.eff.get_fresh(format_dbg!())?
+            if *state.pwr_out.get_fresh(|| format_dbg!())? > si::Power::ZERO {
+                *state.pwr_out.get_fresh(|| format_dbg!())?
+                    / *state.eff.get_fresh(|| format_dbg!())?
             } else {
-                *state.pwr_out.get_fresh(format_dbg!())? * *state.eff.get_fresh(format_dbg!())?
+                *state.pwr_out.get_fresh(|| format_dbg!())?
+                    * *state.eff.get_fresh(|| format_dbg!())?
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         state.pwr_loss.update(
-            (*state.pwr_in.get_fresh(format_dbg!())? - *state.pwr_out.get_fresh(format_dbg!())?).abs(),
-            format_dbg!(),
+            (*state.pwr_in.get_fresh(|| format_dbg!())?
+                - *state.pwr_out.get_fresh(|| format_dbg!())?)
+            .abs(),
+            || format_dbg!(),
         )?;
 
-        Ok(*state.pwr_in.get_fresh(format_dbg!())?)
+        Ok(*state.pwr_in.get_fresh(|| format_dbg!())?)
     }
 }
 impl SetCumulative for Transmission {

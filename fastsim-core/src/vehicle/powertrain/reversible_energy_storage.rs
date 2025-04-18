@@ -129,103 +129,100 @@ impl ReversibleEnergyStorage {
         let state = &mut self.state;
 
         ensure!(
-            *state.soc.get_stale(format_dbg!())? <= self.max_soc,
-            format_dbg!(state
-                .soc
-                .get_stale(format_dbg!())?
-                .get::<si::ratio>())
+            *state.soc.get_stale(|| format_dbg!())? <= self.max_soc,
+            format_dbg!(state.soc.get_stale(|| format_dbg!())?.get::<si::ratio>())
         );
         ensure!(
             almost_ge_uom(
-                state.soc.get_stale(format_dbg!())?,
+                state.soc.get_stale(|| format_dbg!())?,
                 &self.min_soc,
                 Some(1e-3)
             ),
             "{}\n{}\n{}",
-            format_dbg!(state
-                .soc
-                .get_stale(format_dbg!())?
-                .get::<si::ratio>()),
+            format_dbg!(state.soc.get_stale(|| format_dbg!())?.get::<si::ratio>()),
             format_dbg!(state
                 .soc_disch_buffer
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::ratio>()),
-            format_dbg!(state.pwr_aux.get_fresh(format_dbg!())?.get::<si::watt>())
+            format_dbg!(state.pwr_aux.get_fresh(|| format_dbg!())?.get::<si::watt>())
         );
 
-        state.pwr_out_prop.update(pwr_out_req, format_dbg!())?;
+        state.pwr_out_prop.update(pwr_out_req, || format_dbg!())?;
         state.pwr_out_electrical.update(
-            *state.pwr_out_prop.get_fresh(format_dbg!())? + *state.pwr_aux.get_fresh(format_dbg!())?,
-            format_dbg!(),
+            *state.pwr_out_prop.get_fresh(|| format_dbg!())?
+                + *state.pwr_aux.get_fresh(|| format_dbg!())?,
+            || format_dbg!(),
         )?;
 
-        if pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())? >= si::Power::ZERO {
+        if pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())? >= si::Power::ZERO {
             // discharging
             ensure!(
-                utils::almost_le_uom(&(pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?), &self.pwr_out_max, Some(TOL)),
+                utils::almost_le_uom(&(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?), &self.pwr_out_max, Some(TOL)),
                 "{}\nres required power ({:.6} kW) exceeds static max discharge power ({:.6} kW)\nstate.soc = {}",
                 format_dbg!(utils::almost_le_uom(
-                    &(pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?),
+                    &(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?),
                     &self.pwr_out_max,
                     Some(TOL)
                 )),
-                (pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?).get::<si::kilowatt>(),
-                state.pwr_disch_max.get_fresh(format_dbg!())?.get::<si::kilowatt>(),
-                state.soc.get_stale(format_dbg!())?.get::<si::ratio>()
+                (pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?).get::<si::kilowatt>(),
+                state.pwr_disch_max.get_fresh(|| format_dbg!())?.get::<si::kilowatt>(),
+                state.soc.get_stale(|| format_dbg!())?.get::<si::ratio>()
             );
             ensure!(
                 utils::almost_le_uom(
-                    &(pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?),
-                    state.pwr_disch_max.get_fresh(format_dbg!())?, Some(TOL)
+                    &(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?),
+                    state.pwr_disch_max.get_fresh(|| format_dbg!())?, Some(TOL)
                 ),
-                "{}\nres required power ({:.6} kW) exceeds current max discharge power ({:.6} kW)\nstate.soc .get_fresh(format_dbg!())?= {}",
+                "{}\nres required power ({:.6} kW) exceeds current max discharge power ({:.6} kW)\nstate.soc .get_fresh(|| format_dbg!())?= {}",
                 format_dbg!(utils::almost_le_uom(
-                    &(pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?),
-                    state.pwr_disch_max.get_fresh(format_dbg!())?, Some(TOL)
+                    &(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?),
+                    state.pwr_disch_max.get_fresh(|| format_dbg!())?, Some(TOL)
                 )),
-                (pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?).get::<si::kilowatt>(),
-                state.pwr_disch_max.get_fresh(format_dbg!())?.get::<si::kilowatt>(),
-                state.soc.get_stale(format_dbg!())?.get::<si::ratio>()
+                (pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?).get::<si::kilowatt>(),
+                state.pwr_disch_max.get_fresh(|| format_dbg!())?.get::<si::kilowatt>(),
+                state.soc.get_stale(|| format_dbg!())?.get::<si::ratio>()
             );
         } else {
             // charging
             ensure!(
                 utils::almost_ge_uom(
-                    &(pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?),
+                    &(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?),
                     &-self.pwr_out_max,
                     Some(TOL)
                 ),
                 format!(
                     "{}\nres required power ({:.6} kW) exceeds static max power ({:.6} kW)",
                     format_dbg!(utils::almost_ge_uom(
-                        &(pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?),
+                        &(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?),
                         &-self.pwr_out_max,
                         Some(TOL)
                     )),
-                    (pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?).get::<si::kilowatt>(),
+                    (pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?)
+                        .get::<si::kilowatt>(),
                     state
                         .pwr_charge_max
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::kilowatt>()
                 )
             );
             ensure!(
                 utils::almost_ge_uom(
-                    &(pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?),
-                    &-*state.pwr_charge_max.get_fresh(format_dbg!())?,
+                    &(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?),
+                    &-*state.pwr_charge_max.get_fresh(|| format_dbg!())?,
                     Some(TOL)
                 ),
                 format!(
                     "{}\nres required power ({:.6} kW) exceeds current max power ({:.6} kW)",
                     format_dbg!(utils::almost_ge_uom(
-                        &(pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?),
-                        &-*state.pwr_charge_max.get_fresh(format_dbg!())?,
+                        &(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?),
+                        &-*state.pwr_charge_max.get_fresh(|| format_dbg!())?,
                         Some(TOL)
                     )),
-                    (pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?).get::<si::kilowatt>(),
+                    (pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?)
+                        .get::<si::kilowatt>(),
                     state
                         .pwr_charge_max
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::kilowatt>()
                 )
             );
@@ -234,24 +231,21 @@ impl ReversibleEnergyStorage {
             (Interpolator::Interp0D(..), RESEffInterpInputs::Constant) => &[],
             (Interpolator::Interp1D(..), RESEffInterpInputs::CRate) => &[state
                 .pwr_out_electrical
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::watt>()
                 / self.energy_capacity.get::<si::watt_hour>()],
             (Interpolator::Interp2D(..), RESEffInterpInputs::CRateSOC) => &[
                 state
                     .pwr_out_electrical
-                    .get_fresh(format_dbg!())?
+                    .get_fresh(|| format_dbg!())?
                     .get::<si::watt>()
                     / self.energy_capacity.get::<si::watt_hour>(),
-                state
-                    .soc
-                    .get_stale(format_dbg!())?
-                    .get::<si::ratio>(),
+                state.soc.get_stale(|| format_dbg!())?.get::<si::ratio>(),
             ],
             (Interpolator::Interp2D(..), RESEffInterpInputs::CRateTemperature) => &[
                 state
                     .pwr_out_electrical
-                    .get_fresh(format_dbg!())?
+                    .get_fresh(|| format_dbg!())?
                     .get::<si::watt>()
                     / self.energy_capacity.get::<si::watt_hour>(),
                 te_res
@@ -261,13 +255,10 @@ impl ReversibleEnergyStorage {
             (Interpolator::Interp3D(..), RESEffInterpInputs::CRateSOCTemperature) => &[
                 state
                     .pwr_out_electrical
-                    .get_fresh(format_dbg!())?
+                    .get_fresh(|| format_dbg!())?
                     .get::<si::watt>()
                     / self.energy_capacity.get::<si::watt_hour>(),
-                state
-                    .soc
-                    .get_stale(format_dbg!())?
-                    .get::<si::ratio>(),
+                state.soc.get_stale(|| format_dbg!())?.get::<si::ratio>(),
                 te_res
                     .with_context(|| format_dbg!("Expected thermal model to be configured"))?
                     .get::<si::degree_celsius>(),
@@ -280,45 +271,47 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         };
         state.eff.update(
             self.eff_interp.interpolate(interp_pt)? * uc::R,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         ensure!(
-            *state.eff.get_fresh(format_dbg!())? >= 0.0 * uc::R
-                && *state.eff.get_fresh(format_dbg!())? <= 1.0 * uc::R,
+            *state.eff.get_fresh(|| format_dbg!())? >= 0.0 * uc::R
+                && *state.eff.get_fresh(|| format_dbg!())? <= 1.0 * uc::R,
             format!(
                 "{}\nres efficiency ({}) must be between 0 and 1",
                 format_dbg!(
-                    *state.eff.get_fresh(format_dbg!())? >= 0.0 * uc::R
-                        && *state.eff.get_fresh(format_dbg!())? <= 1.0 * uc::R
+                    *state.eff.get_fresh(|| format_dbg!())? >= 0.0 * uc::R
+                        && *state.eff.get_fresh(|| format_dbg!())? <= 1.0 * uc::R
                 ),
-                state.eff.get_fresh(format_dbg!())?.get::<si::ratio>()
+                state.eff.get_fresh(|| format_dbg!())?.get::<si::ratio>()
             )
         );
 
         state.pwr_out_chemical.update(
-            if *state.pwr_out_electrical.get_fresh(format_dbg!())? > si::Power::ZERO {
+            if *state.pwr_out_electrical.get_fresh(|| format_dbg!())? > si::Power::ZERO {
                 // if positive, chemical power must be greater than electrical power
                 // i.e. not all chemical power can be converted to electrical power
-                *state.pwr_out_electrical.get_fresh(format_dbg!())? / *state.eff.get_fresh(format_dbg!())?
+                *state.pwr_out_electrical.get_fresh(|| format_dbg!())?
+                    / *state.eff.get_fresh(|| format_dbg!())?
             } else {
                 // if negative, chemical power, must be less than electrical power
                 // i.e. not all electrical power can be converted back to chemical power
-                *state.pwr_out_electrical.get_fresh(format_dbg!())? * *state.eff.get_fresh(format_dbg!())?
+                *state.pwr_out_electrical.get_fresh(|| format_dbg!())?
+                    * *state.eff.get_fresh(|| format_dbg!())?
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         state.pwr_loss.update(
-            (*state.pwr_out_chemical.get_fresh(format_dbg!())?
-                - *state.pwr_out_electrical.get_fresh(format_dbg!())?)
+            (*state.pwr_out_chemical.get_fresh(|| format_dbg!())?
+                - *state.pwr_out_electrical.get_fresh(|| format_dbg!())?)
             .abs(),
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         state.soc.update(
-            *state.soc.get_stale(format_dbg!())?
-                - *state.pwr_out_chemical.get_fresh(format_dbg!())? * dt / self.energy_capacity,
-            format_dbg!(),
+            *state.soc.get_stale(|| format_dbg!())?
+                - *state.pwr_out_chemical.get_fresh(|| format_dbg!())? * dt / self.energy_capacity,
+            || format_dbg!(),
         )?;
 
         Ok(())
@@ -376,38 +369,37 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         ensure!(soc_buffer_delta >= si::Ratio::ZERO, "{}", format_dbg!());
         self.state
             .soc_regen_buffer
-            .update(self.max_soc - soc_buffer_delta, format_dbg!())?;
-        let pwr_max_for_dt = ((self.max_soc - *self.state.soc.get_stale(format_dbg!())?)
+            .update(self.max_soc - soc_buffer_delta, || format_dbg!())?;
+        let pwr_max_for_dt = ((self.max_soc - *self.state.soc.get_stale(|| format_dbg!())?)
             * self.energy_capacity
             / dt)
             .max(si::Power::ZERO);
         self.state.pwr_charge_max.update(
-            if *self.state.soc.get_stale(format_dbg!())?
-                <= *self.state.soc_regen_buffer.get_fresh(format_dbg!())?
+            if *self.state.soc.get_stale(|| format_dbg!())?
+                <= *self.state.soc_regen_buffer.get_fresh(|| format_dbg!())?
             {
                 self.pwr_out_max
-            } else if *self.state.soc.get_stale(format_dbg!())? < self.max_soc
+            } else if *self.state.soc.get_stale(|| format_dbg!())? < self.max_soc
                 && soc_buffer_delta > si::Ratio::ZERO
             {
-                self.pwr_out_max
-                    * (self.max_soc - *self.state.soc.get_stale(format_dbg!())?)
+                self.pwr_out_max * (self.max_soc - *self.state.soc.get_stale(|| format_dbg!())?)
                     / soc_buffer_delta
             } else {
                 // current SOC is less than both
                 si::Power::ZERO
             }
             .min(pwr_max_for_dt),
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         ensure!(
-            *self.state.pwr_charge_max.get_fresh(format_dbg!())? >= si::Power::ZERO,
+            *self.state.pwr_charge_max.get_fresh(|| format_dbg!())? >= si::Power::ZERO,
             "{}\n`{}` ({} W) must be greater than or equal to zero\n{}",
             format_dbg!(),
             stringify!(self.state.pwr_charge_max),
             self.state
                 .pwr_charge_max
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::watt>()
                 .format_eng(None),
             format_dbg!(soc_buffer_delta)
@@ -429,37 +421,37 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         ensure!(soc_buffer_delta >= si::Ratio::ZERO, "{}", format_dbg!());
         self.state
             .soc_disch_buffer
-            .update(self.min_soc + soc_buffer_delta, format_dbg!())?;
-        let pwr_max_for_dt = ((*self.state.soc.get_stale(format_dbg!())? - self.min_soc)
+            .update(self.min_soc + soc_buffer_delta, || format_dbg!())?;
+        let pwr_max_for_dt = ((*self.state.soc.get_stale(|| format_dbg!())? - self.min_soc)
             * self.energy_capacity
             / dt)
             .max(si::Power::ZERO);
         self.state.pwr_disch_max.update(
-            if *self.state.soc.get_stale(format_dbg!())?
-                > *self.state.soc_disch_buffer.get_fresh(format_dbg!())?
+            if *self.state.soc.get_stale(|| format_dbg!())?
+                > *self.state.soc_disch_buffer.get_fresh(|| format_dbg!())?
             {
                 self.pwr_out_max
-            } else if *self.state.soc.get_stale(format_dbg!())? > self.min_soc
+            } else if *self.state.soc.get_stale(|| format_dbg!())? > self.min_soc
                 && soc_buffer_delta > si::Ratio::ZERO
             {
-                self.pwr_out_max * (*self.state.soc.get_stale(format_dbg!())? - self.min_soc)
+                self.pwr_out_max * (*self.state.soc.get_stale(|| format_dbg!())? - self.min_soc)
                     / soc_buffer_delta
             } else {
                 // current SOC is less than both
                 si::Power::ZERO
             }
             .min(pwr_max_for_dt),
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         ensure!(
-            *self.state.pwr_disch_max.get_fresh(format_dbg!())? >= si::Power::ZERO,
+            *self.state.pwr_disch_max.get_fresh(|| format_dbg!())? >= si::Power::ZERO,
             "{}\n`{}` ({} W) must be greater than or equal to zero\n{}",
             format_dbg!(),
             stringify!(self.state.pwr_disch_max),
             self.state
                 .pwr_disch_max
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::watt>()
                 .format_eng(None),
             format_dbg!(soc_buffer_delta)
@@ -473,18 +465,18 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     /// - `pwr_aux`: aux power demand on `ReversibleEnergyStorage`
     pub fn set_curr_pwr_prop_max(&mut self, pwr_aux: si::Power) -> anyhow::Result<()> {
         let state = &mut self.state;
-        state.pwr_aux.update(pwr_aux, format_dbg!())?;
+        state.pwr_aux.update(pwr_aux, || format_dbg!())?;
         state.pwr_prop_max.update(
-            *state.pwr_disch_max.get_fresh(format_dbg!())? - pwr_aux,
-            format_dbg!(),
+            *state.pwr_disch_max.get_fresh(|| format_dbg!())? - pwr_aux,
+            || format_dbg!(),
         )?;
         state.pwr_regen_max.update(
-            *state.pwr_charge_max.get_fresh(format_dbg!())? + pwr_aux,
-            format_dbg!(),
+            *state.pwr_charge_max.get_fresh(|| format_dbg!())? + pwr_aux,
+            || format_dbg!(),
         )?;
 
         ensure!(
-            pwr_aux <= *state.pwr_disch_max.get_fresh(format_dbg!())?,
+            pwr_aux <= *state.pwr_disch_max.get_fresh(|| format_dbg!())?,
             "{}\n`{}` ({} W) must always be less than or equal to {} ({} W)\nsoc:{}",
             format_dbg!(),
             stringify!(pwr_aux),
@@ -492,34 +484,34 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
             stringify!(state.pwr_disch_max),
             state
                 .pwr_disch_max
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::watt>()
                 .format_eng(None),
             state
                 .soc
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::ratio>()
                 .format_eng(None)
         );
         ensure!(
-            *state.pwr_prop_max.get_fresh(format_dbg!())? >= si::Power::ZERO,
+            *state.pwr_prop_max.get_fresh(|| format_dbg!())? >= si::Power::ZERO,
             "{}\n`{}` ({} W) must be greater than or equal to zero",
             format_dbg!(),
             stringify!(state.pwr_prop_max),
             state
                 .pwr_prop_max
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::watt>()
                 .format_eng(None)
         );
         ensure!(
-            *state.pwr_regen_max.get_fresh(format_dbg!())? >= si::Power::ZERO,
+            *state.pwr_regen_max.get_fresh(|| format_dbg!())? >= si::Power::ZERO,
             "{}\n`{}` ({} W) must be greater than or equal to zero",
             format_dbg!(),
             stringify!(state.pwr_regen_max),
             state
                 .pwr_regen_max
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::watt>()
                 .format_eng(None)
         );
@@ -658,7 +650,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     pub fn temperature(&self) -> anyhow::Result<Option<si::Temperature>> {
         match &self.thrml {
             RESThermalOption::RESLumpedThermal(rest) => {
-                Some(rest.state.temperature.get_fresh(format_dbg!()).cloned())
+                Some(rest.state.temperature.get_fresh(|| format_dbg!()).cloned())
             }
             RESThermalOption::None => None,
         }
@@ -893,19 +885,19 @@ impl SetCumulative for RESThermalOption {
     }
 }
 impl SaveState for RESThermalOption {
-    fn save_state(&mut self) -> anyhow::Result<()> {
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::RESLumpedThermal(rlt) => rlt.save_state()?,
+            Self::RESLumpedThermal(rlt) => rlt.save_state(loc)?,
             Self::None => {}
         }
         Ok(())
     }
 }
-impl TrackedStateMethods for RESThermalOption {
-    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+impl CheckAndResetState for RESThermalOption {
+    fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::RESLumpedThermal(rlt) => {
-                rlt.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
+                rlt.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
             Self::None => {}
         }
@@ -913,9 +905,9 @@ impl TrackedStateMethods for RESThermalOption {
     }
 }
 impl Step for RESThermalOption {
-    fn step(&mut self) -> anyhow::Result<()> {
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::RESLumpedThermal(rlt) => rlt.step(),
+            Self::RESLumpedThermal(rlt) => rlt.step(|| format!("{}\n{}", loc(), format_dbg!())),
             Self::None => Ok(()),
         }
     }
@@ -1051,39 +1043,48 @@ impl RESLumpedThermal {
                     - self
                         .state
                         .temperature
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::degree_celsius>())
                 * uc::KELVIN_INT,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         self.state
             .pwr_thrml_hvac_to_res
-            .update(pwr_thrml_hvac_to_res, format_dbg!())?;
+            .update(pwr_thrml_hvac_to_res, || format_dbg!())?;
         self.state.pwr_thrml_from_amb.update(
             self.conductance_to_amb
                 * (te_amb.get::<si::degree_celsius>()
                     - self
                         .state
                         .temperature
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::degree_celsius>())
                 * uc::KELVIN_INT,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         self.state.pwr_thrml_loss.update(
-            res_state.pwr_out_electrical.get_fresh(format_dbg!())?.abs()
-                * (1.0 * uc::R - *res_state.eff.get_fresh(format_dbg!())?),
-            format_dbg!(),
+            res_state
+                .pwr_out_electrical
+                .get_fresh(|| format_dbg!())?
+                .abs()
+                * (1.0 * uc::R - *res_state.eff.get_fresh(|| format_dbg!())?),
+            || format_dbg!(),
         )?;
         self.state.temperature.update(
-            *self.state.temperature.get_stale(format_dbg!())?
-                + (*self.state.pwr_thrml_hvac_to_res.get_fresh(format_dbg!())?
-                    + *self.state.pwr_thrml_loss.get_fresh(format_dbg!())?
-                    + *self.state.pwr_thrml_from_cabin.get_fresh(format_dbg!())?
-                    + *self.state.pwr_thrml_from_amb.get_fresh(format_dbg!())?)
+            *self.state.temperature.get_stale(|| format_dbg!())?
+                + (*self
+                    .state
+                    .pwr_thrml_hvac_to_res
+                    .get_fresh(|| format_dbg!())?
+                    + *self.state.pwr_thrml_loss.get_fresh(|| format_dbg!())?
+                    + *self
+                        .state
+                        .pwr_thrml_from_cabin
+                        .get_fresh(|| format_dbg!())?
+                    + *self.state.pwr_thrml_from_amb.get_fresh(|| format_dbg!())?)
                     / self.heat_capacitance
                     * dt,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         Ok(())
     }

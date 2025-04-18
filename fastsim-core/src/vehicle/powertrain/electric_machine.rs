@@ -159,7 +159,7 @@ impl ElectricMachine {
                             stringify!(eff_pos)
                         )
                     })?,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         self.state.eff_at_max_regen.update(
             uc::R
@@ -184,22 +184,27 @@ impl ElectricMachine {
                             stringify!(eff_neg)
                         )
                     })?,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         // maximum power in forward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_fwd_out_max.update(
-            self.pwr_out_max
-                .min(pwr_in_fwd_lim * *self.state.eff_fwd_at_max_input.get_fresh(format_dbg!())?),
-            format_dbg!(),
+            self.pwr_out_max.min(
+                pwr_in_fwd_lim
+                    * *self
+                        .state
+                        .eff_fwd_at_max_input
+                        .get_fresh(|| format_dbg!())?,
+            ),
+            || format_dbg!(),
         )?;
         // maximum power in backward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_regen_max.update(
             self.pwr_out_max
-                .min(pwr_in_bwd_lim / *self.state.eff_at_max_regen.get_fresh(format_dbg!())?),
-            format_dbg!(),
+                .min(pwr_in_bwd_lim / *self.state.eff_at_max_regen.get_fresh(|| format_dbg!())?),
+            || format_dbg!(),
         )?;
         Ok(())
     }
@@ -224,24 +229,24 @@ impl ElectricMachine {
             ),
         );
         ensure!(
-            almost_le_uom(&pwr_out_req , self.state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?, None),
+            almost_le_uom(&pwr_out_req , self.state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?, None),
             format!(
                 "{}\nedrv required propulsion power ({} kW) exceeds current max propulsion power ({} kW) by {} kW",
-                format_dbg!(pwr_out_req <= *self.state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?),
+                format_dbg!(pwr_out_req <= *self.state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?),
                 pwr_out_req.get::<si::kilowatt>().format_eng(Some(6)),
                 self.state
                     .pwr_mech_fwd_out_max
-                    .get_fresh(format_dbg!())?
+                    .get_fresh(|| format_dbg!())?
                     .get::<si::kilowatt>()
                     .format_eng(Some(6)),
-                    (pwr_out_req - *self.state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?).get::<si::kilowatt>().format_eng(Some(6))
+                    (pwr_out_req - *self.state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?).get::<si::kilowatt>().format_eng(Some(6))
             ),
         );
         if pwr_out_req < si::Power::ZERO {
             ensure!(
                 almost_le_uom(
                     &pwr_out_req.abs(),
-                    self.state.pwr_mech_regen_max.get_fresh(format_dbg!())?,
+                    self.state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?,
                     None
                 ),
                 format!(
@@ -250,13 +255,15 @@ impl ElectricMachine {
                     -pwr_out_req.get::<si::kilowatt>(),
                     self.state
                         .pwr_mech_regen_max
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::kilowatt>()
                 ),
             );
         }
 
-        self.state.pwr_out_req.update(pwr_out_req, format_dbg!())?;
+        self.state
+            .pwr_out_req
+            .update(pwr_out_req, || format_dbg!())?;
 
         // ensuring eff_interp_fwd has Extrapolate set to Error before calculating self.state.eff
         self.eff_interp_achieved
@@ -295,52 +302,52 @@ impl ElectricMachine {
                             stringify!(self.state.eff)
                         )
                     })?,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
         self.state.pwr_mech_prop_out.update(
-            pwr_out_req.max(-*self.state.pwr_mech_regen_max.get_fresh(format_dbg!())?),
-            format_dbg!(),
+            pwr_out_req.max(-*self.state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?),
+            || format_dbg!(),
         )?;
 
         self.state.pwr_mech_dyn_brake.update(
-            -(pwr_out_req - *self.state.pwr_mech_prop_out.get_fresh(format_dbg!())?),
-            format_dbg!(),
+            -(pwr_out_req - *self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?),
+            || format_dbg!(),
         )?;
         ensure!(
-            *self.state.pwr_mech_dyn_brake.get_fresh(format_dbg!())? >= si::Power::ZERO,
+            *self.state.pwr_mech_dyn_brake.get_fresh(|| format_dbg!())? >= si::Power::ZERO,
             "Mech Dynamic Brake Power cannot be below 0.0"
         );
 
         // if pwr_out_req is negative, need to multiply by eff
         self.state.pwr_elec_prop_in.update(
             if pwr_out_req > si::Power::ZERO {
-                *self.state.pwr_mech_prop_out.get_fresh(format_dbg!())?
-                    / *self.state.eff.get_fresh(format_dbg!())?
+                *self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?
+                    / *self.state.eff.get_fresh(|| format_dbg!())?
             } else {
-                *self.state.pwr_mech_prop_out.get_fresh(format_dbg!())?
-                    * *self.state.eff.get_fresh(format_dbg!())?
+                *self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?
+                    * *self.state.eff.get_fresh(|| format_dbg!())?
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         self.state.pwr_elec_dyn_brake.update(
-            *self.state.pwr_mech_dyn_brake.get_fresh(format_dbg!())?
-                * *self.state.eff.get_fresh(format_dbg!())?,
-            format_dbg!(),
+            *self.state.pwr_mech_dyn_brake.get_fresh(|| format_dbg!())?
+                * *self.state.eff.get_fresh(|| format_dbg!())?,
+            || format_dbg!(),
         )?;
 
         // loss does not account for dynamic braking
         self.state.pwr_loss.update(
-            (*self.state.pwr_mech_prop_out.get_fresh(format_dbg!())?
-                - *self.state.pwr_elec_prop_in.get_fresh(format_dbg!())?)
+            (*self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?
+                - *self.state.pwr_elec_prop_in.get_fresh(|| format_dbg!())?)
             .abs(),
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
-        Ok(*self.state.pwr_elec_prop_in.get_fresh(format_dbg!())?)
+        Ok(*self.state.pwr_elec_prop_in.get_fresh(|| format_dbg!())?)
     }
 }
 

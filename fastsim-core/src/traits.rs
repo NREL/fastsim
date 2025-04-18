@@ -507,7 +507,9 @@ impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
 /// `state`
 pub trait SaveState {
     /// Saves `self.state` to `self.history` and propagates to any fields with `state`
-    fn save_state(&mut self) -> anyhow::Result<()>;
+    /// # Arguments
+    /// - `loc`: closure that returns file and line number where called
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
 }
 
 /// Provides methods for getting and setting the save interval
@@ -527,7 +529,9 @@ pub trait HistoryMethods: SaveState {
 /// recursively
 pub trait Step {
     /// Increments `i` field of this and all contained structs, recursively
-    fn step(&mut self) -> anyhow::Result<()>;
+    /// # Arguments
+    /// - `loc`: closure that returns file and line number where called
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
 }
 
 /// Provides method for checking if struct is default

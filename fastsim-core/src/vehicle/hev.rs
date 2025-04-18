@@ -108,14 +108,14 @@ impl Powertrain for Box<HybridElectricVehicle> {
                 rgwdb.handle_fc_on_causes(&self.fc, veh_state, &self.res, &self.em.state)?;
 
                 let disch_buffer = (0.5
-                    * *veh_state.mass.get_fresh(format_dbg!())?
+                    * *veh_state.mass.get_fresh(|| format_dbg!())?
                     * (rgwdb
                         .speed_soc_disch_buffer
                         .with_context(|| format_dbg!())?
                         .powi(typenum::P2::new())
                         - veh_state
                             .speed_ach
-                            .get_stale(format_dbg!())
+                            .get_stale(|| format_dbg!())?
                             .powi(typenum::P2::new())))
                 .max(si::Energy::ZERO)
                     * rgwdb
@@ -123,10 +123,10 @@ impl Powertrain for Box<HybridElectricVehicle> {
                         .with_context(|| format_dbg!())?;
 
                 let chrg_buffer = (0.5
-                    * *veh_state.mass.get_fresh(format_dbg!())?
+                    * *veh_state.mass.get_fresh(|| format_dbg!())?
                     * (veh_state
                         .speed_ach
-                        .get_stale(format_dbg!())
+                        .get_stale(|| format_dbg!())?
                         .powi(typenum::P2::new())
                         - rgwdb
                             .speed_soc_regen_buffer
@@ -155,7 +155,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         let (pwr_aux_res, pwr_aux_fc) = {
             match self.aux_cntrl {
                 HEVAuxControls::AuxOnResPriority => {
-                    if pwr_aux <= *self.res.state.pwr_disch_max.get_fresh(format_dbg!())? {
+                    if pwr_aux <= *self.res.state.pwr_disch_max.get_fresh(|| format_dbg!())? {
                         (pwr_aux, si::Power::ZERO)
                     } else {
                         (si::Power::ZERO, pwr_aux)
@@ -170,7 +170,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                 rgwdb
                     .state
                     .aux_power_demand
-                    .update(pwr_aux_fc > si::Power::ZERO, format_dbg!())?;
+                    .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
             }
             HEVPowertrainControls::Placeholder => todo!(),
         }
@@ -186,8 +186,8 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .set_curr_pwr_prop_out_max(
                 // TODO: add means of controlling whether fc can provide power to em and also how much
                 // Try out a 'power out type' enum field on the fuel converter with variants for mechanical and electrical
-                *self.res.state.pwr_prop_max.get_fresh(format_dbg!())?,
-                *self.res.state.pwr_regen_max.get_fresh(format_dbg!())?,
+                *self.res.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+                *self.res.state.pwr_regen_max.get_fresh(|| format_dbg!())?,
                 dt,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -197,9 +197,17 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         Ok((
-            *self.em.state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?
-                + *self.fc.state.pwr_prop_max.get_fresh(format_dbg!())?,
-            *self.em.state.pwr_mech_regen_max.get_fresh(format_dbg!())?,
+            *self
+                .em
+                .state
+                .pwr_mech_fwd_out_max
+                .get_fresh(|| format_dbg!())?
+                + *self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+            *self
+                .em
+                .state
+                .pwr_mech_regen_max
+                .get_fresh(|| format_dbg!())?,
         ))
     }
 
@@ -252,7 +260,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .em
             .state
             .pwr_mech_prop_out
-            .get_fresh(format_dbg!())?
+            .get_fresh(|| format_dbg!())?
             .max(si::Power::ZERO))
     }
 }
@@ -422,13 +430,15 @@ impl Init for RGWDBState {}
 impl RGWDBState {
     /// If any of the causes are true, engine must be on
     fn engine_on(&self) -> anyhow::Result<bool> {
-        Ok(*self.fc_temperature_too_low.get_fresh(format_dbg!())?
-            || *self.vehicle_speed_too_high.get_fresh(format_dbg!())?
-            || *self.on_time_too_short.get_fresh(format_dbg!())?
-            || *self.propulsion_power_demand.get_fresh(format_dbg!())?
-            || *self.propulsion_power_demand_soft.get_fresh(format_dbg!())?
-            || *self.aux_power_demand.get_fresh(format_dbg!())?
-            || *self.charging_for_low_soc.get_fresh(format_dbg!())?)
+        Ok(*self.fc_temperature_too_low.get_fresh(|| format_dbg!())?
+            || *self.vehicle_speed_too_high.get_fresh(|| format_dbg!())?
+            || *self.on_time_too_short.get_fresh(|| format_dbg!())?
+            || *self.propulsion_power_demand.get_fresh(|| format_dbg!())?
+            || *self
+                .propulsion_power_demand_soft
+                .get_fresh(|| format_dbg!())?
+            || *self.aux_power_demand.get_fresh(|| format_dbg!())?
+            || *self.charging_for_low_soc.get_fresh(|| format_dbg!())?)
     }
 }
 
@@ -488,9 +498,9 @@ impl Default for HEVPowertrainControls {
 }
 
 impl Step for HEVPowertrainControls {
-    fn step(&mut self) -> anyhow::Result<()> {
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.step()?,
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.step(loc)?,
             HEVPowertrainControls::Placeholder => todo!(),
         }
         Ok(())
@@ -498,20 +508,18 @@ impl Step for HEVPowertrainControls {
 }
 
 impl SaveState for HEVPowertrainControls {
-    fn save_state(&mut self) -> anyhow::Result<()> {
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_state()?,
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_state(loc)?,
             HEVPowertrainControls::Placeholder => todo!(),
         }
         Ok(())
     }
 }
-impl TrackedStateMethods for HEVPowertrainControls {
-    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+impl CheckAndResetState for HEVPowertrainControls {
+    fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            HEVPowertrainControls::RGWDB(rgwdb) => {
-                rgwdb.check_and_reset(format!("{loc}\n{}", format_dbg!()))?
-            }
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.check_and_reset(loc)?,
             HEVPowertrainControls::Placeholder => todo!(),
         }
         Ok(())
@@ -573,8 +581,8 @@ impl HEVPowertrainControls {
             // `almost` is in case of negligible numerical precision discrepancies
             almost_le_uom(
                 &pwr_prop_req,
-                &(*em_state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?
-                    + *fc_state.pwr_prop_max.get_fresh(format_dbg!())?),
+                &(*em_state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?
+                    + *fc_state.pwr_prop_max.get_fresh(|| format_dbg!())?),
                 None
             ),
             "{}
@@ -586,13 +594,16 @@ impl HEVPowertrainControls {
             pwr_prop_req.get::<si::kilowatt>(),
             em_state
                 .pwr_mech_fwd_out_max
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::kilowatt>(),
             fc_state
                 .pwr_prop_max
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::kilowatt>(),
-            res.state.soc.get_fresh(format_dbg!())?.get::<si::ratio>()
+            res.state
+                .soc
+                .get_fresh(|| format_dbg!())?
+                .get::<si::ratio>()
         );
 
         // # Brain dump for thermal stuff
@@ -721,8 +732,8 @@ impl RESGreedyWithDynamicBuffers {
         // Excess demand will be handled by `fc`.  Favors drawing power from
         // `em` before engine
         let em_pwr = pwr_prop_req
-            .min(*em_state.pwr_mech_fwd_out_max.get_fresh(format_dbg!())?)
-            .max(-*em_state.pwr_mech_regen_max.get_fresh(format_dbg!())?);
+            .min(*em_state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?)
+            .max(-*em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?);
         // tractive power handled by fc
         let (fc_pwr, em_pwr) = if !self.state.engine_on()? {
             // engine is off, and `em_pwr` has already been limited within bounds
@@ -735,7 +746,7 @@ impl RESGreedyWithDynamicBuffers {
             let fc_pwr = if pwr_prop_req < si::Power::ZERO {
                 // negative tractive power
                 // max power system can receive from engine during negative traction
-                (*em_state.pwr_mech_regen_max.get_fresh(format_dbg!())? + pwr_prop_req)
+                (*em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())? + pwr_prop_req)
                     // or peak efficiency power if it's lower than above
                     .min(fc.pwr_for_peak_eff * frac_of_pwr_for_peak_eff)
                     // but not negative
@@ -757,15 +768,18 @@ impl RESGreedyWithDynamicBuffers {
                         .max(fc.pwr_for_peak_eff * frac_of_pwr_for_peak_eff)
                         // but don't exceed what what the battery can
                         // absorb + tractive demand
-                        .min(pwr_prop_req + *em_state.pwr_mech_regen_max.get_fresh(format_dbg!())?)
+                        .min(
+                            pwr_prop_req
+                                + *em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?,
+                        )
                 }
             }
             // and don't exceed what the fc can do
-            .min(*fc.state.pwr_prop_max.get_fresh(format_dbg!())?);
+            .min(*fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?);
 
             // recalculate `em_pwr` based on `fc_pwr`
-            let em_pwr_corrected =
-                (pwr_prop_req - fc_pwr).max(-*em_state.pwr_mech_regen_max.get_fresh(format_dbg!())?);
+            let em_pwr_corrected = (pwr_prop_req - fc_pwr)
+                .max(-*em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?);
             (fc_pwr, em_pwr_corrected)
         };
         Ok((fc_pwr, em_pwr))
@@ -782,7 +796,7 @@ impl RESGreedyWithDynamicBuffers {
         self.handle_fc_on_causes_for_speed(veh_state)?;
         self.handle_fc_on_causes_for_low_soc(res, veh_state)?;
         self.handle_fc_on_causes_for_pwr_demand(
-            *veh_state.pwr_tractive.get_stale(format_dbg!())?,
+            *veh_state.pwr_tractive.get_stale(|| format_dbg!())?,
             em_state,
             &fc.state,
         )?;
@@ -791,13 +805,13 @@ impl RESGreedyWithDynamicBuffers {
     }
 
     fn handle_fc_on_causes_for_on_time(&mut self, fc: &FuelConverter) -> Result<(), anyhow::Error> {
-        self.state.on_time_too_short.update(fc.state.fc_on.get_stale(format_dbg!()) && fc.state.time_on.get_stale(format_dbg!())
+        self.state.on_time_too_short.update(*fc.state.fc_on.get_stale(|| format_dbg!())? && *fc.state.time_on.get_stale(|| format_dbg!())?
                     < self.fc_min_time_on.with_context(|| {
                     anyhow!(
                         "{}\n Expected `ResGreedyWithBuffers::init` to have been called beforehand.",
                         format_dbg!()
                     )
-                })?, format_dbg!())?;
+                })?, || format_dbg!())?;
         Ok(())
     }
 
@@ -815,19 +829,14 @@ impl RESGreedyWithDynamicBuffers {
         self.state.propulsion_power_demand_soft.update(
             pwr_out_req_for_cyc
                 > frac_pwr_demand_fc_forced_on
-                    * (*em_state
-                        .pwr_mech_fwd_out_max
-                        .get_stale(format_dbg!())?
-                        + *fc_state.pwr_out_max.get_stale(format_dbg!())?),
-            format_dbg!(),
+                    * (*em_state.pwr_mech_fwd_out_max.get_stale(|| format_dbg!())?
+                        + *fc_state.pwr_out_max.get_stale(|| format_dbg!())?),
+            || format_dbg!(),
         )?;
         self.state.propulsion_power_demand.update(
-            pwr_out_req_for_cyc
-                - *em_state
-                    .pwr_mech_fwd_out_max
-                    .get_stale(format_dbg!())?
+            pwr_out_req_for_cyc - *em_state.pwr_mech_fwd_out_max.get_stale(|| format_dbg!())?
                 >= si::Power::ZERO,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         Ok(())
     }
@@ -841,14 +850,14 @@ impl RESGreedyWithDynamicBuffers {
         self.state.soc_fc_on_buffer.update(
             {
                 let energy_delta_to_buffer_speed: si::Energy = 0.5
-                    * *veh_state.mass.get_fresh(format_dbg!())?
+                    * *veh_state.mass.get_fresh(|| format_dbg!())?
                     * (self
                         .speed_soc_fc_on_buffer
                         .with_context(|| format_dbg!())?
                         .powi(typenum::P2::new())
                         - veh_state
                             .speed_ach
-                            .get_stale(format_dbg!())?
+                            .get_stale(|| format_dbg!())?
                             .powi(typenum::P2::new()));
                 energy_delta_to_buffer_speed.max(si::Energy::ZERO)
                     * self
@@ -856,12 +865,12 @@ impl RESGreedyWithDynamicBuffers {
                         .with_context(|| format_dbg!())?
             } / res.energy_capacity_usable()
                 + res.min_soc,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         self.state.charging_for_low_soc.update(
-            *res.state.soc.get_stale(format_dbg!())?
-                < *self.state.soc_fc_on_buffer.get_fresh(format_dbg!())?,
-            format_dbg!(),
+            *res.state.soc.get_stale(|| format_dbg!())?
+                < *self.state.soc_fc_on_buffer.get_fresh(|| format_dbg!())?,
+            || format_dbg!(),
         )?;
         Ok(())
     }
@@ -869,9 +878,9 @@ impl RESGreedyWithDynamicBuffers {
     /// Determines whether enigne must be on for high speed
     fn handle_fc_on_causes_for_speed(&mut self, veh_state: &VehicleState) -> anyhow::Result<()> {
         self.state.vehicle_speed_too_high.update(
-            *veh_state.speed_ach.get_stale(format_dbg!())?
+            *veh_state.speed_ach.get_stale(|| format_dbg!())?
                 > self.speed_fc_forced_on.with_context(|| format_dbg!())?,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         Ok(())
     }
@@ -881,11 +890,11 @@ impl RESGreedyWithDynamicBuffers {
     fn handle_fc_on_causes_for_temp(&mut self, fc: &FuelConverter) -> anyhow::Result<()> {
         match (
             match fc.temperature() {
-                Some(fct) => Some(*fct.get_fresh(format_dbg!())?),
+                Some(fct) => Some(*fct.get_fresh(|| format_dbg!())?),
                 None => None,
             },
             match fc.temperature() {
-                Some(fct) => Some(*fct.get_stale(format_dbg!())?),
+                Some(fct) => Some(*fct.get_stale(|| format_dbg!())?),
                 None => None,
             },
             self.temp_fc_forced_on,
@@ -894,7 +903,7 @@ impl RESGreedyWithDynamicBuffers {
             (None, None, None, None) => {
                 self.state
                     .fc_temperature_too_low
-                    .update(false, format_dbg!())?;
+                    .update(false, || format_dbg!())?;
             }
             (
                 Some(temperature),
@@ -907,7 +916,7 @@ impl RESGreedyWithDynamicBuffers {
                     temperature < temp_fc_forced_on ||
             // temperature was below forced on threshold and still has not exceeded allowed off threshold
             (temp_prev < temp_fc_forced_on && temperature < temp_fc_allowed_off),
-                    format_dbg!(),
+                    || format_dbg!(),
                 )?;
             }
             _ => {

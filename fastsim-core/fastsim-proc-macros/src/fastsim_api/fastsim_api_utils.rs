@@ -21,7 +21,7 @@ macro_rules! extract_units {
 ///
 /// - field: struct field name as ident
 /// - unit_name: plural name of units being used (generate using extract_units)
-fn impl_serde_for_si(field: &mut syn::Field, unit_name: &str) {
+fn serde_attr_for_si_field(field: &mut syn::Field, unit_name: &str) {
     let ident = field.ident.clone().unwrap();
     match unit_name {
         "" => {}
@@ -143,7 +143,7 @@ fn extract_si_quantity(path: &syn::Path) -> Option<String> {
     Some(path.segments[i + 1].ident.to_string())
 }
 
-pub(crate) fn impl_getters_and_setters(field: &mut syn::Field) -> Option<()> {
+pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
     let ftype = field.ty.clone();
     let mut vec_layers: u8 = 0;
     let mut inner_type = &ftype;
@@ -223,7 +223,7 @@ pub(crate) fn impl_getters_and_setters(field: &mut syn::Field) -> Option<()> {
             ),
         };
         for (_, unit_name) in &unit_impls {
-            impl_serde_for_si(field, unit_name);
+            serde_attr_for_si_field(field, unit_name);
         }
     }
     Some(())

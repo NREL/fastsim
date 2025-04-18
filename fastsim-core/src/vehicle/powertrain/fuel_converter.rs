@@ -116,7 +116,7 @@ impl Init for FuelConverter {
             .eff_interp_from_pwr_out
             .x()
             .map_err(|err| Error::InitError(format_dbg!(err)))?
-            .get_fresh(
+            .get(
                 self.eff_interp_from_pwr_out
                     .f_x()
                     .unwrap()
@@ -218,12 +218,14 @@ impl FuelConverter {
             // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
-        let pwr_out_max = (self.state.pwr_prop.get_stale(format_dbg!())
-            + self.state.pwr_aux.get_stale(format_dbg!())
+        let pwr_out_max = (*self.state.pwr_prop.get_stale(|| format_dbg!())?
+            + *self.state.pwr_aux.get_stale(|| format_dbg!())?
             + self.pwr_out_max / self.pwr_ramp_lag * dt)
             .min(self.pwr_out_max)
             .max(self.pwr_out_max_init);
-        self.state.pwr_out_max.update(pwr_out_max, format_dbg!())?;
+        self.state
+            .pwr_out_max
+            .update(pwr_out_max, || format_dbg!())?;
         Ok(())
     }
 
@@ -239,10 +241,10 @@ impl FuelConverter {
                 format_dbg!(pwr_aux >= si::Power::ZERO),
             )
         );
-        self.state.pwr_aux.update(pwr_aux, format_dbg!())?;
+        self.state.pwr_aux.update(pwr_aux, || format_dbg!())?;
         self.state.pwr_prop_max.update(
-            *self.state.pwr_out_max.get_fresh(format_dbg!())? - pwr_aux,
-            format_dbg!(),
+            *self.state.pwr_out_max.get_fresh(|| format_dbg!())? - pwr_aux,
+            || format_dbg!(),
         )?;
         Ok(())
     }
@@ -258,15 +260,14 @@ impl FuelConverter {
         fc_on: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        self.state.fc_on.update(fc_on, format_dbg!())?;
-        self.state.time_on.update(
-            if fc_on {
-                self.state.time_on.get_stale(format_dbg!()) + dt
-            } else {
-                si::Time::ZERO
-            },
-            format_dbg!(),
-        )?;
+        self.state.fc_on.update(fc_on, || format_dbg!())?;
+        if fc_on {
+            self.state.time_on.increment(dt, || format_dbg!())?;
+        } else {
+            self.state
+                .time_on
+                .update(si::Time::ZERO, || format_dbg!())?;
+        }
         // NOTE: think about the possibility of engine braking, not urgent
         ensure!(
             pwr_out_req >= si::Power::ZERO,
@@ -277,25 +278,26 @@ impl FuelConverter {
         );
         // if the engine is not on, `pwr_out_req` should be 0.0
         ensure!(
-            fc_on || (pwr_out_req == si::Power::ZERO && *self.state.pwr_aux.get_fresh(format_dbg!())? == si::Power::ZERO),
+            fc_on || (pwr_out_req == si::Power::ZERO && *self.state.pwr_aux.get_fresh(|| format_dbg!())? == si::Power::ZERO),
             format!(
                 "{}\nEngine is off but pwr_out_req + pwr_aux is non-zero\n`pwr_out_req`: {} kW\n`self.state.pwr_aux`: {} kW",
                 format_dbg!(
                     fc_on
                         || (pwr_out_req == si::Power::ZERO
-                            && *self.state.pwr_aux.get_fresh(format_dbg!())? == si::Power::ZERO)
+                            && *self.state.pwr_aux.get_fresh(|| format_dbg!())? == si::Power::ZERO)
                 ),
                pwr_out_req.get::<si::kilowatt>(),
-               self.state.pwr_aux.get_fresh(format_dbg!())?.get::<si::kilowatt>()
+               self.state.pwr_aux.get_fresh(|| format_dbg!())?.get::<si::kilowatt>()
             )
         );
-        self.state.pwr_prop.update(pwr_out_req, format_dbg!())?;
+        self.state.pwr_prop.update(pwr_out_req, || format_dbg!())?;
         self.state.eff.update(
             if fc_on {
                 uc::R
                     * self
                         .eff_interp_from_pwr_out
-                        .interpolate(&[((pwr_out_req + *self.state.pwr_aux.get_fresh(format_dbg!())?)
+                        .interpolate(&[((pwr_out_req
+                            + *self.state.pwr_aux.get_fresh(|| format_dbg!())?)
                             / self.pwr_out_max)
                             .get::<si::ratio>()])
                         .with_context(|| {
@@ -308,33 +310,37 @@ impl FuelConverter {
             } else {
                 si::Ratio::ZERO
             } * match self.thrml.temp_eff_coeff() {
-                Some(tec) => *tec.get_fresh(format_dbg!())?,
+                Some(tec) => *tec.get_fresh(|| format_dbg!())?,
                 None => 1.0 * uc::R,
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         ensure!(
-            (*self.state.eff.get_fresh(format_dbg!())? >= 0.0 * uc::R
-                && *self.state.eff.get_fresh(format_dbg!())? <= 1.0 * uc::R),
+            (*self.state.eff.get_fresh(|| format_dbg!())? >= 0.0 * uc::R
+                && *self.state.eff.get_fresh(|| format_dbg!())? <= 1.0 * uc::R),
             format!(
                 "fc efficiency ({}) must be either between 0 and 1",
-                self.state.eff.get_fresh(format_dbg!())?.get::<si::ratio>()
+                self.state
+                    .eff
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::ratio>()
             )
         );
 
         self.state.pwr_fuel.update(
-            if *self.state.fc_on.get_fresh(format_dbg!())? {
-                ((pwr_out_req + *self.state.pwr_aux.get_fresh(format_dbg!())?)
-                    / *self.state.eff.get_fresh(format_dbg!())?)
+            if *self.state.fc_on.get_fresh(|| format_dbg!())? {
+                ((pwr_out_req + *self.state.pwr_aux.get_fresh(|| format_dbg!())?)
+                    / *self.state.eff.get_fresh(|| format_dbg!())?)
                 .max(self.pwr_idle_fuel)
             } else {
                 si::Power::ZERO
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         self.state.pwr_loss.update(
-            *self.state.pwr_fuel.get_fresh(format_dbg!())? - *self.state.pwr_prop.get_fresh(format_dbg!())?,
-            format_dbg!(),
+            *self.state.pwr_fuel.get_fresh(|| format_dbg!())?
+                - *self.state.pwr_prop.get_fresh(|| format_dbg!())?,
+            || format_dbg!(),
         )?;
 
         // TODO: put this in `SetCumulative::set_custom_cumulative`
@@ -355,7 +361,7 @@ impl FuelConverter {
         veh_state: &mut VehicleState,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        let veh_speed = veh_state.speed_ach.get_stale(format_dbg!());
+        let veh_speed = *veh_state.speed_ach.get_stale(|| format_dbg!())?;
         self.thrml
             .solve(&self.state, te_amb, pwr_thrml_fc_to_cab, veh_speed, dt)
             .with_context(|| format_dbg!())
@@ -548,19 +554,19 @@ pub enum FuelConverterThermalOption {
 }
 
 impl SaveState for FuelConverterThermalOption {
-    fn save_state(&mut self) -> anyhow::Result<()> {
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::FuelConverterThermal(fct) => fct.save_state()?,
+            Self::FuelConverterThermal(fct) => fct.save_state(loc)?,
             Self::None => {}
         }
         Ok(())
     }
 }
-impl TrackedStateMethods for FuelConverterThermalOption {
-    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+impl CheckAndResetState for FuelConverterThermalOption {
+    fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::FuelConverterThermal(fct) => {
-                fct.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
+                fct.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
             Self::None => {}
         }
@@ -568,9 +574,9 @@ impl TrackedStateMethods for FuelConverterThermalOption {
     }
 }
 impl Step for FuelConverterThermalOption {
-    fn step(&mut self) -> anyhow::Result<()> {
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::FuelConverterThermal(fct) => fct.step(),
+            Self::FuelConverterThermal(fct) => fct.step(|| format!("{}\n{}", loc(), format_dbg!())),
             Self::None => Ok(()),
         }
     }
@@ -770,13 +776,13 @@ impl FuelConverterThermal {
     ) -> anyhow::Result<()> {
         self.state
             .pwr_thrml_fc_to_cab
-            .update(pwr_thrml_fc_to_cab, format_dbg!())?;
+            .update(pwr_thrml_fc_to_cab, || format_dbg!())?;
         // film temperature for external convection calculations
         let te_air_film: si::Temperature = 0.5
             * (self
                 .state
                 .temperature
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .get::<si::kelvin_abs>()
                 + te_amb.get::<si::kelvin_abs>())
             * uc::KELVIN;
@@ -795,13 +801,14 @@ impl FuelConverterThermal {
                         .interpolate(&[self
                             .state
                             .temperature
-                            .get_fresh(format_dbg!())?
+                            .get_fresh(|| format_dbg!())?
                             .get::<si::degree_celsius>()])
                         .with_context(|| format_dbg!())?,
-                    format_dbg!(),
+                    || format_dbg!(),
                 )?;
                 (uc::R
-                    + *self.state.tstat_open_frac.get_fresh(format_dbg!())? * self.radiator_effectiveness)
+                    + *self.state.tstat_open_frac.get_fresh(|| format_dbg!())?
+                        * self.radiator_effectiveness)
                     * self.htc_to_amb_stop
             } else {
                 // Calculate heat transfer coefficient for sphere,
@@ -821,29 +828,29 @@ impl FuelConverterThermal {
                         .interpolate(&[self
                             .state
                             .temperature
-                            .get_fresh(format_dbg!())?
+                            .get_fresh(|| format_dbg!())?
                             .get::<si::degree_celsius>()])
                         .with_context(|| format_dbg!())?,
-                    format_dbg!(),
+                    || format_dbg!(),
                 )?;
-                *self.state.tstat_open_frac.get_fresh(format_dbg!())? * htc_to_amb_sphere
+                *self.state.tstat_open_frac.get_fresh(|| format_dbg!())? * htc_to_amb_sphere
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         self.state.pwr_thrml_to_amb.update(
-            *self.state.htc_to_amb.get_fresh(format_dbg!())?
+            *self.state.htc_to_amb.get_fresh(|| format_dbg!())?
                 * PI
                 * self.length_for_convection.powi(typenum::P2::new())
                 / 4.0
                 * (self
                     .state
                     .temperature
-                    .get_fresh(format_dbg!())?
+                    .get_fresh(|| format_dbg!())?
                     .get::<si::degree_celsius>()
                     - te_amb.get::<si::degree_celsius>())
                 * uc::KELVIN_INT,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         // let heat_to_amb = ;
@@ -851,50 +858,53 @@ impl FuelConverterThermal {
         // assumes stoichiometric combustion
         self.state.te_adiabatic.update(
             Air::get_te_from_u(
-                Air::get_specific_energy(*self.state.temperature.get_fresh(format_dbg!())?)
+                Air::get_specific_energy(*self.state.temperature.get_fresh(|| format_dbg!())?)
                     .with_context(|| format_dbg!())?
-                    + (Octane::get_specific_energy(*self.state.temperature.get_fresh(format_dbg!())?)
+                    + (Octane::get_specific_energy(*self.state.temperature.get_fresh(|| format_dbg!())?)
                     .with_context(|| format_dbg!())?
                     // TODO: make config. for other fuels -- e.g. with enum for specific fuels and/or fuel properties
                     + *GASOLINE_LHV)
                         / *AFR_STOICH_GASOLINE,
             )
             .with_context(|| format_dbg!())?,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         // heat that will go both to the block and out the exhaust port
         self.state.pwr_fuel_as_heat.update(
-            *fc_state.pwr_fuel.get_fresh(format_dbg!())?
-                - (*fc_state.pwr_prop.get_fresh(format_dbg!())?
-                    + *fc_state.pwr_aux.get_fresh(format_dbg!())?),
-            format_dbg!(),
+            *fc_state.pwr_fuel.get_fresh(|| format_dbg!())?
+                - (*fc_state.pwr_prop.get_fresh(|| format_dbg!())?
+                    + *fc_state.pwr_aux.get_fresh(|| format_dbg!())?),
+            || format_dbg!(),
         )?;
         self.state.pwr_thrml_to_tm.update(
             (self.conductance_from_comb
                 * (self
                     .state
                     .te_adiabatic
-                    .get_fresh(format_dbg!())?
+                    .get_fresh(|| format_dbg!())?
                     .get::<si::degree_celsius>()
                     - self
                         .state
                         .temperature
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::degree_celsius>())
                 * uc::KELVIN_INT)
-                .min(self.max_frac_from_comb * *self.state.pwr_fuel_as_heat.get_fresh(format_dbg!())?),
-            format_dbg!(),
+                .min(
+                    self.max_frac_from_comb
+                        * *self.state.pwr_fuel_as_heat.get_fresh(|| format_dbg!())?,
+                ),
+            || format_dbg!(),
         )?;
         let delta_temp: si::TemperatureInterval =
-            ((*self.state.pwr_thrml_to_tm.get_fresh(format_dbg!())?
-                - *self.state.pwr_thrml_fc_to_cab.get_fresh(format_dbg!())?
-                - *self.state.pwr_thrml_to_amb.get_fresh(format_dbg!())?)
+            ((*self.state.pwr_thrml_to_tm.get_fresh(|| format_dbg!())?
+                - *self.state.pwr_thrml_fc_to_cab.get_fresh(|| format_dbg!())?
+                - *self.state.pwr_thrml_to_amb.get_fresh(|| format_dbg!())?)
                 * dt)
                 / self.heat_capacitance;
         // Interestingly, it seems to be ok to add a `TemperatureInterval` to a `Temperature` here
         self.state.temperature.update(
-            *self.state.temperature.get_stale(format_dbg!())? + delta_temp,
-            format_dbg!(),
+            *self.state.temperature.get_stale(|| format_dbg!())? + delta_temp,
+            || format_dbg!(),
         )?;
 
         self.state.eff_coeff.update(
@@ -907,7 +917,7 @@ impl FuelConverterThermal {
                     {
                         let calc_unbound: si::Ratio = offset
                             + slope * uc::R / uc::KELVIN
-                                * *self.state.temperature.get_fresh(format_dbg!())?;
+                                * *self.state.temperature.get_fresh(|| format_dbg!())?;
                         calc_unbound
                     }
                     .min(1.0 * uc::R),
@@ -920,14 +930,14 @@ impl FuelConverterThermal {
                     let dte: si::TemperatureInterval = (self
                         .state
                         .temperature
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::kelvin_abs>()
                         - offset.get::<si::kelvin_abs>())
                         * uc::KELVIN_INT;
                     ((1.0 - f64::exp((-dte / lag).get::<si::ratio>())) * uc::R).max(minimum)
                 }
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         Ok(())
     }

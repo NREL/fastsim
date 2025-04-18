@@ -349,6 +349,6 @@ fn process_named_field_struct(
 
     // struct with named fields
     for field in named.iter_mut() {
-        impl_getters_and_setters(field);
+        serde_attrs_for_si_fields(field);
     }
 }

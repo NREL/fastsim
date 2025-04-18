@@ -159,22 +159,12 @@ impl SimDrive {
                 // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
                 let veh_init = self.veh.clone();
                 loop {
+                    self.veh.hev_mut().unwrap().soc_bal_iters.mark_stale();
                     self.veh
                         .hev_mut()
                         .unwrap()
                         .soc_bal_iters
-                        .check_and_reset(format_dbg!())?;
-                    let soc_bal_iters = self
-                        .veh
-                        .hev_mut()
-                        .unwrap()
-                        .soc_bal_iters
-                        .get_stale(format_dbg!());
-                    self.veh
-                        .hev_mut()
-                        .unwrap()
-                        .soc_bal_iters
-                        .update(1 + soc_bal_iters, format_dbg!())?;
+                        .increment(1, || format_dbg!())?;
                     self.walk_once().with_context(|| format_dbg!())?;
                     let soc_final = self
                         .veh
@@ -190,15 +180,20 @@ impl SimDrive {
                         .unwrap()
                         .state
                         .energy_out_chemical
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         / *self
                             .veh
                             .fc()
                             .unwrap()
                             .state
                             .energy_fuel
-                            .get_fresh(format_dbg!())?;
-                    if self.veh.hev().unwrap().soc_bal_iters.get_fresh(format_dbg!())?
+                            .get_fresh(|| format_dbg!())?;
+                    if self
+                        .veh
+                        .hev()
+                        .unwrap()
+                        .soc_bal_iters
+                        .get_fresh(|| format_dbg!())?
                         > &self.veh.hev().unwrap().sim_params.soc_balance_iter_err
                     {
                         bail!(
@@ -218,7 +213,7 @@ impl SimDrive {
                         if let Some(&mut ref mut hev) = self.veh.hev_mut() {
                             if hev.sim_params.save_soc_bal_iters {
                                 hev.soc_bal_iter_history.push(hev.clone());
-                                hev.soc_bal_iters.reset()?;
+                                hev.soc_bal_iters.mark_stale();
                             }
                         }
                         // reset vehicle to initial state
@@ -237,24 +232,24 @@ impl SimDrive {
     pub fn walk_once(&mut self) -> anyhow::Result<()> {
         let len = &self.cyc.len_checked().with_context(|| format_dbg!())?;
         ensure!(len >= &2, format_dbg!(len < &2));
-        self.save_state()?;
+        self.save_state(|| format_dbg!())?;
 
         self.veh.state.mass.update(
             self.veh
                 .mass()
                 .with_context(|| format_dbg!())?
                 .with_context(|| format_dbg!("Expected mass to have been set."))?,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
+        self.veh.state.mass.mark_stale();
 
         loop {
-            self.check_and_reset(format_dbg!())
-                .with_context(|| format_dbg!())?;
-            self.step()?;
+            self.check_and_reset(|| format_dbg!())?;
+            self.step(|| format_dbg!())?;
             self.solve_step()
                 .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
-            self.save_state()?;
-            if *self.veh.state.i.get_fresh(format_dbg!())? == len - 1 {
+            self.save_state(|| format_dbg!())?;
+            if *self.veh.state.i.get_fresh(|| format_dbg!())? == len - 1 {
                 break;
             }
         }
@@ -263,11 +258,11 @@ impl SimDrive {
 
     /// Solves current time step
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
-        let i = *self.veh.state.i.get_fresh(format_dbg!())?;
+        let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
         self.veh
             .state
             .time
-            .update(self.cyc.time[i], format_dbg!())?;
+            .update(self.cyc.time[i], || format_dbg!())?;
         let dt = self.cyc.dt_at_i(i)?;
         // maybe make controls like:
         // ```
@@ -285,13 +280,13 @@ impl SimDrive {
             .with_context(|| format_dbg!())?;
         self.set_pwr_prop_for_speed(
             self.cyc.speed[i],
-            self.veh.state.speed_ach.get_stale(format_dbg!()),
+            *self.veh.state.speed_ach.get_stale(|| format_dbg!())?,
             dt,
         )
         .with_context(|| anyhow!(format_dbg!()))?;
         self.veh.state.pwr_tractive_for_cyc.update(
-            *self.veh.state.pwr_tractive.get_fresh(format_dbg!())?,
-            format_dbg!(),
+            *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
+            || format_dbg!(),
         )?;
         self.veh
             // TODO: feed in something different for first arg when CAVs stuff is active @MOK
@@ -302,9 +297,9 @@ impl SimDrive {
         if self.sim_params.trace_miss_opts.is_allow_checked() {
             self.sim_params.trace_miss_tol.check_trace_miss(
                 self.cyc.speed[i],
-                *self.veh.state.speed_ach.get_fresh(format_dbg!())?,
+                *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
                 self.cyc.dist[i],
-                *self.veh.state.dist.get_fresh(format_dbg!())?,
+                *self.veh.state.dist.get_fresh(|| format_dbg!())?,
             )?;
         }
         self.veh
@@ -324,20 +319,22 @@ impl SimDrive {
         speed_prev: si::Velocity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        let i = *self.veh.state.i.get_fresh(format_dbg!())?;
+        let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
         let vs = &mut self.veh.state;
         // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
         let interp_pt_dist: &[f64] = match self.cyc.grade_interp {
             Some(Interpolator::Interp0D(..)) => &[],
-            Some(Interpolator::Interp1D(..)) => &[vs.dist.get_fresh(format_dbg!())?.get::<si::meter>()],
+            Some(Interpolator::Interp1D(..)) => {
+                &[vs.dist.get_fresh(|| format_dbg!())?.get::<si::meter>()]
+            }
             _ => unreachable!(),
         };
         vs.grade_curr.update(
-            if *vs.cyc_met_overall.get_stale(format_dbg!())? {
+            if *vs.cyc_met_overall.get_stale(|| format_dbg!())? {
                 *self
                     .cyc
                     .grade
-                    .get_fresh(i)
+                    .get(i)
                     .with_context(|| format_dbg!(self.cyc.grade.len()))?
             } else {
                 uc::R
@@ -349,11 +346,11 @@ impl SimDrive {
                         .interpolate(interp_pt_dist)
                         .with_context(|| format_dbg!())?
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         vs.elev_curr.update(
-            if *vs.cyc_met_overall.get_stale(format_dbg!())? {
-                *self.cyc.elev.get_fresh(i).with_context(|| format_dbg!())?
+            if *vs.cyc_met_overall.get_stale(|| format_dbg!())? {
+                *self.cyc.elev.get(i).with_context(|| format_dbg!())?
             } else {
                 uc::M
                     * self
@@ -364,7 +361,7 @@ impl SimDrive {
                         .interpolate(interp_pt_dist)
                         .with_context(|| format_dbg!())?
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         vs.air_density.update(
@@ -375,7 +372,7 @@ impl SimDrive {
                     let te_amb_air = self
                         .cyc
                         .temp_amb_air
-                        .get_fresh(i)
+                        .get(i)
                         .with_context(|| format_dbg!())?;
                     if *te_amb_air == *TE_STD_AIR {
                         None
@@ -383,9 +380,12 @@ impl SimDrive {
                         Some(te_amb_air)
                     }
                 };
-                Air::get_density(te_amb_air.copied(), Some(*vs.elev_curr.get_fresh(format_dbg!())?))
+                Air::get_density(
+                    te_amb_air.copied(),
+                    Some(*vs.elev_curr.get_fresh(|| format_dbg!())?),
+                )
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         let mass = self.veh.mass.with_context(|| {
@@ -397,11 +397,15 @@ impl SimDrive {
         vs.pwr_accel.update(
             mass / (2.0 * dt)
                 * (speed.powi(typenum::P2::new()) - speed_prev.powi(typenum::P2::new())),
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         vs.pwr_ascent.update(
-            uc::ACC_GRAV * *vs.grade_curr.get_fresh(format_dbg!())? * mass * (speed_prev + speed) / 2.0,
-            format_dbg!(),
+            uc::ACC_GRAV
+                * *vs.grade_curr.get_fresh(|| format_dbg!())?
+                * mass
+                * (speed_prev + speed)
+                / 2.0,
+            || format_dbg!(),
         )?;
         vs.pwr_drag.update(
             0.5
@@ -410,15 +414,15 @@ impl SimDrive {
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
             * ((speed + speed_prev) / 2.0).powi(typenum::P3::new()),
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         vs.pwr_rr.update(
             mass * uc::ACC_GRAV
                 * self.veh.chassis.wheel_rr_coef
-                * vs.grade_curr.get_fresh(format_dbg!())?.atan().cos()
+                * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().cos()
                 * (speed_prev + speed)
                 / 2.,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         vs.pwr_whl_inertia.update(
             0.5 * self.veh.chassis.wheel_inertia
@@ -427,16 +431,16 @@ impl SimDrive {
                     - (speed_prev / self.veh.chassis.wheel_radius.unwrap())
                         .powi(typenum::P2::new()))
                 / self.cyc.dt_at_i(i).with_context(|| format_dbg!())?,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
 
         vs.pwr_tractive.update(
-            *vs.pwr_rr.get_fresh(format_dbg!())?
-                + *vs.pwr_whl_inertia.get_fresh(format_dbg!())?
-                + *vs.pwr_accel.get_fresh(format_dbg!())?
-                + *vs.pwr_ascent.get_fresh(format_dbg!())?
-                + *vs.pwr_drag.get_fresh(format_dbg!())?,
-            format_dbg!(),
+            *vs.pwr_rr.get_fresh(|| format_dbg!())?
+                + *vs.pwr_whl_inertia.get_fresh(|| format_dbg!())?
+                + *vs.pwr_accel.get_fresh(|| format_dbg!())?
+                + *vs.pwr_ascent.get_fresh(|| format_dbg!())?
+                + *vs.pwr_drag.get_fresh(|| format_dbg!())?,
+            || format_dbg!(),
         )?;
         Ok(())
     }
@@ -448,23 +452,24 @@ impl SimDrive {
     pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
         let vs = &mut self.veh.state;
         vs.cyc_met.update(
-            vs.pwr_tractive.get_fresh(format_dbg!())? <= vs.pwr_prop_fwd_max.get_fresh(format_dbg!())?,
-            format_dbg!(),
+            vs.pwr_tractive.get_fresh(|| format_dbg!())?
+                <= vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?,
+            || format_dbg!(),
         )?;
         vs.cyc_met_overall.update(
-            if !*vs.cyc_met.get_fresh(format_dbg!())? {
+            if !*vs.cyc_met.get_fresh(|| format_dbg!())? {
                 // if current power demand is not met, then this becomes false for
                 // the rest of the cycle and should not be manipulated anywhere else
                 false
             } else {
-                vs.cyc_met_overall.get_stale(format_dbg!())
+                *vs.cyc_met_overall.get_stale(|| format_dbg!())?
             },
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         let veh = &mut self.veh;
-        let speed_prev = veh.state.speed_ach.get_stale(format_dbg!());
-        if *veh.state.cyc_met.get_fresh(format_dbg!())? {
-            veh.state.speed_ach.update(cyc_speed, format_dbg!())?;
+        let speed_prev = *veh.state.speed_ach.get_stale(|| format_dbg!())?;
+        if *veh.state.cyc_met.get_fresh(|| format_dbg!())? {
+            veh.state.speed_ach.update(cyc_speed, || format_dbg!())?;
             return Ok(());
         } else {
             match self.sim_params.trace_miss_opts {
@@ -477,7 +482,7 @@ impl SimDrive {
                 TraceMissOptions::Error => bail!(
                     "{}\nFailed to meet speed trace.
 prescribed speed: {} mph
-speed_ach: {} mph
+prev speed_ach: {} mph
 pwr_tractive_for_cyc: {} kW
 pwr_tractive: {} kW
 pwr_prop_fwd_max: {} kW,
@@ -487,22 +492,22 @@ pwr deficit: {} kW
                     cyc_speed.get::<si::mile_per_hour>(),
                     veh.state
                         .speed_ach
-                        .get_stale(format_dbg!())
+                        .get_stale(|| format_dbg!())?
                         .get::<si::mile_per_hour>(),
                     veh.state
                         .pwr_tractive_for_cyc
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::kilowatt>(),
                     veh.state
                         .pwr_tractive
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::kilowatt>(),
                     veh.state
                         .pwr_prop_fwd_max
-                        .get_fresh(format_dbg!())?
+                        .get_fresh(|| format_dbg!())?
                         .get::<si::kilowatt>(),
-                    (*veh.state.pwr_tractive.get_fresh(format_dbg!())?
-                        - *veh.state.pwr_prop_fwd_max.get_fresh(format_dbg!())?)
+                    (*veh.state.pwr_tractive.get_fresh(|| format_dbg!())?
+                        - *veh.state.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?)
                     .get::<si::kilowatt>()
                     .format_eng(None)
                 ),
@@ -516,12 +521,12 @@ pwr deficit: {} kW
             .with_context(|| format!("{}\nMass should have been set before now", format_dbg!()))?;
 
         let drag3 = 1.0 / 16.0
-            * *vs.air_density.get_fresh(format_dbg!())?
+            * *vs.air_density.get_fresh(|| format_dbg!())?
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area;
         let accel2 = 0.5 * mass / dt;
         let drag2 = 3.0 / 16.0
-            * *vs.air_density.get_fresh(format_dbg!())?
+            * *vs.air_density.get_fresh(|| format_dbg!())?
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
             * speed_prev;
@@ -534,19 +539,22 @@ pwr deficit: {} kW
                     .unwrap()
                     .powi(typenum::P2::new()));
         let drag1 = 3.0 / 16.0
-            * *vs.air_density.get_fresh(format_dbg!())?
+            * *vs.air_density.get_fresh(|| format_dbg!())?
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
-            * vs.speed_ach.get_fresh(format_dbg!())?.powi(typenum::P2::new());
+            * vs.speed_ach
+                .get_fresh(|| format_dbg!())?
+                .powi(typenum::P2::new());
         let roll1 = 0.5
             * mass
             * uc::ACC_GRAV
             * self.veh.chassis.wheel_rr_coef
-            * vs.grade_curr.get_fresh(format_dbg!())?.atan().cos();
-        let ascent1 = 0.5 * uc::ACC_GRAV * vs.grade_curr.get_fresh(format_dbg!())?.atan().sin() * mass;
+            * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().cos();
+        let ascent1 =
+            0.5 * uc::ACC_GRAV * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().sin() * mass;
         let accel0 = -0.5 * mass * speed_prev.powi(typenum::P2::new()) / dt;
         let drag0 = 1.0 / 16.0
-            * *vs.air_density.get_fresh(format_dbg!())?
+            * *vs.air_density.get_fresh(|| format_dbg!())?
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
             * speed_prev.powi(typenum::P3::new());
@@ -554,10 +562,13 @@ pwr deficit: {} kW
             * mass
             * uc::ACC_GRAV
             * self.veh.chassis.wheel_rr_coef
-            * vs.grade_curr.get_fresh(format_dbg!())?.atan().cos()
+            * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().cos()
             * speed_prev;
-        let ascent0 =
-            0.5 * uc::ACC_GRAV * vs.grade_curr.get_fresh(format_dbg!())?.atan().sin() * mass * speed_prev;
+        let ascent0 = 0.5
+            * uc::ACC_GRAV
+            * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().sin()
+            * mass
+            * speed_prev;
         let wheel0 = -0.5
             * self.veh.chassis.wheel_inertia
             * self.veh.chassis.num_wheels as f64
@@ -574,7 +585,7 @@ pwr deficit: {} kW
         let t2 = accel2 + drag2 + wheel2;
         let t1 = drag1 + roll1 + ascent1;
         let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0)
-            - *vs.pwr_prop_fwd_max.get_fresh(format_dbg!())?;
+            - *vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?;
 
         // initial guess
         let speed_guess = (1e-3 * uc::MPS).max(cyc_speed);
@@ -595,7 +606,7 @@ pwr deficit: {} kW
         let pwr_err = pwr_err_fn(speed_guess);
         if almost_eq_uom(&pwr_err, &(0. * uc::W), Some(1e-6)) {
             // TODO: maybe change to `updated_unchecked`
-            vs.speed_ach.update(cyc_speed, format_dbg!())?;
+            vs.speed_ach.update(cyc_speed, || format_dbg!())?;
             return Ok(());
         }
         let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
@@ -638,12 +649,12 @@ pwr deficit: {} kW
                 .max(0.0 * uc::MPS);
         }
 
-        vs.speed_ach.update(speed_ach, format_dbg!())?;
+        vs.speed_ach.update(speed_ach, || format_dbg!())?;
 
         // Run it again to make sure it has been updated for achieved speed
         self.set_pwr_prop_for_speed(
-            *self.veh.state.speed_ach.get_fresh(format_dbg!())?,
-            self.veh.state.speed_ach.get_stale(format_dbg!()),
+            *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
+            speed_prev,
             dt,
         )
         .with_context(|| format_dbg!())?;
@@ -772,14 +783,17 @@ mod tests {
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
-        assert!(*sd.veh.state.i.get_fresh(String::new()).unwrap() == sd.cyc.len_checked().unwrap() - 1);
+        assert!(
+            *sd.veh.state.i.get_fresh(|| String::new()).unwrap()
+                == sd.cyc.len_checked().unwrap() - 1
+        );
         assert!(
             *sd.veh
                 .fc()
                 .unwrap()
                 .state
                 .energy_fuel
-                .get_fresh(String::new())
+                .get_fresh(|| String::new())
                 .unwrap()
                 > si::Energy::ZERO
         );
@@ -793,14 +807,17 @@ mod tests {
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
-        assert!(*sd.veh.state.i.get_fresh(String::new()).unwrap() == sd.cyc.len_checked().unwrap() - 1);
+        assert!(
+            *sd.veh.state.i.get_fresh(|| String::new()).unwrap()
+                == sd.cyc.len_checked().unwrap() - 1
+        );
         assert!(
             *sd.veh
                 .fc()
                 .unwrap()
                 .state
                 .energy_fuel
-                .get_fresh(String::new())
+                .get_fresh(|| String::new())
                 .unwrap()
                 > si::Energy::ZERO
         );
@@ -810,7 +827,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_out_chemical
-                .get_fresh(String::new())
+                .get_fresh(|| String::new())
                 .unwrap()
                 != si::Energy::ZERO
         );
@@ -827,7 +844,10 @@ mod tests {
             sim_params: Default::default(),
         };
         sd.walk().unwrap();
-        assert!(*sd.veh.state.i.get_fresh(String::new()).unwrap() == sd.cyc.len_checked().unwrap() - 1);
+        assert!(
+            *sd.veh.state.i.get_fresh(|| String::new()).unwrap()
+                == sd.cyc.len_checked().unwrap() - 1
+        );
         assert!(sd.veh.fc().is_none());
         assert!(
             *sd.veh
@@ -835,7 +855,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_out_chemical
-                .get_fresh(String::new())
+                .get_fresh(|| String::new())
                 .unwrap()
                 != si::Energy::ZERO
         );

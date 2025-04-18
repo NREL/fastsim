@@ -73,10 +73,10 @@ impl HistoryMethods for HVACOption {
     }
 }
 impl SaveState for HVACOption {
-    fn save_state(&mut self) -> anyhow::Result<()> {
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.save_state()?,
-            Self::LumpedCabinAndRES(lcr) => lcr.save_state()?,
+            Self::LumpedCabin(lc) => lc.save_state(loc)?,
+            Self::LumpedCabinAndRES(lcr) => lcr.save_state(loc)?,
             Self::LumpedCabinWithShell => {
                 todo!()
             }
@@ -86,12 +86,14 @@ impl SaveState for HVACOption {
         Ok(())
     }
 }
-impl TrackedStateMethods for HVACOption {
-    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+impl CheckAndResetState for HVACOption {
+    fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.check_and_reset(format!("{}\n{loc}", format_dbg!()))?,
+            Self::LumpedCabin(lc) => {
+                lc.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::LumpedCabinAndRES(lcr) => {
-                lcr.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
+                lcr.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
             Self::LumpedCabinWithShell => {
                 todo!()
@@ -103,10 +105,10 @@ impl TrackedStateMethods for HVACOption {
     }
 }
 impl Step for HVACOption {
-    fn step(&mut self) -> anyhow::Result<()> {
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.step(),
-            Self::LumpedCabinAndRES(lcr) => lcr.step(),
+            Self::LumpedCabin(lc) => lc.step(|| format!("{}\n{}", loc(), format_dbg!())),
+            Self::LumpedCabinAndRES(lcr) => lcr.step(|| format!("{}\n{}", loc(), format_dbg!())),
             Self::LumpedCabinWithShell => {
                 todo!()
             }

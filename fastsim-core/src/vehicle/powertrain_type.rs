@@ -314,38 +314,32 @@ impl PowertrainType {
 }
 
 impl SaveState for PowertrainType {
-    fn save_state(&mut self) -> anyhow::Result<()> {
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => conv.save_state()?,
-            Self::HybridElectricVehicle(hev) => hev.save_state()?,
-            Self::BatteryElectricVehicle(bev) => bev.save_state()?,
+            Self::ConventionalVehicle(conv) => conv.save_state(loc)?,
+            Self::HybridElectricVehicle(hev) => hev.save_state(loc)?,
+            Self::BatteryElectricVehicle(bev) => bev.save_state(loc)?,
         }
         Ok(())
     }
 }
-impl TrackedStateMethods for PowertrainType {
-    fn check_and_reset(&mut self, loc: String) -> anyhow::Result<()> {
+impl CheckAndResetState for PowertrainType {
+    fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => {
-                conv.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
-            }
-            Self::HybridElectricVehicle(hev) => {
-                hev.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
-            }
-            Self::BatteryElectricVehicle(bev) => {
-                bev.check_and_reset(format!("{}\n{loc}", format_dbg!()))?
-            }
+            Self::ConventionalVehicle(conv) => conv.check_and_reset(loc)?,
+            Self::HybridElectricVehicle(hev) => hev.check_and_reset(loc)?,
+            Self::BatteryElectricVehicle(bev) => bev.check_and_reset(loc)?,
         }
         Ok(())
     }
 }
 
 impl Step for PowertrainType {
-    fn step(&mut self) -> anyhow::Result<()> {
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => conv.step(),
-            Self::HybridElectricVehicle(hev) => hev.step(),
-            Self::BatteryElectricVehicle(bev) => bev.step(),
+            Self::ConventionalVehicle(conv) => conv.step(loc),
+            Self::HybridElectricVehicle(hev) => hev.step(loc),
+            Self::BatteryElectricVehicle(bev) => bev.step(loc),
         }
     }
 }

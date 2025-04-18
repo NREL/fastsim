@@ -272,9 +272,9 @@ impl SetCumulative for Vehicle {
         self.state.set_cumulative(dt)?;
         self.pt_type.set_cumulative(dt)?;
         self.cabin.set_cumulative(dt)?;
-        self.state.dist.update(
-            self.state.dist.get_stale(format_dbg!()) + *self.state.speed_ach.get_fresh(format_dbg!())? * dt,
-            format_dbg!(),
+        self.state.dist.increment(
+            *self.state.speed_ach.get_fresh(|| format_dbg!())? * dt,
+            || format_dbg!(),
         )?;
         Ok(())
     }
@@ -390,7 +390,7 @@ impl Vehicle {
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         self.pt_type
             .solve(
-                *self.state.pwr_tractive.get_fresh(format_dbg!())?,
+                *self.state.pwr_tractive.get_fresh(|| format_dbg!())?,
                 true, // `enabled` should always be true at the powertrain level
                 dt,
             )
@@ -399,10 +399,10 @@ impl Vehicle {
             -self
                 .state
                 .pwr_tractive
-                .get_fresh(format_dbg!())?
+                .get_fresh(|| format_dbg!())?
                 .max(si::Power::ZERO)
                 - self.pt_type.pwr_regen().with_context(|| format_dbg!())?,
-            format_dbg!(),
+            || format_dbg!(),
         )?;
         Ok(())
     }
@@ -410,7 +410,11 @@ impl Vehicle {
     pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: account for traction limits here
         self.pt_type
-            .set_curr_pwr_prop_out_max(*self.state.pwr_aux.get_fresh(format_dbg!())?, dt, &self.state)
+            .set_curr_pwr_prop_out_max(
+                *self.state.pwr_aux.get_fresh(|| format_dbg!())?,
+                dt,
+                &self.state,
+            )
             .with_context(|| anyhow!(format_dbg!()))?;
         let pwr_prop_maxes = self
             .pt_type
@@ -418,10 +422,10 @@ impl Vehicle {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.state
             .pwr_prop_fwd_max
-            .update(pwr_prop_maxes.0, format_dbg!())?;
+            .update(pwr_prop_maxes.0, || format_dbg!())?;
         self.state
             .pwr_prop_bwd_max
-            .update(pwr_prop_maxes.1, format_dbg!())?;
+            .update(pwr_prop_maxes.1, || format_dbg!())?;
 
         Ok(())
     }
@@ -433,10 +437,7 @@ impl Vehicle {
     ) -> anyhow::Result<()> {
         let te_fc: Option<si::Temperature> = self
             .fc()
-            .and_then(|fc| {
-                fc.temperature()
-                    .map(|fct| fct.get_stale(format_dbg!()))
-            })
+            .and_then(|fc| fc.temperature().map(|fct| fct.get_stale(|| format_dbg!())))
             .transpose()
             .with_context(|| {
                 format!(
@@ -447,10 +448,9 @@ impl Vehicle {
             .copied();
         let pwr_thrml_cab_to_res: si::Power = match self.res() {
             Some(res) => match &res.thrml {
-                RESThermalOption::RESLumpedThermal(rlt) => *rlt
-                    .state
-                    .pwr_thrml_from_cabin
-                    .get_stale(format_dbg!())?,
+                RESThermalOption::RESLumpedThermal(rlt) => {
+                    *rlt.state.pwr_thrml_from_cabin.get_stale(|| format_dbg!())?
+                }
                 RESThermalOption::None => si::Power::ZERO,
             },
             None => si::Power::ZERO,
@@ -495,7 +495,7 @@ impl Vehicle {
             (CabinOption::None, HVACOption::None) => {
                 self.state
                     .pwr_aux
-                    .update(self.pwr_aux_base, format_dbg!())?;
+                    .update(self.pwr_aux_base, || format_dbg!())?;
                 (None, None, None)
             }
             (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabin(hvac)) => {
@@ -512,8 +512,8 @@ impl Vehicle {
                     )
                     .with_context(|| format_dbg!())?;
                 self.state.pwr_aux.update(
-                    self.pwr_aux_base + *hvac.state.pwr_aux_for_hvac.get_fresh(format_dbg!())?,
-                    format_dbg!(),
+                    self.pwr_aux_base + *hvac.state.pwr_aux_for_hvac.get_fresh(|| format_dbg!())?,
+                    || format_dbg!(),
                 )?;
                 (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
             }
@@ -542,12 +542,18 @@ impl Vehicle {
                     .with_context(|| format_dbg!())?;
                 self.state.pwr_aux.update(
                     self.pwr_aux_base
-                        + *hvac.state.pwr_aux_for_cab_hvac.get_fresh(format_dbg!())?
-                        + *hvac.state.pwr_aux_for_res_hvac.get_fresh(format_dbg!())?,
-                    format_dbg!(),
+                        + *hvac
+                            .state
+                            .pwr_aux_for_cab_hvac
+                            .get_fresh(|| format_dbg!())?
+                        + *hvac
+                            .state
+                            .pwr_aux_for_res_hvac
+                            .get_fresh(|| format_dbg!())?,
+                    || format_dbg!(),
                 )?;
                 ensure!(
-                    *self.state.pwr_aux.get_fresh(format_dbg!())? > si::Power::ZERO,
+                    *self.state.pwr_aux.get_fresh(|| format_dbg!())? > si::Power::ZERO,
                     format!(
                         "{}\n{}\n{}",
                         format_dbg!(self.state.pwr_aux),
