@@ -13,7 +13,7 @@ mod utilities;
 /// macro for creating appropriate setters and getters for pyo3 struct attributes
 /// and other, non-python API functionality
 pub fn fastsim_api(attr: TokenStream, item: TokenStream) -> TokenStream {
-    fastsim_api::fastsim_api(attr, item)
+    fastsim_api::fastsim_serde_api(attr, item)
 }
 
 #[proc_macro_error]
