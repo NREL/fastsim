@@ -140,7 +140,7 @@ pub fn almost_le(val1: f64, val2: f64, epsilon: Option<f64>) -> bool {
 lazy_static! {
     static ref TIRE_CODE_REGEX: Regex = Regex::new(
         r"(?i)[P|LT|ST|T]?((?:[0-9]{2,3}\.)?[0-9]+)/((?:[0-9]{1,2}\.)?[0-9]+) ?[B|D|R]?[x|\-| ]?((?:[0-9]{1,2}\.)?[0-9]+)[A|B|C|D|E|F|G|H|J|L|M|N]?"
-    ).unwrap();
+    ).expect("Failed compile tire code regex");
 }
 
 /// Calculate tire radius (in meters) from an [ISO metric tire code](https://en.wikipedia.org/wiki/Tire_code#ISO_metric_tire_codes)

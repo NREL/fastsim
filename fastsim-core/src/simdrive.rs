@@ -159,53 +159,80 @@ impl SimDrive {
                 // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
                 let veh_init = self.veh.clone();
                 loop {
-                    self.veh.hev_mut().unwrap().soc_bal_iters.mark_stale();
                     self.veh
                         .hev_mut()
-                        .unwrap()
+                        .with_context(|| format_dbg!())?
+                        .soc_bal_iters
+                        .mark_stale();
+                    self.veh
+                        .hev_mut()
+                        .with_context(|| format_dbg!())?
                         .soc_bal_iters
                         .increment(1, || format_dbg!())?;
                     self.walk_once().with_context(|| format_dbg!())?;
                     let soc_final = self
                         .veh
                         .res()
-                        // `unwrap` is ok because it's already been checked
-                        .unwrap()
+                        .with_context(|| format_dbg!())?
                         .state
                         .soc
                         .clone();
                     let res_per_fuel = *self
                         .veh
                         .res()
-                        .unwrap()
+                        .with_context(|| format_dbg!())?
                         .state
                         .energy_out_chemical
                         .get_fresh(|| format_dbg!())?
                         / *self
                             .veh
                             .fc()
-                            .unwrap()
+                            .with_context(|| format_dbg!())?
                             .state
                             .energy_fuel
                             .get_fresh(|| format_dbg!())?;
                     if self
                         .veh
                         .hev()
-                        .unwrap()
+                        .with_context(|| format_dbg!())?
                         .soc_bal_iters
                         .get_fresh(|| format_dbg!())?
-                        > &self.veh.hev().unwrap().sim_params.soc_balance_iter_err
+                        > &self
+                            .veh
+                            .hev()
+                            .with_context(|| format_dbg!())?
+                            .sim_params
+                            .soc_balance_iter_err
                     {
                         bail!(
                             "{}",
                             format_dbg!((
-                                self.veh.hev().unwrap().soc_bal_iters.clone(),
-                                self.veh.hev().unwrap().sim_params.soc_balance_iter_err
+                                self.veh
+                                    .hev()
+                                    .with_context(|| format_dbg!())?
+                                    .soc_bal_iters
+                                    .clone(),
+                                self.veh
+                                    .hev()
+                                    .with_context(|| format_dbg!())?
+                                    .sim_params
+                                    .soc_balance_iter_err
                             ))
                         );
                     }
-                    if res_per_fuel.abs() < self.veh.hev().unwrap().sim_params.res_per_fuel_lim
-                        || !self.veh.hev().unwrap().sim_params.balance_soc
+                    if res_per_fuel.abs()
+                        < self
+                            .veh
+                            .hev()
+                            .with_context(|| format_dbg!())?
+                            .sim_params
+                            .res_per_fuel_lim
+                        || !self
+                            .veh
+                            .hev()
+                            .with_context(|| format_dbg!())?
+                            .sim_params
+                            .balance_soc
                     {
                         break;
                     } else {
@@ -219,7 +246,7 @@ impl SimDrive {
                         // reset vehicle to initial state
                         self.veh = veh_init.clone();
                         // start SOC at previous final value
-                        self.veh.res_mut().unwrap().state.soc = soc_final;
+                        self.veh.res_mut().with_context(|| format_dbg!())?.state.soc = soc_final;
                     }
                 }
             }
@@ -234,6 +261,7 @@ impl SimDrive {
         ensure!(len >= &2, format_dbg!(len < &2));
         self.save_state(|| format_dbg!())?;
 
+        self.veh.state.mass.mark_stale();
         self.veh.state.mass.update(
             self.veh
                 .mass()
@@ -241,7 +269,6 @@ impl SimDrive {
                 .with_context(|| format_dbg!("Expected mass to have been set."))?,
             || format_dbg!(),
         )?;
-        self.veh.state.mass.mark_stale();
 
         loop {
             self.check_and_reset(|| format_dbg!())?;
@@ -427,9 +454,20 @@ impl SimDrive {
         vs.pwr_whl_inertia.update(
             0.5 * self.veh.chassis.wheel_inertia
                 * self.veh.chassis.num_wheels as f64
-                * ((speed / self.veh.chassis.wheel_radius.unwrap()).powi(typenum::P2::new())
-                    - (speed_prev / self.veh.chassis.wheel_radius.unwrap())
-                        .powi(typenum::P2::new()))
+                * ((speed
+                    / self
+                        .veh
+                        .chassis
+                        .wheel_radius
+                        .with_context(|| format_dbg!())?)
+                .powi(typenum::P2::new())
+                    - (speed_prev
+                        / self
+                            .veh
+                            .chassis
+                            .wheel_radius
+                            .with_context(|| format_dbg!())?)
+                    .powi(typenum::P2::new()))
                 / self.cyc.dt_at_i(i).with_context(|| format_dbg!())?,
             || format_dbg!(),
         )?;
@@ -536,7 +574,7 @@ pwr deficit: {} kW
                     .veh
                     .chassis
                     .wheel_radius
-                    .unwrap()
+                    .with_context(|| format_dbg!())?
                     .powi(typenum::P2::new()));
         let drag1 = 3.0 / 16.0
             * *vs.air_density.get_fresh(|| format_dbg!())?
@@ -578,7 +616,7 @@ pwr deficit: {} kW
                     .veh
                     .chassis
                     .wheel_radius
-                    .unwrap()
+                    .with_context(|| format_dbg!())?
                     .powi(typenum::P2::new()));
 
         let t3 = drag3;
@@ -784,8 +822,7 @@ mod tests {
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
         assert!(
-            *sd.veh.state.i.get_fresh(|| String::new()).unwrap()
-                == sd.cyc.len_checked().unwrap() - 1
+            *sd.veh.state.i.get_stale(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
         );
         assert!(
             *sd.veh
@@ -793,7 +830,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_fuel
-                .get_fresh(|| String::new())
+                .get_stale(String::new)
                 .unwrap()
                 > si::Energy::ZERO
         );
@@ -808,8 +845,7 @@ mod tests {
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
         assert!(
-            *sd.veh.state.i.get_fresh(|| String::new()).unwrap()
-                == sd.cyc.len_checked().unwrap() - 1
+            *sd.veh.state.i.get_stale(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
         );
         assert!(
             *sd.veh
@@ -817,7 +853,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_fuel
-                .get_fresh(|| String::new())
+                .get_stale(String::new)
                 .unwrap()
                 > si::Energy::ZERO
         );
@@ -827,7 +863,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_out_chemical
-                .get_fresh(|| String::new())
+                .get_stale(String::new)
                 .unwrap()
                 != si::Energy::ZERO
         );
@@ -845,8 +881,7 @@ mod tests {
         };
         sd.walk().unwrap();
         assert!(
-            *sd.veh.state.i.get_fresh(|| String::new()).unwrap()
-                == sd.cyc.len_checked().unwrap() - 1
+            *sd.veh.state.i.get_stale(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
         );
         assert!(sd.veh.fc().is_none());
         assert!(
@@ -855,7 +890,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_out_chemical
-                .get_fresh(|| String::new())
+                .get_stale(String::new)
                 .unwrap()
                 != si::Energy::ZERO
         );

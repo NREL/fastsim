@@ -22,8 +22,8 @@ where
 #[derive(Clone, Default, Debug, PartialEq, IsVariant, derive_more::From, TryInto)]
 pub enum State {
     /// Updated in this time step
-    Fresh,
     #[default]
+    Fresh,
     /// Not yet updated in this time step
     Stale,
 }

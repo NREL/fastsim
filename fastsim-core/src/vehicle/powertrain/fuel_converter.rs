@@ -755,7 +755,7 @@ lazy_static! {
                     + *GASOLINE_LHV)
                     / *AFR_STOICH_GASOLINE,
         )
-        .with_context(|| format_dbg!()).unwrap();
+        .with_context(|| format_dbg!()).unwrap_or_else(|_| panic!("{}\nFailed to calculate adiabatic flame temp for gasoline", format_dbg!()));
 }
 
 impl FuelConverterThermal {

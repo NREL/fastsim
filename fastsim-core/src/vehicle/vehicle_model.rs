@@ -284,12 +284,11 @@ impl Vehicle {
     /// # Assumptions
     /// - peak power of all components can be produced concurrently.
     pub fn get_pwr_rated(&self) -> si::Power {
-        if self.fc().is_some() && self.res().is_some() {
-            self.fc().unwrap().pwr_out_max + self.res().unwrap().pwr_out_max
-        } else if self.fc().is_some() {
-            self.fc().unwrap().pwr_out_max
-        } else {
-            self.res().unwrap().pwr_out_max
+        match (self.fc(), self.res()) {
+            (Some(fc), Some(res)) => fc.pwr_out_max + res.pwr_out_max,
+            (Some(fc), None) => fc.pwr_out_max,
+            (None, Some(res)) => res.pwr_out_max,
+            (None, None) => unreachable!(),
         }
     }
 

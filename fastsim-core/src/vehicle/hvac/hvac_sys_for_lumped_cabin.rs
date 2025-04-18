@@ -328,7 +328,11 @@ impl HVACSystemForLumpedCabin {
                 // below cabin temperature to heat the cabin
                 *pwr_thrml_hvac_to_cab = pwr_thrml_hvac_to_cab.min(
                     (cab_heat_cap
-                        * (te_fc.unwrap().get::<si::degree_celsius>()
+                        * (te_fc
+                            .with_context(|| {
+                                format!("{}\nExpected `te_fc` to be Some", format_dbg!())
+                            })?
+                            .get::<si::degree_celsius>()
                             - cab_state
                                 .temperature
                                 .get_fresh(|| format_dbg!())?
