@@ -272,6 +272,10 @@ impl SimDrive {
 
         loop {
             self.check_and_reset(|| format_dbg!())?;
+            self.veh.state.mass.mark_fresh(|| format_dbg!())?;
+            if let Some(res) = self.veh.res_mut() {
+                res.state.soh.mark_fresh(|| format_dbg!())?;
+            }
             self.step(|| format_dbg!())?;
             self.solve_step()
                 .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
@@ -305,6 +309,10 @@ impl SimDrive {
         self.veh
             .solve_thermal(self.cyc.temp_amb_air[i], dt)
             .with_context(|| format_dbg!())?;
+        self.veh
+            // TODO: feed in something different for first arg when CAVs stuff is active @MOK
+            .set_curr_pwr_out_max(dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.set_pwr_prop_for_speed(
             self.cyc.speed[i],
             *self.veh.state.speed_ach.get_stale(|| format_dbg!())?,
@@ -315,10 +323,6 @@ impl SimDrive {
             *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
             || format_dbg!(),
         )?;
-        self.veh
-            // TODO: feed in something different for first arg when CAVs stuff is active @MOK
-            .set_curr_pwr_out_max(dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
         self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         if self.sim_params.trace_miss_opts.is_allow_checked() {
@@ -822,7 +826,7 @@ mod tests {
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
         assert!(
-            *sd.veh.state.i.get_stale(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
+            *sd.veh.state.i.get_fresh(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
         );
         assert!(
             *sd.veh
@@ -830,7 +834,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_fuel
-                .get_stale(String::new)
+                .get_fresh(String::new)
                 .unwrap()
                 > si::Energy::ZERO
         );
@@ -845,7 +849,7 @@ mod tests {
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
         assert!(
-            *sd.veh.state.i.get_stale(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
+            *sd.veh.state.i.get_fresh(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
         );
         assert!(
             *sd.veh
@@ -853,7 +857,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_fuel
-                .get_stale(String::new)
+                .get_fresh(String::new)
                 .unwrap()
                 > si::Energy::ZERO
         );
@@ -863,7 +867,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_out_chemical
-                .get_stale(String::new)
+                .get_fresh(String::new)
                 .unwrap()
                 != si::Energy::ZERO
         );
@@ -881,7 +885,7 @@ mod tests {
         };
         sd.walk().unwrap();
         assert!(
-            *sd.veh.state.i.get_stale(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
+            *sd.veh.state.i.get_fresh(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
         );
         assert!(sd.veh.fc().is_none());
         assert!(
@@ -890,7 +894,7 @@ mod tests {
                 .unwrap()
                 .state
                 .energy_out_chemical
-                .get_stale(String::new)
+                .get_fresh(String::new)
                 .unwrap()
                 != si::Energy::ZERO
         );

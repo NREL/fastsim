@@ -81,7 +81,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
                 fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     self.state.check_and_reset(|| format!("{}", loc()))?;
                     #(
-                        self.#fields_with_state.check_and_reset(|| format!("{}\n{}", loc(), stringify!(#fields_with_state)))?;
+                        self.#fields_with_state.check_and_reset(|| format!("{}.{}", loc(), stringify!(#fields_with_state)))?;
                     )*
                     Ok(())
                 }
@@ -92,7 +92,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
             impl CheckAndResetState for #ident {
                 fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     #(
-                        self.#fields_with_state.check_and_reset(|| format!("{}\n{}", loc(), stringify!(#fields_with_state)))?;
+                        self.#fields_with_state.check_and_reset(|| format!("{}.{}", loc(), stringify!(#fields_with_state)))?;
                     )*
                     Ok(())
                 }

@@ -796,10 +796,13 @@ impl RESGreedyWithDynamicBuffers {
         self.handle_fc_on_causes_for_speed(veh_state)?;
         self.handle_fc_on_causes_for_low_soc(res, veh_state)?;
         self.handle_fc_on_causes_for_pwr_demand(
-            *veh_state.pwr_tractive.get_stale(|| format_dbg!())?,
+            *veh_state
+                .pwr_tractive
+                .get_stale(|| format_dbg!(veh_state.pwr_tractive))?,
             em_state,
             &fc.state,
-        )?;
+        )
+        .with_context(|| format_dbg!())?;
         self.handle_fc_on_causes_for_on_time(fc)?;
         Ok(())
     }
