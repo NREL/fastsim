@@ -435,7 +435,7 @@ impl Vehicle {
             .fc()
             .and_then(|fc| {
                 fc.temperature()
-                    .map(|fct| fct.get_prev_or_curr(format_dbg!()))
+                    .map(|fct| fct.get_stale(format_dbg!()))
             })
             .transpose()
             .with_context(|| {
@@ -450,7 +450,7 @@ impl Vehicle {
                 RESThermalOption::RESLumpedThermal(rlt) => *rlt
                     .state
                     .pwr_thrml_from_cabin
-                    .get_prev_or_curr(format_dbg!())?,
+                    .get_stale(format_dbg!())?,
                 RESThermalOption::None => si::Power::ZERO,
             },
             None => si::Power::ZERO,

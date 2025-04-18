@@ -782,7 +782,7 @@ impl RESGreedyWithDynamicBuffers {
         self.handle_fc_on_causes_for_speed(veh_state)?;
         self.handle_fc_on_causes_for_low_soc(res, veh_state)?;
         self.handle_fc_on_causes_for_pwr_demand(
-            *veh_state.pwr_tractive.get_prev_or_curr(format_dbg!())?,
+            *veh_state.pwr_tractive.get_stale(format_dbg!())?,
             em_state,
             &fc.state,
         )?;
@@ -817,15 +817,15 @@ impl RESGreedyWithDynamicBuffers {
                 > frac_pwr_demand_fc_forced_on
                     * (*em_state
                         .pwr_mech_fwd_out_max
-                        .get_prev_or_curr(format_dbg!())?
-                        + *fc_state.pwr_out_max.get_prev_or_curr(format_dbg!())?),
+                        .get_stale(format_dbg!())?
+                        + *fc_state.pwr_out_max.get_stale(format_dbg!())?),
             format_dbg!(),
         )?;
         self.state.propulsion_power_demand.update(
             pwr_out_req_for_cyc
                 - *em_state
                     .pwr_mech_fwd_out_max
-                    .get_prev_or_curr(format_dbg!())?
+                    .get_stale(format_dbg!())?
                 >= si::Power::ZERO,
             format_dbg!(),
         )?;
@@ -848,7 +848,7 @@ impl RESGreedyWithDynamicBuffers {
                         .powi(typenum::P2::new())
                         - veh_state
                             .speed_ach
-                            .get_prev_or_curr(format_dbg!())?
+                            .get_stale(format_dbg!())?
                             .powi(typenum::P2::new()));
                 energy_delta_to_buffer_speed.max(si::Energy::ZERO)
                     * self
@@ -859,7 +859,7 @@ impl RESGreedyWithDynamicBuffers {
             format_dbg!(),
         )?;
         self.state.charging_for_low_soc.update(
-            *res.state.soc.get_prev_or_curr(format_dbg!())?
+            *res.state.soc.get_stale(format_dbg!())?
                 < *self.state.soc_fc_on_buffer.get_fresh(format_dbg!())?,
             format_dbg!(),
         )?;
@@ -869,7 +869,7 @@ impl RESGreedyWithDynamicBuffers {
     /// Determines whether enigne must be on for high speed
     fn handle_fc_on_causes_for_speed(&mut self, veh_state: &VehicleState) -> anyhow::Result<()> {
         self.state.vehicle_speed_too_high.update(
-            *veh_state.speed_ach.get_prev_or_curr(format_dbg!())?
+            *veh_state.speed_ach.get_stale(format_dbg!())?
                 > self.speed_fc_forced_on.with_context(|| format_dbg!())?,
             format_dbg!(),
         )?;
@@ -885,7 +885,7 @@ impl RESGreedyWithDynamicBuffers {
                 None => None,
             },
             match fc.temperature() {
-                Some(fct) => Some(*fct.get_prev_or_curr(format_dbg!())?),
+                Some(fct) => Some(*fct.get_stale(format_dbg!())?),
                 None => None,
             },
             self.temp_fc_forced_on,

@@ -893,7 +893,7 @@ impl FuelConverterThermal {
                 / self.heat_capacitance;
         // Interestingly, it seems to be ok to add a `TemperatureInterval` to a `Temperature` here
         self.state.temperature.update(
-            *self.state.temperature.get_prev_or_curr(format_dbg!())? + delta_temp,
+            *self.state.temperature.get_stale(format_dbg!())? + delta_temp,
             format_dbg!(),
         )?;
 

@@ -149,10 +149,10 @@ impl HVACSystemForLumpedCabinAndRES {
         let (res_temp, res_temp_prev): (si::Temperature, si::Temperature) = (
             *res_thrml_state
                 .temperature
-                .get_prev_or_curr(format_dbg!())?,
+                .get_stale(format_dbg!())?,
             *res_thrml_state
                 .temperature
-                .get_prev_or_curr(format_dbg!())?,
+                .get_stale(format_dbg!())?,
         );
         ensure!(!res_temp.is_nan(), format_dbg!(res_temp));
         ensure!(!res_temp_prev.is_nan(), format_dbg!(res_temp_prev));
@@ -225,7 +225,7 @@ impl HVACSystemForLumpedCabinAndRES {
             Some(te_set_cab) => Some(
                 (cab_state
                     .temperature
-                    .get_prev_or_curr(format_dbg!())?
+                    .get_stale(format_dbg!())?
                     .get::<si::degree_celsius>()
                     - te_set_cab.get::<si::degree_celsius>())
                     * uc::KELVIN_INT,
@@ -666,7 +666,7 @@ impl HVACSystemForLumpedCabinAndRES {
                     .get::<si::degree_celsius>()
                     - cab_state
                         .temperature
-                        .get_prev_or_curr(format_dbg!())?
+                        .get_stale(format_dbg!())?
                         .get::<si::degree_celsius>())
                     * uc::KELVIN_INT
                     / dt),

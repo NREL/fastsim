@@ -255,7 +255,7 @@ impl LumpedCabin {
         )?;
 
         self.state.temperature.update(
-            *self.state.temperature.get_prev_or_curr(format_dbg!())?
+            *self.state.temperature.get_stale(format_dbg!())?
                 + (*self.state.pwr_thrml_from_hvac.get_fresh(format_dbg!())?
                     + *self.state.pwr_thrml_from_amb.get_fresh(format_dbg!())?
                     - *self.state.pwr_thrml_to_res.get_fresh(format_dbg!())?)

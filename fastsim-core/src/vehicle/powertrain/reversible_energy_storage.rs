@@ -129,22 +129,22 @@ impl ReversibleEnergyStorage {
         let state = &mut self.state;
 
         ensure!(
-            *state.soc.get_prev_or_curr(format_dbg!())? <= self.max_soc,
+            *state.soc.get_stale(format_dbg!())? <= self.max_soc,
             format_dbg!(state
                 .soc
-                .get_prev_or_curr(format_dbg!())?
+                .get_stale(format_dbg!())?
                 .get::<si::ratio>())
         );
         ensure!(
             almost_ge_uom(
-                state.soc.get_prev_or_curr(format_dbg!())?,
+                state.soc.get_stale(format_dbg!())?,
                 &self.min_soc,
                 Some(1e-3)
             ),
             "{}\n{}\n{}",
             format_dbg!(state
                 .soc
-                .get_prev_or_curr(format_dbg!())?
+                .get_stale(format_dbg!())?
                 .get::<si::ratio>()),
             format_dbg!(state
                 .soc_disch_buffer
@@ -171,7 +171,7 @@ impl ReversibleEnergyStorage {
                 )),
                 (pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?).get::<si::kilowatt>(),
                 state.pwr_disch_max.get_fresh(format_dbg!())?.get::<si::kilowatt>(),
-                state.soc.get_prev_or_curr(format_dbg!())?.get::<si::ratio>()
+                state.soc.get_stale(format_dbg!())?.get::<si::ratio>()
             );
             ensure!(
                 utils::almost_le_uom(
@@ -185,7 +185,7 @@ impl ReversibleEnergyStorage {
                 )),
                 (pwr_out_req + *state.pwr_aux.get_fresh(format_dbg!())?).get::<si::kilowatt>(),
                 state.pwr_disch_max.get_fresh(format_dbg!())?.get::<si::kilowatt>(),
-                state.soc.get_prev_or_curr(format_dbg!())?.get::<si::ratio>()
+                state.soc.get_stale(format_dbg!())?.get::<si::ratio>()
             );
         } else {
             // charging
@@ -245,7 +245,7 @@ impl ReversibleEnergyStorage {
                     / self.energy_capacity.get::<si::watt_hour>(),
                 state
                     .soc
-                    .get_prev_or_curr(format_dbg!())?
+                    .get_stale(format_dbg!())?
                     .get::<si::ratio>(),
             ],
             (Interpolator::Interp2D(..), RESEffInterpInputs::CRateTemperature) => &[
@@ -266,7 +266,7 @@ impl ReversibleEnergyStorage {
                     / self.energy_capacity.get::<si::watt_hour>(),
                 state
                     .soc
-                    .get_prev_or_curr(format_dbg!())?
+                    .get_stale(format_dbg!())?
                     .get::<si::ratio>(),
                 te_res
                     .with_context(|| format_dbg!("Expected thermal model to be configured"))?
@@ -316,7 +316,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         )?;
 
         state.soc.update(
-            *state.soc.get_prev_or_curr(format_dbg!())?
+            *state.soc.get_stale(format_dbg!())?
                 - *state.pwr_out_chemical.get_fresh(format_dbg!())? * dt / self.energy_capacity,
             format_dbg!(),
         )?;
@@ -377,20 +377,20 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         self.state
             .soc_regen_buffer
             .update(self.max_soc - soc_buffer_delta, format_dbg!())?;
-        let pwr_max_for_dt = ((self.max_soc - *self.state.soc.get_prev_or_curr(format_dbg!())?)
+        let pwr_max_for_dt = ((self.max_soc - *self.state.soc.get_stale(format_dbg!())?)
             * self.energy_capacity
             / dt)
             .max(si::Power::ZERO);
         self.state.pwr_charge_max.update(
-            if *self.state.soc.get_prev_or_curr(format_dbg!())?
+            if *self.state.soc.get_stale(format_dbg!())?
                 <= *self.state.soc_regen_buffer.get_fresh(format_dbg!())?
             {
                 self.pwr_out_max
-            } else if *self.state.soc.get_prev_or_curr(format_dbg!())? < self.max_soc
+            } else if *self.state.soc.get_stale(format_dbg!())? < self.max_soc
                 && soc_buffer_delta > si::Ratio::ZERO
             {
                 self.pwr_out_max
-                    * (self.max_soc - *self.state.soc.get_prev_or_curr(format_dbg!())?)
+                    * (self.max_soc - *self.state.soc.get_stale(format_dbg!())?)
                     / soc_buffer_delta
             } else {
                 // current SOC is less than both
@@ -430,19 +430,19 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         self.state
             .soc_disch_buffer
             .update(self.min_soc + soc_buffer_delta, format_dbg!())?;
-        let pwr_max_for_dt = ((*self.state.soc.get_prev_or_curr(format_dbg!())? - self.min_soc)
+        let pwr_max_for_dt = ((*self.state.soc.get_stale(format_dbg!())? - self.min_soc)
             * self.energy_capacity
             / dt)
             .max(si::Power::ZERO);
         self.state.pwr_disch_max.update(
-            if *self.state.soc.get_prev_or_curr(format_dbg!())?
+            if *self.state.soc.get_stale(format_dbg!())?
                 > *self.state.soc_disch_buffer.get_fresh(format_dbg!())?
             {
                 self.pwr_out_max
-            } else if *self.state.soc.get_prev_or_curr(format_dbg!())? > self.min_soc
+            } else if *self.state.soc.get_stale(format_dbg!())? > self.min_soc
                 && soc_buffer_delta > si::Ratio::ZERO
             {
-                self.pwr_out_max * (*self.state.soc.get_prev_or_curr(format_dbg!())? - self.min_soc)
+                self.pwr_out_max * (*self.state.soc.get_stale(format_dbg!())? - self.min_soc)
                     / soc_buffer_delta
             } else {
                 // current SOC is less than both
@@ -1076,7 +1076,7 @@ impl RESLumpedThermal {
             format_dbg!(),
         )?;
         self.state.temperature.update(
-            *self.state.temperature.get_prev_or_curr(format_dbg!())?
+            *self.state.temperature.get_stale(format_dbg!())?
                 + (*self.state.pwr_thrml_hvac_to_res.get_fresh(format_dbg!())?
                     + *self.state.pwr_thrml_loss.get_fresh(format_dbg!())?
                     + *self.state.pwr_thrml_from_cabin.get_fresh(format_dbg!())?

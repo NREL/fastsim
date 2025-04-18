@@ -333,7 +333,7 @@ impl SimDrive {
             _ => unreachable!(),
         };
         vs.grade_curr.update(
-            if *vs.cyc_met_overall.get_prev_or_curr(format_dbg!())? {
+            if *vs.cyc_met_overall.get_stale(format_dbg!())? {
                 *self
                     .cyc
                     .grade
@@ -352,7 +352,7 @@ impl SimDrive {
             format_dbg!(),
         )?;
         vs.elev_curr.update(
-            if *vs.cyc_met_overall.get_prev_or_curr(format_dbg!())? {
+            if *vs.cyc_met_overall.get_stale(format_dbg!())? {
                 *self.cyc.elev.get_fresh(i).with_context(|| format_dbg!())?
             } else {
                 uc::M
