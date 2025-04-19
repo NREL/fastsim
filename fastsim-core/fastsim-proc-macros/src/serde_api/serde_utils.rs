@@ -21,7 +21,7 @@ macro_rules! extract_units {
 ///
 /// - field: struct field name as ident
 /// - unit_name: plural name of units being used (generate using extract_units)
-fn serde_attr_for_si_field(field: &mut syn::Field, unit_name: &str) {
+fn serde_attrs_for_si_field(field: &mut syn::Field, unit_name: &str) {
     let ident = field.ident.clone().unwrap();
     match unit_name {
         "" => {}
@@ -59,15 +59,22 @@ fn extract_type_path(ty: &syn::Type) -> Option<&syn::Path> {
 }
 
 /// adapted from https://stackoverflow.com/questions/55271857/how-can-i-get-the-t-from-an-optiont-when-using-syn
-fn extract_type_from_container(ty: &syn::Type) -> Option<&syn::Type> {
-    fn extract_container_arg(path: &Path) -> Option<&GenericArgument> {
+fn extract_type_from_option(ty: &syn::Type) -> Option<&syn::Type> {
+    fn extract_option_argument(path: &Path) -> Option<&GenericArgument> {
         let mut ident_path = String::new();
         for segment in &path.segments {
             ident_path.push_str(&segment.ident.to_string());
 
             // Exit when the inner brackets are found
             match &segment.arguments {
-                syn::PathArguments::AngleBracketed(params) => return params.args.first(),
+                syn::PathArguments::AngleBracketed(params) => {
+                    return match ident_path.as_str() {
+                        "Option" | "std::option::Option" | "core::option::Option" => {
+                            params.args.first()
+                        }
+                        _ => None,
+                    };
+                }
                 syn::PathArguments::None => {}
                 _ => return None,
             }
@@ -78,7 +85,7 @@ fn extract_type_from_container(ty: &syn::Type) -> Option<&syn::Type> {
     }
 
     extract_type_path(ty)
-        .and_then(extract_container_arg)
+        .and_then(extract_option_argument)
         .and_then(|generic_arg| match *generic_arg {
             GenericArgument::Type(ref ty) => Some(ty),
             _ => None,
@@ -148,8 +155,8 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
     let mut vec_layers: u8 = 0;
     let mut inner_type = &ftype;
 
-    while let Some(contained_type) = extract_type_from_container(inner_type) {
-        inner_type = contained_type;
+    if let Some(opt_inner_type) = extract_type_from_option(inner_type) {
+        inner_type = opt_inner_type;
     }
 
     // pull out `inner_type` from `Vec<inner_type>`, recursively if there is any nesting
@@ -223,7 +230,7 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
             ),
         };
         for (_, unit_name) in &unit_impls {
-            serde_attr_for_si_field(field, unit_name);
+            serde_attrs_for_si_field(field, unit_name);
         }
     }
     Some(())

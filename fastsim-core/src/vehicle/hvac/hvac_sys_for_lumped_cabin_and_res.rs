@@ -1,6 +1,6 @@
 use super::*;
 
-#[fastsim_api(
+#[serde_api(
     #[staticmethod]
     #[pyo3(name = "default")]
     fn default_py() -> Self {
@@ -1101,7 +1101,7 @@ impl HVACSystemForLumpedCabinAndRES {
     }
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(
     Clone,
     Debug,

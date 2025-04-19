@@ -13,7 +13,7 @@ lazy_static! {
     pub static ref H_STD: si::Length = 180.0 * uc::M;
 }
 
-#[fastsim_api(
+#[serde_api(
     #[new]
     fn __new__() -> Self {
         Self{}
@@ -598,7 +598,7 @@ mod octane_static_props {
     }
 }
 
-#[fastsim_api(
+#[serde_api(
     /// Returns specific energy [J/kg] of octane  
     /// # Arguments  
     /// - `te_octane`: temperature [°C] of octane

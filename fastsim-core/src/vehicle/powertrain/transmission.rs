@@ -1,6 +1,6 @@
 use super::*;
 
-#[fastsim_api]
+#[serde_api]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -114,7 +114,7 @@ impl Mass for Transmission {
     }
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(
     Clone,
     Default,

@@ -21,7 +21,58 @@ pub enum AuxSource {
 impl SerdeAPI for AuxSource {}
 impl Init for AuxSource {}
 
-#[fastsim_api(
+#[serde_api]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+/// Struct for simulating vehicle
+pub struct Vehicle {
+    /// Vehicle name
+    name: String,
+    /// Year manufactured
+    year: u32,
+    #[has_state]
+    /// type of vehicle powertrain including contained type-specific parameters and variables
+    pub pt_type: PowertrainType,
+
+    /// Chassis model with various chassis-related parameters
+    pub chassis: Chassis,
+
+    /// Cabin thermal model
+    #[serde(default, skip_serializing_if = "CabinOption::is_none")]
+    #[has_state]
+    pub cabin: CabinOption,
+
+    /// HVAC model
+    #[serde(default, skip_serializing_if = "HVACOption::is_none")]
+    #[has_state]
+    pub hvac: HVACOption,
+
+    /// Total vehicle mass
+    pub(crate) mass: Option<si::Mass>,
+
+    /// Baseline power required by auxilliary systems
+    pub pwr_aux_base: si::Power,
+
+    /// transmission efficiency
+    // TODO: check if `trans_eff` is redundant (most likely) and fix
+    // TODO: make `transmission::{Transmission, TransmissionState}` and
+    // `Transmission` should have field `efficency: Efficiency`.
+    pub trans_eff: si::Ratio,
+
+    /// time step interval at which `state` is saved into `history`
+    save_interval: Option<usize>,
+    /// current state of vehicle
+    #[serde(default)]
+    pub state: VehicleState,
+    /// Vector-like history of [Self::state]
+    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
+    pub history: VehicleStateHistoryVec,
+}
+
+#[named_struct_pyo3_api(Vehicle)]
+impl Vehicle {
     #[staticmethod]
     fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {
         Ok(Self::try_from(veh.clone())?)
@@ -31,7 +82,8 @@ impl Init for AuxSource {}
     #[pyo3(signature = (save_interval=None))]
     /// Set save interval and cascade to nested components.
     fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> PyResult<()> {
-        self.set_save_interval(save_interval).map_err(|e| PyAttributeError::new_err(e.to_string()))
+        self.set_save_interval(save_interval)
+            .map_err(|e| PyAttributeError::new_err(e.to_string()))
     }
 
     // despite having `getter` here, this seems to work as a function
@@ -89,53 +141,6 @@ impl Init for AuxSource {}
     fn clear_py(&mut self) {
         self.clear()
     }
-)]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
-#[non_exhaustive]
-#[serde(deny_unknown_fields)]
-/// Struct for simulating vehicle
-pub struct Vehicle {
-    /// Vehicle name
-    name: String,
-    /// Year manufactured
-    year: u32,
-    #[has_state]
-    /// type of vehicle powertrain including contained type-specific parameters and variables
-    pub pt_type: PowertrainType,
-
-    /// Chassis model with various chassis-related parameters
-    pub chassis: Chassis,
-
-    /// Cabin thermal model
-    #[serde(default, skip_serializing_if = "CabinOption::is_none")]
-    #[has_state]
-    pub cabin: CabinOption,
-
-    /// HVAC model
-    #[serde(default, skip_serializing_if = "HVACOption::is_none")]
-    #[has_state]
-    pub hvac: HVACOption,
-
-    /// Total vehicle mass
-    pub(crate) mass: Option<si::Mass>,
-
-    /// Baseline power required by auxilliary systems
-    pub pwr_aux_base: si::Power,
-
-    /// transmission efficiency
-    // TODO: check if `trans_eff` is redundant (most likely) and fix
-    // TODO: make `transmission::{Transmission, TransmissionState}` and
-    // `Transmission` should have field `efficency: Efficiency`.
-    pub trans_eff: si::Ratio,
-
-    /// time step interval at which `state` is saved into `history`
-    save_interval: Option<usize>,
-    /// current state of vehicle
-    #[serde(default)]
-    pub state: VehicleState,
-    /// Vector-like history of [Self::state]
-    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
-    pub history: VehicleStateHistoryVec,
 }
 
 impl Mass for Vehicle {
@@ -600,7 +605,7 @@ impl Vehicle {
 }
 
 /// Vehicle state for current time step
-#[fastsim_api]
+#[serde_api]
 #[derive(
     Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
 )]

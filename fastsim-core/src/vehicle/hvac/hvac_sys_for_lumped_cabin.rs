@@ -1,6 +1,6 @@
 use super::*;
 
-#[fastsim_api(
+#[serde_api(
     #[staticmethod]
     #[pyo3(name = "default")]
     fn default_py() -> Self {
@@ -421,7 +421,7 @@ pub enum CabinHeatSource {
 impl Init for CabinHeatSource {}
 impl SerdeAPI for CabinHeatSource {}
 
-#[fastsim_api(
+#[serde_api(
     #[pyo3(name = "default")]
     #[staticmethod]
     fn default_py() -> Self {

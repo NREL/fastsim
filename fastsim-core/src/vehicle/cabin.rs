@@ -99,7 +99,7 @@ impl SetCumulative for CabinOption {
     }
 }
 
-#[fastsim_api(
+#[serde_api(
     #[staticmethod]
     #[pyo3(name = "default")]
     fn default_py() -> Self {
@@ -269,7 +269,7 @@ impl LumpedCabin {
     }
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(
     Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
 )]

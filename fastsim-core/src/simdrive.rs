@@ -3,16 +3,11 @@ use super::vehicle::Vehicle;
 use crate::imports::*;
 use crate::prelude::*;
 
-#[fastsim_api(
-    #[staticmethod]
-    #[pyo3(name = "default")]
-    fn default_py() -> Self {
-        Self::default()
-    }
-)]
+#[serde_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Solver parameters
 pub struct SimParams {
     #[serde(default = "SimParams::def_ach_speed_max_iter")]
@@ -36,6 +31,15 @@ pub struct SimParams {
     /// whether to use FASTSim-2 style air density
     #[serde(default = "SimParams::def_f2_const_air_density")]
     pub f2_const_air_density: bool,
+}
+
+#[named_struct_pyo3_api(SimParams)]
+impl SimParams {
+    #[staticmethod]
+    #[pyo3(name = "default")]
+    fn default_py() -> Self {
+        Self::default()
+    }
 }
 
 impl SimParams {
@@ -75,15 +79,24 @@ impl Default for SimParams {
     }
 }
 
-#[fastsim_api(
+#[serde_api]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+pub struct SimDrive {
+    #[has_state]
+    pub veh: Vehicle,
+    pub cyc: Cycle,
+    pub sim_params: SimParams,
+}
+
+#[named_struct_pyo3_api(SimDrive)]
+impl SimDrive {
     #[new]
     #[pyo3(signature = (veh, cyc, sim_params=None))]
     fn __new__(veh: Vehicle, cyc: Cycle, sim_params: Option<SimParams>) -> anyhow::Result<Self> {
-        Ok(SimDrive::new(
-            veh,
-            cyc,
-            sim_params,
-        ))
+        Ok(SimDrive::new(veh, cyc, sim_params))
     }
 
     /// Run vehicle simulation once
@@ -104,15 +117,6 @@ impl Default for SimParams {
     fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
         self.to_fastsim2()
     }
-)]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
-#[non_exhaustive]
-#[serde(deny_unknown_fields)]
-pub struct SimDrive {
-    #[has_state]
-    pub veh: Vehicle,
-    pub cyc: Cycle,
-    pub sim_params: SimParams,
 }
 
 impl SerdeAPI for SimDrive {}

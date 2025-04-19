@@ -1,10 +1,11 @@
 use super::{vehicle_model::VehicleState, *};
 use crate::prelude::ElectricMachineState;
 
-#[fastsim_api]
+#[serde_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Hybrid vehicle with both engine and reversible energy storage (aka battery)
 /// This type of vehicle is not likely to be widely prevalent due to modularity of consists.
 pub struct HybridElectricVehicle {
@@ -37,6 +38,9 @@ pub struct HybridElectricVehicle {
     #[serde(default)]
     pub soc_bal_iters: TrackedState<u32>,
 }
+
+#[named_struct_pyo3_api(HybridElectricVehicle)]
+impl HybridElectricVehicle {}
 
 impl SetCumulative for HybridElectricVehicle {
     fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
@@ -389,7 +393,7 @@ impl Mass for HybridElectricVehicle {
     }
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(
     Clone,
     Debug,
@@ -631,7 +635,7 @@ impl HEVPowertrainControls {
 /// and discharge power inside of static min and max SOC range.  Also, includes
 /// buffer for forcing [FuelConverter] to be active/on. See [Self::init] for
 /// default values.
-#[fastsim_api]
+#[serde_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]

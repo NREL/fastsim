@@ -2,8 +2,9 @@ mod imports;
 use imports::*;
 mod cumu_method_derive;
 mod cycle_derive;
-mod fastsim_api;
 mod history_vec_derive;
+mod pyo3_api;
+mod serde_api;
 mod sm_derive;
 mod timer;
 mod utilities;
@@ -12,16 +13,24 @@ mod utilities;
 #[proc_macro_attribute]
 /// macro for creating appropriate setters and getters for pyo3 struct attributes
 /// and other, non-python API functionality
-pub fn fastsim_api(attr: TokenStream, item: TokenStream) -> TokenStream {
-    fastsim_api::fastsim_serde_api(attr, item)
+pub fn serde_api(attr: TokenStream, item: TokenStream) -> TokenStream {
+    serde_api::serde_api(attr, item)
 }
 
 #[proc_macro_error]
 #[proc_macro_attribute]
 /// macro for creating appropriate setters and getters for pyo3 struct attributes
 /// and other, non-python API functionality
-pub fn fastsim_enum_api(attr: TokenStream, item: TokenStream) -> TokenStream {
-    fastsim_api::fastsim_enum_api(attr, item)
+pub fn named_struct_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
+    pyo3_api::named_struct_pyo3_api(attr, item)
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+/// macro for creating appropriate setters and getters for pyo3 struct attributes
+/// and other, non-python API functionality
+pub fn tuple_struct_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
+    pyo3_api::tuple_struct_pyo3_api(attr, item)
 }
 
 #[proc_macro_error]

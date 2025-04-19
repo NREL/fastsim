@@ -6,7 +6,48 @@ use super::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3::*;
 
-#[fastsim_api(
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+/// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
+/// electronics.
+pub struct ElectricMachine {
+    /// Efficiency interpolator corresponding to achieved output power
+    ///
+    /// Note that the Extrapolate field of this variable is changed in [Self::get_pwr_in_req]
+    pub eff_interp_achieved: Interpolator,
+    /// Efficiency interpolator corresponding to max input power
+    /// If `None`, will be set during [Self::init].
+    ///
+    /// Note that the Extrapolate field of this variable is changed in [Self::set_curr_pwr_prop_out_max]
+    pub eff_interp_at_max_input: Option<Interpolator>,
+    /// Electrical input power fraction array at which efficiencies are evaluated.
+    /// Calculated during runtime if not provided.
+    // /// this will disappear and instead be in eff_interp_bwd
+    // pub pwr_in_frac_interp: Vec<f64>,
+    /// ElectricMachine maximum output power \[W\]
+    pub pwr_out_max: si::Power,
+    /// ElectricMachine specific power
+    pub specific_pwr: Option<si::SpecificPower>,
+    /// ElectricMachine mass
+    pub(in super::super) mass: Option<si::Mass>,
+    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    pub state: ElectricMachineState,
+    /// Custom vector of [Self::state]
+    #[serde(
+        default,
+        skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty"
+    )]
+    pub history: ElectricMachineStateHistoryVec,
+}
+
+#[named_struct_pyo3_api(ElectricMachine)]
+impl ElectricMachine {
     // #[new]
     // fn __new__(
     //     pwr_out_frac_interp: Vec<f64>,
@@ -54,43 +95,6 @@ use crate::pyo3::*;
         self.set_eff_fwd_range(eff_range)?;
         Ok(())
     }
-)]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
-#[non_exhaustive]
-#[serde(deny_unknown_fields)]
-/// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
-/// electronics.
-pub struct ElectricMachine {
-    /// Efficiency interpolator corresponding to achieved output power
-    ///
-    /// Note that the Extrapolate field of this variable is changed in [Self::get_pwr_in_req]
-    pub eff_interp_achieved: Interpolator,
-    /// Efficiency interpolator corresponding to max input power
-    /// If `None`, will be set during [Self::init].
-    ///
-    /// Note that the Extrapolate field of this variable is changed in [Self::set_curr_pwr_prop_out_max]
-    pub eff_interp_at_max_input: Option<Interpolator>,
-    /// Electrical input power fraction array at which efficiencies are evaluated.
-    /// Calculated during runtime if not provided.
-    // /// this will disappear and instead be in eff_interp_bwd
-    // pub pwr_in_frac_interp: Vec<f64>,
-    /// ElectricMachine maximum output power \[W\]
-    pub pwr_out_max: si::Power,
-    /// ElectricMachine specific power
-    pub specific_pwr: Option<si::SpecificPower>,
-    /// ElectricMachine mass
-    pub(in super::super) mass: Option<si::Mass>,
-    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
-    pub save_interval: Option<usize>,
-    /// struct for tracking current state
-    #[serde(default)]
-    pub state: ElectricMachineState,
-    /// Custom vector of [Self::state]
-    #[serde(
-        default,
-        skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty"
-    )]
-    pub history: ElectricMachineStateHistoryVec,
 }
 
 impl ElectricMachine {
@@ -689,7 +693,7 @@ impl ElectricMachine {
     }
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(
     Clone,
     Debug,

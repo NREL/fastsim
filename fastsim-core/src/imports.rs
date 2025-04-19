@@ -23,7 +23,8 @@ pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
 pub(crate) use eng_fmt::FormatEng;
 pub(crate) use fastsim_proc_macros::{
-    fastsim_api, fastsim_enum_api, HistoryVec, SetCumulative, StateMethods,
+    named_struct_pyo3_api, serde_api, tuple_struct_pyo3_api, HistoryVec, SetCumulative,
+    StateMethods,
 };
 pub(crate) use lazy_static::lazy_static;
 pub(crate) use ndarray::prelude::*;

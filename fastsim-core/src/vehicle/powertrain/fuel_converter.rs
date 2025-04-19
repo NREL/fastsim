@@ -4,7 +4,52 @@ use std::f64::consts::PI;
 
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
 
-#[fastsim_api(
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+/// Struct for modeling [FuelConverter] (e.g. engine, fuel cell.) thermal plant
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+pub struct FuelConverter {
+    /// [Self] Thermal plant, including thermal management controls
+    #[serde(default, skip_serializing_if = "FuelConverterThermalOption::is_none")]
+    #[has_state]
+    pub thrml: FuelConverterThermalOption,
+    /// [Self] mass
+    #[serde(default)]
+    pub(in super::super) mass: Option<si::Mass>,
+    /// FuelConverter specific power
+    pub(in super::super) specific_pwr: Option<si::SpecificPower>,
+    /// max rated brake output power
+    pub pwr_out_max: si::Power,
+    /// starting/baseline transient power limit
+    #[serde(default)]
+    pub pwr_out_max_init: si::Power,
+    // TODO: consider a ramp down rate, which may be needed for fuel cells
+    /// lag time for ramp up
+    pub pwr_ramp_lag: si::Time,
+    /// interpolator for calculating [Self] efficiency as a function of output power
+    pub eff_interp_from_pwr_out: Interpolator,
+    /// power at which peak efficiency occurs
+    #[serde(skip)]
+    pub(crate) pwr_for_peak_eff: si::Power,
+    /// idle fuel power to overcome internal friction (not including aux load) \[W\]
+    pub pwr_idle_fuel: si::Power,
+    /// time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    pub state: FuelConverterState,
+    /// Custom vector of [Self::state]
+    #[serde(
+        default,
+        skip_serializing_if = "FuelConverterStateHistoryVec::is_empty"
+    )]
+    pub history: FuelConverterStateHistoryVec,
+}
+
+#[named_struct_pyo3_api(FuelConverter)]
+impl FuelConverter {
     // optional, custom, struct-specific pymethods
     #[getter("eff_max")]
     fn get_eff_max_py(&self) -> PyResult<f64> {
@@ -48,49 +93,9 @@ use std::f64::consts::PI;
 
     #[getter]
     fn get_specific_pwr_kw_per_kg(&self) -> Option<f64> {
-        self.specific_pwr.map(|x| x.get::<si::kilowatt_per_kilogram>())
+        self.specific_pwr
+            .map(|x| x.get::<si::kilowatt_per_kilogram>())
     }
-)]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
-/// Struct for modeling [FuelConverter] (e.g. engine, fuel cell.) thermal plant
-#[non_exhaustive]
-#[serde(deny_unknown_fields)]
-pub struct FuelConverter {
-    /// [Self] Thermal plant, including thermal management controls
-    #[serde(default, skip_serializing_if = "FuelConverterThermalOption::is_none")]
-    #[has_state]
-    pub thrml: FuelConverterThermalOption,
-    /// [Self] mass
-    #[serde(default)]
-    pub(in super::super) mass: Option<si::Mass>,
-    /// FuelConverter specific power
-    pub(in super::super) specific_pwr: Option<si::SpecificPower>,
-    /// max rated brake output power
-    pub pwr_out_max: si::Power,
-    /// starting/baseline transient power limit
-    #[serde(default)]
-    pub pwr_out_max_init: si::Power,
-    // TODO: consider a ramp down rate, which may be needed for fuel cells
-    /// lag time for ramp up
-    pub pwr_ramp_lag: si::Time,
-    /// interpolator for calculating [Self] efficiency as a function of output power
-    pub eff_interp_from_pwr_out: Interpolator,
-    /// power at which peak efficiency occurs
-    #[serde(skip)]
-    pub(crate) pwr_for_peak_eff: si::Power,
-    /// idle fuel power to overcome internal friction (not including aux load) \[W\]
-    pub pwr_idle_fuel: si::Power,
-    /// time step interval between saves. 1 is a good option. If None, no saving occurs.
-    pub save_interval: Option<usize>,
-    /// struct for tracking current state
-    #[serde(default)]
-    pub state: FuelConverterState,
-    /// Custom vector of [Self::state]
-    #[serde(
-        default,
-        skip_serializing_if = "FuelConverterStateHistoryVec::is_empty"
-    )]
-    pub history: FuelConverterStateHistoryVec,
 }
 
 impl SetCumulative for FuelConverter {
@@ -492,7 +497,7 @@ impl FuelConverter {
     }
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(
     Clone,
     Debug,
@@ -670,7 +675,7 @@ impl FuelConverterThermalOption {
     }
 }
 
-#[fastsim_api(
+#[serde_api(
     #[staticmethod]
     #[pyo3(name = "default")]
     fn default_py() -> Self {
@@ -997,7 +1002,7 @@ impl Default for FuelConverterThermal {
     }
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(
     Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
 )]

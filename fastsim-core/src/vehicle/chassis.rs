@@ -18,7 +18,7 @@ pub enum DriveTypes {
 impl SerdeAPI for DriveTypes {}
 impl Init for DriveTypes {}
 
-#[fastsim_api]
+#[serde_api]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]

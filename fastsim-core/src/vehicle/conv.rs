@@ -1,9 +1,10 @@
 use super::*;
 
-#[fastsim_api]
+#[serde_api]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Conventional vehicle with only a FuelConverter as a power source
 pub struct ConventionalVehicle {
     pub fs: FuelStorage,
@@ -15,6 +16,9 @@ pub struct ConventionalVehicle {
     /// Alternator efficiency used to calculate aux mechanical power demand on engine
     pub alt_eff: si::Ratio,
 }
+
+#[named_struct_pyo3_api(ConventionalVehicle)]
+impl ConventionalVehicle {}
 
 impl SerdeAPI for ConventionalVehicle {}
 impl Init for ConventionalVehicle {

@@ -6,82 +6,11 @@ use crate::pyo3::*;
 
 const TOL: f64 = 1e-3;
 
-#[fastsim_api(
-    // #[getter("eff_max")]
-    // fn get_eff_max_py(&self) -> f64 {
-    //     self.get_eff_max()
-    // }
-
-    // #[setter("__eff_max")]
-    // fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
-    //     self.set_eff_max(eff_max).map_err(PyValueError::new_err)
-    // }
-
-    // #[getter("eff_min")]
-    // fn get_eff_min_py(&self) -> f64 {
-    //     self.get_eff_min()
-    // }
-
-    #[getter("eff_range")]
-    fn get_eff_range_py(&self) -> f64 {
-        self.get_eff_range()
-    }
-
-    // #[setter("__eff_range")]
-    // fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
-    //     self.set_eff_range(eff_range)
-    // }
-
-    // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
-    #[pyo3(name = "set_mass")]
-    #[pyo3(signature = (mass_kg=None, side_effect=None))]
-    fn set_mass_py(&mut self, mass_kg: Option<f64>, side_effect: Option<String>) -> anyhow::Result<()> {
-        let side_effect = side_effect.unwrap_or_else(|| "Intensive".into());
-        self.set_mass(
-            mass_kg.map(|m| m * uc::KG),
-            MassSideEffect::try_from(side_effect)?
-        )?;
-        Ok(())
-    }
-
-    #[getter("mass_kg")]
-    fn get_mass_kg_py(&mut self) -> anyhow::Result<Option<f64>> {
-        Ok(self.mass()?.map(|m| m.get::<si::kilogram>()))
-    }
-
-    #[getter]
-    fn get_specific_energy_kjoules_per_kg(&self) -> Option<f64> {
-        self.specific_energy.map(|se| se.get::<si::kilojoule_per_kilogram>())
-    }
-
-    #[getter]
-    fn get_energy_capacity_usable_joules(&self) -> f64 {
-        self.energy_capacity_usable().get::<si::joule>()
-    }
-
-    #[pyo3(name = "set_default_pwr_interp")]
-    fn set_default_pwr_interp_py(&mut self) -> anyhow::Result<()> {
-        self.set_default_pwr_interp()
-    }
-
-    #[pyo3(name = "set_default_pwr_and_soc_interp")]
-    fn set_default_pwr_and_soc_interp_py(&mut self) -> anyhow::Result<()> {
-        self.set_default_pwr_and_soc_interp()
-    }
-
-    #[pyo3(name = "set_default_pwr_and_temp_interp")]
-    fn set_default_pwr_and_temp_interp_py(&mut self) -> anyhow::Result<()> {
-        self.set_default_pwr_and_temp_interp()
-    }
-
-    #[pyo3(name = "set_default_pwr_soc_and_temp_interp")]
-    fn set_default_pwr_soc_and_temp_interp_py(&mut self) -> anyhow::Result<()> {
-        self.set_default_pwr_soc_and_temp_interp()
-    }
-)]
+#[serde_api]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
 pub struct ReversibleEnergyStorage {
     /// [Self] Thermal plant, including thermal management controls
@@ -121,6 +50,86 @@ pub struct ReversibleEnergyStorage {
         skip_serializing_if = "ReversibleEnergyStorageStateHistoryVec::is_empty"
     )]
     pub history: ReversibleEnergyStorageStateHistoryVec,
+}
+
+#[named_struct_pyo3_api(ReversibleEnergyStorage)]
+impl ReversibleEnergyStorage {
+    // #[getter("eff_max")]
+    // fn get_eff_max_py(&self) -> f64 {
+    //     self.get_eff_max()
+    // }
+
+    // #[setter("__eff_max")]
+    // fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
+    //     self.set_eff_max(eff_max).map_err(PyValueError::new_err)
+    // }
+
+    // #[getter("eff_min")]
+    // fn get_eff_min_py(&self) -> f64 {
+    //     self.get_eff_min()
+    // }
+
+    #[getter("eff_range")]
+    fn get_eff_range_py(&self) -> f64 {
+        self.get_eff_range()
+    }
+
+    // #[setter("__eff_range")]
+    // fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
+    //     self.set_eff_range(eff_range)
+    // }
+
+    // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
+    #[pyo3(name = "set_mass")]
+    #[pyo3(signature = (mass_kg=None, side_effect=None))]
+    fn set_mass_py(
+        &mut self,
+        mass_kg: Option<f64>,
+        side_effect: Option<String>,
+    ) -> anyhow::Result<()> {
+        let side_effect = side_effect.unwrap_or_else(|| "Intensive".into());
+        self.set_mass(
+            mass_kg.map(|m| m * uc::KG),
+            MassSideEffect::try_from(side_effect)?,
+        )?;
+        Ok(())
+    }
+
+    #[getter("mass_kg")]
+    fn get_mass_kg_py(&mut self) -> anyhow::Result<Option<f64>> {
+        Ok(self.mass()?.map(|m| m.get::<si::kilogram>()))
+    }
+
+    #[getter]
+    fn get_specific_energy_kjoules_per_kg(&self) -> Option<f64> {
+        self.specific_energy
+            .map(|se| se.get::<si::kilojoule_per_kilogram>())
+    }
+
+    #[getter]
+    fn get_energy_capacity_usable_joules(&self) -> f64 {
+        self.energy_capacity_usable().get::<si::joule>()
+    }
+
+    #[pyo3(name = "set_default_pwr_interp")]
+    fn set_default_pwr_interp_py(&mut self) -> anyhow::Result<()> {
+        self.set_default_pwr_interp()
+    }
+
+    #[pyo3(name = "set_default_pwr_and_soc_interp")]
+    fn set_default_pwr_and_soc_interp_py(&mut self) -> anyhow::Result<()> {
+        self.set_default_pwr_and_soc_interp()
+    }
+
+    #[pyo3(name = "set_default_pwr_and_temp_interp")]
+    fn set_default_pwr_and_temp_interp_py(&mut self) -> anyhow::Result<()> {
+        self.set_default_pwr_and_temp_interp()
+    }
+
+    #[pyo3(name = "set_default_pwr_soc_and_temp_interp")]
+    fn set_default_pwr_soc_and_temp_interp_py(&mut self) -> anyhow::Result<()> {
+        self.set_default_pwr_soc_and_temp_interp()
+    }
 }
 
 impl ReversibleEnergyStorage {
@@ -775,7 +784,7 @@ pub enum SpecificEnergySideEffect {
     Energy,
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(
     Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
 )]
@@ -980,7 +989,7 @@ impl RESThermalOption {
     }
 }
 
-#[fastsim_api(
+#[serde_api(
     #[staticmethod]
     #[pyo3(name = "default")]
     fn default_py() -> Self {
@@ -1090,7 +1099,7 @@ impl RESLumpedThermal {
     }
 }
 
-#[fastsim_api(
+#[serde_api(
     #[pyo3(name = "default")]
     #[staticmethod]
     fn default_py() -> Self {
