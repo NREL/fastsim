@@ -184,9 +184,9 @@ impl HVACSystemForLumpedCabin {
                 let cop_ideal = if -te_delta_vs_amb < 5.0 * uc::KELVIN_INT {
                     // cabin is cooler than ambient + threshold
                     // TODO: make this `5.0` not hardcoded
-                    *cab_state.temperature.get_stale(|| format_dbg!())? / (5.0 * uc::KELVIN)
+                    *cab_state.temperature.get_fresh(|| format_dbg!())? / (5.0 * uc::KELVIN)
                 } else {
-                    *cab_state.temperature.get_stale(|| format_dbg!())? / te_delta_vs_amb.abs()
+                    *cab_state.temperature.get_fresh(|| format_dbg!())? / te_delta_vs_amb.abs()
                 };
                 let cop = cop_ideal * self.frac_of_ideal_cop;
                 ensure!(cop > 0.0 * uc::R, format_dbg!(cop));

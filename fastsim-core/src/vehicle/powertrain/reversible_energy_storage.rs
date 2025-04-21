@@ -1060,7 +1060,7 @@ impl RESLumpedThermal {
                     - self
                         .state
                         .temperature
-                        .get_fresh(|| format_dbg!())?
+                        .get_stale(|| format_dbg!())?
                         .get::<si::degree_celsius>())
                 * uc::KELVIN_INT,
             || format_dbg!(),
@@ -1074,7 +1074,7 @@ impl RESLumpedThermal {
                     - self
                         .state
                         .temperature
-                        .get_fresh(|| format_dbg!())?
+                        .get_stale(|| format_dbg!())?
                         .get::<si::degree_celsius>())
                 * uc::KELVIN_INT,
             || format_dbg!(),
@@ -1082,9 +1082,9 @@ impl RESLumpedThermal {
         self.state.pwr_thrml_loss.update(
             res_state
                 .pwr_out_electrical
-                .get_fresh(|| format_dbg!())?
+                .get_stale(|| format_dbg!())?
                 .abs()
-                * (1.0 * uc::R - *res_state.eff.get_fresh(|| format_dbg!())?),
+                * (1.0 * uc::R - *res_state.eff.get_stale(|| format_dbg!())?),
             || format_dbg!(),
         )?;
         self.state.temp_prev.update(

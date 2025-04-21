@@ -368,7 +368,7 @@ impl FuelConverter {
     ) -> anyhow::Result<()> {
         let veh_speed = *veh_state.speed_ach.get_stale(|| format_dbg!())?;
         self.thrml
-            .solve(&self.state, te_amb, pwr_thrml_fc_to_cab, veh_speed, dt)
+            .solve_thermal(&self.state, te_amb, pwr_thrml_fc_to_cab, veh_speed, dt)
             .with_context(|| format_dbg!())
     }
 
@@ -639,7 +639,7 @@ impl FuelConverterThermalOption {
     /// - `te_amb`: ambient temperature
     /// - `pwr_thrml_fc_to_cab`: heat demand from [Vehicle::hvac] system -- zero if `None` is passed
     /// - `veh_speed`: current achieved speed
-    fn solve(
+    fn solve_thermal(
         &mut self,
         fc_state: &FuelConverterState,
         te_amb: si::Temperature,
@@ -794,7 +794,7 @@ impl FuelConverterThermal {
             * (self
                 .state
                 .temperature
-                .get_fresh(|| format_dbg!())?
+                .get_stale(|| format_dbg!())?
                 .get::<si::kelvin_abs>()
                 + te_amb.get::<si::kelvin_abs>())
             * uc::KELVIN;
@@ -813,7 +813,7 @@ impl FuelConverterThermal {
                         .interpolate(&[self
                             .state
                             .temperature
-                            .get_fresh(|| format_dbg!())?
+                            .get_stale(|| format_dbg!())?
                             .get::<si::degree_celsius>()])
                         .with_context(|| format_dbg!())?,
                     || format_dbg!(),
@@ -840,7 +840,7 @@ impl FuelConverterThermal {
                         .interpolate(&[self
                             .state
                             .temperature
-                            .get_fresh(|| format_dbg!())?
+                            .get_stale(|| format_dbg!())?
                             .get::<si::degree_celsius>()])
                         .with_context(|| format_dbg!())?,
                     || format_dbg!(),
@@ -858,7 +858,7 @@ impl FuelConverterThermal {
                 * (self
                     .state
                     .temperature
-                    .get_fresh(|| format_dbg!())?
+                    .get_stale(|| format_dbg!())?
                     .get::<si::degree_celsius>()
                     - te_amb.get::<si::degree_celsius>())
                 * uc::KELVIN_INT,
@@ -870,9 +870,9 @@ impl FuelConverterThermal {
         // assumes stoichiometric combustion
         self.state.te_adiabatic.update(
             Air::get_te_from_u(
-                Air::get_specific_energy(*self.state.temperature.get_fresh(|| format_dbg!())?)
+                Air::get_specific_energy(*self.state.temperature.get_stale(|| format_dbg!())?)
                     .with_context(|| format_dbg!())?
-                    + (Octane::get_specific_energy(*self.state.temperature.get_fresh(|| format_dbg!())?)
+                    + (Octane::get_specific_energy(*self.state.temperature.get_stale(|| format_dbg!())?)
                     .with_context(|| format_dbg!())?
                     // TODO: make config. for other fuels -- e.g. with enum for specific fuels and/or fuel properties
                     + *GASOLINE_LHV)
@@ -883,9 +883,9 @@ impl FuelConverterThermal {
         )?;
         // heat that will go both to the block and out the exhaust port
         self.state.pwr_fuel_as_heat.update(
-            *fc_state.pwr_fuel.get_fresh(|| format_dbg!())?
-                - (*fc_state.pwr_prop.get_fresh(|| format_dbg!())?
-                    + *fc_state.pwr_aux.get_fresh(|| format_dbg!())?),
+            *fc_state.pwr_fuel.get_stale(|| format_dbg!())?
+                - (*fc_state.pwr_prop.get_stale(|| format_dbg!())?
+                    + *fc_state.pwr_aux.get_stale(|| format_dbg!())?),
             || format_dbg!(),
         )?;
         self.state.pwr_thrml_to_tm.update(
@@ -898,7 +898,7 @@ impl FuelConverterThermal {
                     - self
                         .state
                         .temperature
-                        .get_fresh(|| format_dbg!())?
+                        .get_stale(|| format_dbg!())?
                         .get::<si::degree_celsius>())
                 * uc::KELVIN_INT)
                 .min(

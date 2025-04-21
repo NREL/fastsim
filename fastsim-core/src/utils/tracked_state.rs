@@ -58,14 +58,26 @@ where
     /// # Arguments
     /// - `loc`: closure that returns file and line number where called
     pub fn ensure_fresh<F: Fn() -> String>(&self, loc: F) -> anyhow::Result<()> {
-        ensure!(self.1.is_fresh(), loc());
+        ensure!(
+            self.1.is_fresh(),
+            format!(
+                "{}\nState variable has not been updated. This is a bug in `fastsim-core`",
+                loc()
+            )
+        );
         Ok(())
     }
 
     /// # Arguments
     /// - `loc`: closure that returns file and line number where called
     pub fn ensure_stale<F: Fn() -> String>(&self, loc: F) -> anyhow::Result<()> {
-        ensure!(self.1.is_stale(), loc());
+        ensure!(
+            self.1.is_stale(),
+            format!(
+                "{}\nState variable has already been updated. This is a bug in `fastsim-core`",
+                loc()
+            )
+        );
         Ok(())
     }
 
@@ -85,7 +97,10 @@ where
     pub fn update<F: Fn() -> String>(&mut self, value: T, loc: F) -> anyhow::Result<()> {
         ensure!(
             self.1.is_stale(),
-            format!("{}\nState variable has not been reset", loc())
+            format!(
+                "{}\nState variable has not been reset. This is a bug in `fastsim-core`.",
+                loc()
+            )
         );
         self.0 = value;
         self.1 = State::Fresh;
