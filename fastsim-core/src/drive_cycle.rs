@@ -53,7 +53,7 @@ pub struct Cycle {
     pub elev_interp: Option<Interpolator>,
 }
 
-#[named_struct_pyo3_api(Cycle)]
+#[named_struct_pyo3_api]
 impl Cycle {
     #[pyo3(name = "list_resources")]
     #[staticmethod]
@@ -545,7 +545,7 @@ pub struct CycleElement {
 impl SerdeAPI for CycleElement {}
 impl Init for CycleElement {}
 
-#[named_struct_pyo3_api(CycleElement)]
+#[named_struct_pyo3_api]
 impl CycleElement {}
 
 #[cfg(test)]

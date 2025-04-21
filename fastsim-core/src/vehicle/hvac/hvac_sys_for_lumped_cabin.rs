@@ -1,13 +1,8 @@
 use super::*;
 
-#[serde_api(
-    #[staticmethod]
-    #[pyo3(name = "default")]
-    fn default_py() -> Self {
-        Default::default()
-    }
-)]
+#[serde_api]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 /// HVAC system for [LumpedCabin]
 pub struct HVACSystemForLumpedCabin {
@@ -44,6 +39,14 @@ pub struct HVACSystemForLumpedCabin {
     )]
     pub history: HVACSystemForLumpedCabinStateHistoryVec,
     pub save_interval: Option<usize>,
+}
+#[named_struct_pyo3_api]
+impl HVACSystemForLumpedCabin {
+    #[staticmethod]
+    #[pyo3(name = "default")]
+    fn default_py() -> Self {
+        Default::default()
+    }
 }
 impl Default for HVACSystemForLumpedCabin {
     fn default() -> Self {
@@ -421,13 +424,7 @@ pub enum CabinHeatSource {
 impl Init for CabinHeatSource {}
 impl SerdeAPI for CabinHeatSource {}
 
-#[serde_api(
-    #[pyo3(name = "default")]
-    #[staticmethod]
-    fn default_py() -> Self {
-        Self::default()
-    }
-)]
+#[serde_api]
 #[derive(
     Clone,
     Debug,
@@ -439,6 +436,7 @@ impl SerdeAPI for CabinHeatSource {}
     SetCumulative,
     StateMethods,
 )]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct HVACSystemForLumpedCabinState {
@@ -470,6 +468,14 @@ pub struct HVACSystemForLumpedCabinState {
     pub pwr_thrml_fc_to_cabin: TrackedState<si::Power>,
     /// Cumulative thermal energy from [FuelConverter] to [Cabin]
     pub energy_thrml_fc_to_cabin: TrackedState<si::Energy>,
+}
+#[named_struct_pyo3_api]
+impl HVACSystemForLumpedCabinState {
+    #[pyo3(name = "default")]
+    #[staticmethod]
+    fn default_py() -> Self {
+        Self::default()
+    }
 }
 impl Init for HVACSystemForLumpedCabinState {}
 impl SerdeAPI for HVACSystemForLumpedCabinState {}

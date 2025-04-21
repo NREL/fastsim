@@ -16,7 +16,7 @@ pub struct BatteryElectricVehicle {
     pub(crate) mass: Option<si::Mass>,
 }
 
-#[named_struct_pyo3_api(BatteryElectricVehicle)]
+#[named_struct_pyo3_api]
 impl BatteryElectricVehicle {}
 
 impl Init for BatteryElectricVehicle {

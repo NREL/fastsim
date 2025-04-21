@@ -1,13 +1,8 @@
 use super::*;
 
-#[serde_api(
-    #[staticmethod]
-    #[pyo3(name = "default")]
-    fn default_py() -> Self {
-        Default::default()
-    }
-)]
+#[serde_api]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 /// HVAC system for `LumpedCabin` and `ReversibleEnergyStorage::thrml`
 pub struct HVACSystemForLumpedCabinAndRES {
@@ -66,6 +61,14 @@ pub struct HVACSystemForLumpedCabinAndRES {
     )]
     pub history: HVACSystemForLumpedCabinAndRESStateHistoryVec,
     pub save_interval: Option<usize>,
+}
+#[named_struct_pyo3_api]
+impl HVACSystemForLumpedCabinAndRES {
+    #[staticmethod]
+    #[pyo3(name = "default")]
+    fn default_py() -> Self {
+        Default::default()
+    }
 }
 impl Default for HVACSystemForLumpedCabinAndRES {
     fn default() -> Self {
@@ -1114,6 +1117,7 @@ impl HVACSystemForLumpedCabinAndRES {
     StateMethods,
 )]
 #[serde(default)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 pub struct HVACSystemForLumpedCabinAndRESState {
     /// time step counter
@@ -1213,6 +1217,9 @@ pub struct HVACSystemForLumpedCabinAndRESState {
 }
 impl Init for HVACSystemForLumpedCabinAndRESState {}
 impl SerdeAPI for HVACSystemForLumpedCabinAndRESState {}
+
+#[named_struct_pyo3_api]
+impl HVACSystemForLumpedCabinAndRESState {}
 
 impl HVACSystemForLumpedCabinAndRESState {
     fn set_mode_and_get_te_for_cop(

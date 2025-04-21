@@ -13,10 +13,20 @@ lazy_static! {
     pub static ref H_STD: si::Length = 180.0 * uc::M;
 }
 
-#[serde_api(
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[non_exhaustive]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[serde(deny_unknown_fields)]
+pub struct Air {}
+impl Init for Air {}
+impl SerdeAPI for Air {}
+
+#[named_struct_pyo3_api]
+impl Air {
     #[new]
     fn __new__() -> Self {
-        Self{}
+        Self {}
     }
     /// Returns density of air \[kg/m^3\]
     /// Source: <https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html>  
@@ -45,7 +55,10 @@ lazy_static! {
     #[pyo3(name = "get_therm_cond")]
     #[staticmethod]
     pub fn get_therm_cond_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_therm_cond((te_air + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::watt_per_meter_kelvin>())
+        Ok(
+            Self::get_therm_cond((te_air + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::watt_per_meter_kelvin>(),
+        )
     }
 
     /// Returns constant pressure specific heat [J/(kg*K)] of air
@@ -54,7 +67,10 @@ lazy_static! {
     #[pyo3(name = "get_specific_heat_cp")]
     #[staticmethod]
     pub fn get_specific_heat_cp_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_specific_heat_cp((te_air + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::joule_per_kilogram_kelvin>())
+        Ok(
+            Self::get_specific_heat_cp((te_air + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::joule_per_kilogram_kelvin>(),
+        )
     }
 
     /// Returns specific enthalpy [J/kg] of air  
@@ -63,7 +79,10 @@ lazy_static! {
     #[pyo3(name = "get_specific_enthalpy")]
     #[staticmethod]
     pub fn get_specific_enthalpy_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_specific_enthalpy((te_air  - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::joule_per_kilogram>())
+        Ok(
+            Self::get_specific_enthalpy((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::joule_per_kilogram>(),
+        )
     }
 
     /// Returns specific energy [J/kg] of air  
@@ -72,7 +91,10 @@ lazy_static! {
     #[pyo3(name = "get_specific_energy")]
     #[staticmethod]
     pub fn get_specific_energy_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_specific_energy((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::joule_per_kilogram>())
+        Ok(
+            Self::get_specific_energy((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::joule_per_kilogram>(),
+        )
     }
 
     /// Returns thermal Prandtl number of air
@@ -81,7 +103,7 @@ lazy_static! {
     #[pyo3(name = "get_pr")]
     #[staticmethod]
     pub fn get_pr_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_pr((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN )?.get::<si::ratio>())
+        Ok(Self::get_pr((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::ratio>())
     }
 
     /// Returns dynamic viscosity \[Pa*s\] of air
@@ -90,7 +112,10 @@ lazy_static! {
     #[pyo3(name = "get_dyn_visc")]
     #[staticmethod]
     pub fn get_dyn_visc_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_dyn_visc((te_air  - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::pascal_second>())
+        Ok(
+            Self::get_dyn_visc((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::pascal_second>(),
+        )
     }
 
     /// Returns temperature [°C] of air
@@ -110,14 +135,7 @@ lazy_static! {
     pub fn get_te_from_u_py(u: f64) -> anyhow::Result<f64> {
         Ok(Self::get_te_from_u(u * uc::J_PER_KG)?.get::<si::degree_celsius>())
     }
-
-)]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
-#[non_exhaustive]
-#[serde(deny_unknown_fields)]
-pub struct Air {}
-impl Init for Air {}
-impl SerdeAPI for Air {}
+}
 
 impl Air {
     /// Returns density of air
@@ -598,14 +616,26 @@ mod octane_static_props {
     }
 }
 
-#[serde_api(
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[serde(deny_unknown_fields)]
+pub struct Octane {}
+impl Init for Octane {}
+impl SerdeAPI for Octane {}
+
+#[named_struct_pyo3_api]
+impl Octane {
     /// Returns specific energy [J/kg] of octane  
     /// # Arguments  
     /// - `te_octane`: temperature [°C] of octane
     #[pyo3(name = "get_specific_energy")]
     #[staticmethod]
     pub fn get_specific_energy_py(te_octane: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_specific_energy((te_octane - uc::CELSIUS_TO_KELVIN) * uc::KELVIN )?.get::<si::joule_per_kilogram>())
+        Ok(
+            Self::get_specific_energy((te_octane - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::joule_per_kilogram>(),
+        )
     }
 
     /// Returns temperature [°C] of octane
@@ -616,12 +646,7 @@ mod octane_static_props {
     pub fn get_te_from_u_py(u: f64) -> anyhow::Result<f64> {
         Ok(Self::get_te_from_u(u * uc::J_PER_KG)?.get::<si::degree_celsius>())
     }
-)]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
-#[serde(deny_unknown_fields)]
-pub struct Octane {}
-impl Init for Octane {}
-impl SerdeAPI for Octane {}
+}
 
 impl Octane {
     /// Returns specific energy of octane  

@@ -1,5 +1,5 @@
 cargo test && \
-maturin develop --release && \
+pip install -e '.[dev]' && \
 # pytest -v python/fastsim/tests/ &&
-(pytest -v || (pip install -e '.[dev]' && pytest -v) ) && \
+pytest -v  && \
 echo "Complete success!"

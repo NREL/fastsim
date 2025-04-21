@@ -46,7 +46,7 @@ pub struct ElectricMachine {
     pub history: ElectricMachineStateHistoryVec,
 }
 
-#[named_struct_pyo3_api(ElectricMachine)]
+#[named_struct_pyo3_api]
 impl ElectricMachine {
     // #[new]
     // fn __new__(
@@ -708,6 +708,8 @@ impl ElectricMachine {
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+
 pub struct ElectricMachineState {
     /// time step index
     pub i: TrackedState<usize>,
@@ -751,6 +753,9 @@ pub struct ElectricMachineState {
     /// Integral of [Self::pwr_loss]
     pub energy_loss: TrackedState<si::Energy>,
 }
+
+#[named_struct_pyo3_api]
+impl ElectricMachineState {}
 
 impl Init for ElectricMachineState {}
 impl SerdeAPI for ElectricMachineState {}

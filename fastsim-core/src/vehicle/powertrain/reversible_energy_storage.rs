@@ -52,7 +52,7 @@ pub struct ReversibleEnergyStorage {
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
-#[named_struct_pyo3_api(ReversibleEnergyStorage)]
+#[named_struct_pyo3_api]
 impl ReversibleEnergyStorage {
     // #[getter("eff_max")]
     // fn get_eff_max_py(&self) -> f64 {
@@ -790,6 +790,7 @@ pub enum SpecificEnergySideEffect {
 )]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(default)]
 /// ReversibleEnergyStorage state variables
 pub struct ReversibleEnergyStorageState {
@@ -844,6 +845,9 @@ pub struct ReversibleEnergyStorageState {
     /// cumulative chemical energy; positive is discharging
     pub energy_out_chemical: TrackedState<si::Energy>,
 }
+
+#[named_struct_pyo3_api]
+impl ReversibleEnergyStorageState {}
 
 impl Default for ReversibleEnergyStorageState {
     fn default() -> Self {
@@ -989,14 +993,9 @@ impl RESThermalOption {
     }
 }
 
-#[serde_api(
-    #[staticmethod]
-    #[pyo3(name = "default")]
-    fn default_py() -> Self {
-        Default::default()
-    }
-)]
+#[serde_api]
 #[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 /// Struct for modeling [ReversibleEnergyStorage] (e.g. battery) thermal plant
 pub struct RESLumpedThermal {
@@ -1016,6 +1015,15 @@ pub struct RESLumpedThermal {
     )]
     pub history: RESLumpedThermalStateHistoryVec,
     pub save_interval: Option<usize>,
+}
+
+#[named_struct_pyo3_api]
+impl RESLumpedThermal {
+    #[staticmethod]
+    #[pyo3(name = "default")]
+    fn default_py() -> Self {
+        Default::default()
+    }
 }
 impl SetCumulative for RESLumpedThermal {
     fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
@@ -1099,16 +1107,11 @@ impl RESLumpedThermal {
     }
 }
 
-#[serde_api(
-    #[pyo3(name = "default")]
-    #[staticmethod]
-    fn default_py() -> Self {
-        Self::default()
-    }
-)]
+#[serde_api]
 #[derive(
     Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
 )]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 pub struct RESLumpedThermalState {
     /// time step index
@@ -1131,6 +1134,15 @@ pub struct RESLumpedThermalState {
     pub pwr_thrml_loss: TrackedState<si::Power>,
     /// Cumulative thermal energy generation due to losses
     pub energy_thrml_loss: TrackedState<si::Energy>,
+}
+
+#[named_struct_pyo3_api]
+impl RESLumpedThermalState {
+    #[pyo3(name = "default")]
+    #[staticmethod]
+    fn default_py() -> Self {
+        Self::default()
+    }
 }
 
 impl Init for RESLumpedThermalState {}

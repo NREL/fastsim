@@ -99,16 +99,11 @@ impl SetCumulative for CabinOption {
     }
 }
 
-#[serde_api(
-    #[staticmethod]
-    #[pyo3(name = "default")]
-    fn default_py() -> Self {
-        Default::default()
-    }
-)]
+#[serde_api]
 #[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Basic single thermal capacitance cabin thermal model, including HVAC
 /// system and controls
 pub struct LumpedCabin {
@@ -129,6 +124,15 @@ pub struct LumpedCabin {
     pub history: LumpedCabinStateHistoryVec,
     /// Time step interval at which history is saved
     pub save_interval: Option<usize>,
+}
+
+#[named_struct_pyo3_api]
+impl LumpedCabin {
+    #[staticmethod]
+    #[pyo3(name = "default")]
+    fn default_py() -> Self {
+        Default::default()
+    }
 }
 impl SetCumulative for LumpedCabin {
     fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
@@ -273,6 +277,7 @@ impl LumpedCabin {
 #[derive(
     Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
 )]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 pub struct LumpedCabinState {
     /// time step counter
@@ -299,6 +304,15 @@ pub struct LumpedCabinState {
     pub energy_thrml_to_res: TrackedState<si::Energy>,
     /// Reynolds number for flow over cabin, treating cabin as a flat plate
     pub reynolds_for_plate: TrackedState<si::Ratio>,
+}
+
+#[named_struct_pyo3_api]
+impl LumpedCabinState {
+    #[pyo3(name = "default")]
+    #[staticmethod]
+    fn default_py() -> Self {
+        Self::default()
+    }
 }
 
 impl Default for LumpedCabinState {

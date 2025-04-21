@@ -48,7 +48,7 @@ pub struct FuelConverter {
     pub history: FuelConverterStateHistoryVec,
 }
 
-#[named_struct_pyo3_api(FuelConverter)]
+#[named_struct_pyo3_api]
 impl FuelConverter {
     // optional, custom, struct-specific pymethods
     #[getter("eff_max")]
@@ -512,6 +512,7 @@ impl FuelConverter {
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct FuelConverterState {
     /// time step index
     pub i: TrackedState<usize>,
@@ -543,6 +544,8 @@ pub struct FuelConverterState {
     pub time_on: TrackedState<si::Time>,
 }
 
+#[named_struct_pyo3_api]
+impl FuelConverterState {}
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
 
@@ -675,14 +678,9 @@ impl FuelConverterThermalOption {
     }
 }
 
-#[serde_api(
-    #[staticmethod]
-    #[pyo3(name = "default")]
-    fn default_py() -> Self {
-        Default::default()
-    }
-)]
+#[serde_api]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for modeling Fuel Converter (e.g. engine, fuel cell.)
@@ -720,6 +718,15 @@ pub struct FuelConverterThermal {
     )]
     pub history: FuelConverterThermalStateHistoryVec,
     pub save_interval: Option<usize>,
+}
+
+#[named_struct_pyo3_api]
+impl FuelConverterThermal {
+    #[staticmethod]
+    #[pyo3(name = "default")]
+    fn default_py() -> Self {
+        Default::default()
+    }
 }
 
 impl HistoryMethods for FuelConverterThermal {
@@ -1007,6 +1014,7 @@ impl Default for FuelConverterThermal {
     Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
 )]
 #[serde(default)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 pub struct FuelConverterThermalState {
     /// time step index
@@ -1039,6 +1047,8 @@ pub struct FuelConverterThermalState {
     /// Cumulative thermal energy flowing from combustion to [FuelConverter] thermal mass
     pub energy_thrml_to_tm: TrackedState<si::Energy>,
 }
+#[named_struct_pyo3_api]
+impl FuelConverterThermalState {}
 
 impl Init for FuelConverterThermalState {}
 impl SerdeAPI for FuelConverterThermalState {}

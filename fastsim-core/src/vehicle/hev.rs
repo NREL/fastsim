@@ -39,7 +39,7 @@ pub struct HybridElectricVehicle {
     pub soc_bal_iters: TrackedState<u32>,
 }
 
-#[named_struct_pyo3_api(HybridElectricVehicle)]
+#[named_struct_pyo3_api]
 impl HybridElectricVehicle {}
 
 impl SetCumulative for HybridElectricVehicle {
@@ -637,6 +637,7 @@ impl HEVPowertrainControls {
 /// default values.
 #[serde_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 pub struct RESGreedyWithDynamicBuffers {
@@ -686,6 +687,9 @@ pub struct RESGreedyWithDynamicBuffers {
     /// history of current state
     pub history: RGWDBStateHistoryVec,
 }
+
+#[named_struct_pyo3_api]
+impl RESGreedyWithDynamicBuffers {}
 
 impl HistoryMethods for RESGreedyWithDynamicBuffers {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {

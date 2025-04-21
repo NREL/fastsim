@@ -71,7 +71,7 @@ pub struct Vehicle {
     pub history: VehicleStateHistoryVec,
 }
 
-#[named_struct_pyo3_api(Vehicle)]
+#[named_struct_pyo3_api]
 impl Vehicle {
     #[staticmethod]
     fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {

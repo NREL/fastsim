@@ -9,6 +9,7 @@ pub(crate) fn serde_api(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let mut struct_ast = syn::parse_macro_input!(item as syn::ItemStruct);
     let ident = &struct_ast.ident;
+
     if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &mut struct_ast.fields {
         // struct with named fields
         for field in named.iter_mut() {

@@ -24,5 +24,3 @@ impl<T: Iterator<Item = proc_macro2::TokenStream>> TokenStreamIterator for T {
         self.concat_by(|a, b| quote! { #a #b })
     }
 }
-
-const ONLY_FN_MSG: &str = "Only function definitions allowed here.";

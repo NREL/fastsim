@@ -1,8 +1,14 @@
 use crate::imports::*;
 
-pub(crate) fn named_struct_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let ident = syn::parse_macro_input!(attr as syn::Ident);
+pub(crate) fn named_struct_pyo3_api(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let py_impl_block = syn::parse_macro_input!(item as syn::ItemImpl);
+    let ident = match *py_impl_block.self_ty {
+        syn::Type::Path(type_path) if type_path.path.segments.len() == 1 => {
+            let first_seg = type_path.path.segments.first().unwrap();
+            first_seg.ident.clone()
+        }
+        _ => abort_call_site!(String::from("Invalid usage")),
+    };
     let mut py_impl_block_body: TokenStream2 = Default::default();
     for item in py_impl_block.items {
         if let syn::ImplItem::Fn(item_fn) = item {
