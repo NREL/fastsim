@@ -1087,6 +1087,10 @@ impl RESLumpedThermal {
                 * (1.0 * uc::R - *res_state.eff.get_fresh(|| format_dbg!())?),
             || format_dbg!(),
         )?;
+        self.state.temp_prev.update(
+            *self.state.temperature.get_stale(|| format_dbg!())?,
+            || format_dbg!(),
+        )?;
         self.state.temperature.update(
             *self.state.temperature.get_stale(|| format_dbg!())?
                 + (*self
@@ -1118,6 +1122,8 @@ pub struct RESLumpedThermalState {
     pub i: TrackedState<usize>,
     /// Current thermal mass temperature
     pub temperature: TrackedState<si::Temperature>,
+    /// Thermal mass temperature at start of previous time step
+    pub temp_prev: TrackedState<si::Temperature>,
     /// Thermal power flow to [RESLumpedThermal] from cabin
     pub pwr_thrml_from_cabin: TrackedState<si::Power>,
     /// Cumulative thermal energy flow to [RESLumpedThermal] from cabin
@@ -1152,6 +1158,7 @@ impl Default for RESLumpedThermalState {
         Self {
             i: Default::default(),
             temperature: TrackedState::new(*TE_STD_AIR),
+            temp_prev: TrackedState::new(*TE_STD_AIR),
             pwr_thrml_from_cabin: Default::default(),
             energy_thrml_from_cabin: Default::default(),
             pwr_thrml_from_amb: Default::default(),

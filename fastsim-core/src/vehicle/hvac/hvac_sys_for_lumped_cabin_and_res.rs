@@ -151,7 +151,7 @@ impl HVACSystemForLumpedCabinAndRES {
     ) -> anyhow::Result<(si::Power, si::Power, si::Power)> {
         let (res_temp, res_temp_prev): (si::Temperature, si::Temperature) = (
             *res_thrml_state.temperature.get_stale(|| format_dbg!())?,
-            *res_thrml_state.temperature.get_stale(|| format_dbg!())?,
+            *res_thrml_state.temp_prev.get_stale(|| format_dbg!())?,
         );
         ensure!(!res_temp.is_nan(), format_dbg!(res_temp));
         ensure!(!res_temp_prev.is_nan(), format_dbg!(res_temp_prev));
@@ -243,7 +243,7 @@ impl HVACSystemForLumpedCabinAndRES {
 
         let te_cab_delta_vs_amb: si::TemperatureInterval = (cab_state
             .temperature
-            .get_fresh(|| format_dbg!())?
+            .get_stale(|| format_dbg!())?
             .get::<si::degree_celsius>()
             - te_amb_air.get::<si::degree_celsius>())
             * uc::KELVIN_INT;
@@ -252,7 +252,7 @@ impl HVACSystemForLumpedCabinAndRES {
             Some(te_set_res) => Some(
                 (res_thrml_state
                     .temperature
-                    .get_fresh(|| format_dbg!())?
+                    .get_stale(|| format_dbg!())?
                     .get::<si::degree_celsius>()
                     - te_set_res.get::<si::degree_celsius>())
                     * uc::KELVIN_INT,
@@ -262,7 +262,7 @@ impl HVACSystemForLumpedCabinAndRES {
 
         let te_res_delta_vs_amb: si::TemperatureInterval = (res_thrml_state
             .temperature
-            .get_fresh(|| format_dbg!())?
+            .get_stale(|| format_dbg!())?
             .get::<si::degree_celsius>()
             - te_amb_air.get::<si::degree_celsius>())
             * uc::KELVIN_INT;
@@ -343,24 +343,6 @@ impl HVACSystemForLumpedCabinAndRES {
         cab_heat_cap: si::HeatCapacity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        // DO NOT uncomment the following line because this is a cumulative state variable!
-        // *self.state.pwr_i_cab.get_fresh(|| format_dbg!())? = uc::W * f64::NAN;
-        self.state
-            .pwr_p_cab
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-        self.state
-            .pwr_d_cab
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-        self.state
-            .pwr_aux_for_cab_hvac_req
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-        self.state
-            .pwr_aux_for_cab_hvac
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-        self.state
-            .pwr_thrml_hvac_to_cabin
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-
         match self.te_set_cab {
             Some(te_set_cab) => {
                 match self.state.cabin_mode.get_fresh(|| format_dbg!())? {
@@ -515,7 +497,7 @@ impl HVACSystemForLumpedCabinAndRES {
                             self.state.pwr_thrml_to_cab_req .update(self.state.pwr_thrml_to_cab_req.get_fresh(|| format_dbg!())?
                                             .min(
                                                 cab_heat_cap *
-                                            (te_fc.unwrap().get::<si::degree_celsius>() - cab_state.temperature.get_fresh(|| format_dbg!())?.get::<si::degree_celsius>()) * uc::KELVIN_INT
+                                            (te_fc.unwrap().get::<si::degree_celsius>() - cab_state.temperature.get_stale(|| format_dbg!())?.get::<si::degree_celsius>()) * uc::KELVIN_INT
                                                 * 0.1 // so that it's substantially less
                                                 / dt,
                                             )
@@ -705,7 +687,7 @@ impl HVACSystemForLumpedCabinAndRES {
     ) -> anyhow::Result<()> {
         let te_delta_vs_set_cab = (cab_state
             .temperature
-            .get_fresh(|| format_dbg!())?
+            .get_stale(|| format_dbg!())?
             .get::<si::degree_celsius>()
             - te_set_cab.get::<si::degree_celsius>())
             * uc::KELVIN_INT;
@@ -723,10 +705,10 @@ impl HVACSystemForLumpedCabinAndRES {
             -self.d_cabin * uc::J / uc::KELVIN
                 * ((cab_state
                     .temperature
-                    .get_fresh(|| format_dbg!())?
+                    .get_stale(|| format_dbg!())?
                     .get::<si::degree_celsius>()
                     - cab_state
-                        .temperature
+                        .temp_prev
                         .get_stale(|| format_dbg!())?
                         .get::<si::degree_celsius>())
                     * uc::KELVIN_INT
@@ -745,24 +727,6 @@ impl HVACSystemForLumpedCabinAndRES {
         res_temp_prev: si::Temperature,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        // DO NOT uncomment the following line because this is a cumulative state variable!
-        // self.state.pwr_i_res .update( uc::W * f64::NAN, || format_dbg!())?;
-        self.state
-            .pwr_p_res
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-        self.state
-            .pwr_d_res
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-        self.state
-            .pwr_aux_for_res_hvac_req
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-        self.state
-            .pwr_aux_for_res_hvac
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-        self.state
-            .pwr_thrml_hvac_to_res
-            .update(uc::W * f64::NAN, || format_dbg!())?;
-
         match self.te_set_res {
             Some(te_set_res) => {
                 match self.state.res_mode.get_fresh(|| format_dbg!())? {
@@ -1645,12 +1609,12 @@ impl HVACSystemForLumpedCabinAndRESState {
             Option<si::TemperatureInterval>,
         ) = match self.te_ref_component.get_fresh(|| format_dbg!())? {
             TeRefComp::Cabin => (
-                Some(*cab_state.temperature.get_fresh(|| format_dbg!())?),
+                Some(*cab_state.temperature.get_stale(|| format_dbg!())?),
                 te_cab_delta_vs_set,
                 Some(te_cab_delta_vs_amb),
             ),
             TeRefComp::RES => (
-                Some(*res_thrml_state.temperature.get_fresh(|| format_dbg!())?),
+                Some(*res_thrml_state.temperature.get_stale(|| format_dbg!())?),
                 te_res_delta_vs_set,
                 Some(te_res_delta_vs_amb),
             ),

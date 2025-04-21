@@ -126,13 +126,13 @@ impl HVACSystemForLumpedCabin {
             // outside deadband
             let te_delta_vs_set = (cab_state
                 .temperature
-                .get_fresh(|| format_dbg!())?
+                .get_stale(|| format_dbg!())?
                 .get::<si::degree_celsius>()
                 - te_set.get::<si::degree_celsius>())
                 * uc::KELVIN_INT;
             let te_delta_vs_amb: si::TemperatureInterval = (cab_state
                 .temperature
-                .get_fresh(|| format_dbg!())?
+                .get_stale(|| format_dbg!())?
                 .get::<si::degree_celsius>()
                 - te_amb_air.get::<si::degree_celsius>())
                 * uc::KELVIN_INT;
@@ -158,10 +158,10 @@ impl HVACSystemForLumpedCabin {
                 -self.d * uc::J / uc::KELVIN
                     * ((cab_state
                         .temperature
-                        .get_fresh(|| format_dbg!())?
+                        .get_stale(|| format_dbg!())?
                         .get::<si::degree_celsius>()
                         - cab_state
-                            .temperature
+                            .temp_prev
                             .get_stale(|| format_dbg!())?
                             .get::<si::degree_celsius>())
                         * uc::KELVIN_INT
@@ -171,7 +171,7 @@ impl HVACSystemForLumpedCabin {
 
             let (pwr_thrml_hvac_to_cabin, pwr_thrml_fc_to_cabin, cop) = if *cab_state
                 .temperature
-                .get_fresh(|| format_dbg!())?
+                .get_stale(|| format_dbg!())?
                 > te_set + self.te_deadband
             {
                 // COOLING MODE; cabin is hotter than set point
@@ -184,9 +184,9 @@ impl HVACSystemForLumpedCabin {
                 let cop_ideal = if -te_delta_vs_amb < 5.0 * uc::KELVIN_INT {
                     // cabin is cooler than ambient + threshold
                     // TODO: make this `5.0` not hardcoded
-                    *cab_state.temperature.get_fresh(|| format_dbg!())? / (5.0 * uc::KELVIN)
+                    *cab_state.temperature.get_stale(|| format_dbg!())? / (5.0 * uc::KELVIN)
                 } else {
-                    *cab_state.temperature.get_fresh(|| format_dbg!())? / te_delta_vs_amb.abs()
+                    *cab_state.temperature.get_stale(|| format_dbg!())? / te_delta_vs_amb.abs()
                 };
                 let cop = cop_ideal * self.frac_of_ideal_cop;
                 ensure!(cop > 0.0 * uc::R, format_dbg!(cop));
@@ -338,7 +338,7 @@ impl HVACSystemForLumpedCabin {
                             .get::<si::degree_celsius>()
                             - cab_state
                                 .temperature
-                                .get_fresh(|| format_dbg!())?
+                                .get_stale(|| format_dbg!())?
                                 .get::<si::degree_celsius>())
                         * uc::KELVIN_INT
                         * 0.1
@@ -383,9 +383,9 @@ impl HVACSystemForLumpedCabin {
                 let cop_ideal = if te_delta_vs_amb < 5.0 * uc::KELVIN_INT {
                     // cabin is cooler than ambient + threshold
                     // TODO: make this `5.0` not hardcoded
-                    *cab_state.temperature.get_fresh(|| format_dbg!())? / (5.0 * uc::KELVIN)
+                    *cab_state.temperature.get_stale(|| format_dbg!())? / (5.0 * uc::KELVIN)
                 } else {
-                    *cab_state.temperature.get_fresh(|| format_dbg!())? / te_delta_vs_amb.abs()
+                    *cab_state.temperature.get_stale(|| format_dbg!())? / te_delta_vs_amb.abs()
                 };
                 let cop = cop_ideal * self.frac_of_ideal_cop;
                 ensure!(cop > 0.0 * uc::R, format_dbg!(cop));

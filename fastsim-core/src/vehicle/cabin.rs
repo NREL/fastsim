@@ -184,15 +184,15 @@ impl LumpedCabin {
             * (self
                 .state
                 .temperature
-                .get_fresh(|| format_dbg!())?
+                .get_stale(|| format_dbg!())?
                 .get::<si::kelvin_abs>()
                 + te_amb_air.get::<si::kelvin_abs>())
             * uc::KELVIN;
         self.state.reynolds_for_plate.update(
             Air::get_density(
                 Some(cab_te_film_ext),
-                Some(*veh_state.elev_curr.get_fresh(|| format_dbg!())?),
-            ) * *veh_state.speed_ach.get_fresh(|| format_dbg!())?
+                Some(*veh_state.elev_curr.get_stale(|| format_dbg!())?),
+            ) * *veh_state.speed_ach.get_stale(|| format_dbg!())?
                 * self.length
                 / Air::get_dyn_visc(cab_te_film_ext).with_context(|| format_dbg!())?,
             || format_dbg!(),
@@ -229,7 +229,7 @@ impl LumpedCabin {
             };
 
         self.state.pwr_thrml_from_amb.update(
-            if *veh_state.speed_ach.get_fresh(|| format_dbg!())? > 2.0 * uc::MPH {
+            if *veh_state.speed_ach.get_stale(|| format_dbg!())? > 2.0 * uc::MPH {
                 let htc_overall_moving: si::HeatTransferCoeff = 1.0
                     / (1.0
                         / (nu_l_bar
@@ -243,7 +243,7 @@ impl LumpedCabin {
                         - self
                             .state
                             .temperature
-                            .get_fresh(|| format_dbg!())?
+                            .get_stale(|| format_dbg!())?
                             .get::<si::degree_celsius>())
                     * uc::KELVIN_INT
             } else {
@@ -253,13 +253,17 @@ impl LumpedCabin {
                         - self
                             .state
                             .temperature
-                            .get_fresh(|| format_dbg!())?
+                            .get_stale(|| format_dbg!())?
                             .get::<si::degree_celsius>())
                     * uc::KELVIN_INT
             },
             || format_dbg!(),
         )?;
 
+        self.state.temp_prev.update(
+            *self.state.temperature.get_stale(|| format_dbg!())?,
+            || format_dbg!(),
+        )?;
         self.state.temperature.update(
             *self.state.temperature.get_stale(|| format_dbg!())?
                 + (*self.state.pwr_thrml_from_hvac.get_fresh(|| format_dbg!())?
@@ -284,6 +288,8 @@ pub struct LumpedCabinState {
     pub i: TrackedState<usize>,
     /// lumped cabin temperature
     pub temperature: TrackedState<si::Temperature>,
+    /// lumped cabin temperature at start of previous time step
+    pub temp_prev: TrackedState<si::Temperature>,
     /// Thermal power coming to cabin from [Vehicle::hvac] system.  Positive indicates
     /// heating, and negative indicates cooling.
     pub pwr_thrml_from_hvac: TrackedState<si::Power>,
@@ -320,6 +326,7 @@ impl Default for LumpedCabinState {
         Self {
             i: Default::default(),
             temperature: TrackedState::new(*TE_STD_AIR),
+            temp_prev: TrackedState::new(*TE_STD_AIR),
             pwr_thrml_from_hvac: Default::default(),
             energy_thrml_from_hvac: Default::default(),
             pwr_thrml_from_amb: Default::default(),
