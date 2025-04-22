@@ -43,6 +43,18 @@ impl Init for HVACOption {
     }
 }
 impl SerdeAPI for HVACOption {}
+impl SetCumulative for HVACOption {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        match self {
+            HVACOption::LumpedCabin(lc) => lc.set_cumulative(dt)?,
+            HVACOption::LumpedCabinAndRES(lcr) => lcr.set_cumulative(dt)?,
+            HVACOption::LumpedCabinWithShell => todo!(),
+            HVACOption::ReversibleEnergyStorageOnly => todo!(),
+            HVACOption::None => {}
+        }
+        Ok(())
+    }
+}
 impl HistoryMethods for HVACOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {

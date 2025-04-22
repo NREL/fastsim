@@ -489,6 +489,13 @@ impl FuelConverter {
 
         Ok(())
     }
+
+    pub fn fc_thrml_state_mut(&mut self) -> Option<&mut FuelConverterThermalState> {
+        match &mut self.thrml {
+            FuelConverterThermalOption::FuelConverterThermal(fct) => Some(&mut fct.state),
+            FuelConverterThermalOption::None => None,
+        }
+    }
 }
 
 #[serde_api]

@@ -277,6 +277,7 @@ impl SetCumulative for Vehicle {
         self.state.set_cumulative(dt)?;
         self.pt_type.set_cumulative(dt)?;
         self.cabin.set_cumulative(dt)?;
+        self.hvac.set_cumulative(dt)?;
         // this does not get handled by the `SetCumulative` derive macro
         self.state.dist.increment(
             *self.state.speed_ach.get_fresh(|| format_dbg!())? * dt,
@@ -517,7 +518,11 @@ impl Vehicle {
                     )
                     .with_context(|| format_dbg!())?;
                 self.state.pwr_aux.update(
-                    self.pwr_aux_base + *hvac.state.pwr_aux_for_hvac.get_fresh(|| format_dbg!())?,
+                    self.pwr_aux_base
+                        + *hvac
+                            .state
+                            .pwr_aux_for_hvac
+                            .get_fresh(|| format_dbg!("hvac.state.pwr_aux_for_hvac"))?,
                     || format_dbg!(),
                 )?;
                 (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))

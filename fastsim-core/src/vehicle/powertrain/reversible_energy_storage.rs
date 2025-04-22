@@ -656,6 +656,14 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     }
 
     /// If thermal model is appropriately configured, returns current lumped [Self] temperature
+    pub fn res_thrml_state_mut(&mut self) -> Option<&mut RESLumpedThermalState> {
+        match &mut self.thrml {
+            RESThermalOption::RESLumpedThermal(rest) => Some(&mut rest.state),
+            RESThermalOption::None => None,
+        }
+    }
+
+    /// If thermal model is appropriately configured, returns current lumped [Self] temperature
     pub fn temperature(&self) -> anyhow::Result<Option<si::Temperature>> {
         match &self.thrml {
             RESThermalOption::RESLumpedThermal(rest) => {

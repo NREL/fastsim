@@ -879,6 +879,121 @@ mod tests {
 
     #[test]
     #[cfg(feature = "resources")]
+    fn test_sim_drive_hev_thrml() {
+        let _veh = Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue.yaml", false).unwrap();
+        let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
+
+        let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        let te_batt_and_cab_init: Vec<si::Temperature> = [-6.7, 22.0, 45.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        let te_fc_init: Vec<si::Temperature> = [-6.7, 70.0, 90.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        for ((te_amb, te_init), te_fc_init) in
+            te_amb.iter().zip(te_batt_and_cab_init).zip(te_fc_init)
+        {
+            let mut veh = _veh.clone();
+
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .update(te_init, || format_dbg!())
+                .unwrap();
+
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .update(te_init, || format_dbg!())
+                .unwrap();
+            if let CabinOption::LumpedCabin(lc) = &mut veh.cabin {
+                lc.state.temperature.mark_stale();
+                lc.state
+                    .temperature
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+                lc.state.temp_prev.mark_stale();
+                lc.state
+                    .temp_prev
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+            }
+
+            veh.fc_mut()
+                .unwrap()
+                .fc_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .mark_stale();
+            veh.fc_mut()
+                .unwrap()
+                .fc_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .update(te_fc_init, || format_dbg!())
+                .unwrap();
+            let mut cyc = _cyc.clone();
+            cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
+            let mut sd = SimDrive::new(veh, cyc, Default::default());
+            sd.walk()
+                .with_context(|| {
+                    format!(
+                        "ambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert!(
+                *sd.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd.cyc.len_checked().unwrap() - 1
+            );
+            assert!(
+                *sd.veh
+                    .fc()
+                    .unwrap()
+                    .state
+                    .energy_fuel
+                    .get_fresh(String::new)
+                    .unwrap()
+                    > si::Energy::ZERO
+            );
+            assert!(
+                *sd.veh
+                    .res()
+                    .unwrap()
+                    .state
+                    .energy_out_chemical
+                    .get_fresh(String::new)
+                    .unwrap()
+                    != si::Energy::ZERO
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "resources")]
     fn test_sim_drive_bev() {
         let _veh = mock_bev();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
@@ -902,5 +1017,92 @@ mod tests {
                 .unwrap()
                 != si::Energy::ZERO
         );
+    }
+
+    #[test]
+    #[cfg(feature = "resources")]
+    fn test_sim_drive_bev_thrml() {
+        let _veh = Vehicle::from_resource("2020 Chevrolet Bolt EV.yaml", false).unwrap();
+        let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
+
+        let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        let te_batt_and_cab_init: Vec<si::Temperature> = [-6.7, 22.0, 45.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        for (te_amb, te_init) in te_amb.iter().zip(te_batt_and_cab_init) {
+            let mut veh = _veh.clone();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .update(te_init, || format_dbg!())
+                .unwrap();
+
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .update(te_init, || format_dbg!())
+                .unwrap();
+
+            if let CabinOption::LumpedCabin(lc) = &mut veh.cabin {
+                lc.state.temperature.mark_stale();
+                lc.state
+                    .temperature
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+
+                lc.state.temp_prev.mark_stale();
+                lc.state
+                    .temp_prev
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+            }
+            let mut cyc = _cyc.clone();
+            cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
+            let mut sd = SimDrive::new(veh, cyc, Default::default());
+            sd.walk()
+                .with_context(|| {
+                    format!(
+                        "ambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert!(
+                *sd.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd.cyc.len_checked().unwrap() - 1
+            );
+            assert!(sd.veh.fc().is_none());
+            assert!(
+                *sd.veh
+                    .res()
+                    .unwrap()
+                    .state
+                    .energy_out_chemical
+                    .get_fresh(String::new)
+                    .unwrap()
+                    != si::Energy::ZERO
+            );
+        }
     }
 }

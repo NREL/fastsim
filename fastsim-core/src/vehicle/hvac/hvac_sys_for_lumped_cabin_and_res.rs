@@ -1,7 +1,7 @@
 use super::*;
 
 #[serde_api]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 /// HVAC system for `LumpedCabin` and `ReversibleEnergyStorage::thrml`
@@ -98,11 +98,7 @@ impl Default for HVACSystemForLumpedCabinAndRES {
         }
     }
 }
-impl SetCumulative for HVACSystemForLumpedCabinAndRES {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)
-    }
-}
+
 impl Init for HVACSystemForLumpedCabinAndRES {}
 impl SerdeAPI for HVACSystemForLumpedCabinAndRES {}
 impl HistoryMethods for HVACSystemForLumpedCabinAndRES {
@@ -357,6 +353,9 @@ impl HVACSystemForLumpedCabinAndRES {
                             .update(si::Power::ZERO, || format_dbg!())?;
                         self.state
                             .pwr_aux_for_cab_hvac
+                            .update(si::Power::ZERO, || format_dbg!())?;
+                        self.state
+                            .pwr_thrml_to_cab_req
                             .update(si::Power::ZERO, || format_dbg!())?;
                         self.state
                             .pwr_thrml_hvac_to_cabin
@@ -645,6 +644,9 @@ impl HVACSystemForLumpedCabinAndRES {
                             .pwr_thrml_hvac_to_cabin
                             .update(si::Power::ZERO, || format_dbg!())?;
                         self.state
+                            .pwr_thrml_to_cab_req
+                            .update(si::Power::ZERO, || format_dbg!())?;
+                        self.state
                             .pwr_thrml_fc_to_cabin
                             .update(si::Power::ZERO, || format_dbg!())?;
                     }
@@ -665,6 +667,9 @@ impl HVACSystemForLumpedCabinAndRES {
                     .update(si::Power::ZERO, || format_dbg!())?;
                 self.state
                     .pwr_aux_for_cab_hvac
+                    .update(si::Power::ZERO, || format_dbg!())?;
+                self.state
+                    .pwr_thrml_to_cab_req
                     .update(si::Power::ZERO, || format_dbg!())?;
                 self.state
                     .pwr_thrml_hvac_to_cabin
@@ -781,6 +786,9 @@ impl HVACSystemForLumpedCabinAndRES {
                             .update(si::Power::ZERO, || format_dbg!())?;
                         self.state
                             .pwr_aux_for_res_hvac
+                            .update(si::Power::ZERO, || format_dbg!())?;
+                        self.state
+                            .pwr_thrml_to_res_req
                             .update(si::Power::ZERO, || format_dbg!())?;
                         self.state
                             .pwr_thrml_hvac_to_res
@@ -1040,6 +1048,9 @@ impl HVACSystemForLumpedCabinAndRES {
                             .update(si::Power::ZERO, || format_dbg!())?;
                         self.state
                             .pwr_aux_for_res_hvac
+                            .update(si::Power::ZERO, || format_dbg!())?;
+                        self.state
+                            .pwr_thrml_to_res_req
                             .update(si::Power::ZERO, || format_dbg!())?;
                         self.state
                             .pwr_thrml_hvac_to_res
