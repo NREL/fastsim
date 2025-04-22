@@ -95,13 +95,7 @@ where
     /// - `value`: new value
     /// - `loc`: closure that returns file and line number where called
     pub fn update<F: Fn() -> String>(&mut self, value: T, loc: F) -> anyhow::Result<()> {
-        ensure!(
-            self.1.is_stale(),
-            format!(
-                "{}\nState variable has not been reset. This is a bug in `fastsim-core`.",
-                loc()
-            )
-        );
+        self.ensure_stale(loc)?;
         self.0 = value;
         self.1 = State::Fresh;
         Ok(())
