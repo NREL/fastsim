@@ -5,13 +5,12 @@ pub trait InterpolatorMethods {
     fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()>;
     fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()>;
     fn set_range(&mut self, range: f64) -> anyhow::Result<()>;
-    // fn get_min(&self) -> anyhow::Result<f64>;
-    // fn get_max(&self) -> anyhow::Result<f64>;
-    fn range(&self) -> anyhow::Result<f64>;
 }
 
+// This can be made more generic by using a `ninterp::num_traits` bound instead of f64
+// If there are future methods that *do not* mutate the interpolator,
+// we should define a new trait and impl it for `InterpolatorEnum<D> where D: ndarray::Data`
 impl InterpolatorMethods for InterpolatorEnumOwned<f64> {
-    #[allow(unused)]
     // scale all values so that the min is the new min
     // (Note: this may change the max, depending on what scaling method is chosen)
     fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
@@ -107,82 +106,71 @@ impl InterpolatorMethods for InterpolatorEnumOwned<f64> {
     }
 
     fn set_range(&mut self, range: f64) -> anyhow::Result<()> {
-        let old_max = self.max()?;
+        let old_max = *self.max()?;
         let old_range = old_max - self.min()?;
         ensure!(old_range != 0., "Cannot modify range when min == max");
         // if the new range is 0., chooses the max as the value for all elements of the array
         if range == 0. {
             match self {
-                Self::Interp0D(..) => unreachable!("The above `ensure` should trigger"),
-                Self::Interp1D(..) => {
-                    Ok(self.set_f_x(self.f_x()?.iter().map(|x| old_max).collect())?)
+                Self::Interp0D(_) => unreachable!("The above `ensure` should trigger"),
+                Self::Interp1D(interp) => {
+                    interp.data.values = interp.data.values.map(|_| old_max);
+                    interp.validate()?;
+                    Ok(())
                 }
-                Self::Interp2D(..) => Ok(self.set_f_xy(
-                    self.f_xy()?
-                        .iter()
-                        .map(|v| v.iter().map(|x| old_max).collect())
-                        .collect(),
-                )?),
-                Self::Interp3D(..) => Ok(self.set_f_xyz(
-                    self.f_xyz()?
-                        .iter()
-                        .map(|v0| {
-                            v0.iter()
-                                .map(|v1| v1.iter().map(|x| old_max).collect())
-                                .collect()
-                        })
-                        .collect(),
-                )?),
-                Self::InterpND(..) => Ok(self.set_values(self.values()?.map(|x| old_max))?),
+                Self::Interp2D(interp) => {
+                    interp.data.values = interp.data.values.map(|_| old_max);
+                    interp.validate()?;
+                    Ok(())
+                }
+                Self::Interp3D(interp) => {
+                    interp.data.values = interp.data.values.map(|_| old_max);
+                    interp.validate()?;
+                    Ok(())
+                }
+                Self::InterpND(interp) => {
+                    interp.data.values = interp.data.values.map(|_| old_max);
+                    interp.validate()?;
+                    Ok(())
+                }
             }
         } else {
             match self {
-                Self::Interp0D(..) => unreachable!("The above `ensure` should trigger"),
-                Self::Interp1D(..) => Ok(self.set_f_x(
-                    self.f_x()?
-                        .iter()
-                        .map(|x| old_max + (x - old_max) * range / old_range)
-                        .collect(),
-                )?),
-                Self::Interp2D(..) => Ok(self.set_f_xy(
-                    self.f_xy()?
-                        .iter()
-                        .map(|v| {
-                            v.iter()
-                                .map(|x| old_max + (x - old_max) * range / old_range)
-                                .collect()
-                        })
-                        .collect(),
-                )?),
-                Self::Interp3D(..) => Ok(self.set_f_xyz(
-                    self.f_xyz()?
-                        .iter()
-                        .map(|v0| {
-                            v0.iter()
-                                .map(|v1| {
-                                    v1.iter()
-                                        .map(|x| old_max + (x - old_max) * range / old_range)
-                                        .collect()
-                                })
-                                .collect()
-                        })
-                        .collect(),
-                )?),
-                Self::InterpND(..) => Ok(self.set_values(
-                    self.values()?
-                        .map(|x| old_max + (x - old_max) * range / old_range),
-                )?),
+                Self::Interp0D(_) => unreachable!("The above `ensure` should trigger"),
+                Self::Interp1D(interp) => {
+                    interp.data.values = interp
+                        .data
+                        .values
+                        .map(|x| old_max + (x - old_max) * range / old_range);
+                    interp.validate()?;
+                    Ok(())
+                }
+                Self::Interp2D(interp) => {
+                    interp.data.values = interp
+                        .data
+                        .values
+                        .map(|x| old_max + (x - old_max) * range / old_range);
+                    interp.validate()?;
+                    Ok(())
+                }
+                Self::Interp3D(interp) => {
+                    interp.data.values = interp
+                        .data
+                        .values
+                        .map(|x| old_max + (x - old_max) * range / old_range);
+                    interp.validate()?;
+                    Ok(())
+                }
+                Self::InterpND(interp) => {
+                    interp.data.values = interp
+                        .data
+                        .values
+                        .map(|x| old_max + (x - old_max) * range / old_range);
+                    interp.validate()?;
+                    Ok(())
+                }
             }
         }
-    }
-    // fn get_min(&self) -> anyhow::Result<f64> {
-    //     return self.min();
-    // }
-    // fn get_max(&self) -> anyhow::Result<f64> {
-    //     return self.max();
-    // }
-    fn range(&self) -> anyhow::Result<f64> {
-        return Ok(self.max()? - self.min()?);
     }
 }
 
@@ -230,6 +218,7 @@ pub enum ScalingMethods {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_min() {
         let x = array![0.05, 0.10, 0.15];
@@ -249,34 +238,34 @@ mod tests {
         )
         .unwrap();
         let mut interp_2d = InterpolatorEnum::new_2d(
-            x.view(),
-            y.view(),
-            f_xy.view(),
+            x.clone(),
+            y.clone(),
+            f_xy.clone(),
             strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
         let mut interp_3d = InterpolatorEnum::new_3d(
-            x.view(),
-            y.view(),
-            z.view(),
-            f_xyz.view(),
+            x.clone(),
+            y.clone(),
+            z.clone(),
+            f_xyz.clone(),
             strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        assert_eq!(interp_1d.get_min().unwrap(), 0.2);
-        assert_eq!(interp_2d.get_min().unwrap(), 0.1);
-        assert_eq!(interp_3d.get_min().unwrap(), 0.1);
+        assert_eq!(interp_1d.min().unwrap(), &0.2);
+        assert_eq!(interp_2d.min().unwrap(), &0.1);
+        assert_eq!(interp_3d.min().unwrap(), &0.1);
         interp_1d.set_min(0.1, None).unwrap();
         interp_2d.set_min(0.3, None).unwrap();
         interp_3d.set_min(0.3, None).unwrap();
-        println!("{:?}", interp_1d.get_min().unwrap());
-        println!("{:?}", interp_2d.get_min().unwrap());
-        println!("{:?}", interp_3d.get_min().unwrap());
-        assert!(almost_eq(interp_1d.get_min().unwrap(), 0.1, Some(1e-3)));
-        assert!(almost_eq(interp_2d.get_min().unwrap(), 0.3, Some(1e-3)));
-        assert!(almost_eq(interp_3d.get_min().unwrap(), 0.3, Some(1e-3)));
+        println!("{:?}", interp_1d.min().unwrap());
+        println!("{:?}", interp_2d.min().unwrap());
+        println!("{:?}", interp_3d.min().unwrap());
+        assert!(almost_eq(*interp_1d.min().unwrap(), 0.1, Some(1e-3)));
+        assert!(almost_eq(*interp_2d.min().unwrap(), 0.3, Some(1e-3)));
+        assert!(almost_eq(*interp_3d.min().unwrap(), 0.3, Some(1e-3)));
     }
 
     #[test]
@@ -298,34 +287,34 @@ mod tests {
         )
         .unwrap();
         let mut interp_2d = InterpolatorEnum::new_2d(
-            x.view(),
-            y.view(),
-            f_xy.view(),
+            x.clone(),
+            y.clone(),
+            f_xy.clone(),
             strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
         let mut interp_3d = InterpolatorEnum::new_3d(
-            x.view(),
-            y.view(),
-            z.view(),
-            f_xyz.view(),
+            x.clone(),
+            y.clone(),
+            z.clone(),
+            f_xyz.clone(),
             strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        assert_eq!(interp_1d.get_max().unwrap(), 1.0);
-        assert_eq!(interp_2d.get_max().unwrap(), 8.);
-        assert_eq!(interp_3d.get_max().unwrap(), 26.);
+        assert_eq!(interp_1d.max().unwrap(), &1.0);
+        assert_eq!(interp_2d.max().unwrap(), &8.);
+        assert_eq!(interp_3d.max().unwrap(), &26.);
         interp_1d.set_max(2., None).unwrap();
         interp_2d.set_max(7., None).unwrap();
         interp_3d.set_max(5., None).unwrap();
-        println!("{:?}", interp_1d.get_max().unwrap());
-        println!("{:?}", interp_2d.get_max().unwrap());
-        println!("{:?}", interp_3d.get_max().unwrap());
-        assert!(almost_eq(interp_1d.get_max().unwrap(), 2., Some(1e-3)));
-        assert!(almost_eq(interp_2d.get_max().unwrap(), 7., Some(1e-3)));
-        assert!(almost_eq(interp_3d.get_max().unwrap(), 5., Some(1e-3)));
+        println!("{:?}", interp_1d.max().unwrap());
+        println!("{:?}", interp_2d.max().unwrap());
+        println!("{:?}", interp_3d.max().unwrap());
+        assert!(almost_eq(*interp_1d.max().unwrap(), 2., Some(1e-3)));
+        assert!(almost_eq(*interp_2d.max().unwrap(), 7., Some(1e-3)));
+        assert!(almost_eq(*interp_3d.max().unwrap(), 5., Some(1e-3)));
     }
 
     #[test]
@@ -347,33 +336,33 @@ mod tests {
         )
         .unwrap();
         let mut interp_2d = InterpolatorEnum::new_2d(
-            x.view(),
-            y.view(),
-            f_xy.view(),
+            x.clone(),
+            y.clone(),
+            f_xy.clone(),
             strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
         let mut interp_3d = InterpolatorEnum::new_3d(
-            x.view(),
-            y.view(),
-            z.view(),
-            f_xyz.view(),
+            x.clone(),
+            y.clone(),
+            z.clone(),
+            f_xyz.clone(),
             strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        assert_eq!(interp_1d.get_range().unwrap(), 0.8);
-        assert_eq!(interp_2d.get_range().unwrap(), 8.);
-        assert_eq!(interp_3d.get_range().unwrap(), 26.);
+        assert_eq!(interp_1d.range().unwrap(), 0.8);
+        assert_eq!(interp_2d.range().unwrap(), 8.);
+        assert_eq!(interp_3d.range().unwrap(), 26.);
         interp_1d.set_range(2.).unwrap();
         interp_2d.set_range(7.).unwrap();
         interp_3d.set_range(5.).unwrap();
-        println!("{:?}", interp_1d.get_range().unwrap());
-        println!("{:?}", interp_2d.get_range().unwrap());
-        println!("{:?}", interp_3d.get_range().unwrap());
-        assert!(almost_eq(interp_1d.get_range().unwrap(), 2., Some(1e-3)));
-        assert!(almost_eq(interp_2d.get_range().unwrap(), 7., Some(1e-3)));
-        assert!(almost_eq(interp_3d.get_range().unwrap(), 5., Some(1e-3)));
+        println!("{:?}", interp_1d.range().unwrap());
+        println!("{:?}", interp_2d.range().unwrap());
+        println!("{:?}", interp_3d.range().unwrap());
+        assert!(almost_eq(interp_1d.range().unwrap(), 2., Some(1e-3)));
+        assert!(almost_eq(interp_2d.range().unwrap(), 7., Some(1e-3)));
+        assert!(almost_eq(interp_3d.range().unwrap(), 5., Some(1e-3)));
     }
 }

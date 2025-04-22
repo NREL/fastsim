@@ -35,10 +35,15 @@ lazy_static = "1.4.0"
 regex = "1.10.3"
 ndarray = { version = ">=0.15.3, <0.17", features = ["serde"] }
 toml = { version = "0.8.12", optional = true }
-derive_more = { version = "1.0.0", features = ["from_str", "from", "is_variant", "try_into"] }
+derive_more = { version = "1.0.0", features = [
+    "from_str",
+    "from",
+    "is_variant",
+    "try_into",
+] }
 ureq = { version = "2.9.1", optional = true }
 url = { version = "2.5.0", optional = true }
-ninterp = { version = "0.6.3", features = ["serde"] }
+ninterp = { workspace = true }
 approx = "0.5.1"
 thiserror = { workspace = true }
 
@@ -46,14 +51,14 @@ thiserror = { workspace = true }
 pretty_assertions = "1.4.1"
 
 [features]
-default = [ "resources", "serde-default" ]
+default = ["resources", "serde-default"]
 ## Enables `pyo3` to provide fastsim-3 structs, methods, and functions to Python
 pyo3 = ["dep:pyo3", "fastsim-2/pyo3", "numpy"]
 ## Compiles external resources (e.g. vehicle files or cycle files) to be
 ## available in the binary
 resources = ["dep:include_dir"]
 ## Enables internet-querying dependencies
-web = ["dep:ureq", "dep:url"]                   
+web = ["dep:ureq", "dep:url"]
 ## Enables several text file formats for serialization and deserialization
 serde-default = ["csv", "json", "toml", "yaml", "msgpack"]
 ## Enables csv serialization and deserialization

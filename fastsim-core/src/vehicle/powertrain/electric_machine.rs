@@ -64,12 +64,12 @@ pub struct ElectricMachine {
     /// Efficiency interpolator corresponding to achieved output power
     ///
     /// Note that the Extrapolate field of this variable is changed in [Self::get_pwr_in_req]
-    pub eff_interp_achieved: Interpolator,
+    pub eff_interp_achieved: InterpolatorEnumOwned<f64>,
     /// Efficiency interpolator corresponding to max input power
     /// If `None`, will be set during [Self::init].
     ///
     /// Note that the Extrapolate field of this variable is changed in [Self::set_curr_pwr_prop_out_max]
-    pub eff_interp_at_max_input: Option<Interpolator>,
+    pub eff_interp_at_max_input: Option<InterpolatorEnumOwned<f64>>,
     /// Electrical input power fraction array at which efficiencies are evaluated.
     /// Calculated during runtime if not provided.
     // /// this will disappear and instead be in eff_interp_bwd
@@ -321,21 +321,25 @@ impl Init for ElectricMachine {
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
         // TODO: what should the default strategy be for eff_interp_bwd?
-        let eff_interp_at_max_input = Interpolator::new_1d(
-            self.eff_interp_achieved
-                .x()?
-                .iter()
-                .zip(self.eff_interp_achieved.f_x()?)
-                .map(|(x, y)| x / y)
-                .collect(),
-            self.eff_interp_achieved.f_x()?.to_owned(),
-            // TODO: should these be set to be the same as eff_interp_fwd,
-            // as currently is done, or should they be set to be specific
-            // Extrapolate and Strategy types?
-            self.eff_interp_achieved.strategy()?.to_owned(),
-            self.eff_interp_achieved.extrapolate()?.to_owned(),
-        )
-        .map_err(ninterp::error::Error::from)?;
+        let eff_interp_at_max_input = match self.eff_interp_achieved {
+            InterpolatorEnum::Interp1D(interp) => {
+                InterpolatorEnum::new_1d(
+                    interp.data.grid[0]
+                        .iter()
+                        .zip(interp.data.values)
+                        .map(|(x, y)| x / y)
+                        .collect(),
+                    interp.data.values.clone(),
+                    // TODO: should these be set to be the same as eff_interp_fwd,
+                    // as currently is done, or should they be set to be specific
+                    // Extrapolate and Strategy types?
+                    interp.strategy.clone(),
+                    interp.extrapolate.clone(),
+                )
+            }
+            _ => unimplemented!(),
+        }
+        .map_err(ninterp::error::ValidateError::from)?;
         self.eff_interp_at_max_input = Some(eff_interp_at_max_input);
         Ok(())
     }
@@ -450,31 +454,27 @@ impl ElectricMachine {
         if (0.0..=1.0).contains(&eff_max) {
             let old_max_fwd = self.get_eff_fwd_max()?;
             let old_max_bwd = self.get_eff_max_bwd()?;
-            let f_x_fwd = self.eff_interp_achieved.f_x()?.to_owned();
             match &mut self.eff_interp_achieved {
-                interp @ Interpolator::Interp1D(..) => {
-                    interp.set_f_x(f_x_fwd.iter().map(|x| x * eff_max / old_max_fwd).collect())?;
+                InterpolatorEnum::Interp1D(interp) => {
+                    interp.data.values = interp
+                        .data
+                        .values
+                        .iter()
+                        .map(|x| x * eff_max / old_max_fwd)
+                        .collect::<Array1<_>>();
                 }
-                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+                _ => bail!("{}\n", "Only `InterpolatorEnum::Interp1D` is allowed."),
             }
-            let f_x_bwd = self
-                .eff_interp_at_max_input
-                .as_ref()
-                .ok_or(anyhow!(
-                    "eff_interp_bwd is None, which should never be the case at this point."
-                ))?
-                .f_x()?
-                .to_owned();
             match &mut self.eff_interp_at_max_input {
-                Some(interp @ Interpolator::Interp1D(..)) => {
-                    interp.set_f_x(
-                        f_x_bwd
-                            .iter()
-                            .map(|x| x * eff_max / old_max_bwd)
-                            .collect(),
-                    )?;
+                Some(InterpolatorEnum::Interp1D(interp)) => {
+                    interp.data.values = interp
+                        .data
+                        .values
+                        .iter()
+                        .map(|x| x * eff_max / old_max_bwd)
+                        .collect::<Array1<_>>();
                 }
-                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed. eff_interp_bwd should be Some by this point."),
+                _ => bail!("{}\n", "Only `InterpolatorEnum::Interp1D` is allowed. eff_interp_bwd should be Some by this point."),
             }
             Ok(())
         } else {
@@ -486,27 +486,16 @@ impl ElectricMachine {
     }
 
     /// Returns min value of `eff_interp_fwd`
-    pub fn get_eff_min_fwd(&self) -> anyhow::Result<f64> {
-        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
-        Ok(self
-            .eff_interp_achieved
-            .f_x()
-            .with_context(|| "eff_interp_fwd does not have f_x field")?
-            .iter()
-            .fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
+    pub fn get_eff_min_fwd(&self) -> anyhow::Result<&f64> {
+        self.eff_interp_achieved.min()
     }
 
-    /// Returns min value of `eff_interp_bwd`
-    pub fn get_eff_min_at_max_input(&self) -> anyhow::Result<f64> {
-        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
-        Ok(self
-            .eff_interp_at_max_input
+    /// Returns min value of `eff_interp_at_max_input`
+    pub fn get_eff_min_at_max_input(&self) -> anyhow::Result<&f64> {
+        self.eff_interp_at_max_input
             .as_ref()
-            .ok_or(anyhow!("eff_interp_bwd should be Some by this point."))?
-            .f_x()
-            .with_context(|| "eff_interp_bwd does not have f_x field")?
-            .iter()
-            .fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
+            .context("eff_interp_bwd should be Some by this point")?
+            .min()
     }
 
     /// Max value of `eff_interp_fwd` minus min value of `eff_interp_fwd`.
@@ -561,7 +550,7 @@ impl ElectricMachine {
             }
             let f_x_fwd = self.eff_interp_achieved.f_x()?.to_owned();
             match &mut self.eff_interp_achieved {
-                interp @ Interpolator::Interp1D(..) => {
+                interp @ InterpolatorEnum::Interp1D(..) => {
                     interp.set_f_x(
                         f_x_fwd
                             .iter()
@@ -569,16 +558,16 @@ impl ElectricMachine {
                             .collect(),
                     )?;
                 }
-                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+                _ => bail!("{}\n", "Only `InterpolatorEnum::Interp1D` is allowed."),
             }
-            if self.get_eff_min_fwd()? < 0.0 {
+            if self.get_eff_min_fwd()? < &0. {
                 let x_neg = self.get_eff_min_fwd()?;
                 let f_x_fwd = self.eff_interp_achieved.f_x()?.to_owned();
                 match &mut self.eff_interp_achieved {
-                    interp @ Interpolator::Interp1D(..) => {
+                    interp @ InterpolatorEnum::Interp1D(..) => {
                         interp.set_f_x(f_x_fwd.iter().map(|x| x - x_neg).collect())?;
                     }
-                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+                    _ => bail!("{}\n", "Only `InterpolatorEnum::Interp1D` is allowed."),
                 }
             }
             if self.get_eff_fwd_max()? > 1.0 {
@@ -595,19 +584,18 @@ impl ElectricMachine {
                 ));
             }
 
-            let new_f_x: Vec<f64> = self
-                .eff_interp_at_max_input
-                .as_ref()
-                .ok_or(anyhow!("eff_interp_bwd should be Some by this point."))?
-                .f_x()?
-                .iter()
-                .map(|x| eff_max_bwd + (x - eff_max_bwd) * eff_range / old_range)
-                .collect();
-
-            self.eff_interp_at_max_input
-                .as_mut()
-                .map(|interpolator| interpolator.set_f_x(new_f_x))
-                .transpose()?;
+            //TODO
+            match self.eff_interp_at_max_input {
+                Some(InterpolatorEnum::Interp1D(interp)) => {
+                    interp.data.values = interp
+                        .data
+                        .values
+                        .iter()
+                        .map(|x| eff_max_bwd + (x - eff_max_bwd) * eff_range / old_range)
+                        .collect();
+                }
+                _ => bail!("TODO"),
+            }
 
             if self.get_eff_min_at_max_input()? < 0.0 {
                 let x_neg = self.get_eff_min_at_max_input()?;

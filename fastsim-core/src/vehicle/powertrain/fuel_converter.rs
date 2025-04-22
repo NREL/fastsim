@@ -74,7 +74,7 @@ pub struct FuelConverter {
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
     /// interpolator for calculating [Self] efficiency as a function of output power
-    pub eff_interp_from_pwr_out: Interpolator,
+    pub eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
     /// power at which peak efficiency occurs
     #[serde(skip)]
     pub(crate) pwr_for_peak_eff: si::Power,
@@ -112,20 +112,19 @@ impl Init for FuelConverter {
         let eff_max = self
             .eff_max()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        self.pwr_for_peak_eff = *self
-            .eff_interp_from_pwr_out
-            .x()
-            .map_err(|err| Error::InitError(format_dbg!(err)))?
-            .get(
-                self.eff_interp_from_pwr_out
-                    .f_x()
-                    .unwrap()
-                    .iter()
-                    .position(|&eff| eff * uc::R == eff_max)
-                    .ok_or_else(|| Error::InitError(format_dbg!()))?,
-            )
-            .ok_or_else(|| Error::InitError(format_dbg!()))?
-            * self.pwr_out_max;
+        self.pwr_for_peak_eff = *match self.eff_interp_from_pwr_out {
+            InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
+                .get(
+                    interp
+                        .data
+                        .values
+                        .iter()
+                        .position(|&eff| eff * uc::R == eff_max)
+                        .ok_or_else(|| Error::InitError(format_dbg!()))?,
+                )
+                .ok_or_else(|| Error::InitError(format_dbg!()))?,
+            _ => Error::InitError(format_dbg!("Only 1-D interpolators are supported")),
+        } * self.pwr_out_max;
         Ok(())
     }
 }

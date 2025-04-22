@@ -1,6 +1,8 @@
 use crate::error::Error;
 use crate::imports::*;
 
+use ninterp::num_traits::Zero;
+
 pub trait Linspace {
     /// Generate linearly spaced vec
     /// # Arguments
@@ -22,7 +24,7 @@ pub trait Linspace {
 
 impl Linspace for Vec<f64> {}
 
-pub trait Min<T> {
+pub trait Min<T: PartialOrd> {
     fn min(&self) -> anyhow::Result<&T>;
 }
 impl<T: PartialOrd> Min<T> for [T] {
@@ -83,12 +85,12 @@ where
             .ok_or_else(|| anyhow!("Empty slice has no minimum"))
     }
 }
-impl<D> Min<D::Elem> for InterpolatorEnum<D>
+impl<S> Min<S::Elem> for InterpolatorEnum<S>
 where
-    D: ndarray::Data + ndarray::RawDataClone + Clone,
-    D::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
+    S: ndarray::Data + ndarray::RawDataClone + Clone,
+    S::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
 {
-    fn min(&self) -> anyhow::Result<&D::Elem> {
+    fn min(&self) -> anyhow::Result<&S::Elem> {
         match self {
             Self::Interp0D(Interp0D(value)) => Ok(value),
             Self::Interp1D(interp) => interp.data.values.min(),
@@ -99,7 +101,7 @@ where
     }
 }
 
-pub trait Max<T> {
+pub trait Max<T: PartialOrd> {
     fn max(&self) -> anyhow::Result<&T>;
 }
 impl<T: PartialOrd> Max<T> for [T] {
@@ -162,18 +164,67 @@ where
             .ok_or_else(|| anyhow!("Empty slice has no maximum"))
     }
 }
-impl<D> Max<D::Elem> for InterpolatorEnum<D>
+impl<S> Max<S::Elem> for InterpolatorEnum<S>
 where
-    D: ndarray::Data + ndarray::RawDataClone + Clone,
-    D::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
+    S: ndarray::Data + ndarray::RawDataClone + Clone,
+    S::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
 {
-    fn max(&self) -> anyhow::Result<&D::Elem> {
+    fn max(&self) -> anyhow::Result<&S::Elem> {
         match self {
             Self::Interp0D(Interp0D(value)) => Ok(value),
             Self::Interp1D(interp) => interp.data.values.max(),
             Self::Interp2D(interp) => interp.data.values.max(),
             Self::Interp3D(interp) => interp.data.values.max(),
             Self::InterpND(interp) => interp.data.values.max(),
+        }
+    }
+}
+
+pub trait Range<T: PartialOrd + Sub<Output = T>>: Min<T> + Max<T> {
+    fn range(&self) -> anyhow::Result<T>;
+}
+impl<T> Range<T> for [T]
+where
+    Self: Min<T> + Max<T>,
+    T: PartialOrd + Sub<Output = T> + Copy,
+{
+    fn range(&self) -> anyhow::Result<T> {
+        Ok(*self.max()? - *self.min()?)
+    }
+}
+impl<T> Range<T> for Vec<T>
+where
+    Self: Min<T> + Max<T>,
+    T: PartialOrd + Sub<Output = T> + Copy,
+{
+    fn range(&self) -> anyhow::Result<T> {
+        self.as_slice().range()
+    }
+}
+impl<S, D> Range<S::Elem> for ArrayBase<S, D>
+where
+    S: ndarray::Data,
+    S::Elem: PartialOrd + Sub<Output = S::Elem> + Copy,
+    D: ndarray::Dimension,
+    Self: Min<S::Elem> + Max<S::Elem>,
+{
+    fn range(&self) -> anyhow::Result<S::Elem> {
+        Ok(*self.max()? - *self.min()?)
+    }
+}
+impl<S> Range<S::Elem> for InterpolatorEnum<S>
+where
+    S: ndarray::Data + ndarray::RawDataClone + Clone,
+    S::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
+    ArrayBase<S, Ix1>: Range<S::Elem>,
+{
+    fn range(&self) -> anyhow::Result<S::Elem> {
+        match self {
+            Self::Interp0D(_) => Ok(S::Elem::zero()),
+            Self::Interp1D(interp) => interp.data.values.range(),
+            Self::Interp2D(interp) => interp.data.values.range(),
+            Self::Interp3D(interp) => interp.data.values.range(),
+            Self::InterpND(interp) => interp.data.values.range(),
         }
     }
 }

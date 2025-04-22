@@ -87,7 +87,7 @@ fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
     }
 }
 
-impl<T> SerdeAPI for Extrapolate<T> {}
+impl<T> SerdeAPI for Extrapolate<T> where T: Serialize + for<'de> Deserialize<'de> {}
 impl<T> Init for Extrapolate<T> {}
 
 /// Returns absolute value of `x_val`
