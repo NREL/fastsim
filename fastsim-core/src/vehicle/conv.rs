@@ -1,7 +1,7 @@
 use super::*;
 
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, StateMethods)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, StateMethods, SetCumulative)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
@@ -32,14 +32,6 @@ impl Init for ConventionalVehicle {
         self.transmission
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        Ok(())
-    }
-}
-impl SetCumulative for ConventionalVehicle {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.fc.set_cumulative(dt)?;
-        self.fs.set_cumulative(dt)?;
-        self.transmission.set_cumulative(dt)?;
         Ok(())
     }
 }

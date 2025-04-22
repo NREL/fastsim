@@ -277,6 +277,7 @@ impl SetCumulative for Vehicle {
         self.state.set_cumulative(dt)?;
         self.pt_type.set_cumulative(dt)?;
         self.cabin.set_cumulative(dt)?;
+        // this does not get handled by the `SetCumulative` derive macro
         self.state.dist.increment(
             *self.state.speed_ach.get_fresh(|| format_dbg!())? * dt,
             || format_dbg!(),
@@ -607,7 +608,7 @@ impl Vehicle {
 /// Vehicle state for current time step
 #[serde_api]
 #[derive(
-    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, StateMethods, SetCumulative,
 )]
 #[non_exhaustive]
 #[serde(default)]

@@ -40,6 +40,12 @@ pub struct HVACSystemForLumpedCabin {
     pub history: HVACSystemForLumpedCabinStateHistoryVec,
     pub save_interval: Option<usize>,
 }
+impl SetCumulative for HVACSystemForLumpedCabin {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.state.set_cumulative(dt)?;
+        Ok(())
+    }
+}
 #[named_struct_pyo3_api]
 impl HVACSystemForLumpedCabin {
     #[staticmethod]
@@ -65,11 +71,6 @@ impl Default for HVACSystemForLumpedCabin {
             history: Default::default(),
             save_interval: Some(1),
         }
-    }
-}
-impl SetCumulative for HVACSystemForLumpedCabin {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)
     }
 }
 impl Init for HVACSystemForLumpedCabin {}
@@ -433,8 +434,8 @@ impl SerdeAPI for CabinHeatSource {}
     Serialize,
     PartialEq,
     HistoryVec,
-    SetCumulative,
     StateMethods,
+    SetCumulative,
 )]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(default)]

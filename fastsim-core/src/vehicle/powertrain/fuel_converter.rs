@@ -5,7 +5,7 @@ use std::f64::consts::PI;
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
 
 #[serde_api]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods, SetCumulative)]
 /// Struct for modeling [FuelConverter] (e.g. engine, fuel cell.) thermal plant
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -95,12 +95,6 @@ impl FuelConverter {
     fn get_specific_pwr_kw_per_kg(&self) -> Option<f64> {
         self.specific_pwr
             .map(|x| x.get::<si::kilowatt_per_kilogram>())
-    }
-}
-
-impl SetCumulative for FuelConverter {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)
     }
 }
 
@@ -506,8 +500,8 @@ impl FuelConverter {
     Serialize,
     PartialEq,
     HistoryVec,
-    SetCumulative,
     StateMethods,
+    SetCumulative,
 )]
 #[non_exhaustive]
 #[serde(default)]
@@ -1011,7 +1005,7 @@ impl Default for FuelConverterThermal {
 
 #[serde_api]
 #[derive(
-    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, StateMethods, SetCumulative,
 )]
 #[serde(default)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]

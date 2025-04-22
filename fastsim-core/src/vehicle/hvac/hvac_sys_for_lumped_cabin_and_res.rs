@@ -1112,8 +1112,8 @@ impl HVACSystemForLumpedCabinAndRES {
     Serialize,
     PartialEq,
     HistoryVec,
-    SetCumulative,
     StateMethods,
+    SetCumulative,
 )]
 #[serde(default)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]

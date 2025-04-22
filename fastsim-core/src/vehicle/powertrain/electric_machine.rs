@@ -7,7 +7,7 @@ use super::*;
 use crate::pyo3::*;
 
 #[serde_api]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods, SetCumulative)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
@@ -405,13 +405,6 @@ impl HistoryMethods for ElectricMachine {
     }
 }
 
-impl SetCumulative for ElectricMachine {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)?;
-        Ok(())
-    }
-}
-
 impl Mass for ElectricMachine {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self
@@ -702,8 +695,8 @@ impl ElectricMachine {
     Serialize,
     PartialEq,
     HistoryVec,
-    SetCumulative,
     StateMethods,
+    SetCumulative,
 )]
 #[non_exhaustive]
 #[serde(default)]

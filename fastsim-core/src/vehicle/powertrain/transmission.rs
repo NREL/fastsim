@@ -1,7 +1,7 @@
 use super::*;
 
 #[serde_api]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods, SetCumulative)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 pub struct Transmission {
@@ -68,11 +68,6 @@ impl Transmission {
         Ok(*state.pwr_in.get_fresh(|| format_dbg!())?)
     }
 }
-impl SetCumulative for Transmission {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)
-    }
-}
 impl HistoryMethods for Transmission {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
@@ -123,8 +118,8 @@ impl Mass for Transmission {
     Serialize,
     PartialEq,
     HistoryVec,
-    SetCumulative,
     StateMethods,
+    SetCumulative,
 )]
 #[non_exhaustive]
 #[serde(default)]

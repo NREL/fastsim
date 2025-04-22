@@ -47,16 +47,16 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
     history_vec_derive::history_vec_derive(input)
 }
 
-#[proc_macro_derive(SetCumulative)]
-/// generate method to implement `SetCumulative` trait for all `pwr_*` and
-/// corresponding `energy_*` fields
-pub fn cumu_method_derive(input: TokenStream) -> TokenStream {
-    cumu_method_derive::cumu_method_derive(input)
-}
-
 #[proc_macro_derive(StateMethods, attributes(has_state))]
 /// Generate `step` and `save_state` methods that work for struct and any
 /// nested fields with the `#[has_state]` attribute.
 pub fn state_methods_derive(input: TokenStream) -> TokenStream {
     sm_derive::state_methods_derive(input)
+}
+
+#[proc_macro_derive(SetCumulative, attributes(has_state))]
+/// Generate `step` and `save_state` methods that work for struct and any
+/// nested fields with the `#[has_state]` attribute.
+pub fn cumu_method_derive(input: TokenStream) -> TokenStream {
+    cumu_method_derive::cumu_method_derive(input)
 }

@@ -604,6 +604,7 @@ dependencies = [
 name = "fastsim-proc-macros"
 version = "3.0.0"
 dependencies = [
+ "lazy_static",
  "proc-macro-error",
  "proc-macro2",
  "quote",

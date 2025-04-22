@@ -1,11 +1,19 @@
 use crate::imports::*;
 
+lazy_static! {
+    static ref ENERGY_REGEX: Regex = Regex::new(r"energy_(\w+)").unwrap();
+}
+
 pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
     let item_struct = syn::parse_macro_input!(input as syn::ItemStruct);
     let ident = &item_struct.ident;
     let mut impl_block = TokenStream2::default();
 
-    let fields = item_struct.fields;
+    let fields = if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = item_struct.fields {
+        named
+    } else {
+        abort_call_site!("`StateMethods` works only on Named Field structs.")
+    };
 
     let struct_has_state = fields.iter().any(|x| *x.ident.as_ref().unwrap() == "state");
     let ident_str = ident.to_string();
@@ -66,6 +74,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
 
     if struct_is_state {
         impl_block.extend::<TokenStream2>(quote! {
+            #[automatically_derived]
             impl CheckAndResetState for #ident {
                 fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     #(
@@ -77,6 +86,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         });
     } else if struct_has_state {
         impl_block.extend::<TokenStream2>(quote! {
+            #[automatically_derived]
             impl CheckAndResetState for #ident {
                 fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     self.state.check_and_reset(|| format!("{}", loc()))?;
@@ -89,6 +99,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         });
     } else {
         impl_block.extend::<TokenStream2>(quote! {
+            #[automatically_derived]
             impl CheckAndResetState for #ident {
                 fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     #(
@@ -102,6 +113,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
 
     if struct_has_save_interval {
         impl_block.extend::<TokenStream2>(quote! {
+            #[automatically_derived]
             impl SaveState for #ident {
                 /// Implementation for structs with `save_interval`
                 fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
@@ -119,6 +131,7 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         });
     } else {
         impl_block.extend::<TokenStream2>(quote! {
+            #[automatically_derived]
             impl SaveState for #ident {
                 /// Implementation for objects without `save_interval`
                 fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {

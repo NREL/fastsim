@@ -1,7 +1,7 @@
 use super::*;
 
 #[serde_api]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -38,13 +38,6 @@ impl FuelStorage {
 
 impl SerdeAPI for FuelStorage {}
 impl Init for FuelStorage {}
-
-impl SetCumulative for FuelStorage {
-    fn set_cumulative(&mut self, _dt: si::Time) -> anyhow::Result<()> {
-        // self.state.set_cumulative(dt)
-        Ok(())
-    }
-}
 
 impl Mass for FuelStorage {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {

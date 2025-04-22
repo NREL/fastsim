@@ -7,7 +7,7 @@ use crate::pyo3::*;
 const TOL: f64 = 1e-3;
 
 #[serde_api]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods, SetCumulative)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
@@ -667,12 +667,6 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     }
 }
 
-impl SetCumulative for ReversibleEnergyStorage {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)
-    }
-}
-
 impl Mass for ReversibleEnergyStorage {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self
@@ -786,7 +780,7 @@ pub enum SpecificEnergySideEffect {
 
 #[serde_api]
 #[derive(
-    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, StateMethods, SetCumulative,
 )]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -994,7 +988,7 @@ impl RESThermalOption {
 }
 
 #[serde_api]
-#[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 /// Struct for modeling [ReversibleEnergyStorage] (e.g. battery) thermal plant
@@ -1023,11 +1017,6 @@ impl RESLumpedThermal {
     #[pyo3(name = "default")]
     fn default_py() -> Self {
         Default::default()
-    }
-}
-impl SetCumulative for RESLumpedThermal {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)
     }
 }
 impl SerdeAPI for RESLumpedThermal {}
@@ -1113,7 +1102,7 @@ impl RESLumpedThermal {
 
 #[serde_api]
 #[derive(
-    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative, StateMethods,
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, StateMethods, SetCumulative,
 )]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]

@@ -2,7 +2,7 @@ use super::{vehicle_model::VehicleState, *};
 use crate::prelude::ElectricMachineState;
 
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
@@ -41,17 +41,6 @@ pub struct HybridElectricVehicle {
 
 #[named_struct_pyo3_api]
 impl HybridElectricVehicle {}
-
-impl SetCumulative for HybridElectricVehicle {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.em.set_cumulative(dt)?;
-        self.res.set_cumulative(dt)?;
-        self.fc.set_cumulative(dt)?;
-        self.fs.set_cumulative(dt)?;
-        self.transmission.set_cumulative(dt)?;
-        Ok(())
-    }
-}
 
 impl HistoryMethods for HybridElectricVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
@@ -402,8 +391,8 @@ impl Mass for HybridElectricVehicle {
     Serialize,
     PartialEq,
     HistoryVec,
-    SetCumulative,
     StateMethods,
+    SetCumulative,
 )]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -501,6 +490,15 @@ impl Default for HEVPowertrainControls {
     }
 }
 
+impl SetCumulative for HEVPowertrainControls {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        match self {
+            Self::RGWDB(rgwdb) => rgwdb.set_cumulative(dt)?,
+            Self::Placeholder => {}
+        }
+        Ok(())
+    }
+}
 impl Step for HEVPowertrainControls {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
@@ -636,7 +634,7 @@ impl HEVPowertrainControls {
 /// buffer for forcing [FuelConverter] to be active/on. See [Self::init] for
 /// default values.
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -905,7 +903,7 @@ impl RESGreedyWithDynamicBuffers {
                 None => None,
             },
             match fc.temperature() {
-                Some(fct) => Some(*fct.get_stale(|| format_dbg!())?),
+                Some(fct) => Some(*fct.get_fresh(|| format_dbg!())?),
                 None => None,
             },
             self.temp_fc_forced_on,
