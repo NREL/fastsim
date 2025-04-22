@@ -45,6 +45,7 @@ dev = [
     "memory_profiler~=0.61.0",
     "pymoo~=0.6",
     "plotly~=6.0",
+    "deepdiff>=8.4.2",
 ]
 
 [dependency-groups]
