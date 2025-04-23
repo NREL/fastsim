@@ -198,15 +198,17 @@ mod test_tracked_state {
     }
 
     #[test]
+    #[should_panic]
     fn test_get_stale_fail() {
         let pwr = TrackedState::new(si::Power::ZERO);
         pwr.get_stale(|| format_dbg!()).unwrap();
     }
 
     #[test]
+    #[should_panic]
     fn test_get_fresh_fail() {
         let mut pwr = TrackedState::new(si::Power::ZERO);
         pwr.mark_stale();
-        pwr.get_stale(|| format_dbg!()).unwrap();
+        pwr.get_fresh(|| format_dbg!()).unwrap();
     }
 }
