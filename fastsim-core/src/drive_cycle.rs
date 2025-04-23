@@ -800,6 +800,9 @@ impl Cycle {
         }
         result
     }
+
+    // Add idle time to Cycle.
+    //pub fn extend(&self, absolute_time: Optional<si::Time>) -> Cycle {}
 }
 
 #[fastsim_api]
