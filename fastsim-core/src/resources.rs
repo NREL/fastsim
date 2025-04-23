@@ -35,6 +35,6 @@ mod tests {
         // that case is that list_resources should return an
         // empty vector of string.
         let another_result = list_resources("vehicles");
-        assert!(another_result.len() == 3);
+        assert!(another_result.len() == 5);
     }
 }

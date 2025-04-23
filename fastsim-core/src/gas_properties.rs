@@ -13,10 +13,20 @@ lazy_static! {
     pub static ref H_STD: si::Length = 180.0 * uc::M;
 }
 
-#[fastsim_api(
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[non_exhaustive]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[serde(deny_unknown_fields)]
+pub struct Air {}
+impl Init for Air {}
+impl SerdeAPI for Air {}
+
+#[named_struct_pyo3_api]
+impl Air {
     #[new]
     fn __new__() -> Self {
-        Self{}
+        Self {}
     }
     /// Returns density of air \[kg/m^3\]
     /// Source: <https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html>  
@@ -45,7 +55,10 @@ lazy_static! {
     #[pyo3(name = "get_therm_cond")]
     #[staticmethod]
     pub fn get_therm_cond_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_therm_cond((te_air + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::watt_per_meter_kelvin>())
+        Ok(
+            Self::get_therm_cond((te_air + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::watt_per_meter_kelvin>(),
+        )
     }
 
     /// Returns constant pressure specific heat [J/(kg*K)] of air
@@ -54,7 +67,10 @@ lazy_static! {
     #[pyo3(name = "get_specific_heat_cp")]
     #[staticmethod]
     pub fn get_specific_heat_cp_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_specific_heat_cp((te_air + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::joule_per_kilogram_kelvin>())
+        Ok(
+            Self::get_specific_heat_cp((te_air + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::joule_per_kilogram_kelvin>(),
+        )
     }
 
     /// Returns specific enthalpy [J/kg] of air  
@@ -63,7 +79,10 @@ lazy_static! {
     #[pyo3(name = "get_specific_enthalpy")]
     #[staticmethod]
     pub fn get_specific_enthalpy_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_specific_enthalpy((te_air  - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::joule_per_kilogram>())
+        Ok(
+            Self::get_specific_enthalpy((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::joule_per_kilogram>(),
+        )
     }
 
     /// Returns specific energy [J/kg] of air  
@@ -72,7 +91,10 @@ lazy_static! {
     #[pyo3(name = "get_specific_energy")]
     #[staticmethod]
     pub fn get_specific_energy_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_specific_energy((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::joule_per_kilogram>())
+        Ok(
+            Self::get_specific_energy((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::joule_per_kilogram>(),
+        )
     }
 
     /// Returns thermal Prandtl number of air
@@ -81,7 +103,7 @@ lazy_static! {
     #[pyo3(name = "get_pr")]
     #[staticmethod]
     pub fn get_pr_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_pr((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN )?.get::<si::ratio>())
+        Ok(Self::get_pr((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::ratio>())
     }
 
     /// Returns dynamic viscosity \[Pa*s\] of air
@@ -90,7 +112,10 @@ lazy_static! {
     #[pyo3(name = "get_dyn_visc")]
     #[staticmethod]
     pub fn get_dyn_visc_py(te_air: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_dyn_visc((te_air  - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?.get::<si::pascal_second>())
+        Ok(
+            Self::get_dyn_visc((te_air - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::pascal_second>(),
+        )
     }
 
     /// Returns temperature [°C] of air
@@ -110,14 +135,7 @@ lazy_static! {
     pub fn get_te_from_u_py(u: f64) -> anyhow::Result<f64> {
         Ok(Self::get_te_from_u(u * uc::J_PER_KG)?.get::<si::degree_celsius>())
     }
-
-)]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
-#[non_exhaustive]
-#[serde(deny_unknown_fields)]
-pub struct Air {}
-impl Init for Air {}
-impl SerdeAPI for Air {}
+}
 
 impl Air {
     /// Returns density of air
@@ -283,13 +301,13 @@ mod air_static_props {
             TEMPERATURE_DEG_C_VALUES.clone(),
             Strategy::Linear,
             Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         pub static ref TEMP_FROM_ENERGY: Interpolator = Interpolator::new_1d(
             ENERGY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
             TEMPERATURE_DEG_C_VALUES.clone(),
             Strategy::Linear,
             Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         /// Thermal conductivity values of air corresponding to temperature values
         static ref THERMAL_CONDUCTIVITY_VALUES: Vec<si::ThermalConductivity> = [
             0.019597,
@@ -326,7 +344,7 @@ mod air_static_props {
             THERMAL_CONDUCTIVITY_VALUES.iter().map(|x| x.get::<si::watt_per_meter_degree_celsius>()).collect::<Vec<f64>>(),
             Strategy::Linear,
             Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         /// Specific heat values of air corresponding to temperature values
         static ref C_P_VALUES: Vec<si::SpecificHeatCapacity> = [
             1006.2,
@@ -363,7 +381,7 @@ mod air_static_props {
             C_P_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram_kelvin>()).collect::<Vec<f64>>(),
             Strategy::Linear,
             Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         static ref ENTHALPY_VALUES: Vec<si::SpecificEnergy> = [
             338940.,
             341930.,
@@ -399,7 +417,7 @@ mod air_static_props {
             ENTHALPY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
             Strategy::Linear,
             Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         pub static ref ENERGY_VALUES: Vec<si::SpecificEnergy> = [
             277880.,
             280000.,
@@ -435,7 +453,7 @@ mod air_static_props {
             ENERGY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
             Strategy::Linear,
             Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         static ref DYN_VISCOSITY_VALUES: Vec<si::DynamicViscosity> = [
             1.4067e-05,
             1.4230e-05,
@@ -471,7 +489,7 @@ mod air_static_props {
             DYN_VISCOSITY_VALUES.iter().map(|x| x.get::<si::pascal_second>()).collect::<Vec<f64>>(),
             Strategy::Linear,
             Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         static ref PRANDTL_VALUES: Vec<si::Ratio> = DYN_VISCOSITY_VALUES
             .iter()
             .zip(C_P_VALUES.iter())
@@ -483,7 +501,7 @@ mod air_static_props {
             PRANDTL_VALUES.iter().map(|x| x.get::<si::ratio>()).collect::<Vec<f64>>(),
             Strategy::Linear,
             Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
     }
 }
 
@@ -558,7 +576,7 @@ mod octane_static_props {
            TEMPERATURE_DEG_C_VALUES.clone(),
            Strategy::Linear,
            Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         pub static ref ENERGY_VALUES: Vec<si::SpecificEnergy> = [
             -3.8247e+05,
             -3.7645e+05,
@@ -594,18 +612,30 @@ mod octane_static_props {
            ENERGY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
            Strategy::Linear,
            Extrapolate::Error
-        ).unwrap();
+        ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
     }
 }
 
-#[fastsim_api(
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[serde(deny_unknown_fields)]
+pub struct Octane {}
+impl Init for Octane {}
+impl SerdeAPI for Octane {}
+
+#[named_struct_pyo3_api]
+impl Octane {
     /// Returns specific energy [J/kg] of octane  
     /// # Arguments  
     /// - `te_octane`: temperature [°C] of octane
     #[pyo3(name = "get_specific_energy")]
     #[staticmethod]
     pub fn get_specific_energy_py(te_octane: f64) -> anyhow::Result<f64> {
-        Ok(Self::get_specific_energy((te_octane - uc::CELSIUS_TO_KELVIN) * uc::KELVIN )?.get::<si::joule_per_kilogram>())
+        Ok(
+            Self::get_specific_energy((te_octane - uc::CELSIUS_TO_KELVIN) * uc::KELVIN)?
+                .get::<si::joule_per_kilogram>(),
+        )
     }
 
     /// Returns temperature [°C] of octane
@@ -616,12 +646,7 @@ mod octane_static_props {
     pub fn get_te_from_u_py(u: f64) -> anyhow::Result<f64> {
         Ok(Self::get_te_from_u(u * uc::J_PER_KG)?.get::<si::degree_celsius>())
     }
-)]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
-#[serde(deny_unknown_fields)]
-pub struct Octane {}
-impl Init for Octane {}
-impl SerdeAPI for Octane {}
+}
 
 impl Octane {
     /// Returns specific energy of octane  

@@ -7,22 +7,11 @@ use std::cmp;
 
 pub mod manipulation_utils;
 
-#[fastsim_api(
-    #[pyo3(name = "list_resources")]
-    #[staticmethod]
-    /// list available cycle resources
-    fn list_resources_py() -> Vec<String> {
-        resources::list_resources(Self::RESOURCE_PREFIX)
-    }
-
-    #[pyo3(name = "len")]
-    fn len_py(&self) -> PyResult<usize> {
-        Ok(self.len_checked()?)
-    }
-)]
+#[serde_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Container
 pub struct Cycle {
     /// Name of cycle (can be left empty)
@@ -65,6 +54,21 @@ pub struct Cycle {
     /// elevation interpolator
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub elev_interp: Option<Interpolator>,
+}
+
+#[named_struct_pyo3_api]
+impl Cycle {
+    #[pyo3(name = "list_resources")]
+    #[staticmethod]
+    /// list available cycle resources
+    fn list_resources_py() -> Vec<String> {
+        resources::list_resources(Self::RESOURCE_PREFIX)
+    }
+
+    #[pyo3(name = "len")]
+    fn len_py(&self) -> PyResult<usize> {
+        Ok(self.len_checked()?)
+    }
 }
 
 lazy_static! {
@@ -805,10 +809,11 @@ impl Cycle {
     //pub fn extend(&self, absolute_time: Optional<si::Time>) -> Cycle {}
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Element of `Cycle`.  Used for vec-like operations.
 pub struct CycleElement {
     /// simulation time \[s\]
@@ -834,6 +839,9 @@ pub struct CycleElement {
 
 impl SerdeAPI for CycleElement {}
 impl Init for CycleElement {}
+
+#[named_struct_pyo3_api]
+impl CycleElement {}
 
 #[cfg(test)]
 mod tests {

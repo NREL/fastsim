@@ -43,6 +43,18 @@ impl Init for HVACOption {
     }
 }
 impl SerdeAPI for HVACOption {}
+impl SetCumulative for HVACOption {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        match self {
+            HVACOption::LumpedCabin(lc) => lc.set_cumulative(dt)?,
+            HVACOption::LumpedCabinAndRES(lcr) => lcr.set_cumulative(dt)?,
+            HVACOption::LumpedCabinWithShell => todo!(),
+            HVACOption::ReversibleEnergyStorageOnly => todo!(),
+            HVACOption::None => {}
+        }
+        Ok(())
+    }
+}
 impl HistoryMethods for HVACOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
@@ -73,28 +85,47 @@ impl HistoryMethods for HVACOption {
     }
 }
 impl SaveState for HVACOption {
-    fn save_state(&mut self) {
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.save_state(),
-            Self::LumpedCabinAndRES(lcr) => lcr.save_state(),
+            Self::LumpedCabin(lc) => lc.save_state(loc)?,
+            Self::LumpedCabinAndRES(lcr) => lcr.save_state(loc)?,
             Self::LumpedCabinWithShell => {
                 todo!()
             }
             Self::ReversibleEnergyStorageOnly => todo!(),
             Self::None => {}
         }
+        Ok(())
     }
 }
-impl Step for HVACOption {
-    fn step(&mut self) {
+impl CheckAndResetState for HVACOption {
+    fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.step(),
-            Self::LumpedCabinAndRES(lcr) => lcr.step(),
+            Self::LumpedCabin(lc) => {
+                lc.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::LumpedCabinAndRES(lcr) => {
+                lcr.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::LumpedCabinWithShell => {
                 todo!()
             }
             Self::ReversibleEnergyStorageOnly => todo!(),
             Self::None => {}
+        }
+        Ok(())
+    }
+}
+impl Step for HVACOption {
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => lc.step(|| format!("{}\n{}", loc(), format_dbg!())),
+            Self::LumpedCabinAndRES(lcr) => lcr.step(|| format!("{}\n{}", loc(), format_dbg!())),
+            Self::LumpedCabinWithShell => {
+                todo!()
+            }
+            Self::ReversibleEnergyStorageOnly => todo!(),
+            Self::None => Ok(()),
         }
     }
 }

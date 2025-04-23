@@ -698,7 +698,6 @@ pt_type:
         eff_fwd_at_max_input: 0.0
         pwr_mech_regen_max_watts: 0.0
         eff_at_max_regen: 0.0
-        pwr_rate_out_max_watts_per_second: 0.0
         pwr_out_req_watts: 0.0
         energy_out_req_joules: 0.0
         pwr_elec_prop_in_watts: 0.0
@@ -726,9 +725,9 @@ pt_type:
         energy_loss_joules: 0.0
     pt_cntrl:
       RGWDB:
-        speed_soc_disch_buffer_meters_per_second: 17.8816
+        speed_soc_disch_buffer_meters_per_second: 31.2928
         speed_soc_disch_buffer_coeff: 1.0
-        speed_soc_fc_on_buffer_meters_per_second: 19.66976
+        speed_soc_fc_on_buffer_meters_per_second: 46.9392
         speed_soc_fc_on_buffer_coeff: 1.0
         speed_soc_regen_buffer_meters_per_second: 13.4112
         speed_soc_regen_buffer_coeff: 1.0
@@ -736,15 +735,18 @@ pt_type:
         speed_fc_forced_on_meters_per_second: 37.9984
         frac_pwr_demand_fc_forced_on: 0.5645161290322581
         frac_of_most_eff_pwr_to_run_fc: 1.0
-        frac_res_chrg_for_fc: 0.0
         save_interval: 1
-        frac_res_dschrg_for_fc: 1.0
         temp_fc_forced_on_kelvin: ~
         temp_fc_allowed_off_kelvin: ~
         state:
           i: 0
-          fc_on_causes: "\"[]\""
-          soc_bal_iters: 0
+          fc_temperature_too_low: false
+          vehicle_speed_too_high: false
+          on_time_too_short: false
+          propulsion_power_demand: false
+          propulsion_power_demand_soft: false
+          aux_power_demand: false
+          charging_for_low_soc: false
           soc_fc_on_buffer: 0.0
     aux_cntrl: AuxOnResPriority
     mass_kilograms: ~
@@ -753,10 +755,7 @@ pt_type:
       soc_balance_iter_err: 5
       balance_soc: true
       save_soc_bal_iters: false
-    state:
-      i: 0
-      fc_on_causes: "\"[]\""
-      soc_bal_iters: 0
+    soc_bal_iters: 0
 chassis:
   drag_coef: 0.306
   frontal_area_square_meters: 2.22
@@ -804,6 +803,6 @@ state:
   speed_ach_meters_per_second: 0.0
   dist_meters: 0.0
   grade_curr: 0.0
-  elev_curr_meters: 180.0
-  air_density_kilograms_per_cubic_meter: 1.172
+  elev_curr_meters: 0.0
+  air_density_kilograms_per_cubic_meter: 0.0
   mass_kilograms: .nan

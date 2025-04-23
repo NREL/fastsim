@@ -11,9 +11,10 @@ pub(crate) use crate::traits::*;
 pub(crate) use crate::uc;
 pub(crate) use crate::utils;
 pub(crate) use crate::utils::{
-    abs_checked_x_val, almost_eq, almost_ge_uom, almost_le_uom, check_interp_frac_data,
-    check_monotonicity, is_sorted, InterpRange, DIRECT_SET_ERR,
+    abs_checked_x_val, almost_eq, almost_eq_uom, almost_ge_uom, almost_le_uom,
+    check_interp_frac_data, check_monotonicity, is_sorted, InterpRange, DIRECT_SET_ERR,
 };
+pub(crate) use crate::utils::{CheckAndResetState, TrackedState};
 pub(crate) use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecWrapper};
 pub(crate) use crate::vehicle::traits::Mass;
 pub(crate) use anyhow::{anyhow, bail, ensure, Context};
@@ -22,7 +23,8 @@ pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
 pub(crate) use eng_fmt::FormatEng;
 pub(crate) use fastsim_proc_macros::{
-    fastsim_api, fastsim_enum_api, HistoryMethods, HistoryVec, SetCumulative,
+    named_struct_pyo3_api, serde_api, tuple_struct_pyo3_api, HistoryVec, SetCumulative,
+    StateMethods,
 };
 pub(crate) use lazy_static::lazy_static;
 pub(crate) use ndarray::prelude::*;

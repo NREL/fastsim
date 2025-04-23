@@ -1,80 +1,37 @@
 use crate::imports::*;
-mod fastsim_api_utils;
-use crate::utilities::parse_ts_as_fn_defs;
-use fastsim_api_utils::*;
 
-pub(crate) fn fastsim_api(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut py_impl_block = TokenStream2::default();
-    let mut impl_block = TokenStream2::default();
-
-    let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
-    let ident = &ast.ident;
-    if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &mut ast.fields {
-        process_named_field_struct(named, &mut py_impl_block);
-    } else if let syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }) = &mut ast.fields {
-        process_tuple_struct(unnamed, &mut py_impl_block, &mut impl_block, ident);
-    } else {
-        abort_call_site!(
-            "Invalid use of `fastsim_api` macro.  Expected tuple struct or C-style struct."
-        );
+pub(crate) fn named_struct_pyo3_api(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let py_impl_block = syn::parse_macro_input!(item as syn::ItemImpl);
+    let ident = match *py_impl_block.self_ty {
+        syn::Type::Path(type_path) if type_path.path.segments.len() == 1 => {
+            let first_seg = type_path.path.segments.first().unwrap();
+            first_seg.ident.clone()
+        }
+        _ => abort_call_site!(String::from("Invalid usage")),
     };
-    let output: TokenStream2 = ast.to_token_stream();
-    // println!("{}", String::from("*").repeat(30));
-    // println!("struct: {}", ast.ident.to_string());
-
-    process_pyclass_generic(py_impl_block, attr, ident, output, impl_block, true)
-}
-
-pub(crate) fn fastsim_enum_api(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let py_impl_block = TokenStream2::default();
-    let impl_block = TokenStream2::default();
-
-    let ast = syn::parse_macro_input!(item as syn::ItemEnum);
-    let ident = &ast.ident;
-    let output: TokenStream2 = ast.to_token_stream();
-    // println!("{}", String::from("*").repeat(30));
-    // println!("struct: {}", ast.ident.to_string());
-
-    process_pyclass_generic(py_impl_block, attr, ident, output, impl_block, false)
-}
-
-/// Performs the processing steps that are not specific to structs or enums
-fn process_pyclass_generic(
-    mut py_impl_block: TokenStream2,
-    attr: TokenStream,
-    ident: &Ident,
-    mut output: TokenStream2,
-    impl_block: TokenStream2,
-    subclass: bool,
-) -> TokenStream {
-    py_impl_block.extend::<TokenStream2>(parse_ts_as_fn_defs(attr, vec![], false, vec![]));
-
-    add_serde_methods(&mut py_impl_block);
-
-    let py_impl_block = quote! {
+    let mut py_impl_block_body: TokenStream2 = Default::default();
+    for item in py_impl_block.items {
+        if let syn::ImplItem::Fn(item_fn) = item {
+            py_impl_block_body.extend(quote! {#item_fn});
+        }
+    }
+    add_serde_methods(&mut py_impl_block_body);
+    let mut new_py_impl_block: TokenStream2 = Default::default();
+    new_py_impl_block.extend(quote! {
         #[allow(non_snake_case)]
         #[pymethods]
         #[cfg(feature="pyo3")]
         /// Implement methods exposed and used in Python via PyO3
         impl #ident {
-            #py_impl_block
+            #py_impl_block_body
+
+            fn __str__(&self) -> String {
+                format!("{self:?}")
+            }
         }
-    };
-    let mut final_output = TokenStream2::default();
-    if subclass {
-        final_output.extend::<TokenStream2>(quote! {
-            #[cfg_attr(feature="pyo3", pyclass(module = "fastsim", subclass, eq))]
-        });
-    } else {
-        final_output.extend::<TokenStream2>(quote! {
-            #[cfg_attr(feature="pyo3", pyclass(module = "fastsim", eq))]
-        });
-    }
-    output.extend(impl_block);
-    output.extend(py_impl_block);
-    // println!("{}", output.to_string());
-    final_output.extend::<TokenStream2>(output);
-    final_output.into()
+    });
+
+    new_py_impl_block.into()
 }
 
 fn add_serde_methods(py_impl_block: &mut TokenStream2) {
@@ -256,11 +213,45 @@ fn add_serde_methods(py_impl_block: &mut TokenStream2) {
     });
 }
 
+pub(crate) fn tuple_struct_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut ast_attr = syn::parse_macro_input!(attr as syn::ItemStruct);
+    let ident = &ast_attr.ident;
+
+    let py_impl_block = syn::parse_macro_input!(item as syn::ItemImpl);
+    let mut py_impl_block_body: TokenStream2 = Default::default();
+    for item in py_impl_block.items {
+        if let syn::ImplItem::Fn(item_fn) = item {
+            py_impl_block_body.extend(quote! {#item_fn});
+        }
+    }
+    let impl_block = TokenStream2::default();
+    if let syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }) = &mut ast_attr.fields {
+        process_tuple_struct(ident, &mut py_impl_block_body, impl_block, unnamed);
+    } else {
+        abort_call_site!(
+            "Invalid use of `fastsim_api` macro.  Expected tuple struct or C-style struct."
+        );
+    };
+    add_serde_methods(&mut py_impl_block_body);
+    let mut new_py_impl_block: TokenStream2 = Default::default();
+    new_py_impl_block.extend(quote! {
+        #[allow(non_snake_case)]
+        #[pymethods]
+        #[cfg(feature="pyo3")]
+        /// Implement methods exposed and used in Python via PyO3
+        impl #ident {
+            #py_impl_block_body
+        }
+    });
+
+    new_py_impl_block.into()
+}
+
 fn process_tuple_struct(
-    unnamed: &mut syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
-    py_impl_block: &mut TokenStream2,
-    impl_block: &mut TokenStream2,
     ident: &Ident,
+    py_impl_block: &mut TokenStream2,
+    mut impl_block: TokenStream2,
+    unnamed: &mut syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
 ) {
     // tuple struct
     assert!(unnamed.len() == 1);
@@ -277,53 +268,53 @@ fn process_tuple_struct(
                     .parse()
                     .unwrap();
                 py_impl_block.extend::<TokenStream2>(
-                        quote! {
-                            #[new]
-                            /// Rust-defined `__new__` magic method for Python used exposed via PyO3.
-                            fn __new__(v: Vec<#contained_dtype>) -> Self {
-                                Self(v)
-                            }
-                            /// Rust-defined `__repr__` magic method for Python used exposed via PyO3.
-                            fn __repr__(&self) -> String {
-                                format!("Pyo3Vec({:?})", self.0)
-                            }
-                            /// Rust-defined `__str__` magic method for Python used exposed via PyO3.
-                            fn __str__(&self) -> String {
-                                format!("{:?}", self.0)
-                            }
-                            /// Rust-defined `__getitem__` magic method for Python used exposed via PyO3.
-                            /// Prevents the Python user getting item directly using indexing.
-                            fn __getitem__(&self, _idx: usize) -> PyResult<()> {
-                                Err(PyNotImplementedError::new_err(
-                                    "Getting Rust vector value at index is not implemented.
+                    quote! {
+                        #[new]
+                        /// Rust-defined `__new__` magic method for Python used exposed via PyO3.
+                        fn __new__(v: Vec<#contained_dtype>) -> Self {
+                            Self(v)
+                        }
+                        /// Rust-defined `__repr__` magic method for Python used exposed via PyO3.
+                        fn __repr__(&self) -> String {
+                            format!("Pyo3Vec({:?})", self.0)
+                        }
+                        /// Rust-defined `__str__` magic method for Python used exposed via PyO3.
+                        fn __str__(&self) -> String {
+                            format!("{:?}", self.0)
+                        }
+                        /// Rust-defined `__getitem__` magic method for Python used exposed via PyO3.
+                        /// Prevents the Python user getting item directly using indexing.
+                        fn __getitem__(&self, _idx: usize) -> PyResult<()> {
+                            Err(PyNotImplementedError::new_err(
+                                "Getting Rust vector value at index is not implemented.
                                         Run `tolist` method to convert to standalone Python list.",
-                                ))
-                            }
-                            /// Rust-defined `__setitem__` magic method for Python used exposed via PyO3.
-                            /// Prevents the Python user setting item using indexing.
-                            fn __setitem__(&mut self, _idx: usize, _new_value: #contained_dtype) -> PyResult<()> {
-                                Err(PyNotImplementedError::new_err(
-                                    "Setting list value at index is not implemented.
+                            ))
+                        }
+                        /// Rust-defined `__setitem__` magic method for Python used exposed via PyO3.
+                        /// Prevents the Python user setting item using indexing.
+                        fn __setitem__(&mut self, _idx: usize, _new_value: #contained_dtype) -> PyResult<()> {
+                            Err(PyNotImplementedError::new_err(
+                                "Setting list value at index is not implemented.
                                         Run `tolist` method, modify value at index, and
                                         then set entire list.",
-                                ))
-                            }
-                            /// PyO3-exposed method to convert vec-containing struct to Python list.
-                            fn tolist(&self) -> PyResult<Vec<#contained_dtype>> {
-                                Ok(self.0.clone())
-                            }
-                            /// Rust-defined `__len__` magic method for Python used exposed via PyO3.
-                            /// Returns the length of the Rust vector.
-                            fn __len__(&self) -> usize {
-                                self.0.len()
-                            }
-                            /// PyO3-exposed method to check if the vec-containing struct is empty.
-                            #[pyo3(name = "is_empty")]
-                            fn is_empty_py(&self) -> bool {
-                                self.0.is_empty()
-                            }
+                            ))
                         }
-                    );
+                        /// PyO3-exposed method to convert vec-containing struct to Python list.
+                        fn tolist(&self) -> PyResult<Vec<#contained_dtype>> {
+                            Ok(self.0.clone())
+                        }
+                        /// Rust-defined `__len__` magic method for Python used exposed via PyO3.
+                        /// Returns the length of the Rust vector.
+                        fn __len__(&self) -> usize {
+                            self.0.len()
+                        }
+                        /// PyO3-exposed method to check if the vec-containing struct is empty.
+                        #[pyo3(name = "is_empty")]
+                        fn is_empty_py(&self) -> bool {
+                            self.0.is_empty()
+                        }
+                    }
+                );
                 impl_block.extend::<TokenStream2>(quote! {
                     impl #ident{
                         /// Implement the non-Python `new` method.
@@ -334,21 +325,5 @@ fn process_tuple_struct(
                 });
             }
         }
-    }
-}
-
-fn process_named_field_struct(
-    named: &mut syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
-    py_impl_block: &mut TokenStream2,
-) {
-    py_impl_block.extend(quote! {
-        fn __str__(&self) -> String {
-            format!("{self:?}")
-        }
-    });
-
-    // struct with named fields
-    for field in named.iter_mut() {
-        impl_getters_and_setters(field);
     }
 }
