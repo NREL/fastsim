@@ -20,7 +20,7 @@ where
 
 /// Enum for tracking mutation
 #[derive(Clone, Default, Debug, PartialEq, IsVariant, derive_more::From, TryInto)]
-pub enum State {
+pub enum StateStatus {
     /// Updated in this time step
     #[default]
     Fresh,
@@ -35,7 +35,7 @@ pub struct TrackedState<T>(
     /// Value
     T,
     /// Update status
-    State,
+    StateStatus,
 );
 
 /// Provides methods to guarantee that states are updated once and only once per time step
@@ -47,19 +47,19 @@ where
         Self(value, Default::default())
     }
 
-    pub fn is_fresh(&self) -> bool {
+    fn is_fresh(&self) -> bool {
         self.1.is_fresh()
     }
 
-    pub fn is_stale(&self) -> bool {
+    fn is_stale(&self) -> bool {
         self.1.is_stale()
     }
 
     /// # Arguments
     /// - `loc`: closure that returns file and line number where called
-    pub fn ensure_fresh<F: Fn() -> String>(&self, loc: F) -> anyhow::Result<()> {
+    fn ensure_fresh<F: Fn() -> String>(&self, loc: F) -> anyhow::Result<()> {
         ensure!(
-            self.1.is_fresh(),
+            self.is_fresh(),
             format!(
                 "{}\nState variable has not been updated. This is a bug in `fastsim-core`",
                 loc()
@@ -70,9 +70,9 @@ where
 
     /// # Arguments
     /// - `loc`: closure that returns file and line number where called
-    pub fn ensure_stale<F: Fn() -> String>(&self, loc: F) -> anyhow::Result<()> {
+    fn ensure_stale<F: Fn() -> String>(&self, loc: F) -> anyhow::Result<()> {
         ensure!(
-            self.1.is_stale(),
+            self.is_stale(),
             format!(
                 "{}\nState variable has already been updated. This is a bug in `fastsim-core`",
                 loc()
@@ -84,7 +84,7 @@ where
     /// Reset the tracked state to [State::Stale] for the next update after
     /// verifying that is has been updated
     pub fn mark_stale(&mut self) {
-        self.1 = State::Stale;
+        self.1 = StateStatus::Stale;
     }
 
     // Note that `anyhow::Error` is fine here because this should result only in
@@ -97,7 +97,7 @@ where
     pub fn update<F: Fn() -> String>(&mut self, value: T, loc: F) -> anyhow::Result<()> {
         self.ensure_stale(loc)?;
         self.0 = value;
-        self.1 = State::Fresh;
+        self.1 = StateStatus::Fresh;
         Ok(())
     }
 
@@ -107,7 +107,7 @@ where
     /// - `loc`: closure that returns file and line number where called
     pub fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         self.ensure_stale(loc)?;
-        self.1 = State::Fresh;
+        self.1 = StateStatus::Fresh;
         Ok(())
     }
 
@@ -139,7 +139,7 @@ impl<T: std::fmt::Debug + Clone + PartialEq + Default + std::ops::AddAssign> Tra
     pub fn increment<F: Fn() -> String>(&mut self, value: T, loc: F) -> anyhow::Result<()> {
         self.ensure_stale(loc)?;
         self.0 += value;
-        self.1 = State::Fresh;
+        self.1 = StateStatus::Fresh;
         Ok(())
     }
 }
@@ -173,68 +173,40 @@ where
 
 #[cfg(test)]
 mod test_tracked_state {
-    // use super::*;
-    // #[test]
-    // #[should_panic]
-    // fn test_that_update_can_happen_only_once() {
-    //     let mut pwr = TrackedState::<si::Power>::default();
-    //     let mut energy = TrackedState::<si::Energy>::default();
-    //     let mut dt = TrackedState::<si::Time>::default();
+    use super::*;
 
-    //     pwr.update(si::Power::new::<si::watt>(1.0), || format_dbg!())
-    //         .unwrap();
-    //     dt.update(si::Time::new::<si::second>(1.0), || format_dbg!())
-    //         .unwrap();
-    //     energy
-    //         .increment(
-    //             *pwr.get_fresh(|| format_dbg!()).unwrap() * *dt.get_fresh(|| format_dbg!()).unwrap(),
-    //             format_dbg!(),
-    //         )
-    //         .unwrap();
+    #[test]
+    #[should_panic]
+    fn test_update_fresh() {
+        let mut pwr = TrackedState::new(si::Power::ZERO);
+        pwr.update(uc::W * 10.0, || format_dbg!()).unwrap();
+    }
 
-    //     // This should trigger a panic
-    //     pwr.update(si::Power::new::<si::watt>(2.0), || format_dbg!())
-    //         .unwrap();
-    // }
+    #[test]
+    fn test_update_stale() {
+        let mut pwr = TrackedState::new(si::Power::ZERO);
+        pwr.mark_stale();
+        pwr.update(uc::W * 10.0, || format_dbg!()).unwrap();
+    }
 
-    // #[test]
-    // fn test_that_reset_and_check_work() {
-    //     let mut pwr = TrackedState::<si::Power>::default();
-    //     let mut energy = TrackedState::<si::Energy>::default();
-    //     let mut dt = TrackedState::<si::Time>::default();
+    #[test]
+    fn test_get_ok() {
+        let mut pwr = TrackedState::new(si::Power::ZERO);
+        pwr.get_fresh(|| format_dbg!()).unwrap();
+        pwr.mark_stale();
+        pwr.get_stale(|| format_dbg!()).unwrap();
+    }
 
-    //     pwr.is_fresh_and_reset(format_dbg!()).unwrap();
-    //     dt.is_fresh_and_reset(format_dbg!()).unwrap();
-    //     energy.is_fresh_and_reset(format_dbg!()).unwrap();
+    #[test]
+    fn test_get_stale_fail() {
+        let pwr = TrackedState::new(si::Power::ZERO);
+        pwr.get_stale(|| format_dbg!()).unwrap();
+    }
 
-    //     pwr.update(si::Power::new::<si::watt>(1.0), || format_dbg!())
-    //         .unwrap();
-    //     dt.update(si::Time::new::<si::second>(1.0), || format_dbg!())
-    //         .unwrap();
-    //     energy
-    //         .increment(
-    //             *pwr.get_fresh(|| format_dbg!()).unwrap() * *dt.get_fresh(|| format_dbg!()).unwrap(),
-    //             format_dbg!(),
-    //         )
-    //         .unwrap();
-
-    //     pwr.is_fresh_and_reset(format_dbg!()).unwrap();
-    //     dt.is_fresh_and_reset(format_dbg!()).unwrap();
-    //     energy.is_fresh_and_reset(format_dbg!()).unwrap();
-
-    //     pwr.update(si::Power::new::<si::watt>(1.0), || format_dbg!())
-    //         .unwrap();
-    //     dt.update(si::Time::new::<si::second>(1.0), || format_dbg!())
-    //         .unwrap();
-    //     energy
-    //         .increment(
-    //             *pwr.get_fresh(|| format_dbg!()).unwrap() * *dt.get_fresh(|| format_dbg!()).unwrap(),
-    //             format_dbg!(),
-    //         )
-    //         .unwrap();
-
-    //     pwr.is_fresh_and_reset(format_dbg!()).unwrap();
-    //     dt.is_fresh_and_reset(format_dbg!()).unwrap();
-    //     energy.is_fresh_and_reset(format_dbg!()).unwrap();
-    // }
+    #[test]
+    fn test_get_fresh_fail() {
+        let mut pwr = TrackedState::new(si::Power::ZERO);
+        pwr.mark_stale();
+        pwr.get_stale(|| format_dbg!()).unwrap();
+    }
 }
