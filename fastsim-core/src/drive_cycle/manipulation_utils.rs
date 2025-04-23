@@ -1,9 +1,11 @@
 use crate::drive_cycle::Cycle;
 use crate::imports::*;
 
-#[fastsim_api]
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde_api]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
+#[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Data describing a trajectory with a "constant jerk"
 pub struct ConstantJerkTrajectory {
     /// number of steps in the trajectory
@@ -22,6 +24,7 @@ pub struct ConstantJerkTrajectory {
 
 impl SerdeAPI for ConstantJerkTrajectory {}
 impl Init for ConstantJerkTrajectory {}
+
 impl ConstantJerkTrajectory {
     pub fn from_speed_and_distance_targets(
         n: usize,
