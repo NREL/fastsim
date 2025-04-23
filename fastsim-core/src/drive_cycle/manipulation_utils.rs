@@ -260,6 +260,18 @@ pub fn time_spent_moving(cyc: &Cycle, stopped_speed: Option<si::Velocity>) -> si
     cyc.time_spent_moving(stopped_speed)
 }
 
+/// Create distance and target speeds by microtrip.
+/// Used to set target speeds for each microtrip.
+/// - cyc: the cycle to operate on
+/// - stop_speed: speed at or below which we consider the vehicle "stopped"
+/// - blend_factor: a ratio between 0 and 1. At "0", we use the average speed
+///   including stopped time; at "1" we use only the speed while moving to set
+///   the average.
+/// - min_target_speed: the minimum speed we allow a vehicle to drop down to
+///   over a microtrip
+/// RETURN vector of distance and speed targets. The interpretation is that
+/// "at or above" the given distance, the given speed will be in effect as
+/// the target speed (until we pass the next entry's distance).
 pub fn create_distance_and_target_speeds_by_microtrip(
     cyc: &Cycle,
     stop_speed: Option<si::Velocity>,
@@ -267,6 +279,21 @@ pub fn create_distance_and_target_speeds_by_microtrip(
     min_target_speed: si::Velocity,
 ) -> Vec<(si::Length, si::Velocity)> {
     cyc.distance_and_target_speeds_by_microtrip(stop_speed, blend_factor, min_target_speed)
+}
+
+/// Extend the cycle's time.
+/// - absolute_time: an absolute time value
+/// - time_fraction: extend by the given fraction of cycle's current time
+/// RETURN: new cycle with time extended by both the absolute
+///         and fraction values
+/// NOTE: absolute_time and time_faction are optional. Pass None to
+/// remove them from the equation.
+pub fn extend_cycle_time(
+    cyc: &Cycle,
+    absolute_time: Option<si::Time>,
+    time_fraction: Option<si::Ratio>,
+) -> Cycle {
+    cyc.extend_time(absolute_time, time_fraction)
 }
 
 #[cfg(test)]
@@ -430,5 +457,50 @@ mod tests {
             assert_eq!(actual[i].0, expected[i].0);
             assert_eq!(actual[i].1, expected[i].1);
         }
+    }
+
+    #[test]
+    fn test_extending_cycle_time() {
+        let cyc = make_triangle_cycle();
+        let expected = {
+            let mut c = Cycle {
+                name: cyc.name.clone(),
+                init_elev: None,
+                time: vec![
+                    0.0 * uc::S,
+                    10.0 * uc::S,
+                    20.0 * uc::S,
+                    30.0 * uc::S,
+                    31.0 * uc::S,
+                    32.0 * uc::S,
+                    33.0 * uc::S,
+                    34.0 * uc::S,
+                    35.0 * uc::S,
+                ],
+                speed: vec![
+                    0.0 * uc::MPS,
+                    4.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                ],
+                dist: vec![],
+                grade: vec![],
+                elev: vec![],
+                pwr_max_chrg: vec![],
+                grade_interp: cyc.grade_interp.clone(),
+                elev_interp: cyc.elev_interp.clone(),
+                temp_amb_air: Default::default(),
+                pwr_solar_load: Default::default(),
+            };
+            c.init().unwrap();
+            c
+        };
+        let actual = extend_cycle_time(&cyc, Some(2.0 * uc::S), Some(0.10 * uc::R));
+        assert_eq!(actual, expected);
     }
 }

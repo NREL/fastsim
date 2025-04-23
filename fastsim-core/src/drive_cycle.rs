@@ -806,7 +806,66 @@ impl Cycle {
     }
 
     // Add idle time to Cycle.
-    //pub fn extend(&self, absolute_time: Optional<si::Time>) -> Cycle {}
+    pub fn extend_time(
+        &self,
+        absolute_time: Option<si::Time>,
+        time_fraction: Option<si::Ratio>,
+    ) -> Cycle {
+        let absolute_time = absolute_time.unwrap_or(0.0 * uc::S);
+        let time_fraction = time_fraction.unwrap_or(0.0 * uc::R);
+        let mut ts = self.time.clone();
+        let mut vs = self.speed.clone();
+        let mut gs = self.grade.clone();
+        let mut ps = self.pwr_max_chrg.clone();
+        let mut temps = self.temp_amb_air.clone();
+        let mut ss = self.pwr_solar_load.clone();
+        let t_end = *ts.last().unwrap();
+        let extra_time_s = (absolute_time.get::<si::second>()
+            + time_fraction.get::<si::ratio>() * t_end.get::<si::second>())
+        .round() as i32;
+        if extra_time_s == 0 {
+            return self.clone();
+        }
+        let dt = 1.0 * uc::S;
+        let mut idx = 1;
+        loop {
+            let dt_extra_s = dt.get::<si::second>() as f64 * idx as f64;
+            if dt_extra_s > extra_time_s as f64 {
+                break;
+            }
+            ts.push(t_end + dt_extra_s * uc::S);
+            vs.push(0.0 * uc::MPS);
+            if gs.len() > 0 {
+                gs.push(0.0 * uc::R);
+            }
+            if ps.len() > 0 {
+                ps.push(ps.last().unwrap().clone());
+            }
+            if temps.len() > 0 {
+                temps.push(temps.last().unwrap().clone());
+            }
+            if ss.len() > 0 {
+                ss.push(ss.last().unwrap().clone());
+            }
+            idx += 1;
+        }
+        let mut cyc = Cycle {
+            name: self.name.clone(),
+            init_elev: self.init_elev,
+            time: ts,
+            speed: vs,
+            dist: vec![],
+            grade: gs,
+            elev: vec![],
+            pwr_max_chrg: vec![],
+            grade_interp: self.grade_interp.clone(),
+            elev_interp: self.elev_interp.clone(),
+            temp_amb_air: temps,
+            pwr_solar_load: ss,
+        };
+        cyc.init().unwrap();
+        cyc
+    }
 }
 
 #[serde_api]
@@ -988,5 +1047,79 @@ mod tests {
             assert_eq!(actual[i].0, expected[i].0);
             assert_eq!(actual[i].1, expected[i].1);
         }
+    }
+
+    #[test]
+    fn test_extending_cycle_time() {
+        let cyc = make_two_triangles_cycle();
+        let expected = {
+            let mut c = Cycle {
+                name: String::from("Two Triangles"),
+                init_elev: None,
+                time: vec![
+                    0.0 * uc::S,
+                    10.0 * uc::S,
+                    20.0 * uc::S,
+                    30.0 * uc::S,
+                    40.0 * uc::S,
+                    50.0 * uc::S,
+                    51.0 * uc::S,
+                    52.0 * uc::S,
+                    53.0 * uc::S,
+                    54.0 * uc::S,
+                    55.0 * uc::S,
+                    56.0 * uc::S,
+                    57.0 * uc::S,
+                    58.0 * uc::S,
+                ],
+                speed: vec![
+                    0.0 * uc::MPS,
+                    4.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    5.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                ],
+                dist: vec![],
+                grade: vec![
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    1.0 * uc::R,
+                    1.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                ],
+                elev: vec![],
+                pwr_max_chrg: vec![],
+                grade_interp: Default::default(),
+                elev_interp: Default::default(),
+                temp_amb_air: Default::default(),
+                pwr_solar_load: Default::default(),
+            };
+            c.init().unwrap();
+            c
+        };
+        let absolute_time = Some(3.0 * uc::S);
+        let time_fraction = Some(0.10 * uc::R);
+        // extend by 3 s and 10% of existing time (i.e., 5 s)
+        // = extend by 8 s
+        let actual = cyc.extend_time(absolute_time, time_fraction);
+        assert_eq!(actual, expected);
     }
 }
