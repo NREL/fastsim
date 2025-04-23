@@ -114,9 +114,6 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                                 * uc::R,
                         ),
                         frac_of_most_eff_pwr_to_run_fc: None,
-                        // TODO: make sure these actually do something, if deemed worthwhile
-                        frac_res_chrg_for_fc: f2veh.ess_chg_to_fc_max_eff_perc * uc::R,
-                        frac_res_dschrg_for_fc: f2veh.ess_dischg_to_fc_max_eff_perc * uc::R,
                         temp_fc_forced_on: None,
                         temp_fc_allowed_off: None,
                         save_interval: Some(1),
@@ -210,9 +207,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     mass: None,
                     sim_params: Default::default(),
                     aux_cntrl: Default::default(),
-                    state: Default::default(),
-                    history: Default::default(),
                     soc_bal_iter_history: Default::default(),
+                    soc_bal_iters: Default::default(),
                 };
                 hev.init()?;
                 Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))

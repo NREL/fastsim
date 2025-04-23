@@ -103,7 +103,6 @@ pt_type:
         eff_fwd_at_max_input: 0.0
         pwr_mech_regen_max_watts: 0.0
         eff_at_max_regen: 0.0
-        pwr_rate_out_max_watts_per_second: 0.0
         pwr_out_req_watts: 0.0
         energy_out_req_joules: 0.0
         pwr_elec_prop_in_watts: 0.0
@@ -177,6 +176,6 @@ state:
   speed_ach_meters_per_second: 0.0
   dist_meters: 0.0
   grade_curr: 0.0
-  elev_curr_meters: 180.0
-  air_density_kilograms_per_cubic_meter: 1.172
+  elev_curr_meters: 0.0
+  air_density_kilograms_per_cubic_meter: 0.0
   mass_kilograms: .nan

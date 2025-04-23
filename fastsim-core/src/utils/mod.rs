@@ -4,6 +4,8 @@ use regex::Regex;
 
 pub mod interp;
 pub use interp::*;
+pub mod tracked_state;
+pub use tracked_state::*;
 
 /// Error message for when user attempts to set value in a nested struct.
 pub const DIRECT_SET_ERR: &str = "Setting field value directly not allowed";
@@ -138,7 +140,7 @@ pub fn almost_le(val1: f64, val2: f64, epsilon: Option<f64>) -> bool {
 lazy_static! {
     static ref TIRE_CODE_REGEX: Regex = Regex::new(
         r"(?i)[P|LT|ST|T]?((?:[0-9]{2,3}\.)?[0-9]+)/((?:[0-9]{1,2}\.)?[0-9]+) ?[B|D|R]?[x|\-| ]?((?:[0-9]{1,2}\.)?[0-9]+)[A|B|C|D|E|F|G|H|J|L|M|N]?"
-    ).unwrap();
+    ).expect("Failed compile tire code regex");
 }
 
 /// Calculate tire radius (in meters) from an [ISO metric tire code](https://en.wikipedia.org/wiki/Tire_code#ISO_metric_tire_codes)
@@ -190,22 +192,34 @@ make_uom_cmp_fn!(almost_lt);
 make_uom_cmp_fn!(almost_ge);
 make_uom_cmp_fn!(almost_le);
 
-#[fastsim_api]
+#[serde_api]
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct Pyo3VecBoolWrapper(pub Vec<bool>);
+
+#[tuple_struct_pyo3_api(struct Pyo3VecBoolWrapper(pub Vec<bool>);)]
+impl Pyo3VecBoolWrapper {}
 impl SerdeAPI for Pyo3VecBoolWrapper {}
 impl Init for Pyo3VecBoolWrapper {}
 
-#[fastsim_api]
+#[serde_api]
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct Pyo3VecWrapper(pub Vec<f64>);
+
+#[tuple_struct_pyo3_api(struct Pyo3VecWrapper(pub Vec<f64>);)]
+impl Pyo3VecWrapper {}
 impl SerdeAPI for Pyo3VecWrapper {}
 impl Init for Pyo3VecWrapper {}
 
 #[allow(non_snake_case)]
-#[fastsim_api]
+#[serde_api]
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct Pyo3Vec2Wrapper(pub Vec<Vec<f64>>);
+
+#[tuple_struct_pyo3_api(struct Pyo3Vec2Wrapper(pub Vec<Vec<f64>>);)]
+impl Pyo3Vec2Wrapper {}
 impl From<Vec<Vec<f64>>> for Pyo3Vec2Wrapper {
     fn from(v: Vec<Vec<f64>>) -> Self {
         Pyo3Vec2Wrapper::new(v)
@@ -214,9 +228,13 @@ impl From<Vec<Vec<f64>>> for Pyo3Vec2Wrapper {
 impl SerdeAPI for Pyo3Vec2Wrapper {}
 impl Init for Pyo3Vec2Wrapper {}
 
-#[fastsim_api]
+#[serde_api]
 #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct Pyo3Vec3Wrapper(pub Vec<Vec<Vec<f64>>>);
+
+#[tuple_struct_pyo3_api(struct Pyo3Vec3Wrapper(pub Vec<Vec<Vec<f64>>>);)]
+impl Pyo3Vec3Wrapper {}
 impl From<Vec<Vec<Vec<f64>>>> for Pyo3Vec3Wrapper {
     fn from(v: Vec<Vec<Vec<f64>>>) -> Self {
         Pyo3Vec3Wrapper::new(v)

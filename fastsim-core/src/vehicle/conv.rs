@@ -1,9 +1,10 @@
 use super::*;
 
-#[fastsim_api]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods)]
+#[serde_api]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, StateMethods, SetCumulative)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Conventional vehicle with only a FuelConverter as a power source
 pub struct ConventionalVehicle {
     pub fs: FuelStorage,
@@ -15,6 +16,9 @@ pub struct ConventionalVehicle {
     /// Alternator efficiency used to calculate aux mechanical power demand on engine
     pub alt_eff: si::Ratio,
 }
+
+#[named_struct_pyo3_api]
+impl ConventionalVehicle {}
 
 impl SerdeAPI for ConventionalVehicle {}
 impl Init for ConventionalVehicle {
@@ -53,7 +57,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-        _veh_state: VehicleState,
+        _veh_state: &VehicleState,
     ) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
         self.fc
@@ -66,13 +70,15 @@ impl Powertrain for Box<ConventionalVehicle> {
     }
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
-        Ok((self.fc.state.pwr_prop_max, si::Power::ZERO))
+        Ok((
+            *self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+            si::Power::ZERO,
+        ))
     }
 
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        _veh_state: VehicleState,
         _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
@@ -89,8 +95,8 @@ impl Powertrain for Box<ConventionalVehicle> {
         Ok(())
     }
 
-    fn pwr_regen(&self) -> si::Power {
-        si::Power::ZERO
+    fn pwr_regen(&self) -> anyhow::Result<si::Power> {
+        Ok(si::Power::ZERO)
     }
 }
 

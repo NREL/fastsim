@@ -1,7 +1,7 @@
 use super::*;
 
-#[fastsim_api]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods, SetCumulative)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 pub struct Transmission {
@@ -27,28 +27,45 @@ impl Transmission {
     pub fn get_pwr_in_req(&mut self, pwr_out_req: si::Power) -> anyhow::Result<si::Power> {
         let state = &mut self.state;
 
-        state.eff = match self.eff_interp {
-            Interpolator::Interp0D(eff) => eff * uc::R,
-            _ => unimplemented!(),
-        };
+        state.eff.update(
+            match self.eff_interp {
+                Interpolator::Interp0D(eff) => eff * uc::R,
+                _ => unimplemented!(),
+            },
+            || format_dbg!(),
+        )?;
         ensure!(
-            state.eff >= 0.0 * uc::R && state.eff <= 1.0 * uc::R,
+            *state.eff.get_fresh(|| format_dbg!())? >= 0.0 * uc::R
+                && *state.eff.get_fresh(|| format_dbg!())? <= 1.0 * uc::R,
             format!(
                 "{}\nTransmission efficiency ({}) must be between 0 and 1",
-                format_dbg!(state.eff >= 0.0 * uc::R && state.eff <= 1.0 * uc::R),
-                state.eff.get::<si::ratio>()
+                format_dbg!(
+                    *state.eff.get_fresh(|| format_dbg!())? >= 0.0 * uc::R
+                        && *state.eff.get_fresh(|| format_dbg!())? <= 1.0 * uc::R
+                ),
+                state.eff.get_fresh(|| format_dbg!())?.get::<si::ratio>()
             )
         );
 
-        state.pwr_out = pwr_out_req;
-        state.pwr_in = if state.pwr_out > si::Power::ZERO {
-            state.pwr_out / state.eff
-        } else {
-            state.pwr_out * state.eff
-        };
-        state.pwr_loss = (state.pwr_in - state.pwr_out).abs();
+        state.pwr_out.update(pwr_out_req, || format_dbg!())?;
+        state.pwr_in.update(
+            if *state.pwr_out.get_fresh(|| format_dbg!())? > si::Power::ZERO {
+                *state.pwr_out.get_fresh(|| format_dbg!())?
+                    / *state.eff.get_fresh(|| format_dbg!())?
+            } else {
+                *state.pwr_out.get_fresh(|| format_dbg!())?
+                    * *state.eff.get_fresh(|| format_dbg!())?
+            },
+            || format_dbg!(),
+        )?;
+        state.pwr_loss.update(
+            (*state.pwr_in.get_fresh(|| format_dbg!())?
+                - *state.pwr_out.get_fresh(|| format_dbg!())?)
+            .abs(),
+            || format_dbg!(),
+        )?;
 
-        Ok(state.pwr_in)
+        Ok(*state.pwr_in.get_fresh(|| format_dbg!())?)
     }
 }
 impl HistoryMethods for Transmission {
@@ -92,38 +109,34 @@ impl Mass for Transmission {
     }
 }
 
-#[fastsim_api]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[serde_api]
+#[derive(
+    Clone,
+    Default,
+    Debug,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    StateMethods,
+    SetCumulative,
+)]
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct TransmissionState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedState<usize>,
 
-    pub eff: si::Ratio,
+    pub eff: TrackedState<si::Ratio>,
 
-    pub pwr_out: si::Power,
-    pub pwr_in: si::Power,
+    pub pwr_out: TrackedState<si::Power>,
+    pub pwr_in: TrackedState<si::Power>,
     /// Power loss: [Self::pwr_in] - [Self::pwr_out]
-    pub pwr_loss: si::Power,
+    pub pwr_loss: TrackedState<si::Power>,
 
-    pub energy_out: si::Energy,
-    pub energy_loss: si::Energy,
-}
-
-impl Default for TransmissionState {
-    fn default() -> Self {
-        Self {
-            i: Default::default(),
-            eff: si::Ratio::ZERO,
-            pwr_out: si::Power::ZERO,
-            pwr_in: si::Power::ZERO,
-            pwr_loss: si::Power::ZERO,
-            energy_out: si::Energy::ZERO,
-            energy_loss: si::Energy::ZERO,
-        }
-    }
+    pub energy_out: TrackedState<si::Energy>,
+    pub energy_loss: TrackedState<si::Energy>,
 }
 
 impl Init for TransmissionState {}

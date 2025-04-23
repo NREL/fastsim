@@ -300,6 +300,6 @@ state:
   speed_ach_meters_per_second: 0.0
   dist_meters: 0.0
   grade_curr: 0.0
-  elev_curr_meters: 180.0
-  air_density_kilograms_per_cubic_meter: 1.172
+  elev_curr_meters: 0.0
+  air_density_kilograms_per_cubic_meter: 0.0
   mass_kilograms: .nan
