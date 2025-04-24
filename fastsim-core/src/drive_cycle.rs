@@ -110,6 +110,31 @@ impl Cycle {
         }
         Ok(result)
     }
+
+    #[pyo3(name = "dt_at_i")]
+    pub fn dt_at_i_py(&self, i: usize) -> PyResult<f64> {
+        let i = std::cmp::max(1, i);
+        let dt = if i < self.time.len() {
+            self.time[i].get::<si::second>() - self.time[i - 1].get::<si::second>()
+        } else {
+            0.0
+        };
+        Ok(dt)
+    }
+
+    #[pyo3(name = "aveage_step_speeds_m_per_s")]
+    pub fn average_step_speeds_py(&self) -> PyResult<Vec<f64>> {
+        Ok(self
+            .average_step_speeds()
+            .iter()
+            .map(|v| v.get::<si::meter_per_second>())
+            .collect())
+    }
+
+    #[pyo3(name = "average_step_speed_in_m_per_s_at")]
+    pub fn average_step_speed_at_py(&self, i: usize) -> PyResult<f64> {
+        Ok(self.average_step_speed_at(i).get::<si::meter_per_second>())
+    }
 }
 
 lazy_static! {
