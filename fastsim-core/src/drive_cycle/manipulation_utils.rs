@@ -296,6 +296,119 @@ pub fn extend_cycle_time(
     cyc.extend_time(absolute_time, time_fraction)
 }
 
+#[serde_api]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+pub struct PassingInfo {
+    /// True if first cycle passes the second; NOTE: was `has_collision`
+    pub passing_detected: bool,
+    /// the index where first cycle passes the second; NOTE: was `idx`
+    pub index: usize,
+    /// the number of time-steps until index from i
+    pub num_steps: usize,
+    /// the starting distance of the first cycle at i
+    pub start_distance: si::Length,
+    /// the distance traveled of the second cycle when the first passes
+    pub distance: si::Length,
+    /// the starting speed of the first cycle at i
+    pub start_speed: si::Velocity,
+    /// the speed of the second cycle when first passes
+    pub speed: si::Velocity,
+    /// the (assumed constant) time step duration throughout the passing investigation
+    pub time_step_duration: si::Time,
+}
+
+impl PassingInfo {
+    /// Create a new PassingInfo struct from a cycle and reference cycle.
+    /// - cyc: the cycle to detect passing for
+    /// - cyc0: the reference cycle / lead vehicle / shadow cycle to compare cyc with
+    /// - i: the time-step index for the start of consideration
+    /// - distance_tolerance: the distance away from the lead vehicle at or above which
+    ///   we consider ourselves "deviated" or "no longer following" the reference trace
+    /// RETURN: a PassingInfo structure
+    pub fn from(
+        cyc: &Cycle,
+        cyc_ref: &Cycle,
+        i: usize,
+        distance_tolerance: Option<si::Length>,
+    ) -> Self {
+        let i = std::cmp::max(i, 1);
+        if i >= cyc.time.len() {
+            return Self {
+                passing_detected: false,
+                index: 0,
+                num_steps: 0,
+                start_distance: 0.0 * uc::M,
+                distance: 0.0 * uc::M,
+                start_speed: 0.0 * uc::MPS,
+                speed: 0.0 * uc::MPS,
+                time_step_duration: 1.0 * uc::S,
+            };
+        }
+        let zero_speed_tol = 1e-6 * uc::MPS;
+        let distance_tol = distance_tolerance.unwrap_or(0.1 * uc::M);
+        let mut v0 = cyc.speed[i - 1];
+        let d0 = cyc.trapz_step_start_distance(i);
+        let mut v0_lv = cyc_ref.speed[i - 1];
+        let d0_lv = cyc_ref.trapz_step_start_distance(i);
+        let mut d = d0;
+        let mut d_lv = d0_lv;
+        let mut rendezvous_index = None;
+        let mut rendezvous_num_steps = 0;
+        let mut rendezvous_distance = 0.0 * uc::M;
+        let mut rendezvous_speed = 0.0 * uc::MPS;
+        for di in 0..(cyc.speed.len() - i) {
+            let idx = i + di;
+            // cycle current speed
+            let v = cyc.speed[idx];
+            // lead vehicle current speed
+            let v_lv = cyc_ref.speed[idx];
+            // cycle average speed for step
+            let vavg = (v + v0) * 0.5;
+            // lead vehicle average speed for step
+            let vavg_lv = (v_lv + v0_lv) * 0.5;
+            // time step duration
+            let dt = cyc.time[idx] - cyc.time[idx - 1];
+            // delta distance for step
+            let dd = vavg * dt;
+            // time step duration for lead vehicle
+            let dt_lv = cyc_ref.time[idx] - cyc_ref.time[idx - 1];
+            // delta distance for lead vehicle for step
+            let dd_lv = vavg_lv * dt_lv;
+            // total distance from start
+            d += dd;
+            // total distance from start for lead vehicle
+            d_lv += dd_lv;
+            // distance to lead vehicle
+            let dtlv = d_lv - d;
+            v0 = v;
+            v0_lv = v_lv;
+            if di > 0 && dtlv < -distance_tol {
+                rendezvous_index = Some(idx);
+                rendezvous_num_steps = di + 1;
+                rendezvous_distance = d_lv;
+                rendezvous_speed = v_lv;
+                break;
+            }
+            if v <= zero_speed_tol {
+                break;
+            }
+        }
+        Self {
+            passing_detected: rendezvous_index.is_some(),
+            index: rendezvous_index.unwrap_or(0),
+            num_steps: rendezvous_num_steps,
+            start_distance: d0,
+            distance: rendezvous_distance,
+            start_speed: cyc.speed[i - 1],
+            speed: rendezvous_speed,
+            time_step_duration: cyc.time[i] - cyc.time[i - 1],
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -501,6 +614,84 @@ mod tests {
             c
         };
         let actual = extend_cycle_time(&cyc, Some(2.0 * uc::S), Some(0.10 * uc::R));
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_passing_info() {
+        let c = {
+            // travels 300 m
+            let mut cyc = Cycle {
+                name: String::from("Main Cycle"),
+                time: vec![
+                    0.0 * uc::S,
+                    10.0 * uc::S,
+                    20.0 * uc::S,
+                    30.0 * uc::S,
+                    40.0 * uc::S,
+                ],
+                speed: vec![
+                    0.0 * uc::MPS,
+                    10.0 * uc::MPS,
+                    10.0 * uc::MPS,
+                    10.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                ],
+                grade: vec![],
+                dist: vec![],
+                elev: vec![],
+                init_elev: Some(0.0 * uc::M),
+                pwr_max_chrg: vec![],
+                pwr_solar_load: vec![],
+                temp_amb_air: vec![],
+                grade_interp: Default::default(),
+                elev_interp: Default::default(),
+            };
+            cyc.init().unwrap();
+            cyc
+        };
+        let c_lead = {
+            // travels 250 m
+            let mut cyc = Cycle {
+                name: String::from("Lead Vehicle"),
+                time: vec![
+                    0.0 * uc::S,
+                    10.0 * uc::S,
+                    20.0 * uc::S,
+                    30.0 * uc::S,
+                    40.0 * uc::S,
+                ],
+                speed: vec![
+                    0.0 * uc::MPS,
+                    10.0 * uc::MPS,
+                    10.0 * uc::MPS,
+                    5.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                ],
+                grade: vec![],
+                dist: vec![],
+                elev: vec![],
+                init_elev: Some(0.0 * uc::M),
+                pwr_max_chrg: vec![],
+                pwr_solar_load: vec![],
+                temp_amb_air: vec![],
+                grade_interp: Default::default(),
+                elev_interp: Default::default(),
+            };
+            cyc.init().unwrap();
+            cyc
+        };
+        let expected = PassingInfo {
+            passing_detected: true,
+            index: 3,
+            num_steps: 3,
+            start_distance: 0.0 * uc::M,
+            distance: 225.0 * uc::M,
+            start_speed: 0.0 * uc::MPS,
+            speed: 5.0 * uc::MPS,
+            time_step_duration: 10.0 * uc::S,
+        };
+        let actual = PassingInfo::from(&c, &c_lead, 1, None);
         assert_eq!(actual, expected);
     }
 }
