@@ -31,15 +31,16 @@ def main():
     microtrips = cycle.to_microtrips(None)
 
     if SHOW_PLOTS:
+        max_microtrips = 4
         fig, ax = plt.subplots()
-        num = min(4, len(microtrips))
+        num = min(max_microtrips, len(microtrips))
         for idx, mt in enumerate(microtrips):
             color = pu.BASE_COLORS[idx % len(pu.BASE_COLORS)]
             line = pu.BASE_LINE_STYLES[idx % len(pu.BASE_LINE_STYLES)]
             ax.plot(mt.time_s, mt.speed_m_per_s,
                     marker=".", color=color, linestyle=line,
                     label=f"#{idx + 1}")
-            if idx >= 4:
+            if idx >= max_microtrips:
                 break
         ax.set_title(f"First {num} Microtrips of {cycle_name.upper()}")
         ax.set_ylabel("Speed (m/s)")
