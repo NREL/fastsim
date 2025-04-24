@@ -69,6 +69,47 @@ impl Cycle {
     fn len_py(&self) -> PyResult<usize> {
         Ok(self.len_checked()?)
     }
+
+    #[pyo3(name = "to_microtrips", signature=(stop_speed_m_per_s=None))]
+    fn to_microtrips_py(&self, stop_speed_m_per_s: Option<f64>) -> PyResult<Vec<Cycle>> {
+        let stop_speed = match stop_speed_m_per_s {
+            Some(v) => Some(v * uc::MPS),
+            None => None,
+        };
+        Ok(self.to_microtrips(stop_speed))
+    }
+
+    #[getter(time_s)]
+    fn time_s_py(&self) -> PyResult<Vec<f64>> {
+        let mut result: Vec<f64> = Vec::with_capacity(self.time.len());
+        for t in &self.time {
+            result.push(t.get::<si::second>());
+        }
+        Ok(result)
+    }
+
+    #[getter(speed_m_per_s)]
+    fn speed_m_per_s_py(&self) -> PyResult<Vec<f64>> {
+        let mut result: Vec<f64> = Vec::with_capacity(self.speed.len());
+        for v in &self.speed {
+            result.push(v.get::<si::meter_per_second>());
+        }
+        Ok(result)
+    }
+
+    #[getter(grade_ratio)]
+    fn grade_ratio_py(&self) -> PyResult<Vec<f64>> {
+        let n = self.time.len();
+        let mut result: Vec<f64> = Vec::with_capacity(n);
+        for i in 0..n {
+            result.push(if i >= self.grade.len() {
+                0.0
+            } else {
+                self.grade[i].get::<si::ratio>()
+            });
+        }
+        Ok(result)
+    }
 }
 
 lazy_static! {
