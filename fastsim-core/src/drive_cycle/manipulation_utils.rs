@@ -409,6 +409,171 @@ impl PassingInfo {
     }
 }
 
+#[serde_api]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+pub struct CycleCache {
+    /// flag to indicate if cycle has all-zero grade (i.e., flat) or not
+    pub grade_all_zero: bool,
+    /// distance traveled over each time-step of the cycle
+    pub trapz_step_distances_m: Vec<f64>,
+    /// distances from start at each sample point
+    pub trapz_distances_m: Vec<f64>,
+    /// elevations at each sample point
+    pub trapz_elevations_m: Vec<f64>,
+    /// an array of flags indicating whether stopped (true) or not (false)
+    pub stops: Vec<bool>,
+    /// interpolation_distances
+    interp_ds: Vec<f64>,
+    /// interpolation of indices
+    interp_is: Vec<f64>,
+    /// interpolation of heights (i.e., elevations)
+    interp_hs: Vec<f64>,
+    /// grades where g[i] applies from distance [i, i+1)
+    grades: Vec<f64>,
+    /// interpolator for index by distance
+    interp_index_by_dist: Interpolator,
+    /// interpolator for elevation by distance
+    interp_elev_by_dist: Interpolator,
+}
+
+impl Default for CycleCache {
+    fn default() -> Self {
+        Self {
+            grade_all_zero: false,
+            trapz_step_distances_m: Default::default(),
+            trapz_distances_m: Default::default(),
+            trapz_elevations_m: Default::default(),
+            stops: Default::default(),
+            interp_ds: Default::default(),
+            interp_is: Default::default(),
+            interp_hs: Default::default(),
+            grades: Default::default(),
+            interp_index_by_dist: Interpolator::Interp0D(0.0),
+            interp_elev_by_dist: Interpolator::Interp0D(0.0),
+        }
+    }
+}
+
+impl Init for CycleCache {}
+
+impl SerdeAPI for CycleCache {}
+
+impl CycleCache {
+    /// Create a new cycle cache from a cycle.
+    pub fn new(cyc: &Cycle) -> Self {
+        let tol = 1e-6;
+        let num_items = cyc.time.len();
+        let grade_all_zero = cyc.grade.len() == 0 || cyc.grade.iter().all(|g| *g == 0.0 * uc::R);
+        let trapz_step_distances_m: Vec<f64> = cyc
+            .trapz_step_distances()
+            .iter()
+            .map(|dd| dd.get::<si::meter>())
+            .collect();
+        let trapz_distances_m: Vec<f64> = {
+            let mut ds = Vec::with_capacity(num_items);
+            let mut d = 0.0;
+            ds.push(d);
+            for dd in &trapz_step_distances_m {
+                d += *dd;
+                ds.push(d);
+            }
+            ds
+        };
+        let trapz_elevations_m = if grade_all_zero {
+            vec![0.0; num_items]
+        } else {
+            let dhs: Vec<f64> = cyc
+                .grade
+                .iter()
+                .zip(&trapz_step_distances_m)
+                .map(|(g, dd)| {
+                    let gr = g.get::<si::ratio>();
+                    gr.atan().cos() * dd * gr
+                })
+                .collect();
+            let mut hs = Vec::with_capacity(num_items);
+            let mut h = cyc.init_elev.unwrap_or(0.0 * uc::M).get::<si::meter>();
+            hs.push(h);
+            for dh in &dhs {
+                h += *dh;
+                hs.push(h);
+            }
+            hs
+        };
+        let stops = cyc
+            .speed
+            .iter()
+            .map(|v| v.get::<si::meter_per_second>() <= tol)
+            .collect();
+        let mut interp_ds = Vec::with_capacity(num_items);
+        let mut interp_is = Vec::with_capacity(num_items);
+        let mut interp_hs = Vec::with_capacity(num_items);
+        for idx in 0..num_items {
+            let d = trapz_distances_m[idx];
+            if interp_ds.is_empty() || d > *interp_ds.last().unwrap() {
+                interp_ds.push(d);
+                interp_is.push(idx as f64);
+                interp_hs.push(trapz_elevations_m[idx]);
+            }
+        }
+        let grades: Vec<f64> = cyc.grade.iter().map(|g| g.get::<si::ratio>()).collect();
+        let interp_index_by_dist = Interpolator::new_1d(
+            interp_ds.clone(),
+            interp_is.clone(),
+            Strategy::RightNearest,
+            Extrapolate::Clamp,
+        )
+        .unwrap();
+        let interp_elev_by_dist = Interpolator::new_1d(
+            interp_ds.clone(),
+            interp_hs.clone(),
+            Strategy::Linear,
+            Extrapolate::Clamp,
+        )
+        .unwrap();
+        Self {
+            grade_all_zero,
+            trapz_step_distances_m,
+            trapz_distances_m,
+            trapz_elevations_m,
+            stops,
+            interp_ds,
+            interp_is,
+            interp_hs,
+            grades,
+            interp_index_by_dist,
+            interp_elev_by_dist,
+        }
+    }
+
+    /// Interpolate the single-point grade at the given distance.
+    /// Assumes that the grade at i applies from sample point (i-1, i]
+    pub fn interp_grade(&self, dist_m: f64) -> f64 {
+        if self.grade_all_zero {
+            0.0
+        } else if dist_m <= self.interp_ds[0] {
+            self.grades[0]
+        } else if dist_m > *self.interp_ds.last().expect("interp_ds.len()>0") {
+            *self.grades.last().unwrap()
+        } else {
+            // NOTE: interp strategy is right nearest; equal to linear + ceil()
+            let idx = self.interp_index_by_dist.interpolate(&[dist_m]).unwrap();
+            self.grades[idx as usize]
+        }
+    }
+
+    pub fn interp_elevation(&self, dist_m: f64) -> f64 {
+        if self.grade_all_zero {
+            0.0
+        } else {
+            self.interp_elev_by_dist.interpolate(&[dist_m]).unwrap()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -693,5 +858,19 @@ mod tests {
         };
         let actual = PassingInfo::from(&c, &c_lead, 1, None);
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_making_interp() {
+        let interp = ninterp::Interpolator::new_1d(
+            vec![0.0, 2.0, 4.0],
+            vec![0.0, 4.0, 8.0],
+            Strategy::Linear,
+            Extrapolate::Clamp,
+        )
+        .unwrap();
+        let value = interp.interpolate(&[1.0]).unwrap();
+        let expected = 2.0;
+        assert_eq!(value, expected);
     }
 }
