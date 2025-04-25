@@ -68,8 +68,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                             pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
                             eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
-                                f2veh.fc_perc_out_array.into(),
-                                f2veh.fc_eff_array.into(),
+                                f2veh.fc_perc_out_array.clone().into(),
+                                f2veh.fc_eff_array.clone().into(),
                                 strategy::LeftNearest,
                                 Extrapolate::Error,
                             )?,
@@ -147,8 +147,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                             pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
                             eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
-                                f2veh.fc_perc_out_array.into(),
-                                f2veh.fc_eff_array.into(),
+                                f2veh.fc_perc_out_array.clone().into(),
+                                f2veh.fc_eff_array.clone().into(),
                                 strategy::LeftNearest,
                                 Extrapolate::Error,
                             )?,
@@ -180,12 +180,13 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     em: ElectricMachine {
                         state: Default::default(),
                         eff_interp_achieved: InterpolatorEnum::new_1d(
-                            f2veh.mc_perc_out_array.into(),
+                            f2veh.mc_perc_out_array.clone().into(),
                             {
-                                let mut mc_full_eff_vec = f2veh.mc_full_eff_array.to_vec();
-                                ensure!(mc_full_eff_vec.len() > 1);
-                                mc_full_eff_vec[0] = mc_full_eff_vec[1];
-                                mc_full_eff_vec.into()
+                                let mut mc_full_eff =
+                                    Array1::from_vec(f2veh.mc_full_eff_array.clone());
+                                ensure!(mc_full_eff.len() > 1);
+                                mc_full_eff[0] = mc_full_eff[1];
+                                mc_full_eff
                             },
                             strategy::LeftNearest,
                             Extrapolate::Error,
@@ -236,8 +237,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     em: ElectricMachine {
                         state: Default::default(),
                         eff_interp_achieved: InterpolatorEnum::new_1d(
-                            f2veh.mc_pwr_out_perc,
-                            f2veh.mc_eff_array,
+                            f2veh.mc_pwr_out_perc.clone().into(),
+                            f2veh.mc_eff_array.clone().into(),
                             strategy::LeftNearest,
                             Extrapolate::Error,
                         )?,
@@ -246,12 +247,11 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             // be transferred over as done here, or does a new defualt need to be defined?
                             f2veh
                                 .mc_pwr_out_perc
-                                .to_vec()
                                 .iter()
-                                .zip(f2veh.mc_eff_array.to_vec().iter())
+                                .zip(f2veh.mc_eff_array.iter())
                                 .map(|(x, y)| x / y)
                                 .collect(),
-                            f2veh.mc_eff_array,
+                            f2veh.mc_eff_array.clone(),
                             strategy::LeftNearest,
                             Extrapolate::Error,
                         )?),
@@ -358,7 +358,7 @@ impl Vehicle {
             fc_eff_map: self
                 .fc()
                 .map(|fc| match &fc.eff_interp_from_pwr_out {
-                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.values),
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.values.clone()),
                     _ => bail!(format_dbg!(
                         "Only 1-D interpolators can be converted to FASTSim 2"
                     )),
@@ -389,7 +389,7 @@ impl Vehicle {
             fc_pwr_out_perc: self
                 .fc()
                 .map(|fc| match &fc.eff_interp_from_pwr_out {
-                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.grid[0]),
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.grid[0].clone()),
                     _ => bail!(format_dbg!(
                         "Only 1-D interpolators can be converted to FASTSim 2"
                     )),
@@ -470,8 +470,8 @@ impl Vehicle {
             mc_eff_array: Default::default(), // calculated in `set_derived`
             mc_eff_map: self
                 .em()
-                .map(|em| match em.eff_interp_achieved {
-                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.values),
+                .map(|em| match &em.eff_interp_achieved {
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.values.clone()),
                     _ => bail!(format_dbg!(
                         "Only 1-D interpolators can be converted to FASTSim 2"
                     )),
@@ -503,8 +503,8 @@ impl Vehicle {
             // short array that can use xEV when implented.  TODO: fix this when implementing xEV
             mc_pwr_out_perc: self
                 .em()
-                .map(|em| match em.eff_interp_achieved {
-                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.grid[0]),
+                .map(|em| match &em.eff_interp_achieved {
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.grid[0].clone()),
                     _ => bail!(format_dbg!(
                         "Only 1-D interpolators can be converted to FASTSim 2"
                     )),

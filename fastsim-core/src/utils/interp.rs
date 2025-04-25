@@ -184,9 +184,8 @@ where
         + std::fmt::Debug,
 {
     fn init(&mut self) -> Result<(), Error> {
-        Ok(self
-            .validate()
-            .map_err(ninterp::error::ValidateError::from)?)
+        self.validate()
+            .map_err(|e| Error::NinterpError(e.to_string()))
     }
 }
 impl<D> SerdeAPI for InterpolatorEnum<D>

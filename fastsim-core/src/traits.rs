@@ -39,40 +39,6 @@ impl<T: PartialOrd> Min<T> for Vec<T> {
         self.as_slice().min()
     }
 }
-// impl Min for &[&f64] {
-//     fn min(&self) -> anyhow::Result<f64> {
-//         Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(**curr)))
-//     }
-// }
-// impl Min for Vec<&f64> {
-//     fn min(&self) -> anyhow::Result<f64> {
-//         self.as_slice().min()
-//     }
-// }
-// impl Min for &[Vec<f64>] {
-//     fn min(&self) -> anyhow::Result<f64> {
-//         self.iter()
-//             .map(|v| v.min())
-//             .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
-//     }
-// }
-// impl Min for Vec<Vec<f64>> {
-//     fn min(&self) -> anyhow::Result<f64> {
-//         self.as_slice().min()
-//     }
-// }
-// impl Min for &[Vec<Vec<f64>>] {
-//     fn min(&self) -> anyhow::Result<f64> {
-//         self.iter()
-//             .map(|v| v.min())
-//             .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
-//     }
-// }
-// impl Min for Vec<Vec<Vec<f64>>> {
-//     fn min(&self) -> anyhow::Result<f64> {
-//         self.as_slice().min()
-//     }
-// }
 impl<S, D> Min<S::Elem> for ArrayBase<S, D>
 where
     S: ndarray::Data,
@@ -116,42 +82,6 @@ impl<T: PartialOrd> Max<T> for Vec<T> {
         self.as_slice().max()
     }
 }
-// impl Max for &[&f64] {
-//     fn max(&self) -> anyhow::Result<f64> {
-//         Ok(self
-//             .iter()
-//             .fold(f64::NEG_INFINITY, |acc, curr| acc.max(**curr)))
-//     }
-// }
-// impl Max for Vec<&f64> {
-//     fn max(&self) -> anyhow::Result<f64> {
-//         self.as_slice().max()
-//     }
-// }
-// impl Max for &[Vec<f64>] {
-//     fn max(&self) -> anyhow::Result<f64> {
-//         self.iter()
-//             .map(|v| v.max())
-//             .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
-//     }
-// }
-// impl Max for Vec<Vec<f64>> {
-//     fn max(&self) -> anyhow::Result<f64> {
-//         self.as_slice().max()
-//     }
-// }
-// impl Max for &[Vec<Vec<f64>>] {
-//     fn max(&self) -> anyhow::Result<f64> {
-//         self.iter()
-//             .map(|v| v.max())
-//             .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
-//     }
-// }
-// impl Max for Vec<Vec<Vec<f64>>> {
-//     fn max(&self) -> anyhow::Result<f64> {
-//         self.as_slice().max()
-//     }
-// }
 impl<S, D> Max<S::Elem> for ArrayBase<S, D>
 where
     S: ndarray::Data,

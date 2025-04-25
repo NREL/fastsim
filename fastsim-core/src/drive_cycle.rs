@@ -58,10 +58,10 @@ pub struct Cycle {
     // TODO: add provision for optional time-varying aux load
     /// grade interpolator
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub grade_interp: Option<Interpolator>,
+    pub grade_interp: Option<InterpolatorEnumOwned<f64>>,
     /// elevation interpolator
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub elev_interp: Option<Interpolator>,
+    pub elev_interp: Option<InterpolatorEnumOwned<f64>>,
 }
 
 lazy_static! {
@@ -125,27 +125,27 @@ impl Init for Cycle {
         let g0 = self.grade[0];
         if self.grade.iter().all(|&g| g != g0) {
             self.grade_interp = Some(
-                Interpolator::new_1d(
+                InterpolatorEnum::new_1d(
                     self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
                     self.grade.iter().map(|y| y.get::<si::ratio>()).collect(),
                     strategy::Linear,
                     Extrapolate::Error,
                 )
-                .map_err(ninterp::error::Error::from)?,
+                .map_err(|e| Error::NinterpError(e.to_string()))?,
             );
 
             self.elev_interp = Some(
-                Interpolator::new_1d(
+                InterpolatorEnum::new_1d(
                     self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
                     self.elev.iter().map(|y| y.get::<si::meter>()).collect(),
                     strategy::Linear,
                     Extrapolate::Error,
                 )
-                .map_err(ninterp::error::Error::from)?,
+                .map_err(|e| Error::NinterpError(e.to_string()))?,
             );
         } else {
-            self.grade_interp = Some(Interpolator::Interp0D(g0.get::<si::ratio>()));
-            self.elev_interp = Some(Interpolator::Interp0D(
+            self.grade_interp = Some(InterpolatorEnum::new_0d(g0.get::<si::ratio>()));
+            self.elev_interp = Some(InterpolatorEnum::new_0d(
                 self.init_elev.unwrap().get::<si::meter>(),
             ));
         }

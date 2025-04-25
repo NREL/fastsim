@@ -11,7 +11,7 @@ pub struct Transmission {
 
     /// interpolator for calculating [Self] efficiency as a function of the following variants:  
     /// - 0d -- constant
-    pub eff_interp: Interpolator,
+    pub eff_interp: InterpolatorEnumOwned<f64>,
 
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
@@ -27,10 +27,11 @@ impl Transmission {
     pub fn get_pwr_in_req(&mut self, pwr_out_req: si::Power) -> anyhow::Result<si::Power> {
         let state = &mut self.state;
 
-        state.eff = match self.eff_interp {
-            Interpolator::Interp0D(eff) => eff * uc::R,
-            _ => unimplemented!(),
+        let eff_pt: &[f64] = match self.eff_interp {
+            InterpolatorEnum::Interp0D(Interp0D(_)) => &[],
+            _ => unimplemented!("Only Interp0D is currently implemented"),
         };
+        state.eff = self.eff_interp.interpolate(eff_pt)? * uc::R;
         ensure!(
             state.eff >= 0.0 * uc::R && state.eff <= 1.0 * uc::R,
             format!(

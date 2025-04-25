@@ -10,7 +10,7 @@ use std::f64::consts::PI;
     // optional, custom, struct-specific pymethods
     #[getter("eff_max")]
     fn get_eff_max_py(&self) -> PyResult<f64> {
-        Ok(self.get_eff_max()?)
+        Ok(*self.get_eff_max()?)
     }
 
     #[setter("__eff_max")]
@@ -20,7 +20,7 @@ use std::f64::consts::PI;
 
     #[getter("eff_min")]
     fn get_eff_min_py(&self) -> PyResult<f64> {
-        Ok(self.get_eff_min()?)
+        Ok(*self.get_eff_min()?)
     }
 
     #[setter("__eff_min")]
@@ -110,20 +110,24 @@ impl Init for FuelConverter {
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         let eff_max = self
-            .eff_max()
+            .get_eff_max()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        self.pwr_for_peak_eff = *match self.eff_interp_from_pwr_out {
-            InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
+        self.pwr_for_peak_eff = match &self.eff_interp_from_pwr_out {
+            InterpolatorEnum::Interp1D(interp) => *interp.data.grid[0]
                 .get(
                     interp
                         .data
                         .values
                         .iter()
-                        .position(|&eff| eff * uc::R == eff_max)
+                        .position(|eff| eff == eff_max)
                         .ok_or_else(|| Error::InitError(format_dbg!()))?,
                 )
                 .ok_or_else(|| Error::InitError(format_dbg!()))?,
-            _ => Error::InitError(format_dbg!("Only 1-D interpolators are supported")),
+            _ => {
+                return Err(Error::InitError(format_dbg!(
+                    "Only 1-D interpolators are supported"
+                )))
+            }
         } * self.pwr_out_max;
         Ok(())
     }
@@ -337,16 +341,6 @@ impl FuelConverter {
             .with_context(|| format_dbg!())
     }
 
-    pub fn eff_max(&self) -> anyhow::Result<si::Ratio> {
-        Ok(self
-            .eff_interp_from_pwr_out
-            .f_x()
-            .with_context(|| format_dbg!())?
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, &curr| acc.max(curr))
-            * uc::R)
-    }
-
     /// If thermal model is appropriately configured, returns current lumped [Self] temperature
     pub fn temperature(&self) -> Option<si::Temperature> {
         match &self.thrml {
@@ -365,13 +359,13 @@ impl FuelConverter {
     }
 
     /// Returns max value of [Self::eff_interp_from_pwr_out]
-    pub fn get_eff_max(&self) -> anyhow::Result<f64> {
-        self.eff_interp_from_pwr_out.get_max()
+    pub fn get_eff_max(&self) -> anyhow::Result<&f64> {
+        self.eff_interp_from_pwr_out.max()
     }
 
     /// Returns min value of [Self::eff_interp_from_pwr_out]
-    pub fn get_eff_min(&self) -> anyhow::Result<f64> {
-        self.eff_interp_from_pwr_out.get_min()
+    pub fn get_eff_min(&self) -> anyhow::Result<&f64> {
+        self.eff_interp_from_pwr_out.min()
     }
 
     /// Scales eff_interp_fwd and eff_interp_bwd by ratio of new `eff_max` per
@@ -610,7 +604,7 @@ pub struct FuelConverterThermal {
     /// temperature delta over which thermostat is partially open
     pub tstat_te_delta: Option<si::TemperatureInterval>,
     #[serde(default = "tstat_interp_default")]
-    pub tstat_interp: Interpolator,
+    pub tstat_interp: Interp1DOwned<f64, strategy::Linear>,
     /// Radiator effectiveness -- ratio of active heat rejection from
     /// radiator to passive heat rejection, always greater than 1
     pub radiator_effectiveness: si::Ratio,
@@ -642,10 +636,10 @@ impl HistoryMethods for FuelConverterThermal {
 }
 
 /// Dummy interpolator that will be overridden in [FuelConverterThermal::init]
-fn tstat_interp_default() -> Interpolator {
-    Interpolator::new_1d(
-        vec![85.0, 90.0],
-        vec![0.0, 1.0],
+fn tstat_interp_default() -> Interp1DOwned<f64, strategy::Linear> {
+    Interp1D::new(
+        array![85.0, 90.0],
+        array![0.0, 1.0],
         strategy::Linear,
         Extrapolate::Clamp,
     )
@@ -798,13 +792,13 @@ impl Init for FuelConverterThermal {
             .tstat_te_sto
             .or(Some((85. + uc::CELSIUS_TO_KELVIN) * uc::KELVIN));
         self.tstat_te_delta = self.tstat_te_delta.or(Some(5. * uc::KELVIN_INT));
-        self.tstat_interp = Interpolator::new_1d(
-            vec![
+        self.tstat_interp = Interp1D::new(
+            array![
                 self.tstat_te_sto.unwrap().get::<si::degree_celsius>(),
                 self.tstat_te_sto.unwrap().get::<si::degree_celsius>()
                     + self.tstat_te_delta.unwrap().get::<si::kelvin>(),
             ],
-            vec![0.0, 1.0],
+            array![0.0, 1.0],
             strategy::Linear,
             Extrapolate::Clamp,
         )

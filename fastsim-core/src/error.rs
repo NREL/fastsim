@@ -10,8 +10,8 @@ pub enum Error {
     SerdeError(String),
     #[error("{0}")]
     SimulationError(String),
-    #[error(transparent)]
-    NinterpError(#[from] ninterp::error::Error),
+    #[error("{0}")]
+    NinterpError(String),
     #[error("{0}")]
     Other(String),
 }

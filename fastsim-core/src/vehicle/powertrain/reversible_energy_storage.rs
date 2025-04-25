@@ -10,7 +10,7 @@ const TOL: f64 = 1e-3;
 #[fastsim_api(
     #[getter("eff_max")]
     fn get_eff_max_py(&self) -> PyResult<f64> {
-        Ok(self.get_eff_max()?)
+        Ok(*self.get_eff_max()?)
     }
 
     #[setter("__eff_max")]
@@ -21,7 +21,7 @@ const TOL: f64 = 1e-3;
 
     #[getter("eff_min")]
     fn get_eff_min_py(&self) -> PyResult<f64> {
-        Ok(self.get_eff_min()?)
+        Ok(*self.get_eff_min()?)
     }
 
     #[setter("__eff_min")]
@@ -441,8 +441,8 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     }
 
     /// Returns max value of [Self::eff_interp]
-    pub fn get_eff_max(&self) -> anyhow::Result<f64> {
-        self.eff_interp.get_max()
+    pub fn get_eff_max(&self) -> anyhow::Result<&f64> {
+        self.eff_interp.max()
     }
 
     /// Scales eff_interp by ratio of new `eff_max` per current calculated
@@ -456,8 +456,8 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     }
 
     /// Returns min value of [Self::eff_interp]
-    pub fn get_eff_min(&self) -> anyhow::Result<f64> {
-        self.eff_interp.get_min()
+    pub fn get_eff_min(&self) -> anyhow::Result<&f64> {
+        self.eff_interp.min()
     }
 
     /// Scales eff_interp by ratio of new `eff_min` per current calculated
@@ -472,7 +472,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
 
     /// Max value of `eff_interp` minus min value of `eff_interp`.
     pub fn get_eff_range(&self) -> anyhow::Result<f64> {
-        self.eff_interp.get_range()
+        self.eff_interp.range()
     }
 
     /// Scales values of `eff_interp` without changing max such that max - min
@@ -497,7 +497,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_interp(&mut self) -> anyhow::Result<()> {
         self.eff_interp_inputs = RESEffInterpInputs::CRate;
-        self.eff_interp = ninterp::Interpolator::from_resource("res/default_pwr.yaml", false)?;
+        self.eff_interp = InterpolatorEnum::from_resource("res/default_pwr.yaml", false)?;
         Ok(())
     }
 
@@ -515,8 +515,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_and_soc_interp(&mut self) -> anyhow::Result<()> {
         self.eff_interp_inputs = RESEffInterpInputs::CRateSOC;
-        self.eff_interp =
-            ninterp::Interpolator::from_resource("res/default_pwr_and_soc.yaml", false)?;
+        self.eff_interp = InterpolatorEnum::from_resource("res/default_pwr_and_soc.yaml", false)?;
         Ok(())
     }
 
@@ -525,8 +524,7 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_and_temp_interp(&mut self) -> anyhow::Result<()> {
         self.eff_interp_inputs = RESEffInterpInputs::CRateTemperature;
-        self.eff_interp =
-            ninterp::Interpolator::from_resource("res/default_pwr_and_temp.yaml", false)?;
+        self.eff_interp = InterpolatorEnum::from_resource("res/default_pwr_and_temp.yaml", false)?;
         Ok(())
     }
 
