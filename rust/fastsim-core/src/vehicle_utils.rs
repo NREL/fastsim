@@ -104,7 +104,7 @@ pub fn abc_to_drag_coeffs(
             vehicle: veh,
             dyno_func_lb: &dyno_func_lb,
         };
-        let solver = NelderMead::new(vec![array![0.0, 0.0], array![0.5, 0.0], array![0.5, 0.1]]);
+        let solver = NelderMead::new(vec![vec![0.0, 0.0], vec![0.5, 0.0], vec![0.5, 0.1]]);
         let res = Executor::new(cost, solver)
             .configure(|state| state.max_iters(100))
             .run()
@@ -170,7 +170,7 @@ impl<F> CostFunction for GetError<'_, F>
 where
     F: Fn(&f64) -> f64,
 {
-    type Param = Array1<f64>;
+    type Param = Vec<f64>;
     type Output = f64;
 
     fn cost(&self, x: &Self::Param) -> anyhow::Result<Self::Output> {
