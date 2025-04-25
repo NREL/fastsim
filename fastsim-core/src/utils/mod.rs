@@ -192,57 +192,6 @@ make_uom_cmp_fn!(almost_lt);
 make_uom_cmp_fn!(almost_ge);
 make_uom_cmp_fn!(almost_le);
 
-#[serde_api]
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
-pub struct Pyo3VecBoolWrapper(pub Vec<bool>);
-
-#[tuple_struct_pyo3_api(struct Pyo3VecBoolWrapper(pub Vec<bool>);)]
-impl Pyo3VecBoolWrapper {}
-impl SerdeAPI for Pyo3VecBoolWrapper {}
-impl Init for Pyo3VecBoolWrapper {}
-
-#[serde_api]
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
-pub struct Pyo3VecWrapper(pub Vec<f64>);
-
-#[tuple_struct_pyo3_api(struct Pyo3VecWrapper(pub Vec<f64>);)]
-impl Pyo3VecWrapper {}
-impl SerdeAPI for Pyo3VecWrapper {}
-impl Init for Pyo3VecWrapper {}
-
-#[allow(non_snake_case)]
-#[serde_api]
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
-pub struct Pyo3Vec2Wrapper(pub Vec<Vec<f64>>);
-
-#[tuple_struct_pyo3_api(struct Pyo3Vec2Wrapper(pub Vec<Vec<f64>>);)]
-impl Pyo3Vec2Wrapper {}
-impl From<Vec<Vec<f64>>> for Pyo3Vec2Wrapper {
-    fn from(v: Vec<Vec<f64>>) -> Self {
-        Pyo3Vec2Wrapper::new(v)
-    }
-}
-impl SerdeAPI for Pyo3Vec2Wrapper {}
-impl Init for Pyo3Vec2Wrapper {}
-
-#[serde_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
-pub struct Pyo3Vec3Wrapper(pub Vec<Vec<Vec<f64>>>);
-
-#[tuple_struct_pyo3_api(struct Pyo3Vec3Wrapper(pub Vec<Vec<Vec<f64>>>);)]
-impl Pyo3Vec3Wrapper {}
-impl From<Vec<Vec<Vec<f64>>>> for Pyo3Vec3Wrapper {
-    fn from(v: Vec<Vec<Vec<f64>>>) -> Self {
-        Pyo3Vec3Wrapper::new(v)
-    }
-}
-impl SerdeAPI for Pyo3Vec3Wrapper {}
-impl Init for Pyo3Vec3Wrapper {}
-
 #[derive(IsVariant, derive_more::From, TryInto)]
 pub(crate) enum InterpRange {
     ZeroThroughOne,
