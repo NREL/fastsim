@@ -16,7 +16,6 @@ jobs:
           - macos
           - windows
         python-version:
-          - "9"
           - "10"
           - "11"
         include:
@@ -49,7 +48,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - run: cd rust/ && cargo test
+      - run: cargo test
 
       - name: set up python
         uses: actions/setup-python@v4
