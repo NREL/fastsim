@@ -3,6 +3,8 @@ name = "fastsim-core"
 version = "1.0.0"
 edition = { workspace = true }
 rust-version = { workspace = true }
+license = "Apache-2.0"
+description = "Core FASTSim models for vehicle energy usage simulation"
 
 [dependencies]
 fastsim-proc-macros = { path = "fastsim-proc-macros", version = "1.0.0" }
