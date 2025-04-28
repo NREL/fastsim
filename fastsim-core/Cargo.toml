@@ -5,6 +5,7 @@ edition = { workspace = true }
 rust-version = { workspace = true }
 license = "Apache-2.0"
 description = "Core FASTSim models for vehicle energy usage simulation"
+include = [ "../cal_and_val/thermal/f3-vehicles/*" ]
 
 [dependencies]
 fastsim-proc-macros = { path = "fastsim-proc-macros", version = "1.0.0" }
@@ -67,3 +68,4 @@ toml = ["dep:toml"]
 yaml = ["dep:serde_yaml"]
 ## Enables message pack serialization and deserialization via `rmp-serde`
 msgpack = ["dep:rmp-serde"]
+
