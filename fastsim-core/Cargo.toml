@@ -6,6 +6,11 @@ rust-version = { workspace = true }
 license = "Apache-2.0"
 description = "Core FASTSim models for vehicle energy usage simulation"
 include = [ "../cal_and_val/thermal/f3-vehicles/*", "src/*", "build.rs" ]
+authors = ["NREL/MTES/CIMS/MBAP Group <fastsim@nrel.gov>"]
+homepage = "https://www.nrel.gov/transportation/fastsim.html"
+readme = "../../README.md"
+repository = "https://github.com/NREL/fastsim"
+documentation = "https://nrel.github.io/fastsim/"
 
 [dependencies]
 fastsim-proc-macros = { path = "fastsim-proc-macros", version = "1.0.0" }
