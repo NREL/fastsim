@@ -560,7 +560,7 @@ dependencies = [
  "easy-ext",
  "eng_fmt",
  "fastsim-core 0.1.9",
- "fastsim-proc-macros 3.0.0",
+ "fastsim-proc-macros 1.0.0",
  "include_dir",
  "itertools 0.12.1",
  "lazy_static",
@@ -602,7 +602,7 @@ dependencies = [
 
 [[package]]
 name = "fastsim-proc-macros"
-version = "3.0.0"
+version = "1.0.0"
 dependencies = [
  "lazy_static",
  "proc-macro-error",
