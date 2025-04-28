@@ -5,7 +5,7 @@ edition = { workspace = true }
 rust-version = { workspace = true }
 license = "Apache-2.0"
 description = "Core FASTSim models for vehicle energy usage simulation"
-include = [ "../cal_and_val/thermal/f3-vehicles/*" ]
+include = [ "../cal_and_val/thermal/f3-vehicles/*", "src/*", "build.rs" ]
 
 [dependencies]
 fastsim-proc-macros = { path = "fastsim-proc-macros", version = "1.0.0" }
