@@ -65,12 +65,6 @@ def cyc_keys() -> List[str]:
 
 CYC_KEYS = cyc_keys()
 
-setattr(
-    Pyo3VecWrapper,  # type: ignore[name-defined]  # noqa: F405
-    "__array__",
-    __array__,
-)
-
 # TODO connect to crate features
 data_formats = [
     "yaml",
