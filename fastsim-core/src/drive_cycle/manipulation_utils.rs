@@ -565,6 +565,7 @@ impl CycleCache {
         }
     }
 
+    /// Interpolate the elevation at the given distance
     pub fn interp_elevation(&self, dist_m: f64) -> f64 {
         if self.grade_all_zero {
             0.0
