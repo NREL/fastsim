@@ -1,12 +1,13 @@
 use crate::imports::*;
 
+use super::*;
 lazy_static! {
     /// room temperature
     pub static ref TE_STD_AIR: si::Temperature = (22. + 273.15) * uc::KELVIN;
     /// pressure of air at 180 m and 22 C
-    pub static ref STD_PRESSURE_AIR: si::Pressure = 99_346.3 * uc::PASCAL;
+    pub static ref STD_PRESSURE_AIR: si::Pressure = Air::std_pressure_at_elev(*H_STD);
     /// density of air at 180 m ASL and 22 C
-    pub static ref STD_DENSITY_AIR: si::MassDensity = 1.172 * uc::KGPM3;
+    pub static ref STD_DENSITY_AIR: si::MassDensity = *STD_PRESSURE_AIR / (*R_AIR * *TE_STD_AIR);
     /// ideal gas constant for air
     pub static ref R_AIR: si::SpecificHeatCapacity = 287.0 * uc::J_PER_KG_K;
     /// standard elevation above sea level
@@ -138,7 +139,7 @@ impl Air {
 }
 
 impl Air {
-    /// Returns density of air
+    /// Returns density of air with computational optimizations for default inputs
     /// Source: <https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html>  
     /// Note that if `None` is passed for either argument, function evaluation should be faster
     ///
@@ -150,19 +151,24 @@ impl Air {
     /// * `te_air` - ambient temperature of air, defaults to 22 C
     /// * `h` - elevation above sea level, defaults to 180 m
     pub fn get_density(te_air: Option<si::Temperature>, h: Option<si::Length>) -> si::MassDensity {
-        let std_pressure_at_elev = |h: si::Length| -> si::Pressure {
-            let std_temp_at_elev = (15.04 - 0.00649 * h.get::<si::meter>() + 273.15) * uc::KELVIN;
-            (101.29e3 * uc::PASCAL)
-                * ((std_temp_at_elev / (288.08 * uc::KELVIN))
-                    .get::<si::ratio>()
-                    .powf(5.256))
-        };
+        let std_pressure_at_elev = Self::std_pressure_at_elev;
         match (h, te_air) {
             (None, None) => *STD_DENSITY_AIR,
             (None, Some(te_air)) => *STD_PRESSURE_AIR / *R_AIR / te_air,
             (Some(h_val), None) => std_pressure_at_elev(h_val) / *R_AIR / *TE_STD_AIR,
             (Some(h_val), Some(te_air)) => std_pressure_at_elev(h_val) / *R_AIR / te_air,
         }
+    }
+
+    fn std_temp_at_elev(h: si::Length) -> si::Temperature {
+        (15.04 - 0.00649 * h.get::<si::meter>() + 273.15) * uc::KELVIN
+    }
+
+    fn std_pressure_at_elev(h: si::Length) -> si::Pressure {
+        (101.29e3 * uc::PASCAL)
+            * ((Self::std_temp_at_elev(h) / (288.08 * uc::KELVIN))
+                .get::<si::ratio>()
+                .powf(5.256))
     }
 
     /// Returns thermal conductivity of air
