@@ -472,18 +472,20 @@ impl CycleCache {
             .iter()
             .map(|dd| dd.get::<si::meter>())
             .collect();
+        debug_assert!(trapz_step_distances_m.len() == num_items);
         let trapz_distances_m: Vec<f64> = {
             let mut ds = Vec::with_capacity(num_items);
             let mut d = 0.0;
-            ds.push(d);
             for dd in &trapz_step_distances_m {
                 d += *dd;
                 ds.push(d);
             }
             ds
         };
+        debug_assert!(trapz_distances_m.len() == num_items);
         let trapz_elevations_m = if grade_all_zero {
-            vec![0.0; num_items]
+            let h = cyc.init_elev.unwrap_or(0.0 * uc::M).get::<si::meter>();
+            vec![h; num_items]
         } else {
             let dhs: Vec<f64> = cyc
                 .grade
@@ -496,13 +498,13 @@ impl CycleCache {
                 .collect();
             let mut hs = Vec::with_capacity(num_items);
             let mut h = cyc.init_elev.unwrap_or(0.0 * uc::M).get::<si::meter>();
-            hs.push(h);
             for dh in &dhs {
                 h += *dh;
                 hs.push(h);
             }
             hs
         };
+        debug_assert!(trapz_elevations_m.len() == num_items);
         let stops = cyc
             .speed
             .iter()
@@ -513,13 +515,15 @@ impl CycleCache {
         let mut interp_hs = Vec::with_capacity(num_items);
         for idx in 0..num_items {
             let d = trapz_distances_m[idx];
+            let h = trapz_elevations_m[idx];
             if interp_ds.is_empty() || d > *interp_ds.last().unwrap() {
                 interp_ds.push(d);
                 interp_is.push(idx as f64);
-                interp_hs.push(trapz_elevations_m[idx]);
+                interp_hs.push(h);
             }
         }
         let grades: Vec<f64> = cyc.grade.iter().map(|g| g.get::<si::ratio>()).collect();
+        debug_assert!(grades.len() == num_items);
         let interp_index_by_dist = Interpolator::new_1d(
             interp_ds.clone(),
             interp_is.clone(),

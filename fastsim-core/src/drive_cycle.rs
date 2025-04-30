@@ -1,3 +1,4 @@
+use crate::drive_cycle::manipulation_utils::CycleCache;
 use crate::imports::*;
 use crate::prelude::*;
 #[cfg(feature = "pyo3")]
@@ -749,6 +750,22 @@ impl Cycle {
         result
     }
 
+    pub fn trapz_step_elevations(&self) -> Vec<si::Length> {
+        let mut result = Vec::with_capacity(self.time.len());
+        result.push(0.0 * uc::M);
+        for i in 1..self.time.len() {
+            let step_time = self.time[i].get::<si::second>() - self.time[i - 1].get::<si::second>();
+            let average_speed = 0.5
+                * (self.speed[i].get::<si::meter_per_second>()
+                    + self.speed[i - 1].get::<si::meter_per_second>());
+            let step_dist = step_time * average_speed;
+            let gr = self.grade[i].get::<si::ratio>();
+            let dh = gr.atan().cos() * step_dist * gr;
+            result.push(dh * uc::M);
+        }
+        result
+    }
+
     /// The distance traveled from start to the beginning of step i
     /// (i.e., distance traveled up to sample point i-1)
     pub fn trapz_step_start_distance(&self, step: usize) -> si::Length {
@@ -932,6 +949,130 @@ impl Cycle {
         cyc.init().unwrap();
         cyc
     }
+
+    /// Create a cache object for faster computations on Cycle.
+    pub fn build_cache(&self) -> CycleCache {
+        CycleCache::new(self)
+    }
+
+    /// Returns the average grade over the given range of distances.
+    /// - distance_start: the distance at start of evaluation area
+    /// - delta_distance: distance traveled from distance_start
+    /// - cache: optional CycleCache which can save computation time
+    /// RETURN: average grade (rise over run) for the given range.
+    /// NOTE: grade is assumed to be constant from just after the
+    /// previous sample point until the current sample point (inclusive).
+    /// That is, grade[i] applies from distance, d, of (d[i - 1], d[i]]
+    pub fn average_grade_over_range(
+        &self,
+        distance_start: si::Length,
+        delta_distance: si::Length,
+        cache: Option<&CycleCache>,
+    ) -> si::Ratio {
+        let tol = 1e-6;
+        match &cache {
+            Some(rcc) => {
+                let dd_m = delta_distance.get::<si::meter>();
+                if rcc.grade_all_zero {
+                    0.0 * uc::R
+                } else if dd_m <= tol {
+                    let dist_m = distance_start.get::<si::meter>();
+                    rcc.interp_grade(dist_m) * uc::R
+                } else {
+                    let dist0_m = distance_start.get::<si::meter>();
+                    let dist1_m = dist0_m + dd_m;
+                    let e0 = rcc.interp_elevation(dist0_m);
+                    let e1 = rcc.interp_elevation(dist1_m);
+                    ((e1 - e0) / dd_m).asin().tan() * uc::R
+                }
+            }
+            None => {
+                let zero_grade = 0.0 * uc::R;
+                let grade_all_zero = {
+                    let mut all0 = true;
+                    for idx in 0..self.grade.len() {
+                        if self.grade[idx] != zero_grade {
+                            all0 = false;
+                            break;
+                        }
+                    }
+                    all0
+                };
+                if grade_all_zero {
+                    0.0 * uc::R
+                } else {
+                    let delta_dists_m: Vec<f64> = self
+                        .trapz_step_distances()
+                        .iter()
+                        .map(|dd| dd.get::<si::meter>())
+                        .collect();
+                    let trapz_distances_m = {
+                        let mut d = 0.0;
+                        let mut result = Vec::with_capacity(delta_dists_m.len());
+                        for dd in &delta_dists_m {
+                            d += *dd;
+                            result.push(d);
+                        }
+                        result
+                    };
+                    let dist0_m = distance_start.get::<si::meter>();
+                    let dd_m = delta_distance.get::<si::meter>();
+                    let dist1_m = dist0_m + dd_m;
+                    if dd_m < tol {
+                        if dist0_m < trapz_distances_m[0] {
+                            return self.grade[0];
+                        }
+                        let max_idx = self.grade.len() - 1;
+                        if dist0_m > trapz_distances_m[max_idx] {
+                            return self.grade[max_idx];
+                        }
+                        for idx in 1..self.time.len() {
+                            if dist0_m > trapz_distances_m[idx - 1]
+                                && dist0_m <= trapz_distances_m[idx]
+                            {
+                                return self.grade[idx];
+                            }
+                        }
+                        self.grade[max_idx]
+                    } else {
+                        // NOTE: we use the following instead of delta_elev_m
+                        // as it uses more precise trapezoidal diatance and
+                        // elevation at sample points. This also uses the
+                        // fully accurate trig functions in case we have large
+                        // slope angles. This level of rigor may be overkill.
+                        let trapz_elevations_m = {
+                            let delta_elevs_m: Vec<f64> = self
+                                .grade
+                                .iter()
+                                .zip(delta_dists_m)
+                                .map(|(g, dd)| {
+                                    let gr = g.get::<si::ratio>();
+                                    gr.atan().cos() * dd * gr
+                                })
+                                .collect();
+                            let mut result = Vec::with_capacity(delta_elevs_m.len());
+                            let mut elev_m = 0.0;
+                            for de in &delta_elevs_m {
+                                elev_m += *de;
+                                result.push(elev_m);
+                            }
+                            result
+                        };
+                        let interp = Interpolator::new_1d(
+                            trapz_distances_m,
+                            trapz_elevations_m,
+                            Strategy::Linear,
+                            Extrapolate::Clamp,
+                        )
+                        .unwrap();
+                        let e0_m = interp.interpolate(&[dist0_m]).unwrap();
+                        let e1_m = interp.interpolate(&[dist1_m]).unwrap();
+                        ((e1_m - e0_m) / dd_m).asin().tan() * uc::R
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[serde_api]
@@ -993,7 +1134,7 @@ mod tests {
     fn make_two_triangles_cycle() -> Cycle {
         let mut cyc = Cycle {
             name: String::from("Two Triangles"),
-            init_elev: None,
+            init_elev: Some(0.0 * uc::M),
             time: vec![
                 0.0 * uc::S,
                 10.0 * uc::S,
@@ -1016,8 +1157,8 @@ mod tests {
                 0.0 * uc::R,
                 0.0 * uc::R,
                 0.0 * uc::R,
-                1.0 * uc::R,
-                1.0 * uc::R,
+                0.01 * uc::R,
+                0.01 * uc::R,
             ],
             elev: vec![],
             pwr_max_chrg: vec![],
@@ -1087,7 +1228,7 @@ mod tests {
             cyc1.speed,
             vec![0.0 * uc::MPS, 5.0 * uc::MPS, 0.0 * uc::MPS]
         );
-        assert_eq!(cyc1.grade, vec![0.0 * uc::R, 1.0 * uc::R, 1.0 * uc::R]);
+        assert_eq!(cyc1.grade, vec![0.0 * uc::R, 0.01 * uc::R, 0.01 * uc::R]);
     }
 
     #[test]
@@ -1121,7 +1262,7 @@ mod tests {
         let expected = {
             let mut c = Cycle {
                 name: String::from("Two Triangles"),
-                init_elev: None,
+                init_elev: Some(0.0 * uc::M),
                 time: vec![
                     0.0 * uc::S,
                     10.0 * uc::S,
@@ -1160,8 +1301,8 @@ mod tests {
                     0.0 * uc::R,
                     0.0 * uc::R,
                     0.0 * uc::R,
-                    1.0 * uc::R,
-                    1.0 * uc::R,
+                    0.01 * uc::R,
+                    0.01 * uc::R,
                     0.0 * uc::R,
                     0.0 * uc::R,
                     0.0 * uc::R,
@@ -1187,5 +1328,81 @@ mod tests {
         // = extend by 8 s
         let actual = cyc.extend_time(absolute_time, time_fraction);
         assert_eq!(actual, expected);
+    }
+
+    /// Round the given number n to the given number of digits
+    /// - n: the number to round
+    /// - digits: the digits to round or defaults to 2; if not positive,
+    fn round(n: f64, digits: Option<i32>) -> f64 {
+        let digits = digits.unwrap_or(2);
+        let digits = if digits < 0 { 0 } else { digits };
+        let multiplier = 10.0_f64.powi(digits);
+        (n * multiplier).round() / multiplier
+    }
+
+    #[test]
+    fn cycle_step_distances_are_as_expected() {
+        let c = make_two_triangles_cycle();
+        let expected = vec![
+            0.0 * uc::M,
+            20.0 * uc::M,
+            20.0 * uc::M,
+            0.0 * uc::M,
+            25.0 * uc::M,
+            25.0 * uc::M,
+        ];
+        let actual = c.trapz_step_distances();
+        assert_eq!(actual.len(), expected.len());
+        for i in 0..expected.len() {
+            assert_eq!(actual[i], expected[i], "differ at step {i}");
+        }
+    }
+
+    #[test]
+    fn cycle_elevations_are_as_expected() {
+        let c = make_two_triangles_cycle();
+        let dh = 0.01_f64.atan().cos() * 25.0_f64 * 0.01_f64;
+        let expected = vec![
+            0.0 * uc::M,
+            0.0 * uc::M,
+            0.0 * uc::M,
+            0.0 * uc::M,
+            dh * uc::M,
+            dh * uc::M,
+        ];
+        let actual = c.trapz_step_elevations();
+        assert_eq!(actual.len(), expected.len());
+        for i in 0..expected.len() {
+            assert_eq!(actual[i], expected[i], "differ at step {i}");
+        }
+    }
+
+    #[test]
+    fn cycle_cache_yields_same_results() {
+        let c = make_two_triangles_cycle();
+        let cache = c.build_cache();
+        let dist_m = 0.0;
+        let e0_expected = 0.0;
+        let e0_actual = cache.interp_elevation(dist_m);
+        assert_eq!(e0_actual, e0_expected);
+        let dist_m = 65.0;
+        let e1_expected = 0.01_f64.atan().cos() * 25.0_f64 * 0.01_f64;
+        let e1_actual = cache.interp_elevation(dist_m);
+        assert_eq!(e1_actual, e1_expected);
+    }
+
+    #[test]
+    fn average_grade_over_range_is_correct() {
+        let c = make_two_triangles_cycle();
+        let cache = c.build_cache();
+        let d0 = 40.0 * uc::M;
+        let dd = 50.0 * uc::M;
+        let expected0 = 0.01 * uc::R;
+        let actual00 = c.average_grade_over_range(d0, dd, None);
+        let actual00 = round(actual00.get::<si::ratio>(), Some(6)) * uc::R;
+        assert_eq!(actual00, expected0);
+        let actual01 = c.average_grade_over_range(d0, dd, Some(&cache));
+        let actual01 = round(actual01.get::<si::ratio>(), Some(6)) * uc::R;
+        assert_eq!(actual01, expected0);
     }
 }
