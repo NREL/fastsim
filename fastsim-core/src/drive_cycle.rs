@@ -971,18 +971,18 @@ impl Cycle {
     ) -> si::Ratio {
         let tol = 1e-6;
         match &cache {
-            Some(rcc) => {
+            Some(cc) => {
                 let dd_m = delta_distance.get::<si::meter>();
-                if rcc.grade_all_zero {
+                if cc.grade_all_zero {
                     0.0 * uc::R
                 } else if dd_m <= tol {
                     let dist_m = distance_start.get::<si::meter>();
-                    rcc.interp_grade(dist_m) * uc::R
+                    cc.interp_grade(dist_m) * uc::R
                 } else {
                     let dist0_m = distance_start.get::<si::meter>();
                     let dist1_m = dist0_m + dd_m;
-                    let e0 = rcc.interp_elevation(dist0_m);
-                    let e1 = rcc.interp_elevation(dist1_m);
+                    let e0 = cc.interp_elevation(dist0_m);
+                    let e1 = cc.interp_elevation(dist1_m);
                     ((e1 - e0) / dd_m).asin().tan() * uc::R
                 }
             }
