@@ -1,3 +1,5 @@
+pub mod manipulation_utils;
+
 use crate::drive_cycle::manipulation_utils::CycleCache;
 use crate::imports::*;
 use crate::prelude::*;
@@ -5,8 +7,6 @@ use crate::prelude::*;
 use crate::resources;
 use fastsim_2::cycle::RustCycle as Cycle2;
 use std::cmp;
-
-pub mod manipulation_utils;
 
 #[serde_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
@@ -73,10 +73,7 @@ impl Cycle {
 
     #[pyo3(name = "to_microtrips", signature=(stop_speed_m_per_s=None))]
     fn to_microtrips_py(&self, stop_speed_m_per_s: Option<f64>) -> PyResult<Vec<Cycle>> {
-        let stop_speed = match stop_speed_m_per_s {
-            Some(v) => Some(v * uc::MPS),
-            None => None,
-        };
+        let stop_speed = stop_speed_m_per_s.map(|v| v * uc::MPS);
         Ok(self.to_microtrips(stop_speed))
     }
 
@@ -1362,7 +1359,7 @@ mod tests {
     fn cycle_elevations_are_as_expected() {
         let c = make_two_triangles_cycle();
         let dh = 0.01_f64.atan().cos() * 25.0_f64 * 0.01_f64;
-        let expected = vec![
+        let expected = [
             0.0 * uc::M,
             0.0 * uc::M,
             0.0 * uc::M,
