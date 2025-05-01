@@ -1073,6 +1073,51 @@ impl Cycle {
             }
         }
     }
+
+    /// Calculate the distance to next stop from `distance`.
+    /// - distance: the distance to calculate distance-to-stop from
+    ///
+    /// RETURN: returns the distance to the next stop from `distance`
+    ///
+    /// NOTE: distance may be negative if we're beyond the last stop
+    pub fn calc_distance_to_next_stop_from(
+        &self,
+        distance: si::Length,
+        cache: Option<&CycleCache>,
+    ) -> si::Length {
+        let tol = 1e-6;
+        let distance_m = distance.get::<si::meter>();
+        match cache {
+            Some(cc) => {
+                for (&d_m, &v) in cc.trapz_distances_m.iter().zip(self.speed.iter()) {
+                    let v_mps = v.get::<si::meter_per_second>();
+                    if (v_mps < tol) && (d_m > (distance_m + tol)) {
+                        return (d_m - distance_m) * uc::M;
+                    }
+                }
+                (*cc.trapz_distances_m.last().unwrap_or(&0.0) * uc::M) - distance
+            }
+            None => {
+                let ds_m = {
+                    let mut result = Vec::with_capacity(self.time.len());
+                    let mut d_m = 0.0;
+                    for dd in self.trapz_step_distances() {
+                        let dd_m = dd.get::<si::meter>();
+                        d_m += dd_m;
+                        result.push(d_m);
+                    }
+                    result
+                };
+                for (&d_m, &v) in ds_m.iter().zip(self.speed.iter()) {
+                    let v_mps = v.get::<si::meter_per_second>();
+                    if (v_mps < tol) && (d_m > (distance_m + tol)) {
+                        return (d_m - distance_m) * uc::M;
+                    }
+                }
+                *ds_m.last().unwrap_or(&0.0) * uc::M
+            }
+        }
+    }
 }
 
 #[serde_api]
@@ -1404,5 +1449,29 @@ mod tests {
         let actual01 = c.average_grade_over_range(d0, dd, Some(&cache));
         let actual01 = round(actual01.get::<si::ratio>(), Some(6)) * uc::R;
         assert_eq!(actual01, expected0);
+    }
+
+    #[test]
+    fn distance_to_next_stop_is_correct() {
+        let c = make_two_triangles_cycle();
+        let cache = c.build_cache();
+        let d = 20.0 * uc::M;
+        let expected = 20.0 * uc::M;
+        let actual = c.calc_distance_to_next_stop_from(d, None);
+        assert_eq!(actual, expected);
+        let actual = c.calc_distance_to_next_stop_from(d, Some(&cache));
+        assert_eq!(actual, expected);
+        let d = 65.0 * uc::M;
+        let expected = 25.0 * uc::M;
+        let actual = c.calc_distance_to_next_stop_from(d, None);
+        assert_eq!(actual, expected);
+        let actual = c.calc_distance_to_next_stop_from(d, Some(&cache));
+        assert_eq!(actual, expected);
+        let d = 0.0 * uc::M;
+        let expected = 40.0 * uc::M;
+        let actual = c.calc_distance_to_next_stop_from(d, None);
+        assert_eq!(actual, expected);
+        let actual = c.calc_distance_to_next_stop_from(d, Some(&cache));
+        assert_eq!(actual, expected);
     }
 }
