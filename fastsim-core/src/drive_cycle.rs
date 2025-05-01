@@ -1,6 +1,6 @@
 pub mod manipulation_utils;
 
-use crate::drive_cycle::manipulation_utils::CycleCache;
+use crate::drive_cycle::manipulation_utils::{speed_for_constant_jerk, CycleCache};
 use crate::imports::*;
 use crate::prelude::*;
 #[cfg(feature = "pyo3")]
@@ -1118,6 +1118,55 @@ impl Cycle {
             }
         }
     }
+
+    /// Modify the cycle using the given constant-jerk trajectory.
+    /// - i: the index into the cycle to initiate modification
+    ///   NOTE: THIS point is modified as trajectory is calculated as
+    ///   starting at i-1
+    /// - n: the number of steps ahead
+    /// - jerk: the jerk (deriviative of acceleration with time)
+    /// - accel0: the starting accelartion
+    ///
+    /// NOTE:
+    /// - modifies the cycle in-place. Purpose is to allow hitting
+    ///   a rendezvous point in time/speed in the future.
+    /// - CAUTION: not robust against variable duration time-steps
+    ///
+    /// RETURN: the final modified speed
+    pub fn modify_by_const_jerk_trajectory(
+        &mut self,
+        i: usize,
+        n: usize,
+        jerk: si::Jerk,
+        accel0: si::Acceleration,
+    ) -> si::Velocity {
+        let jerk_m_per_s3 = jerk.get::<si::meter_per_second_cubed>();
+        let accel0_m_per_s2 = accel0.get::<si::meter_per_second_squared>();
+        let zero_speed = 0.0 * uc::MPS;
+        if n == 0 {
+            return zero_speed;
+        }
+        let num_samples = self.speed.len();
+        if i >= num_samples {
+            if num_samples > 0 {
+                return self.speed[num_samples - 1];
+            }
+            return zero_speed;
+        }
+        let v0 = self.speed[i - 1].get::<si::meter_per_second>();
+        let dt = self.time[i].get::<si::second>() - self.time[i - 1].get::<si::second>();
+        let mut v = v0;
+        for ni in 1..(n + 1) {
+            let idx_to_set = (i - 1) + ni;
+            if idx_to_set >= num_samples {
+                break;
+            }
+            v = speed_for_constant_jerk(ni, v0, accel0_m_per_s2, jerk_m_per_s3, dt);
+            self.speed[idx_to_set] = v.max(0.0) * uc::MPS;
+        }
+        self.init().unwrap();
+        v * uc::MPS
+    }
 }
 
 #[serde_api]
@@ -1156,7 +1205,7 @@ impl CycleElement {}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{manipulation_utils::ConstantJerkTrajectory, *};
     fn mock_cyc_len_2() -> Cycle {
         let mut cyc = Cycle {
             name: String::new(),
@@ -1473,5 +1522,73 @@ mod tests {
         assert_eq!(actual, expected);
         let actual = c.calc_distance_to_next_stop_from(d, Some(&cache));
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn modifying_a_cycle_with_trajectory() {
+        let c0 = make_two_triangles_cycle();
+        let mut c = c0.clone();
+        let n = 3;
+        let d0 = 20.0; // units: m
+        let v0 = 4.0; // units: m/s
+        let dr = 65.0; // units: m
+        let vr = 5.0; // units: m/s
+        let dt = 10.0; // units: s
+        let traj = ConstantJerkTrajectory::from_speed_and_distance_targets(n, d0, v0, dr, vr, dt);
+        c.modify_by_const_jerk_trajectory(
+            2,
+            n,
+            traj.jerk_m_per_s3 * uc::MPS3,
+            traj.acceleration_m_per_s2 * uc::MPS2,
+        );
+        let expected = {
+            let mut cyc = Cycle {
+                name: String::from("Two Triangles"),
+                init_elev: Some(0.0 * uc::M),
+                time: vec![
+                    0.0 * uc::S,
+                    10.0 * uc::S,
+                    20.0 * uc::S,
+                    30.0 * uc::S,
+                    40.0 * uc::S,
+                    50.0 * uc::S,
+                ],
+                speed: vec![
+                    0.0 * uc::MPS,
+                    4.0 * uc::MPS,
+                    traj.speed_at_step(1) * uc::MPS,
+                    traj.speed_at_step(2) * uc::MPS,
+                    5.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                ],
+                dist: vec![],
+                grade: vec![
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.0 * uc::R,
+                    0.01 * uc::R,
+                    0.01 * uc::R,
+                ],
+                elev: vec![],
+                pwr_max_chrg: vec![],
+                grade_interp: Default::default(),
+                elev_interp: Default::default(),
+                temp_amb_air: Default::default(),
+                pwr_solar_load: Default::default(),
+            };
+            cyc.init().expect("initializaiton should not throw");
+            cyc
+        };
+        assert_eq!(c.time.len(), expected.time.len());
+        assert_eq!(c.speed.len(), expected.speed.len());
+        assert_eq!(c.dist.len(), expected.dist.len());
+        assert_eq!(c.grade.len(), expected.grade.len());
+        for idx in 0..c.speed.len() {
+            assert_eq!(c.time[idx], expected.time[idx]);
+            assert_eq!(c.speed[idx], expected.speed[idx]);
+            assert_eq!(c.dist[idx], expected.dist[idx]);
+            assert_eq!(c.grade[idx], expected.grade[idx]);
+        }
     }
 }

@@ -26,6 +26,15 @@ impl SerdeAPI for ConstantJerkTrajectory {}
 impl Init for ConstantJerkTrajectory {}
 
 impl ConstantJerkTrajectory {
+    /// Create a constant-jerk trajectory.
+    /// - n: the number of steps to use
+    /// - d0: the starting distance (m)
+    /// - v0: the starting speed (m/s)
+    /// - dr: the rendezvous distance (m)
+    /// - vr: the rendezvous speed (m/s)
+    /// - dt: constant step duration (s)
+    ///
+    /// RETURN: a ConstantJerkTrajectory
     pub fn from_speed_and_distance_targets(
         n: usize,
         d0: f64,
