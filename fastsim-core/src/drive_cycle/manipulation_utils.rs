@@ -218,6 +218,7 @@ pub fn accel_array_for_constant_jerk(n: usize, a0: f64, k: f64, dt: f64) -> Vec<
 /// Return the average step speeds of the cycle as vector of velicities.
 /// NOTE: the average speed from sample i-1 to i will appear as entry i.
 /// - cyc: an instance of the cycle to get average step speeds for.
+///
 /// RETURN: vector of velocities representing average step speeds.
 pub fn average_step_speeds(cyc: &Cycle) -> Vec<si::Velocity> {
     cyc.average_step_speeds()
@@ -255,6 +256,7 @@ pub fn trapz_distance_over_range(cyc: &Cycle, i_start: usize, i_end: usize) -> s
 
 /// Calculate the time in a cycle spent moving
 /// - stopped_speed_m_per_s: the speed above which we are considered to be moving
+///
 /// RETURN: the time spent moving in seconds
 pub fn time_spent_moving(cyc: &Cycle, stopped_speed: Option<si::Velocity>) -> si::Time {
     cyc.time_spent_moving(stopped_speed)
@@ -269,6 +271,7 @@ pub fn time_spent_moving(cyc: &Cycle, stopped_speed: Option<si::Velocity>) -> si
 ///   the average.
 /// - min_target_speed: the minimum speed we allow a vehicle to drop down to
 ///   over a microtrip
+///
 /// RETURN vector of distance and speed targets. The interpretation is that
 /// "at or above" the given distance, the given speed will be in effect as
 /// the target speed (until we pass the next entry's distance).
@@ -284,8 +287,10 @@ pub fn create_distance_and_target_speeds_by_microtrip(
 /// Extend the cycle's time.
 /// - absolute_time: an absolute time value
 /// - time_fraction: extend by the given fraction of cycle's current time
+///
 /// RETURN: new cycle with time extended by both the absolute
 ///         and fraction values
+///
 /// NOTE: absolute_time and time_faction are optional. Pass None to
 /// remove them from the equation.
 pub fn extend_cycle_time(
@@ -327,6 +332,7 @@ impl PassingInfo {
     /// - i: the time-step index for the start of consideration
     /// - distance_tolerance: the distance away from the lead vehicle at or above which
     ///   we consider ourselves "deviated" or "no longer following" the reference trace
+    ///
     /// RETURN: a PassingInfo structure
     pub fn from(
         cyc: &Cycle,
@@ -466,7 +472,7 @@ impl CycleCache {
     pub fn new(cyc: &Cycle) -> Self {
         let tol = 1e-6;
         let num_items = cyc.time.len();
-        let grade_all_zero = cyc.grade.len() == 0 || cyc.grade.iter().all(|g| *g == 0.0 * uc::R);
+        let grade_all_zero = cyc.grade.is_empty() || cyc.grade.iter().all(|g| *g == 0.0 * uc::R);
         let trapz_step_distances_m: Vec<f64> = cyc
             .trapz_step_distances()
             .iter()
@@ -658,7 +664,7 @@ mod tests {
         let a0_m_per_s2 = 1.0;
         let k_m_per_s3 = 0.0;
         let dt_s = 1.0;
-        let expected = vec![1.0, 1.0];
+        let expected = [1.0, 1.0];
         let actual = accel_array_for_constant_jerk(n, a0_m_per_s2, k_m_per_s3, dt_s);
         assert_eq!(actual.len(), expected.len());
         for i in 0..expected.len() {
@@ -668,7 +674,7 @@ mod tests {
     #[test]
     fn test_average_step_speeds() {
         let cyc = make_triangle_cycle();
-        let expected = vec![0.0 * uc::MPS, 2.0 * uc::MPS, 2.0 * uc::MPS, 0.0 * uc::MPS];
+        let expected = [0.0 * uc::MPS, 2.0 * uc::MPS, 2.0 * uc::MPS, 0.0 * uc::MPS];
         let actual = average_step_speeds(&cyc);
         assert_eq!(actual.len(), expected.len());
         for i in 0..expected.len() {
@@ -687,7 +693,7 @@ mod tests {
     #[test]
     fn test_trapz_step_distances() {
         let cyc = make_triangle_cycle();
-        let expected = vec![0.0 * uc::M, 20.0 * uc::M, 20.0 * uc::M, 0.0 * uc::M];
+        let expected = [0.0 * uc::M, 20.0 * uc::M, 20.0 * uc::M, 0.0 * uc::M];
         let actual = trapz_step_distances(&cyc);
         assert_eq!(actual.len(), expected.len());
         for i in 0..expected.len() {
@@ -732,7 +738,7 @@ mod tests {
     #[test]
     fn test_create_distance_and_target_speeds_by_microtrip() {
         let cyc = make_triangle_cycle();
-        let expected = vec![(0.0 * uc::M, (40.0 / 30.0) * uc::MPS)];
+        let expected = [(0.0 * uc::M, (40.0 / 30.0) * uc::MPS)];
         let v0 = 0.0 * uc::MPS;
         let actual = create_distance_and_target_speeds_by_microtrip(&cyc, None, 0.0, v0);
         assert_eq!(actual.len(), expected.len());

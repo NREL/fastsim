@@ -615,13 +615,14 @@ impl Cycle {
     /// Convert cycle into a vector of "microtrips".
     /// A microtrip is a start to a subsequent stop plus any idle time.
     /// - stop_speed: the speed at or below which vehicle is considered "stopped"
+    ///
     /// RETURN: vector of cycles with each cycle being a "microtrip".
     pub fn to_microtrips(&self, stop_speed: Option<si::Velocity>) -> Vec<Cycle> {
         let stop_speed = stop_speed.unwrap_or(1e-6 * uc::MPS);
         let mut microtrips = Vec::new();
         let mut current = Cycle {
             name: self.name.clone(),
-            init_elev: self.init_elev.clone(),
+            init_elev: self.init_elev,
             time: vec![],
             speed: vec![],
             dist: vec![],
@@ -635,8 +636,7 @@ impl Cycle {
         };
         let elements = self.to_elements();
         let mut moving: bool = false;
-        for idx in 0..elements.len() {
-            let element = &elements[idx];
+        for element in &elements {
             if element.speed > stop_speed && !moving && current.time.len() > 1 {
                 current.init().unwrap();
                 let last_idx = current.time.len() - 1;
@@ -792,14 +792,15 @@ impl Cycle {
         let i_start = cmp::min(step0, last_i);
         let i_end = cmp::min(step1, last_i);
         let mut distance = 0.0 * uc::M;
-        for i in cmp::min(i_start, i_end)..cmp::max(i_start, i_end) {
-            distance += distances[i];
+        for d in &distances[cmp::min(i_start, i_end)..cmp::max(i_start, i_end)] {
+            distance += *d;
         }
         distance
     }
 
     /// Calculate the time in a cycle spent moving
     /// - stopped_speed_m_per_s: the speed above which we are considered to be moving
+    ///
     /// RETURN: the time spent moving in seconds
     pub fn time_spent_moving(&self, stopped_speed: Option<si::Velocity>) -> si::Time {
         let stop_speed = stopped_speed.unwrap_or(0.0 * uc::MPS);
@@ -909,23 +910,23 @@ impl Cycle {
         let dt = 1.0 * uc::S;
         let mut idx = 1;
         loop {
-            let dt_extra_s = dt.get::<si::second>() as f64 * idx as f64;
+            let dt_extra_s = dt.get::<si::second>() * idx as f64;
             if dt_extra_s > extra_time_s as f64 {
                 break;
             }
             ts.push(t_end + dt_extra_s * uc::S);
             vs.push(0.0 * uc::MPS);
-            if gs.len() > 0 {
+            if !gs.is_empty() {
                 gs.push(0.0 * uc::R);
             }
-            if ps.len() > 0 {
-                ps.push(ps.last().unwrap().clone());
+            if !ps.is_empty() {
+                ps.push(*ps.last().unwrap());
             }
-            if temps.len() > 0 {
-                temps.push(temps.last().unwrap().clone());
+            if !temps.is_empty() {
+                temps.push(*temps.last().unwrap());
             }
-            if ss.len() > 0 {
-                ss.push(ss.last().unwrap().clone());
+            if !ss.is_empty() {
+                ss.push(*ss.last().unwrap());
             }
             idx += 1;
         }
@@ -956,7 +957,9 @@ impl Cycle {
     /// - distance_start: the distance at start of evaluation area
     /// - delta_distance: distance traveled from distance_start
     /// - cache: optional CycleCache which can save computation time
+    ///
     /// RETURN: average grade (rise over run) for the given range.
+    ///
     /// NOTE: grade is assumed to be constant from just after the
     /// previous sample point until the current sample point (inclusive).
     /// That is, grade[i] applies from distance, d, of (d[i - 1], d[i]]
@@ -1231,7 +1234,7 @@ mod tests {
     #[test]
     fn test_distance_and_target_speeds_by_microtrip() {
         let cyc = make_two_triangles_cycle();
-        let expected = vec![
+        let expected = [
             (0.0 * uc::M, (40.0 / 20.0) * uc::MPS),
             (40.0 * uc::M, (50.0 / 20.0) * uc::MPS),
         ];
@@ -1241,7 +1244,7 @@ mod tests {
             assert_eq!(actual[i].0, expected[i].0);
             assert_eq!(actual[i].1, expected[i].1);
         }
-        let expected = vec![
+        let expected = [
             (0.0 * uc::M, (40.0 / 30.0) * uc::MPS),
             (40.0 * uc::M, (50.0 / 20.0) * uc::MPS),
         ];
@@ -1340,7 +1343,7 @@ mod tests {
     #[test]
     fn cycle_step_distances_are_as_expected() {
         let c = make_two_triangles_cycle();
-        let expected = vec![
+        let expected = [
             0.0 * uc::M,
             20.0 * uc::M,
             20.0 * uc::M,
