@@ -112,6 +112,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
+          name: fastsim-${{ matrix.platform || matrix.os }}-py3.${{ matrix.python-version }}
           path: ./dist/*
 
   release:
@@ -121,6 +122,8 @@ jobs:
     steps:
       - name: download files
         uses: actions/download-artifact@v4
+        with:
+          name: fastsim-linux-py3.10
 
       - name: set up Python 3.10
         uses: actions/setup-python@v4
