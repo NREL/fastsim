@@ -1219,15 +1219,16 @@ dependencies = [
 
 [[package]]
 name = "ninterp"
-version = "0.6.4"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ceca4920b81f8382039b967f60925427cc061946a0cb95ef943170ec3eafac2c"
+checksum = "63257650dc3e5ae35af288f5eeb609fcfad018d0bded3ff57538c359af956e0e"
 dependencies = [
  "dyn-clone",
  "itertools 0.13.0",
  "ndarray 0.16.1",
  "num-traits",
  "serde",
+ "serde_unit_struct",
  "thiserror 1.0.69",
 ]
 
@@ -1837,6 +1838,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "87607cb1398ed59d48732e575a4c28a7a8ebf2454b964fe3f224f2afc07909e1"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "serde_unit_struct"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cee87479059950a55ed6089d755a105b8cdf16fbc51ea45a524ecff8da259987"
+dependencies = [
+ "serde_unit_struct_derive",
+]
+
+[[package]]
+name = "serde_unit_struct_derive"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f1b15838534b38fb67ffe60033fe3ffad48f916c175e8baa0400e0cdb958dec"
+dependencies = [
+ "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]
