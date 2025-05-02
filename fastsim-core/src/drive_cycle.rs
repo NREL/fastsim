@@ -1,6 +1,8 @@
 pub mod manipulation_utils;
 
-use crate::drive_cycle::manipulation_utils::{speed_for_constant_jerk, CycleCache};
+use crate::drive_cycle::manipulation_utils::{
+    speed_for_constant_jerk, ConstantJerkTrajectory, CycleCache,
+};
 use crate::imports::*;
 use crate::prelude::*;
 #[cfg(feature = "pyo3")]
@@ -1167,6 +1169,65 @@ impl Cycle {
         self.init().unwrap();
         v * uc::MPS
     }
+
+    /// Modify cycle to add a braking trajectory that would cover the same
+    /// distance as the given constant brake deceleration.
+    /// - brake_accel: the brake acceleration (m/s2); must be negative
+    /// - i: index where to initiate the stop trectory; start of the step
+    /// - desired_distance_to_stop: the desired distance to stop within. If
+    ///   not provided, it is calculated based on the braking deceleration.
+    ///
+    /// RETURN: (final speed of modified trajectory, number of steps to complete)
+    /// - the final speed should be zero ideally
+    /// - the number of time-steps required to complete the braking maneuver
+    ///
+    /// NOTE:
+    /// - modifies the cycle in-place.
+    pub fn modify_with_braking_trajectory(
+        &mut self,
+        brake_accel: si::Acceleration,
+        i: usize,
+        desired_distance_to_stop: Option<si::Length>,
+    ) -> anyhow::Result<(si::Velocity, usize)> {
+        ensure!(brake_accel < 0.0 * uc::MPS2);
+        if i >= self.time.len() {
+            return Ok((*self.speed.last().unwrap(), 0));
+        }
+        let i = if i < 1 { 1 } else { i };
+        let v0_mps = self.speed[i - 1].get::<si::meter_per_second>();
+        let dt_s = self.time[i].get::<si::second>() - self.time[i - 1].get::<si::second>();
+        let brake_accel_m_per_s2 = brake_accel.get::<si::meter_per_second_squared>();
+        // distance-to-stop (m)
+        let dts_m = match desired_distance_to_stop {
+            Some(dts) => {
+                let dts_m = dts.get::<si::meter>();
+                if dts_m > 0.0 {
+                    dts_m
+                } else {
+                    -0.5 * v0_mps * v0_mps / brake_accel_m_per_s2
+                }
+            }
+            None => -0.5 * v0_mps * v0_mps / brake_accel_m_per_s2,
+        };
+        if dts_m <= 0.0 {
+            return Ok((v0_mps * uc::MPS, 0));
+        }
+        // time-to-stop (s)
+        let tts_s = -v0_mps / brake_accel_m_per_s2;
+        // number of steps to stop
+        let n = (tts_s / dt_s).round() as usize;
+        let n = if n < 2 { 2 } else { n }; // need at least 2 steps
+        let traj = ConstantJerkTrajectory::from_speed_and_distance_targets(
+            n, 0.0, v0_mps, dts_m, 0.0, dt_s,
+        );
+        let v_final = self.modify_by_const_jerk_trajectory(
+            i,
+            n,
+            traj.jerk_m_per_s3 * uc::MPS3,
+            traj.acceleration_m_per_s2 * uc::MPS2,
+        );
+        Ok((v_final, n))
+    }
 }
 
 #[serde_api]
@@ -1589,6 +1650,101 @@ mod tests {
             assert_eq!(c.speed[idx], expected.speed[idx]);
             assert_eq!(c.dist[idx], expected.dist[idx]);
             assert_eq!(c.grade[idx], expected.grade[idx]);
+        }
+    }
+
+    #[test]
+    pub fn modify_with_braking_trajectory() {
+        let mut actual = {
+            let mut cyc = Cycle {
+                name: String::from("Test"),
+                init_elev: Some(0.0 * uc::M),
+                time: vec![
+                    0.0 * uc::S,
+                    1.0 * uc::S,
+                    2.0 * uc::S,
+                    3.0 * uc::S,
+                    4.0 * uc::S,
+                    5.0 * uc::S,
+                ],
+                speed: vec![
+                    0.0 * uc::MPS,
+                    4.0 * uc::MPS,
+                    4.0 * uc::MPS,
+                    1.0 * uc::MPS,
+                    1.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                ],
+                dist: vec![],
+                grade: vec![],
+                elev: vec![],
+                pwr_max_chrg: vec![],
+                grade_interp: Default::default(),
+                elev_interp: Default::default(),
+                temp_amb_air: Default::default(),
+                pwr_solar_load: Default::default(),
+            };
+            cyc.init().expect("initializaiton should not throw");
+            cyc
+        };
+        let precision = Some(6);
+        let (v_end, n_steps) = actual
+            .modify_with_braking_trajectory((-4.0 / 3.0) * uc::MPS2, 3, Some(4.0 * uc::M))
+            .expect("No error expected on modifying with braking trajectory");
+        let v_end = round(v_end.get::<si::meter_per_second>(), precision);
+        assert_eq!(v_end, 0.0);
+        assert_eq!(n_steps, 3);
+        let expected = {
+            let n = 3;
+            let d0 = 0.0;
+            let v0 = 4.0;
+            let dr = 4.0;
+            let vr = 0.0;
+            let dt = 1.0;
+            let traj =
+                ConstantJerkTrajectory::from_speed_and_distance_targets(n, d0, v0, dr, vr, dt);
+            let mut cyc = Cycle {
+                name: String::from("Test"),
+                init_elev: Some(0.0 * uc::M),
+                time: vec![
+                    0.0 * uc::S,
+                    1.0 * uc::S,
+                    2.0 * uc::S,
+                    3.0 * uc::S,
+                    4.0 * uc::S,
+                    5.0 * uc::S,
+                ],
+                speed: vec![
+                    0.0 * uc::MPS,
+                    4.0 * uc::MPS,
+                    4.0 * uc::MPS,
+                    traj.speed_at_step(1) * uc::MPS,
+                    traj.speed_at_step(2) * uc::MPS,
+                    traj.speed_at_step(3) * uc::MPS,
+                ],
+                dist: vec![],
+                grade: vec![],
+                elev: vec![],
+                pwr_max_chrg: vec![],
+                grade_interp: Default::default(),
+                elev_interp: Default::default(),
+                temp_amb_air: Default::default(),
+                pwr_solar_load: Default::default(),
+            };
+            cyc.init().expect("initializaiton should not throw");
+            cyc
+        };
+        assert_eq!(actual.time.len(), expected.time.len());
+        for i in 0..actual.time.len() {
+            let at = round(actual.time[i].get::<si::second>(), precision);
+            let et = round(expected.time[i].get::<si::second>(), precision);
+            let av = round(actual.speed[i].get::<si::meter_per_second>(), precision);
+            let ev = round(expected.speed[i].get::<si::meter_per_second>(), precision);
+            let ad = round(actual.dist[i].get::<si::meter>(), precision);
+            let ed = round(expected.dist[i].get::<si::meter>(), precision);
+            assert_eq!(at, et, "time@t={et}&i={i}");
+            assert_eq!(av, ev, "speed@t={et}&i={i}");
+            assert_eq!(ad, ed, "dist@t={et}&i={i}");
         }
     }
 }
