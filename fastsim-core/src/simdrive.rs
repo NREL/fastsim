@@ -31,6 +31,9 @@ pub struct SimParams {
     /// whether to use FASTSim-2 style air density
     #[serde(default = "SimParams::def_f2_const_air_density")]
     pub f2_const_air_density: bool,
+    /// Coasting Parameters
+    #[serde(default = "SimParams::def_coast_allow")]
+    pub coast_allow: bool,
 }
 
 #[named_struct_pyo3_api]
@@ -61,6 +64,9 @@ impl SimParams {
     fn def_f2_const_air_density() -> bool {
         Self::default().f2_const_air_density
     }
+    fn def_coast_allow() -> bool {
+        Self::default().coast_allow
+    }
 }
 
 impl SerdeAPI for SimParams {}
@@ -75,6 +81,7 @@ impl Default for SimParams {
             trace_miss_tol: Default::default(),
             trace_miss_opts: Default::default(),
             f2_const_air_density: true,
+            coast_allow: false,
         }
     }
 }
