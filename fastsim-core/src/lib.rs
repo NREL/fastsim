@@ -28,6 +28,8 @@ pub mod pyo3;
 pub mod resources;
 pub mod si;
 pub mod simdrive;
+#[cfg(feature = "simdrivelabel")]
+pub mod simdrivelabel;
 pub mod traits;
 pub mod uc;
 pub mod utils;
