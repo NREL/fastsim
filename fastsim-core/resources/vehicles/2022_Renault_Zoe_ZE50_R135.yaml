@@ -2,7 +2,7 @@
 name: 2022 Renault Zoe ZE50 R135
 year: 2022
 pt_type:
-  BatteryElectricVehicle:
+  BEV:
     res:
       mass_kilograms: ~
       specific_energy_joules_per_kilogram: ~

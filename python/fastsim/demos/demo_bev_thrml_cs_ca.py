@@ -32,7 +32,7 @@ veh = fsim.Vehicle.from_resource("2020 Chevrolet Bolt EV.yaml")
 
 veh_dict = veh.to_pydict()
 veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_amb_and_init
-veh_dict["pt_type"]["BatteryElectricVehicle"]["res"]["thrml"]["RESLumpedThermal"]["state"][
+veh_dict["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["state"][
     "temperature_kelvin"
 ] = temp_amb_and_init
 veh = fsim.Vehicle.from_pydict(veh_dict)
@@ -75,7 +75,7 @@ assert sd_dict["veh.cabin.LumpedCabin.state.temperature_kelvin"] > 273.15 + 15.0
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
 res = fsim.ReversibleEnergyStorage.from_pydict(
-    sd.to_pydict()["veh"]["pt_type"]["BatteryElectricVehicle"]["res"],
+    sd.to_pydict()["veh"]["pt_type"]["BEV"]["res"],
 )
 res.set_default_pwr_interp()
 

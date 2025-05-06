@@ -209,6 +209,7 @@ impl Mass for Vehicle {
         let pt_mass = match &self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => conv.mass()?,
             PowertrainType::HybridElectricVehicle(hev) => hev.mass()?,
+            PowertrainType::PlugInHybridElectricVehicle(phev) => phev.mass()?,
             PowertrainType::BatteryElectricVehicle(bev) => bev.mass()?,
         };
         if let (Some(pt_mass), Some(chassis_mass)) = (pt_mass, chassis_mass) {
@@ -223,6 +224,7 @@ impl Mass for Vehicle {
         match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => conv.expunge_mass_fields(),
             PowertrainType::HybridElectricVehicle(hev) => hev.expunge_mass_fields(),
+            PowertrainType::PlugInHybridElectricVehicle(phev) => phev.expunge_mass_fields(),
             PowertrainType::BatteryElectricVehicle(bev) => bev.expunge_mass_fields(),
         };
     }

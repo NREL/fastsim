@@ -366,6 +366,7 @@ impl Vehicle {
             fc_eff_type: match &self.pt_type {
                 PowertrainType::ConventionalVehicle(_) => "SI".into(),
                 PowertrainType::HybridElectricVehicle(_) => "Atkinson".into(),
+                PowertrainType::PlugInHybridElectricVehicle(_) => "Atkinson".into(),
                 PowertrainType::BatteryElectricVehicle(_) => "SI".into(),
             },
             fc_eff_type_doc: None,
@@ -581,6 +582,7 @@ impl Vehicle {
             veh_pt_type: match &self.pt_type {
                 PowertrainType::ConventionalVehicle(_) => "Conv".into(),
                 PowertrainType::HybridElectricVehicle(_) => "HEV".into(),
+                PowertrainType::PlugInHybridElectricVehicle(_) => "PHEV".into(),
                 PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
             },
             veh_year: self.year,

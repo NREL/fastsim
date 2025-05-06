@@ -154,14 +154,30 @@ impl SimDrive {
     //       multiple causes -- new feature
 
     /// Run vehicle simulation, and, if applicable, apply powertrain-specific
-    /// corrections (e.g. iterate `walk` until SOC balance is achieved -- i.e. initial
-    /// and final SOC are nearly identical)
+    /// corrections:
+    /// - for HEV, set initial SOC to mean of min and max SOC, and then iterate
+    ///   `walk` until SOC balance is achieved -- i.e. initial and final SOC are
+    ///   nearly identical
+    /// - for PHEV, set initial SOC to max SOC, and then simulate once
+    /// - for BEV, set initial SOC to max SOC, and then simulate once
+    /// - for Conv, simulate once
+    ///
+    /// # Important Considerations
+    /// If you need to run a [ReversibleEnergyStorage]-equipped vehicle for
+    /// only one iteration without modifying the initial SOC, then run the
+    /// [Self::walk_once] method directly
     pub fn walk(&mut self) -> anyhow::Result<()> {
         match self.veh.pt_type {
             PowertrainType::HybridElectricVehicle(_) => {
                 // Net battery energy used per amount of fuel used
                 // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
                 let veh_init = self.veh.clone();
+                let res_mut = self.veh.res_mut().with_context(|| format_dbg!())?;
+                res_mut.state.soc.mark_stale();
+                res_mut
+                    .state
+                    .soc
+                    .update(0.5 * (res_mut.min_soc + res_mut.max_soc), || format_dbg!())?;
                 loop {
                     self.veh
                         .hev_mut()
@@ -254,7 +270,25 @@ impl SimDrive {
                     }
                 }
             }
-            _ => self.walk_once()?,
+            PowertrainType::PlugInHybridElectricVehicle(_) => {
+                let res_mut = self.veh.res_mut().with_context(|| format_dbg!())?;
+                res_mut.state.soc.mark_stale();
+                res_mut
+                    .state
+                    .soc
+                    .update(res_mut.max_soc, || format_dbg!())?;
+                self.walk_once()?
+            }
+            PowertrainType::BatteryElectricVehicle(_) => {
+                let res_mut = self.veh.res_mut().with_context(|| format_dbg!())?;
+                res_mut.state.soc.mark_stale();
+                res_mut
+                    .state
+                    .soc
+                    .update(res_mut.max_soc, || format_dbg!())?;
+                self.walk_once()?
+            }
+            PowertrainType::ConventionalVehicle(_) => self.walk_once()?,
         }
         Ok(())
     }

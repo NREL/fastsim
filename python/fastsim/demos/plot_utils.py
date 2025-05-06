@@ -87,7 +87,7 @@ def plot_bev_temperatures(
     ax[0].plot(
         df["cyc.time_seconds"],
         df[
-            "veh.pt_type.BatteryElectricVehicle.res.thrml."
+            "veh.pt_type.BEV.res.thrml."
             + "RESLumpedThermal.history.temperature_kelvin"
         ]
         - 273.15,
@@ -180,7 +180,7 @@ def plot_bev_res_pwr(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tup
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.pwr_out_electrical_watts"] / 1e3,
+        df["veh.pt_type.BEV.res.history.pwr_out_electrical_watts"] / 1e3,
         label="electrical out",
     )
     ax[0].set_ylabel("RES Power [kW]")
@@ -189,7 +189,7 @@ def plot_bev_res_pwr(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tup
     ax[1].set_prop_cycle(get_paired_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.soc"],
+        df["veh.pt_type.BEV.res.history.soc"],
         label="soc",
     )
     ax[1].set_ylabel("SOC")
@@ -226,7 +226,7 @@ def plot_bev_res_energy(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.energy_out_electrical_joules"] / 1e3,
+        df["veh.pt_type.BEV.res.history.energy_out_electrical_joules"] / 1e3,
         label="electrical out",
     )
     ax[0].set_ylabel("RES Energy [kW]")
@@ -235,7 +235,7 @@ def plot_bev_res_energy(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> 
     ax[1].set_prop_cycle(get_paired_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.soc"],
+        df["veh.pt_type.BEV.res.history.soc"],
         label="soc",
     )
     ax[1].set_ylabel("SOC")

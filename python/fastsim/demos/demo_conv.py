@@ -91,8 +91,8 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     ax[0].plot(
         df["cyc.time_seconds"],
         (
-            df["veh.pt_type.ConventionalVehicle.fc.history.pwr_prop_watts"]
-            + df["veh.pt_type.ConventionalVehicle.fc.history.pwr_aux_watts"]
+            df["veh.pt_type.Conv.fc.history.pwr_prop_watts"]
+            + df["veh.pt_type.Conv.fc.history.pwr_aux_watts"]
         )
         / 1e3,
         label="f3 shaft",
@@ -104,7 +104,7 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.ConventionalVehicle.fc.history.pwr_fuel_watts"] / 1e3,
+        df["veh.pt_type.Conv.fc.history.pwr_fuel_watts"] / 1e3,
         label="f3 fuel",
     )
     ax[0].plot(
@@ -119,8 +119,8 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     ax[1].plot(
         df["cyc.time_seconds"],
         (
-            df["veh.pt_type.ConventionalVehicle.fc.history.pwr_prop_watts"]
-            + df["veh.pt_type.ConventionalVehicle.fc.history.pwr_aux_watts"]
+            df["veh.pt_type.Conv.fc.history.pwr_prop_watts"]
+            + df["veh.pt_type.Conv.fc.history.pwr_aux_watts"]
         )
         / 1e3
         - np.array(sd2.fc_kw_out_ach.tolist()),
@@ -128,7 +128,7 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     )
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.ConventionalVehicle.fc.history.pwr_fuel_watts"] / 1e3
+        df["veh.pt_type.Conv.fc.history.pwr_fuel_watts"] / 1e3
         - np.array(sd2.fs_kw_out_ach.tolist()),
         label="fuel",
     )
@@ -167,8 +167,8 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     ax[0].plot(
         df["cyc.time_seconds"][:: veh.save_interval],
         (
-            df["veh.pt_type.ConventionalVehicle.fc.history.energy_prop_joules"]
-            + df["veh.pt_type.ConventionalVehicle.fc.history.energy_aux_joules"]
+            df["veh.pt_type.Conv.fc.history.energy_prop_joules"]
+            + df["veh.pt_type.Conv.fc.history.energy_aux_joules"]
         )
         / 1e6,
         label="f3 shaft",
@@ -180,7 +180,7 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     )
     ax[0].plot(
         df["cyc.time_seconds"][:: veh.save_interval],
-        df["veh.pt_type.ConventionalVehicle.fc.history.energy_fuel_joules"] / 1e6,
+        df["veh.pt_type.Conv.fc.history.energy_fuel_joules"] / 1e6,
         label="f3 fuel",
     )
     ax[0].plot(
@@ -195,8 +195,8 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     ax[1].plot(
         df["cyc.time_seconds"][:: veh.save_interval],
         (
-            df["veh.pt_type.ConventionalVehicle.fc.history.energy_prop_joules"]
-            + df["veh.pt_type.ConventionalVehicle.fc.history.energy_aux_joules"]
+            df["veh.pt_type.Conv.fc.history.energy_prop_joules"]
+            + df["veh.pt_type.Conv.fc.history.energy_aux_joules"]
         )
         / 1e6
         - np.array(sd2.fc_cumu_mj_out_ach.tolist()),
@@ -204,14 +204,14 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     )
     ax[1].plot(
         df["cyc.time_seconds"][:: veh.save_interval],
-        df["veh.pt_type.ConventionalVehicle.fc.history.energy_fuel_joules"] / 1e6
+        df["veh.pt_type.Conv.fc.history.energy_fuel_joules"] / 1e6
         - np.array(sd2.fs_cumu_mj_out_ach.tolist()),
         label="fuel",
     )
     ax[1].set_ylim(
         (
-            -sd_dict["veh.pt_type.ConventionalVehicle.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
-            sd_dict["veh.pt_type.ConventionalVehicle.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
+            -sd_dict["veh.pt_type.Conv.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
+            sd_dict["veh.pt_type.Conv.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
         )
     )
     ax[1].set_ylabel("FC Energy\nDelta (f3-f2) [MJ]\n+/- 10% Range")

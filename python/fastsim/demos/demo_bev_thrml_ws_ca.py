@@ -33,7 +33,7 @@ veh = fsim.Vehicle.from_resource("2020 Chevrolet Bolt EV.yaml")
 
 veh_dict = veh.to_pydict()
 veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_init_bat_and_cab
-veh_dict["pt_type"]["BatteryElectricVehicle"]["res"]["thrml"]["RESLumpedThermal"]["state"][
+veh_dict["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["state"][
     "temperature_kelvin"
 ] = temp_init_bat_and_cab
 veh = fsim.Vehicle.from_pydict(veh_dict)
@@ -73,7 +73,7 @@ fig, ax = plot_road_loads(df, veh, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
 res = fsim.ReversibleEnergyStorage.from_pydict(
-    sd.to_pydict()["veh"]["pt_type"]["BatteryElectricVehicle"]["res"],
+    sd.to_pydict()["veh"]["pt_type"]["BEV"]["res"],
 )
 res.set_default_pwr_interp()
 

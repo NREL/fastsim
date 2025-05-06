@@ -2,7 +2,7 @@
 name: 2016 Toyota Prius Two FWD
 year: 2016
 pt_type:
-  HybridElectricVehicle:
+  HEV:
     res:
       mass_kilograms: ~
       specific_energy_joules_per_kilogram: ~
