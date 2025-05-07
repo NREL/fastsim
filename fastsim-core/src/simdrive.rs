@@ -113,6 +113,7 @@ pub struct SimDrive {
     #[has_state]
     pub veh: Vehicle,
     pub cyc: Cycle,
+    pub cyc0: Cycle,
     pub sim_params: SimParams,
 }
 
@@ -153,6 +154,9 @@ impl Init for SimDrive {
         self.cyc
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        self.cyc0
+            .init()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.sim_params
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
@@ -162,9 +166,11 @@ impl Init for SimDrive {
 
 impl SimDrive {
     pub fn new(veh: Vehicle, cyc: Cycle, sim_params: Option<SimParams>) -> Self {
+        let cyc0 = cyc.clone();
         Self {
             veh,
             cyc,
+            cyc0,
             sim_params: sim_params.unwrap_or_default(),
         }
     }
@@ -1025,9 +1031,11 @@ mod tests {
     fn test_sim_drive_bev() {
         let _veh = mock_bev();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
+        let _cyc0 = _cyc.clone();
         let mut sd = SimDrive {
             veh: _veh,
             cyc: _cyc,
+            cyc0: _cyc0,
             sim_params: Default::default(),
         };
         sd.walk().unwrap();
