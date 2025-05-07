@@ -14,8 +14,6 @@ pub struct Cycle {
     /// Name of cycle (can be left empty)
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub name: String,
-    // TODO: either write or automate generation of getter and setter for this
-    // TODO: put the above TODO in github issue for all fields with `Option<...>` type
     /// inital elevation
     pub init_elev: Option<si::Length>,
     /// simulation time
@@ -528,7 +526,6 @@ pub struct CycleElement {
     #[serde(alias = "speed_mps", alias = "cycMps")]
     pub speed: si::Velocity,
     // `dist` is not included here because it is derived in `Init::init`
-    // TODO: make `fastsim_api` handle Option or write custom getter/setter
     /// road grade
     #[serde(alias = "cycGrade")]
     pub grade: Option<si::Ratio>,

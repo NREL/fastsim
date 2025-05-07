@@ -31,7 +31,7 @@ pub struct Vehicle {
     /// Vehicle name
     name: String,
     /// Year manufactured
-    year: u32,
+    year: u8,
     #[has_state]
     /// type of vehicle powertrain including contained type-specific parameters and variables
     pub pt_type: PowertrainType,

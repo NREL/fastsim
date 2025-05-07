@@ -43,10 +43,9 @@ pub struct LabelFe {
     pub adj_cs_comb_mpgge: Option<f64>,
     pub adj_cd_comb_mpgge: Option<f64>,
     pub net_phev_cd_miles: Option<f64>,
-    pub trace_miss_speed_mph: f64,
 }
 
-#[fastsim_proc_macros::serde_api]
+#[serde_api]
 #[derive(Default, Clone, Debug, Deserialize, Serialize, PartialEq)]
 /// Label fuel economy values for a PHEV vehicle
 pub struct LabelFePHEV {
@@ -55,7 +54,7 @@ pub struct LabelFePHEV {
     pub hwy: PHEVCycleCalc,
 }
 
-#[fastsim_proc_macros::serde_api]
+#[serde_api]
 #[derive(Default, Clone, Debug, Deserialize, Serialize, PartialEq)]
 /// Label fuel economy calculations for a specific cycle of a PHEV vehicle
 pub struct PHEVCycleCalc {
@@ -90,16 +89,16 @@ pub struct PHEVCycleCalc {
     pub lab_mpgge: f64,
     pub lab_kwh_per_mi: f64,
     pub lab_uf: f64,
-    pub lab_uf_gpm: Array1<f64>,
-    pub lab_iter_uf: Array1<f64>,
-    pub lab_iter_uf_kwh_per_mi: Array1<f64>,
-    pub lab_iter_kwh_per_mi: Array1<f64>,
-    pub adj_iter_mpgge: Array1<f64>,
-    pub adj_iter_kwh_per_mi: Array1<f64>,
-    pub adj_iter_cd_miles: Array1<f64>,
-    pub adj_iter_uf: Array1<f64>,
+    pub lab_uf_gpm: Vec<f64>,
+    pub lab_iter_uf: Vec<f64>,
+    pub lab_iter_uf_kwh_per_mi: Vec<f64>,
+    pub lab_iter_kwh_per_mi: Vec<f64>,
+    pub adj_iter_mpgge: Vec<f64>,
+    pub adj_iter_kwh_per_mi: Vec<f64>,
+    pub adj_iter_cd_miles: Vec<f64>,
+    pub adj_iter_uf: Vec<f64>,
     pub adj_iter_uf_gpm: Vec<f64>,
-    pub adj_iter_uf_kwh_per_mi: Array1<f64>,
+    pub adj_iter_uf_kwh_per_mi: Vec<f64>,
     pub adj_cd_miles: f64,
     pub adj_cd_mpgge: f64,
     pub adj_cs_mpgge: f64,
@@ -134,7 +133,9 @@ impl Default for AdjCoef {
 #[derive(Default, Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct RustLongParams {
     pub ld_fe_adj_coef: AdjCoefMap,
+    /// Frequency of recharge events
     pub rechg_freq_miles: Vec<f64>,
+    /// Array of utility factor
     pub uf_array: Vec<f64>,
 }
 
