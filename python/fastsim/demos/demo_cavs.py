@@ -10,10 +10,11 @@ This module demonstrates:
 import os
 
 import matplotlib.pyplot as plt
-import plot_utils as pu
+import numpy as np
 import seaborn as sns
 
 import fastsim as fsim
+import fastsim.demos.plot_utils as pu
 
 sns.set_theme()
 
@@ -23,7 +24,7 @@ SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 
 
-def main():
+def microtrip_demo():
     """Run a demonstration of cycle manipulation utilities"""
     cycle_name = "udds"
     cycle = fsim.Cycle.from_resource(f"{cycle_name}.csv")
@@ -37,18 +38,51 @@ def main():
         for idx, mt in enumerate(microtrips):
             color = pu.BASE_COLORS[idx % len(pu.BASE_COLORS)]
             line = pu.BASE_LINE_STYLES[idx % len(pu.BASE_LINE_STYLES)]
-            ax.plot(mt.time_s, mt.speed_m_per_s,
-                    marker=".", color=color, linestyle=line,
-                    label=f"#{idx + 1}")
+            ax.plot(
+                mt.time_s,
+                mt.speed_m_per_s,
+                marker=".",
+                color=color,
+                linestyle=line,
+                label=f"#{idx + 1}",
+            )
             if idx >= max_microtrips:
                 break
         ax.set_title(f"First {num} Microtrips of {cycle_name.upper()}")
         ax.set_ylabel("Speed (m/s)")
         ax.set_xlabel("Time (s)")
         ax.legend()
+        fig.tight_layout()
+        plt.show(block=True)
+
+
+def coasting_demo():
+    """Run a demonstration of a coasting maneuver"""
+    veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
+    veh.set_save_interval(1)
+    cyc = fsim.Cycle.from_resource("udds.csv")
+    params = fsim.SimParams.default()
+    coast_speed_mps = 20.0
+    params.enable_coasting_with_start_speed(coast_speed_mps)
+    sd = fsim.SimDrive(veh, cyc, params)
+    sd.walk()
+    if SHOW_PLOTS:
+        df = sd.to_dataframe()
+        fig, ax = plt.subplots()
+        ax.plot(cyc.time_s, cyc.speed_m_per_s, "k-", label="original")
+        ax.plot(
+            np.array(df["cyc.time_seconds"])[:: veh.save_interval],
+            np.array(df["veh.history.speed_ach_meters_per_second"]),
+            "b:", label="coast")
+        ax.set_title(f"Coasting behavior from {coast_speed_mps} m/s")
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("Speed [m/s]")
+        ax.legend()
+        fig.tight_layout()
         plt.show(block=True)
 
 
 if __name__ == "__main__":
-    main()
+    microtrip_demo()
+    coasting_demo()
     print("Done!")

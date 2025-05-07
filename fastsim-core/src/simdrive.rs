@@ -32,8 +32,12 @@ pub struct SimParams {
     #[serde(default = "SimParams::def_f2_const_air_density")]
     pub f2_const_air_density: bool,
     /// Coasting Parameters
+    /// whether to allow coasting or not.
     #[serde(default = "SimParams::def_coast_allow")]
     pub coast_allow: bool,
+    /// for testing: triggers coasting when vehicle passes the given speed
+    #[serde(default = "SimParams::def_coast_start_speed")]
+    pub coast_start_speed: si::Velocity,
 }
 
 #[named_struct_pyo3_api]
@@ -42,6 +46,16 @@ impl SimParams {
     #[pyo3(name = "default")]
     fn default_py() -> Self {
         Self::default()
+    }
+
+    #[pyo3(name = "enable_coasting_with_start_speed")]
+    fn enable_coasting_with_start_speed_py(
+        &mut self,
+        coast_start_speed_m_per_s: f64,
+    ) -> anyhow::Result<()> {
+        self.coast_allow = true;
+        self.coast_start_speed = coast_start_speed_m_per_s * uc::MPS;
+        Ok(())
     }
 }
 
@@ -67,6 +81,9 @@ impl SimParams {
     fn def_coast_allow() -> bool {
         Self::default().coast_allow
     }
+    fn def_coast_start_speed() -> si::Velocity {
+        Self::default().coast_start_speed
+    }
 }
 
 impl SerdeAPI for SimParams {}
@@ -82,6 +99,7 @@ impl Default for SimParams {
             trace_miss_opts: Default::default(),
             f2_const_air_density: true,
             coast_allow: false,
+            coast_start_speed: 0.0 * uc::MPS,
         }
     }
 }
@@ -1112,6 +1130,47 @@ mod tests {
                     .get_fresh(String::new)
                     .unwrap()
                     != si::Energy::ZERO
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "resources")]
+    fn test_coasting() {
+        let mut veh = Vehicle::from_resource("2020 Chevrolet Bolt EV.yaml", false).unwrap();
+        veh.set_save_interval(Some(1))
+            .expect("No error expected setting save interval");
+        let cyc = Cycle::from_resource("udds.csv", false).unwrap();
+        let params = SimParams {
+            coast_allow: true,
+            coast_start_speed: 20.0 * uc::MPS,
+            ..Default::default()
+        };
+        let mut sd = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
+        sd.walk().unwrap();
+        let speed_req_mps: Vec<f64> = cyc
+            .speed
+            .clone()
+            .iter()
+            .map(|v| v.get::<si::meter_per_second>())
+            .collect();
+        let speed_ach_mps: Vec<f64> = sd
+            .veh
+            .history
+            .speed_ach
+            .clone()
+            .iter()
+            .map(|v| {
+                v.get_fresh(|| format_dbg!())
+                    .unwrap()
+                    .get::<si::meter_per_second>()
+            })
+            .collect();
+        assert_eq!(speed_req_mps.len(), speed_ach_mps.len());
+        for idx in 0..speed_req_mps.len() {
+            assert_eq!(
+                speed_req_mps[idx], speed_ach_mps[idx],
+                "Speeds do not match at {idx}"
             );
         }
     }
