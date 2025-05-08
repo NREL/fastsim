@@ -1,6 +1,24 @@
 use crate::drive_cycle::Cycle;
 use crate::imports::*;
 
+pub struct RendezvousTrajectory {
+    pub found_trajectory: bool,
+    pub idx: usize,
+    pub n: usize,
+    pub full_brake_steps: usize,
+    pub jerk_m_per_s3: f64,
+    pub accel0_m_per_s2: f64,
+    pub accel_spread: f64,
+}
+
+pub struct CoastTrajectory {
+    pub found_trajectory: bool,
+    pub distance_to_stop_via_coast_m: f64,
+    pub start_idx: usize,
+    pub speed_m_per_s: Option<Vec<f64>>,
+    pub distance_to_brake_m: Option<f64>,
+}
+
 #[serde_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
 #[non_exhaustive]
