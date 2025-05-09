@@ -1,4 +1,8 @@
+pub mod roadload;
+
 use std::collections::HashSet;
+
+use roadload::StepInfo;
 
 use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
@@ -736,6 +740,57 @@ impl SimDrive {
         } else {
             false
         };
+        if coasting {
+            let vs = &mut self.veh.state;
+            let grade_curr = {
+                let interp_pt_dist: &[f64] = match self.cyc0.grade_interp {
+                    Some(Interpolator::Interp0D(..)) => &[],
+                    Some(Interpolator::Interp1D(..)) => {
+                        &[vs.dist.get_fresh(|| format_dbg!())?.get::<si::meter>()]
+                    }
+                    _ => unreachable!(),
+                };
+                uc::R
+                    * self
+                        .cyc0
+                        .grade_interp
+                        .as_ref()
+                        .with_context(|| format_dbg!("You might have somehow bypassed `init()`"))?
+                        .interpolate(interp_pt_dist)
+                        .with_context(|| format_dbg!())?
+            };
+            let speed_prev = *vs.speed_ach.get_stale(|| format_dbg!())?;
+            let cyc_speed = self.cyc.speed[i];
+            let step_info = StepInfo {
+                dt,
+                speed_prev,
+                cyc_speed,
+                grade_curr,
+                air_density: *vs.air_density.get_stale(|| format_dbg!())?,
+                mass: self.veh.mass.with_context(|| {
+                    format!("{}\nMass should have been set before now", format_dbg!())
+                })?,
+                drag_coef: self.veh.chassis.drag_coef,
+                frontal_area: self.veh.chassis.frontal_area,
+                wheel_inertia: self.veh.chassis.wheel_inertia,
+                num_wheels: self.veh.chassis.num_wheels,
+                wheel_radius: self
+                    .veh
+                    .chassis
+                    .wheel_radius
+                    .with_context(|| format_dbg!())?,
+                wheel_rr_coef: self.veh.chassis.wheel_rr_coef,
+                pwr_prop_fwd_max: si::Power::ZERO,
+            };
+            let target_speed = step_info.calc(
+                self.sim_params.ach_speed_max_iter,
+                self.sim_params.ach_speed_tol,
+                self.sim_params.ach_speed_solver_gain,
+            );
+            self.cyc.speed[i] = target_speed;
+            // NOTE: force recalculation of dependent fields like distance
+            self.cyc.init().unwrap();
+        }
 
         // `solve_thermal` must happen before the other methods because it impacts aux power demand
         self.veh
@@ -993,6 +1048,29 @@ pwr deficit: {} kW
             }
         }
         let vs = &mut self.veh.state;
+        let step_info = StepInfo {
+            dt,
+            speed_prev,
+            cyc_speed,
+            grade_curr: *vs.grade_curr.get_fresh(|| format_dbg!())?,
+            air_density: *vs.air_density.get_fresh(|| format_dbg!())?,
+            mass: self.veh.mass.with_context(|| {
+                format!("{}\nMass should have been set before now", format_dbg!())
+            })?,
+            drag_coef: self.veh.chassis.drag_coef,
+            frontal_area: self.veh.chassis.frontal_area,
+            wheel_inertia: self.veh.chassis.wheel_inertia,
+            num_wheels: self.veh.chassis.num_wheels,
+            wheel_radius: self
+                .veh
+                .chassis
+                .wheel_radius
+                .with_context(|| format_dbg!())?,
+            wheel_rr_coef: self.veh.chassis.wheel_rr_coef,
+            pwr_prop_fwd_max: *vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?,
+        };
+
+        /*
         let mass = self
             .veh
             .mass
@@ -1126,28 +1204,38 @@ pwr deficit: {} kW
                 .with_context(|| format_dbg!("should have had at least one element"))?
                 .max(0.0 * uc::MPS);
         }
+        */
+        let speed_ach = step_info.calc(
+            self.sim_params.ach_speed_max_iter,
+            self.sim_params.ach_speed_tol,
+            self.sim_params.ach_speed_solver_gain,
+        );
 
         vs.speed_ach.update(speed_ach, || format_dbg!())?;
         // NOTE: need to reset tracked state to allow
         // for calling set_pwr_prop_for_speed(.) again this step...
-        vs.cyc_met_overall.mark_stale();
-        vs.grade_curr.mark_stale();
-        vs.elev_curr.mark_stale();
         vs.air_density.mark_stale();
+        vs.cyc_met.mark_stale();
+        vs.cyc_met_overall.mark_stale();
+        vs.elev_curr.mark_stale();
+        vs.grade_curr.mark_stale();
         vs.pwr_accel.mark_stale();
         vs.pwr_ascent.mark_stale();
         vs.pwr_drag.mark_stale();
         vs.pwr_rr.mark_stale();
-        vs.pwr_whl_inertia.mark_stale();
         vs.pwr_tractive.mark_stale();
+        vs.pwr_whl_inertia.mark_stale();
+        vs.speed_ach.mark_stale();
 
-        // Run it again to make sure it has been updated for achieved speed
+        // Rerun again to ensure we have updated achieved speed and state
         self.set_pwr_prop_for_speed(
-            *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
+            *self.veh.state.speed_ach.get_stale(|| format_dbg!())?,
             speed_prev,
             dt,
         )
         .with_context(|| format_dbg!())?;
+        self.set_ach_speed(speed_ach, dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
 
         Ok(())
     }
@@ -1556,13 +1644,16 @@ mod tests {
     #[test]
     #[cfg(feature = "resources")]
     fn test_coasting() {
-        let mut veh = Vehicle::from_resource("2020 Chevrolet Bolt EV.yaml", false).unwrap();
+        //let mut veh = Vehicle::from_resource("2020 Chevrolet Bolt EV.yaml", false).unwrap();
+        let mut veh = Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
         veh.set_save_interval(Some(1))
             .expect("No error expected setting save interval");
         let cyc = Cycle::from_resource("udds.csv", false).unwrap();
+        let coast_start_speed = 20.0 * uc::MPS;
+        let coast_start_speed_m_per_s = coast_start_speed.get::<si::meter_per_second>();
         let params = SimParams {
             coast_allow: true,
-            coast_start_speed: 20.0 * uc::MPS,
+            coast_start_speed,
             ..Default::default()
         };
         let mut sd = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
@@ -1586,11 +1677,16 @@ mod tests {
             })
             .collect();
         assert_eq!(speed_req_mps.len(), speed_ach_mps.len());
+        let mut should_not_equal = false;
         for idx in 0..speed_req_mps.len() {
-            assert_eq!(
-                speed_req_mps[idx], speed_ach_mps[idx],
-                "Speeds do not match at {idx}"
-            );
+            if should_not_equal || speed_req_mps[idx] > coast_start_speed_m_per_s {
+                should_not_equal = true;
+            } else {
+                assert_eq!(
+                    speed_req_mps[idx], speed_ach_mps[idx],
+                    "Speeds do not match at {idx}"
+                );
+            }
         }
     }
 }

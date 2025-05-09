@@ -22,6 +22,7 @@ sns.set_theme()
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 # if environment var `SAVE_FIGS=true` is set, save plots
 SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
+LIST_COLUMN_OPTIONS = False
 
 
 def microtrip_demo():
@@ -58,7 +59,8 @@ def microtrip_demo():
 
 def coasting_demo():
     """Run a demonstration of a coasting maneuver"""
-    veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
+    # veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
+    veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource("udds.csv")
     params = fsim.SimParams.default()
@@ -68,12 +70,20 @@ def coasting_demo():
     sd.walk()
     if SHOW_PLOTS:
         df = sd.to_dataframe()
+        if LIST_COLUMN_OPTIONS:
+            print("Available Columns:")
+            for column_name in df.columns:
+                print(f"- {column_name}")
         fig, ax = plt.subplots()
         ax.plot(cyc.time_s, cyc.speed_m_per_s, "k-", label="original")
         ax.plot(
             np.array(df["cyc.time_seconds"])[:: veh.save_interval],
             np.array(df["veh.history.speed_ach_meters_per_second"]),
             "b:", label="coast")
+        ax.plot(
+            np.array(df["cyc.time_seconds"])[:: veh.save_interval],
+            np.array(df["veh.history.coasting"]) * 15.0,
+            "r-", label="is_coasting")
         ax.set_title(f"Coasting behavior from {coast_speed_mps} m/s")
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Speed [m/s]")
