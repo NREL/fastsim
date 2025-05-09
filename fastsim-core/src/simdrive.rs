@@ -782,7 +782,7 @@ impl SimDrive {
                 wheel_rr_coef: self.veh.chassis.wheel_rr_coef,
                 pwr_prop_fwd_max: si::Power::ZERO,
             };
-            let target_speed = step_info.calc(
+            let target_speed = step_info.solve_for_speed(
                 self.sim_params.ach_speed_max_iter,
                 self.sim_params.ach_speed_tol,
                 self.sim_params.ach_speed_solver_gain,
@@ -1205,7 +1205,7 @@ pwr deficit: {} kW
                 .max(0.0 * uc::MPS);
         }
         */
-        let speed_ach = step_info.calc(
+        let speed_ach = step_info.solve_for_speed(
             self.sim_params.ach_speed_max_iter,
             self.sim_params.ach_speed_tol,
             self.sim_params.ach_speed_solver_gain,

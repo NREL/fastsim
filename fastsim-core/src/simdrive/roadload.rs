@@ -17,7 +17,7 @@ pub struct StepInfo {
 }
 
 impl StepInfo {
-    pub fn calc(
+    pub fn solve_for_speed(
         &self,
         ach_speed_max_iter: u32,
         ach_speed_tol: si::Ratio,
