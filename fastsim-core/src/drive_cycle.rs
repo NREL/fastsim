@@ -512,6 +512,42 @@ impl Cycle {
     }
 }
 
+impl TryFrom<CycleBuilder> for Cycle {
+    type Error = anyhow::Error;
+    fn try_from(value: CycleBuilder) -> anyhow::Result<Self, Self::Error> {
+        let mut cyc = Self {
+            name: value.name,
+            init_elev: None,
+            time: value.time,
+            speed: value.speed,
+            dist: Default::default(),
+            grade: Default::default(),
+            elev: Default::default(),
+            pwr_max_chrg: Default::default(),
+            temp_amb_air: Default::default(),
+            pwr_solar_load: Default::default(),
+            grade_interp: None,
+            elev_interp: Default::default(),
+        };
+        cyc.init()?;
+        Ok(cyc)
+    }
+}
+
+#[serde_api]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[non_exhaustive]
+/// Simple cycle to be converted into [Cycle] with appropriate defaults
+pub struct CycleBuilder {
+    /// Name of cycle (can be left empty)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub name: String,
+    /// simulation time
+    pub time: Vec<si::Time>,
+    /// prescribed speed
+    pub speed: Vec<si::Velocity>,
+}
+
 #[serde_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[non_exhaustive]
@@ -585,4 +621,15 @@ mod tests {
                 .collect::<Vec<si::Length>>()
         );
     }
+}
+
+lazy_static! {
+    pub static ref CYC_ACCEL: Cycle = Cycle::try_from(CycleBuilder {
+        name: String::from("accel test"),
+        time: (0..300)
+            .map(|t| (t as f64) * uc::S)
+            .collect::<Vec<si::Time>>(),
+        speed: vec![90.0 * uc::MPH; 300],
+    })
+    .unwrap();
 }

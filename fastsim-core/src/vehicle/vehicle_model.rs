@@ -23,7 +23,7 @@ impl Init for AuxSource {}
 
 #[serde_api]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods, IsVariant)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle
