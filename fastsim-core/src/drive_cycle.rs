@@ -1,3 +1,4 @@
+pub mod maneuvers;
 pub mod manipulation_utils;
 
 use crate::drive_cycle::manipulation_utils::{
