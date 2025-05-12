@@ -144,15 +144,13 @@ pub fn calc_constant_jerk_trajectory(
     dr: f64,
     vr: f64,
     dt: f64,
-) -> anyhow::Result<ConstantJerkTrajectory> {
-    ensure!(n > 1);
-    ensure!(dr > d0);
-    ensure!(v0 >= 0.0);
-    ensure!(vr >= 0.0);
-    ensure!(dt > 0.0);
-    Ok(ConstantJerkTrajectory::from_speed_and_distance_targets(
-        n, d0, v0, dr, vr, dt,
-    ))
+) -> ConstantJerkTrajectory {
+    assert!(n > 1);
+    assert!(dr > d0);
+    assert!(v0 >= 0.0);
+    assert!(vr >= 0.0);
+    assert!(dt > 0.0);
+    ConstantJerkTrajectory::from_speed_and_distance_targets(n, d0, v0, dr, vr, dt)
 }
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
