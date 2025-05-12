@@ -195,7 +195,11 @@ impl Init for Cycle {
                 },
             )
             .collect();
-        let g0 = self.grade[0];
+        let g0 = if self.grade.len() > 0 {
+            self.grade[0]
+        } else {
+            0.0 * uc::R
+        };
         if self.grade.iter().all(|&g| g != g0) {
             self.grade_interp = Some(
                 Interpolator::new_1d(
