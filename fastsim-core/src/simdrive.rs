@@ -1213,7 +1213,10 @@ pwr deficit: {} kW
 
         vs.speed_ach.update(speed_ach, || format_dbg!())?;
         // NOTE: need to reset tracked state to allow
-        // for calling set_pwr_prop_for_speed(.) again this step...
+        // for calling set_pwr_prop_for_speed(.) again this step.
+        // set_pwr_prop_for_speed has already been called so the
+        // following variables have already been set fresh but need
+        // to be re-iterated. 
         vs.air_density.mark_stale();
         vs.cyc_met.mark_stale();
         vs.cyc_met_overall.mark_stale();
