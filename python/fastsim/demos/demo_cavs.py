@@ -64,18 +64,28 @@ def coasting_demo():
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource("udds.csv")
-    # add 100 seconds to the cycle time to allow for delay caused by
-    # coasting
+    # Add 100 seconds to the cycle time to allow for delay caused by
+    # coasting. Note: here we are extending by absolute time but
+    # a time fraction (e.g., 0.1 to extend it by 10%) is also possible.
+    # If both are specified, both will be used: e.g., extending by
+    # 10% AND add 100 seconds in addition.
     cyc = cyc.extend_time(absolute_time_s=100.0, time_fraction=None)
     cyc0 = cyc.copy()
     man = fsim.Maneuver.create_from(cyc, veh.copy())
+    # Set coasting variables
     d = man.to_pydict()
+    # All coasting maneuvers require coast_allow to be set to True
     d["coast_allow"] = True
+    # coast_start_speed is mainly used for testing. This
+    # causes the vehicle to coast to a stop whenever the vehicle
+    # passes the coast_start_speed_meters_per_second. This is
+    # a "hello world" of sorts for eco-coast.
     d["coast_start_speed_meters_per_second"] = coast_speed_mps
+    # Reset the Maneuver object using the python dictionary
     man = fsim.Maneuver.from_pydict(d)
-    d = man.to_pydict()
-    print(f"coast_allow: {d['coast_allow']}")
+    # Modify the cycle and return it
     cyc = man.apply_maneuvers()
+    # Run simdrive using the modified cycle
     sd = fsim.SimDrive(veh, cyc)
     sd.walk()
     if SHOW_PLOTS:
