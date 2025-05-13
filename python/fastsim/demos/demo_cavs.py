@@ -64,6 +64,9 @@ def coasting_demo():
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource("udds.csv")
+    # add 100 seconds to the cycle time to allow for delay caused by
+    # coasting
+    cyc = cyc.extend_time(absolute_time_s=100.0, time_fraction=None)
     cyc0 = cyc.copy()
     man = fsim.Maneuver.create_from(cyc, veh.copy())
     d = man.to_pydict()
@@ -87,10 +90,6 @@ def coasting_demo():
             np.array(df["cyc.time_seconds"])[:: veh.save_interval],
             np.array(df["veh.history.speed_ach_meters_per_second"]),
             "b:", label="coast")
-        ax.plot(
-            np.array(df["cyc.time_seconds"])[:: veh.save_interval],
-            np.array(df["veh.history.coasting"]) * 15.0,
-            "r-", label="is_coasting")
         ax.set_title(f"Coasting behavior from {coast_speed_mps} m/s")
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Speed [m/s]")

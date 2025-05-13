@@ -80,6 +80,17 @@ impl Cycle {
         Ok(self.to_microtrips(stop_speed))
     }
 
+    #[pyo3(name = "extend_time", signature=(absolute_time_s=None, time_fraction=None))]
+    fn extend_time_py(
+        &mut self,
+        absolute_time_s: Option<f64>,
+        time_fraction: Option<f64>,
+    ) -> PyResult<Cycle> {
+        let absolute_time = absolute_time_s.map(|t| t * uc::S);
+        let time_fraction = time_fraction.map(|f| f * uc::R);
+        Ok(self.extend_time(absolute_time, time_fraction))
+    }
+
     #[getter(time_s)]
     fn time_s_py(&self) -> PyResult<Vec<f64>> {
         let mut result: Vec<f64> = Vec::with_capacity(self.time.len());
@@ -196,7 +207,7 @@ impl Init for Cycle {
                 },
             )
             .collect();
-        let g0 = if self.grade.len() > 0 {
+        let g0 = if !self.grade.is_empty() {
             self.grade[0]
         } else {
             0.0 * uc::R
