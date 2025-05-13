@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::resources;
 use crate::{imports::*, simdrive::roadload::StepInfo, simdrive::SimParams, vehicle::Vehicle};
 
+use super::manipulation_utils::trapz_distance_for_step;
 use super::{
     manipulation_utils::{
         accel_array_for_constant_jerk, accel_for_constant_jerk, calc_constant_jerk_trajectory,
@@ -201,7 +202,9 @@ impl Maneuver {
         } else {
             default_mass
         };
-        let air_density = *veh.state.air_density.get_fresh(|| format_dbg!()).unwrap();
+        // *veh.state.air_density.get_fresh(|| format_dbg!()).unwrap();
+        let air_density = 1.2 * uc::KGPM3;
+
         // NOTE: wheel radius should exist as Some(value) after v.init() above.
         let wheel_radius = veh.chassis.wheel_radius.unwrap();
         let params = SimParams::default();
@@ -255,8 +258,42 @@ impl Maneuver {
     fn step(&mut self) {
         if self.coast_allow {
             self.set_coast_speed(self.i);
+            self.cyc.grade[self.i] = self.lookup_grade_for_step(self.i, None);
         }
         self.i += 1;
+    }
+
+    /// For situations where cyc can deviate from cyc0, this method
+    /// looks up and accurately interpolates what the average grade over
+    /// the step should be. The achieved value is used to predict the
+    /// distance traveled over the step.
+    ///
+    /// NOTE:
+    /// If not allowing coasting (i.e., sim_params.coast_allow == False)
+    /// and not allowing IDM/following (i.e., self.sim_params.idm_allow
+    /// == False) then returns self.cyc.grade\[i\]
+    pub fn lookup_grade_for_step(&self, i: usize, speed_ach: Option<si::Velocity>) -> si::Ratio {
+        if self.cyc0_cache.grade_all_zero {
+            return 0.0 * uc::R;
+        }
+        if !self.coast_allow && !self.idm_allow {
+            return self.cyc.grade[i];
+        }
+        match speed_ach {
+            Some(v1) => {
+                let dt = self.cyc.time[i] - self.cyc.time[i - 1];
+                self.cyc0.average_grade_over_range(
+                    trapz_step_start_distance(&self.cyc, i),
+                    0.5 * (v1 + self.cyc.speed[i - 1]) * dt,
+                    Some(&self.cyc0_cache),
+                )
+            }
+            None => self.cyc0.average_grade_over_range(
+                trapz_step_start_distance(&self.cyc, i),
+                trapz_distance_for_step(&self.cyc, i),
+                Some(&self.cyc0_cache),
+            ),
+        }
     }
 
     /// Determine whether the vehicle should go into a 'coasting' state.
@@ -777,7 +814,7 @@ impl Maneuver {
                 result
             }
         };
-        let ds = &self.cyc0_cache.trapz_step_distances_m;
+        let ds = &self.cyc0_cache.trapz_distances_m;
         let d0 = trapz_step_start_distance(&self.cyc, i).get::<si::meter>();
         let mut distances_m = Vec::with_capacity(ds.len());
         let mut grade_by_distance = Vec::with_capacity(ds.len());
@@ -918,11 +955,12 @@ impl Maneuver {
 
     fn apply_coast_trajectory(&mut self, coast_traj: &CoastTrajectory) {
         if coast_traj.found_trajectory {
+            println!("apply_coast_trajectory: Found coast trajectory");
             let num_speeds = match &coast_traj.speed_m_per_s {
                 Some(speeds_m_per_s) => {
                     for (di, &new_speed) in speeds_m_per_s.iter().enumerate() {
                         let idx = coast_traj.start_idx + di;
-                        if idx >= self.cyc0.time.len() {
+                        if idx >= self.cyc0.speed.len() {
                             break;
                         }
                         self.cyc.speed[idx] = new_speed * uc::MPS;
@@ -1156,6 +1194,21 @@ mod tests {
         let udds = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let veh = crate::vehicle::Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
         let mut man = Maneuver::from(&udds, &veh);
+        man.coast_allow = true;
+        man.coast_start_speed = 20.0 * uc::MPS;
+        man.coast_allow_passing = true;
         man.apply();
+        let udds_mod = man.cyc;
+        assert_eq!(udds_mod.time.len(), udds.time.len());
+        assert_eq!(udds_mod.speed.len(), udds.speed.len());
+        assert_eq!(udds_mod.dist.len(), udds.dist.len());
+        let mut speeds_differ = false;
+        for idx in 0..udds.time.len() {
+            speeds_differ = udds_mod.speed[idx] != udds.speed[idx];
+            if speeds_differ {
+                break;
+            }
+        }
+        assert!(speeds_differ);
     }
 }
