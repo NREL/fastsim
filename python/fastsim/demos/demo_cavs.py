@@ -60,13 +60,20 @@ def microtrip_demo():
 def coasting_demo():
     """Run a demonstration of a coasting maneuver"""
     # veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
+    coast_speed_mps = 20.0
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource("udds.csv")
-    params = fsim.SimParams.default()
-    coast_speed_mps = 20.0
-    params.enable_coasting_with_start_speed(coast_speed_mps)
-    sd = fsim.SimDrive(veh, cyc, params)
+    cyc0 = cyc.copy()
+    man = fsim.Maneuver.create_from(cyc, veh.copy())
+    d = man.to_pydict()
+    d["coast_allow"] = True
+    d["coast_start_speed_meters_per_second"] = coast_speed_mps
+    man = fsim.Maneuver.from_pydict(d)
+    d = man.to_pydict()
+    print(f"coast_allow: {d['coast_allow']}")
+    cyc = man.apply_maneuvers()
+    sd = fsim.SimDrive(veh, cyc)
     sd.walk()
     if SHOW_PLOTS:
         df = sd.to_dataframe()
@@ -75,7 +82,7 @@ def coasting_demo():
             for column_name in df.columns:
                 print(f"- {column_name}")
         fig, ax = plt.subplots()
-        ax.plot(cyc.time_s, cyc.speed_m_per_s, "k-", label="original")
+        ax.plot(cyc0.time_s, cyc0.speed_m_per_s, "k-", label="original")
         ax.plot(
             np.array(df["cyc.time_seconds"])[:: veh.save_interval],
             np.array(df["veh.history.speed_ach_meters_per_second"]),

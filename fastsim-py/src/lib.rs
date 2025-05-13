@@ -29,6 +29,7 @@ fn fastsim(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<LumpedCabin>()?;
     m.add_class::<LumpedCabinState>()?;
     m.add_class::<LumpedCabinStateHistoryVec>()?;
+    m.add_class::<Maneuver>()?;
     m.add_class::<ReversibleEnergyStorage>()?;
     m.add_class::<ReversibleEnergyStorageState>()?;
     m.add_class::<ReversibleEnergyStorageStateHistoryVec>()?;

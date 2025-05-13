@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::resources;
 use crate::{imports::*, simdrive::roadload::StepInfo, simdrive::SimParams, vehicle::Vehicle};
 
 use super::{
@@ -19,74 +20,136 @@ use super::{
 pub struct Maneuver {
     // Cycle Instances
     /// Cycle to apply maneuver to
+    #[serde(default)]
     pub cyc: Cycle,
     /// Reference cycle
+    #[serde(default)]
     pub cyc0: Cycle,
 
     // Chassis Data
     /// Constant mass to assume for maneuvers
+    #[serde(default)]
     pub mass: si::Mass,
     /// Constant air density to assume for manuvers
+    #[serde(default)]
     pub air_density: si::MassDensity,
     /// Constant aerodynamic drag coefficient to assume
+    #[serde(default)]
     pub drag_coef: si::Ratio,
     /// Constant Frontal Area of vehicle to assume
+    #[serde(default)]
     pub frontal_area: si::Area,
     /// Constant Wheel Rolling Resistance Coefficient to assume
+    #[serde(default)]
     pub wheel_rr_coef: si::Ratio,
     /// Wheel inertia per wheel
+    #[serde(default)]
     pub wheel_inertia: si::MomentOfInertia,
     /// Number of wheels
+    #[serde(default)]
     pub num_wheels: u8,
     /// Wheel radius
+    #[serde(default)]
     pub wheel_radius: si::Length,
 
     // Solver Settings
     /// max number of iterations allowed in setting achieved speed when trace
     /// cannot be achieved
+    #[serde(default)]
     pub ach_speed_max_iter: u32,
     /// tolerance in change in speed guess in setting achieved speed when trace
     /// cannot be achieved
+    #[serde(default)]
     pub ach_speed_tol: si::Ratio,
     /// Newton method gain for setting achieved speed
+    #[serde(default)]
     pub ach_speed_solver_gain: f64,
 
     // Coasting Parameters
     /// whether to allow coasting or not.
+    #[serde(default)]
     pub coast_allow: bool,
     /// for testing: triggers coasting when vehicle passes the given speed
+    #[serde(default)]
     pub coast_start_speed: si::Velocity,
     /// speed at which mechanical braking will initiate during coasting maneuvers
+    #[serde(default)]
     pub coast_brake_start_speed: si::Velocity,
     /// acceleration assumed during braking for coast maneuvers
     /// NOTE: should be negative
+    #[serde(default)]
     pub coast_brake_accel: si::Acceleration,
     /// if true, accuracy will be favored over performance for grade per step
     /// estimates Specifically, for performance, grade for a step will be
     /// assumed to be the grade looked up at step start distance. For accuracy,
     /// the actual elevations will be used. This distinciton only makes a
     /// difference for CAV maneuvers.
+    #[serde(default)]
     pub favor_grade_accuracy: bool,
     /// if true, coasting vehicle can eclipse the shadow trace (i.e., reference
     /// vehicle in front)
+    #[serde(default)]
     pub coast_allow_passing: bool,
     /// maximum allowable speed under coast
+    #[serde(default)]
     pub coast_max_speed: si::Velocity,
     /// "look-ahead" time for speed changes to be considered to feature coasting
     /// to hit a given stopping distance mark
+    #[serde(default)]
     pub coast_time_horizon_for_adjustment: si::Time,
 
     // IDM - Intelligent Driver Model, Adaptive Cruise Control version
     /// if true, initiates the IDM - Intelligent Driver Model, Adaptive Cruise
     /// Control version
+    #[serde(default)]
     pub idm_allow: bool,
 
-    // Private Fields
-    i: usize,
-    coast_delay_index: Vec<i32>,
-    impose_coast: Vec<bool>,
-    idm_target_speed_m_per_s: Vec<f64>,
-    cyc0_cache: CycleCache,
+    // Internal Fields
+    pub i: usize,
+    pub coast_delay_index: Vec<i32>,
+    pub impose_coast: Vec<bool>,
+    pub idm_target_speed_m_per_s: Vec<f64>,
+    pub cyc0_cache: CycleCache,
+}
+
+#[named_struct_pyo3_api]
+impl Maneuver {
+    #[pyo3(name = "list_resources")]
+    #[staticmethod]
+    /// list available maneuver resources
+    fn list_resources_py() -> Vec<String> {
+        resources::list_resources(Self::RESOURCE_PREFIX)
+    }
+
+    #[pyo3(name = "create_from")]
+    #[staticmethod]
+    fn create_from_py(cyc: &Cycle, veh: &Vehicle) -> PyResult<Self> {
+        Ok(Maneuver::from(cyc, veh))
+    }
+
+    #[pyo3(name = "apply_maneuvers")]
+    fn apply_maneuvers_py(&mut self) -> PyResult<Cycle> {
+        self.apply();
+        let cyc = self.cyc.clone();
+        Ok(cyc)
+    }
+}
+
+impl SerdeAPI for Maneuver {
+    #[cfg(feature = "resources")]
+    const RESOURCE_PREFIX: &'static str = "maneuvers";
+}
+
+impl Init for Maneuver {
+    fn init(&mut self) -> Result<(), Error> {
+        self.i = 1;
+        let n = self.cyc.speed.len();
+        self.coast_delay_index = vec![0; n];
+        self.impose_coast = vec![false; n];
+        self.idm_target_speed_m_per_s = vec![0.0; n];
+        self.cyc0_cache = self.cyc0.build_cache();
+        Ok(())
+    }
 }
 
 impl Default for Maneuver {
@@ -124,6 +187,7 @@ impl Default for Maneuver {
 }
 
 impl Maneuver {
+    /// Create maneuver object from cycle and vehicle.
     pub fn from(cyc: &Cycle, veh: &Vehicle) -> Self {
         let mut c = cyc.clone();
         c.init().unwrap();
