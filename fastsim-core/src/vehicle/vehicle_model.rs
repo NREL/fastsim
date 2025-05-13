@@ -686,8 +686,6 @@ pub struct VehicleState {
     /// current mass
     // TODO: make sure this gets updated appropriately
     pub mass: TrackedState<si::Mass>,
-    /// coasting state - true if vehicle was coasting for step
-    pub coasting: TrackedState<bool>,
 }
 
 impl SerdeAPI for VehicleState {}
@@ -726,7 +724,6 @@ impl Default for VehicleState {
             elev_curr: Default::default(),
             air_density: Default::default(),
             mass: TrackedState::new(uc::KG * f64::NAN),
-            coasting: TrackedState::new(false),
         }
     }
 }

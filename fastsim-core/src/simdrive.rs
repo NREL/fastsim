@@ -1,14 +1,9 @@
 pub mod roadload;
 
-use std::collections::HashSet;
-
 use roadload::StepInfo;
 
 use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
-use crate::drive_cycle::manipulation_utils::{
-    trapz_step_start_distance, CoastTrajectory, CycleCache,
-};
 use crate::imports::*;
 use crate::prelude::*;
 
@@ -40,39 +35,6 @@ pub struct SimParams {
     /// whether to use FASTSim-2 style air density
     #[serde(default = "SimParams::def_f2_const_air_density")]
     pub f2_const_air_density: bool,
-    // Coasting Parameters
-    /// whether to allow coasting or not.
-    #[serde(default = "SimParams::def_coast_allow")]
-    pub coast_allow: bool,
-    /// for testing: triggers coasting when vehicle passes the given speed
-    #[serde(default = "SimParams::def_coast_start_speed")]
-    pub coast_start_speed: si::Velocity,
-    /// speed at which mechanical braking will initiate during coasting maneuvers
-    #[serde(default = "SimParams::def_coast_brake_start_speed")]
-    pub coast_brake_start_speed: si::Velocity,
-    /// acceleration assumed during braking for coast maneuvers
-    /// NOTE: should be negative
-    #[serde(default = "SimParams::def_coast_brake_accel")]
-    pub coast_brake_accel: si::Acceleration,
-    /// if true, accuracy will be favored over performance for grade per step
-    /// estimates Specifically, for performance, grade for a step will be
-    /// assumed to be the grade looked up at step start distance. For accuracy,
-    /// the actual elevations will be used. This distinciton only makes a
-    /// difference for CAV maneuvers.
-    #[serde(default = "SimParams::def_favor_grade_accuracy")]
-    pub favor_grade_accuracy: bool,
-    /// if true, coasting vehicle can eclipse the shadow trace (i.e., reference
-    /// vehicle in front)
-    #[serde(default = "SimParams::def_coast_allow_passing")]
-    pub coast_allow_passing: bool,
-    /// maximum allowable speed under coast
-    #[serde(default = "SimParams::def_coast_max_speed")]
-    pub coast_max_speed: si::Velocity,
-    // IDM - Intelligent Driver Model, Adaptive Cruise Control version
-    /// if true, initiates the IDM - Intelligent Driver Model, Adaptive Cruise
-    /// Control version
-    #[serde(default = "SimParams::def_idm_allow")]
-    pub idm_allow: bool,
 }
 
 #[named_struct_pyo3_api]
@@ -81,16 +43,6 @@ impl SimParams {
     #[pyo3(name = "default")]
     fn default_py() -> Self {
         Self::default()
-    }
-
-    #[pyo3(name = "enable_coasting_with_start_speed")]
-    fn enable_coasting_with_start_speed_py(
-        &mut self,
-        coast_start_speed_m_per_s: f64,
-    ) -> anyhow::Result<()> {
-        self.coast_allow = true;
-        self.coast_start_speed = coast_start_speed_m_per_s * uc::MPS;
-        Ok(())
     }
 }
 
@@ -113,30 +65,6 @@ impl SimParams {
     fn def_f2_const_air_density() -> bool {
         Self::default().f2_const_air_density
     }
-    fn def_coast_allow() -> bool {
-        Self::default().coast_allow
-    }
-    fn def_coast_start_speed() -> si::Velocity {
-        Self::default().coast_start_speed
-    }
-    fn def_coast_brake_start_speed() -> si::Velocity {
-        Self::default().coast_brake_start_speed
-    }
-    fn def_coast_brake_accel() -> si::Acceleration {
-        Self::default().coast_brake_accel
-    }
-    fn def_favor_grade_accuracy() -> bool {
-        Self::default().favor_grade_accuracy
-    }
-    fn def_coast_allow_passing() -> bool {
-        Self::default().coast_allow_passing
-    }
-    fn def_coast_max_speed() -> si::Velocity {
-        Self::default().coast_max_speed
-    }
-    fn def_idm_allow() -> bool {
-        Self::default().idm_allow
-    }
 }
 
 impl SerdeAPI for SimParams {}
@@ -151,14 +79,6 @@ impl Default for SimParams {
             trace_miss_tol: Default::default(),
             trace_miss_opts: Default::default(),
             f2_const_air_density: true,
-            coast_allow: false,
-            coast_start_speed: 0.0 * uc::MPS,
-            coast_brake_start_speed: 20.0 * uc::MPH,
-            coast_brake_accel: -2.5 * uc::MPS2,
-            favor_grade_accuracy: true,
-            coast_allow_passing: false,
-            coast_max_speed: 40.0 * uc::MPS,
-            idm_allow: false,
         }
     }
 }
@@ -172,8 +92,6 @@ pub struct SimDrive {
     #[has_state]
     pub veh: Vehicle,
     pub cyc: Cycle,
-    pub cyc0: Cycle,
-    pub cyc0_cache: Option<CycleCache>,
     pub sim_params: SimParams,
 }
 
@@ -208,15 +126,10 @@ impl SimDrive {
 impl SerdeAPI for SimDrive {}
 impl Init for SimDrive {
     fn init(&mut self) -> Result<(), Error> {
-        // reset the cycle in case it has been manipulated
-        self.cyc = self.cyc0.clone();
         self.veh
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.cyc
-            .init()
-            .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        self.cyc0
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.sim_params
@@ -228,12 +141,9 @@ impl Init for SimDrive {
 
 impl SimDrive {
     pub fn new(veh: Vehicle, cyc: Cycle, sim_params: Option<SimParams>) -> Self {
-        let cyc0 = cyc.clone();
         Self {
             veh,
             cyc,
-            cyc0,
-            cyc0_cache: None,
             sim_params: sim_params.unwrap_or_default(),
         }
     }
@@ -427,293 +337,6 @@ impl SimDrive {
         }
     }
 
-    /// Generate a coast trajectory without actually modifying the cycle.
-    /// This can be used to calculate the distance to stop via coast using
-    /// actual time-stepping and changing grade.
-    pub fn generate_coast_trajectory(&mut self, i: usize) -> anyhow::Result<CoastTrajectory> {
-        let v0 = *self.veh.state.speed_ach.get_stale(|| format_dbg!())?;
-        let v0 = v0.get::<si::meter_per_second>();
-        let v_brake = self
-            .sim_params
-            .coast_brake_start_speed
-            .get::<si::meter_per_second>();
-        let a_brake = {
-            let result = self
-                .sim_params
-                .coast_brake_accel
-                .get::<si::meter_per_second_squared>();
-            if result > 0.0 {
-                -result
-            } else {
-                result
-            }
-        };
-        if self.cyc0_cache.is_none() {
-            self.cyc0_cache = Some(CycleCache::new(&self.cyc0));
-        }
-        let cyc0_cache = self.cyc0_cache.as_ref().unwrap();
-        let ds = cyc0_cache.trapz_step_distances_m.clone();
-        let d0 = trapz_step_start_distance(&self.cyc, i).get::<si::meter>();
-        let mut distances_m = Vec::with_capacity(ds.len());
-        let mut grade_by_distance = Vec::with_capacity(ds.len());
-        for (idx, d) in ds.iter().enumerate() {
-            if *d >= d0 {
-                distances_m.push(*d - d0);
-                grade_by_distance.push(self.cyc0.grade[idx].get::<si::ratio>());
-            }
-        }
-        if distances_m.is_empty() {
-            return Ok(CoastTrajectory {
-                found_trajectory: false,
-                distance_to_stop_via_coast_m: 0.0,
-                start_idx: 0,
-                speed_m_per_s: None,
-                distance_to_brake_m: None,
-            });
-        }
-        if v0 <= v_brake {
-            return Ok(CoastTrajectory {
-                found_trajectory: true,
-                distance_to_stop_via_coast_m: -0.5 * v0 * v0 / a_brake,
-                start_idx: i,
-                speed_m_per_s: None,
-                distance_to_brake_m: None,
-            });
-        }
-        let dtb = -0.5 * v_brake * v_brake / a_brake;
-        let mut d = 0.0;
-        let d_max = distances_m.last().unwrap() - dtb;
-        let mut unique_grades = HashSet::with_capacity(ds.len());
-        let grade_mult = 10000.0;
-        for g in grade_by_distance.iter() {
-            let grade = (g * grade_mult).round() as i32;
-            unique_grades.insert(grade);
-        }
-        let unique_grade = if unique_grades.len() == 1 {
-            let ug = unique_grades.iter().nth(0).unwrap();
-            let ug = (*ug as f64) / grade_mult;
-            Some(ug)
-        } else {
-            None
-        };
-        let has_unique_grade = unique_grade.is_some();
-        let max_iter = 180;
-        let iters_per_step = if self.sim_params.favor_grade_accuracy {
-            2
-        } else {
-            1
-        };
-        let mut new_speeds_m_per_s = Vec::with_capacity(max_iter as usize);
-        let mut v = v0;
-        let mut iter = 0;
-        let mut idx = i;
-        let dts0 = self
-            .cyc0
-            .calc_distance_to_next_stop_from(d0 * uc::M, Some(cyc0_cache))
-            .get::<si::meter>();
-        while v > v_brake
-            && v >= 0.0
-            && d <= d_max
-            && iter < max_iter
-            && idx < self.cyc0.speed.len()
-        {
-            let dt_s = self.cyc0.dt_at_i(idx)?.get::<si::second>();
-            let mut gr = match unique_grade {
-                Some(g) => g,
-                None => cyc0_cache.interp_grade(d + d0),
-            };
-            let mut k = self.calc_dvdd(v, gr)?;
-            let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
-            let mut vavg = 0.5 * (v + v_next);
-            let mut dd: f64;
-            for _ in 0..iters_per_step {
-                k = self.calc_dvdd(vavg, gr)?;
-                v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
-                vavg = 0.5 * (v + v_next);
-                dd = vavg * dt_s;
-                if self.sim_params.favor_grade_accuracy {
-                    gr = match unique_grade {
-                        Some(g) => g,
-                        None => {
-                            let dist = (d + d0) * uc::M;
-                            let delta_dist = dd * uc::M;
-                            self.cyc0
-                                .average_grade_over_range(dist, delta_dist, Some(cyc0_cache))
-                                .get::<si::ratio>()
-                        }
-                    };
-                }
-            }
-            if k >= 0.0 && has_unique_grade {
-                // there is no solution for coast-down -- speed will never decrease
-                return Ok(CoastTrajectory {
-                    found_trajectory: false,
-                    distance_to_stop_via_coast_m: 0.0,
-                    start_idx: 0,
-                    speed_m_per_s: None,
-                    distance_to_brake_m: None,
-                });
-            }
-            if v_next <= v_brake {
-                break;
-            }
-            vavg = 0.5 * (v + v_next);
-            dd = vavg * dt_s;
-            let dtb = -0.5 * v_next * v_next / a_brake;
-            d += dd;
-            new_speeds_m_per_s.push(v_next);
-            v = v_next;
-            if d + dtb > dts0 {
-                break;
-            }
-            iter += 1;
-            idx += 1;
-        }
-        if iter < max_iter && idx < self.cyc0.speed.len() {
-            let dtb = -0.5 * v * v / a_brake;
-            let dtb_target = (dts0 - d).max(0.5 * dtb).min(2.0 * dtb);
-            let dtsc = d + dtb_target;
-            return Ok(CoastTrajectory {
-                found_trajectory: true,
-                distance_to_stop_via_coast_m: dtsc,
-                start_idx: i,
-                speed_m_per_s: Some(new_speeds_m_per_s),
-                distance_to_brake_m: Some(dtb_target),
-            });
-        }
-        Ok(CoastTrajectory {
-            found_trajectory: false,
-            distance_to_stop_via_coast_m: 0.0,
-            start_idx: 0,
-            speed_m_per_s: None,
-            distance_to_brake_m: None,
-        })
-    }
-
-    /// Determine whether the vehicle should go into a 'coasting' state.
-    /// Normal coasting logic is that the vehicle will coast if it is
-    /// within coasting distance of a stop:
-    /// - if distance to coast from start of step <= distance to next stop
-    /// - AND distance to coast from end of step (using reference speed) is
-    ///   > distance to next step
-    /// - AND vehicle was at or above the speed to start braking
-    /// - AND at least four time-steps away from where braking would start
-    ///
-    /// NOTE: for the case when coast-start speed is used, we only worry
-    /// about if the vehicle is above the coast-start speed. This is mainly
-    /// for testing.
-    pub fn should_impose_coast(&self) -> anyhow::Result<bool> {
-        if self.sim_params.coast_start_speed > 0.0 * uc::MPS {
-            let spd_ach = *self.veh.state.speed_ach.get_stale(|| format_dbg!())?;
-            Ok(spd_ach >= self.sim_params.coast_start_speed)
-        } else {
-            Ok(false)
-        }
-    }
-
-    fn apply_coast_trajectory(&mut self, coast_traj: &CoastTrajectory) -> anyhow::Result<()> {
-        if coast_traj.found_trajectory {
-            let num_speeds = match &coast_traj.speed_m_per_s {
-                Some(vs) => {
-                    for (di, &new_speed) in vs.iter().enumerate() {
-                        let idx = coast_traj.start_idx + di;
-                        if idx >= self.cyc0.speed.len() {
-                            break;
-                        }
-                        self.cyc.speed[idx] = new_speed * uc::MPS;
-                    }
-                    vs.len()
-                }
-                None => 0,
-            };
-            let (_, _n) = self.cyc.modify_with_braking_trajectory(
-                self.sim_params.coast_brake_accel,
-                coast_traj.start_idx + num_speeds,
-                coast_traj.distance_to_brake_m.map(|d| d * uc::M),
-            )?;
-            // TODO[mok]: address impose_coast. Do we need it?
-            // for di in 0..(self.cyc0.speed.len() - coast_traj.start_idx) {
-            //     let idx = coast_traj.start_idx + di;
-            //     self.impose_coast[i] = di < num_speeds + n;
-            // }
-        }
-        Ok(())
-    }
-
-    /// Determine speed for CAV maneuver: eco-coast or eco-cruise.
-    pub fn set_speed(&mut self, i: usize) -> anyhow::Result<()> {
-        let tol = 1e-6;
-        let v0 = *self.veh.state.speed_ach.get_stale(|| format_dbg!())?;
-        let v0 = v0.get::<si::meter_per_second>();
-        let mut impose_coast = false;
-        if v0 > tol && self.should_impose_coast()? {
-            let ct = self.generate_coast_trajectory(i)?;
-            if ct.found_trajectory {
-                impose_coast = true;
-                let d = ct.distance_to_stop_via_coast_m;
-                // TODO[mok]: determine how to handle impose_coast
-                // ... state/history method?
-                // if d < 0.0 {
-                //    for idx in i..self.cyc0.speed.len() {
-                //       self.impose_coast[idx] = false;
-                //    }
-                // }
-                if d >= 0.0 {
-                    self.apply_coast_trajectory(&ct)?;
-                }
-                // TODO[mok]: add no passing
-                // if !self.sim_params.coast_allow_passing {
-                //    self.prevent_collisions(i, None)?;
-                // }
-            }
-        }
-        // TODO[mok]: add logic for IDM here
-        if !impose_coast {
-            if !self.sim_params.idm_allow {
-                let i_i32 = i32::try_from(i).ok();
-                // TODO[mok]: coast_delay_index?
-                let target_idx = match i_i32 {
-                    Some(ti) => {
-                        if ti < 0 {
-                            Some(0)
-                        } else {
-                            usize::try_from(ti).ok()
-                        }
-                    }
-                    None => None,
-                };
-                if let Some(ti) = target_idx {
-                    self.cyc.speed[i] = self.cyc0.speed[ti.min(self.cyc0.speed.len() - 1)];
-                }
-            }
-            return Ok(());
-        }
-        let v1_traj = self.cyc.speed[i].get::<si::meter_per_second>();
-        let v_brake = self
-            .sim_params
-            .coast_brake_start_speed
-            .get::<si::meter_per_second>();
-        if v0 > v_brake {
-            if self.sim_params.coast_allow_passing {
-                // NOTE: We could be coasting downhill so could in theory go
-                // to a higher speed. Since we can pass, allow vehicle to go
-                // up to max coasting speed (m/s). The solver will show us what
-                // we can actually achieve.
-                self.cyc.speed[i] = self.sim_params.coast_max_speed;
-            } else {
-                self.cyc.speed[i] = v1_traj.min(
-                    self.sim_params
-                        .coast_max_speed
-                        .get::<si::meter_per_second>(),
-                ) * uc::MPS;
-            }
-        }
-        // Solve for the actual coasting speed
-        // ...
-        // TODO[mok]: finish this method...
-        Ok(())
-    }
-
     /// Solves current time step
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
@@ -731,73 +354,12 @@ impl SimDrive {
         //     Proportional
         // }
         // ```
-        let coasting = if self.sim_params.coast_allow
-            && self.sim_params.coast_start_speed > si::Velocity::ZERO
-        {
-            let v0 = *self.veh.state.speed_ach.get_stale(|| format_dbg!())?;
-            let was_coasting = *self.veh.state.coasting.get_stale(|| format_dbg!())?;
-            v0 > si::Velocity::ZERO && (was_coasting || v0 > self.sim_params.coast_start_speed)
-        } else {
-            false
-        };
-        if coasting {
-            let vs = &mut self.veh.state;
-            let grade_curr = {
-                let interp_pt_dist: &[f64] = match self.cyc0.grade_interp {
-                    Some(Interpolator::Interp0D(..)) => &[],
-                    Some(Interpolator::Interp1D(..)) => {
-                        &[vs.dist.get_fresh(|| format_dbg!())?.get::<si::meter>()]
-                    }
-                    _ => unreachable!(),
-                };
-                uc::R
-                    * self
-                        .cyc0
-                        .grade_interp
-                        .as_ref()
-                        .with_context(|| format_dbg!("You might have somehow bypassed `init()`"))?
-                        .interpolate(interp_pt_dist)
-                        .with_context(|| format_dbg!())?
-            };
-            let speed_prev = *vs.speed_ach.get_stale(|| format_dbg!())?;
-            let cyc_speed = self.cyc.speed[i];
-            let step_info = StepInfo {
-                dt,
-                speed_prev,
-                cyc_speed,
-                grade_curr,
-                air_density: *vs.air_density.get_stale(|| format_dbg!())?,
-                mass: self.veh.mass.with_context(|| {
-                    format!("{}\nMass should have been set before now", format_dbg!())
-                })?,
-                drag_coef: self.veh.chassis.drag_coef,
-                frontal_area: self.veh.chassis.frontal_area,
-                wheel_inertia: self.veh.chassis.wheel_inertia,
-                num_wheels: self.veh.chassis.num_wheels,
-                wheel_radius: self
-                    .veh
-                    .chassis
-                    .wheel_radius
-                    .with_context(|| format_dbg!())?,
-                wheel_rr_coef: self.veh.chassis.wheel_rr_coef,
-                pwr_prop_fwd_max: si::Power::ZERO,
-            };
-            let target_speed = step_info.solve_for_speed(
-                self.sim_params.ach_speed_max_iter,
-                self.sim_params.ach_speed_tol,
-                self.sim_params.ach_speed_solver_gain,
-            );
-            self.cyc.speed[i] = target_speed;
-            // NOTE: force recalculation of dependent fields like distance
-            self.cyc.init().unwrap();
-        }
 
         // `solve_thermal` must happen before the other methods because it impacts aux power demand
         self.veh
             .solve_thermal(self.cyc.temp_amb_air[i], dt)
             .with_context(|| format_dbg!())?;
         self.veh
-            // TODO: feed in something different for first arg when CAVs stuff is active @MOK
             .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_pwr_prop_for_speed(
@@ -824,7 +386,6 @@ impl SimDrive {
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.veh.set_cumulative(dt)?;
-        self.veh.state.coasting.update(coasting, || format_dbg!())?;
         Ok(())
     }
 
@@ -1004,7 +565,7 @@ impl SimDrive {
         if *veh.state.cyc_met.get_fresh(|| format_dbg!())? {
             veh.state.speed_ach.update(cyc_speed, || format_dbg!())?;
             return Ok(());
-        } else if !self.sim_params.coast_allow && !self.sim_params.idm_allow {
+        } else {
             match self.sim_params.trace_miss_opts {
                 TraceMissOptions::Allow => {
                     // do nothing because `set_ach_speed` should be allowed to proceed to handle this
@@ -1069,142 +630,6 @@ pwr deficit: {} kW
             wheel_rr_coef: self.veh.chassis.wheel_rr_coef,
             pwr_prop_fwd_max: *vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?,
         };
-
-        /*
-        let mass = self
-            .veh
-            .mass
-            .with_context(|| format!("{}\nMass should have been set before now", format_dbg!()))?;
-
-        let drag3 = 1.0 / 16.0
-            * *vs.air_density.get_fresh(|| format_dbg!())?
-            * self.veh.chassis.drag_coef
-            * self.veh.chassis.frontal_area;
-        let accel2 = 0.5 * mass / dt;
-        let drag2 = 3.0 / 16.0
-            * *vs.air_density.get_fresh(|| format_dbg!())?
-            * self.veh.chassis.drag_coef
-            * self.veh.chassis.frontal_area
-            * speed_prev;
-        let wheel2 = 0.5 * self.veh.chassis.wheel_inertia * self.veh.chassis.num_wheels as f64
-            / (dt
-                * self
-                    .veh
-                    .chassis
-                    .wheel_radius
-                    .with_context(|| format_dbg!())?
-                    .powi(typenum::P2::new()));
-        let drag1 = 3.0 / 16.0
-            * *vs.air_density.get_fresh(|| format_dbg!())?
-            * self.veh.chassis.drag_coef
-            * self.veh.chassis.frontal_area
-            * vs.speed_ach
-                .get_stale(|| format_dbg!())?
-                .powi(typenum::P2::new());
-        let roll1 = 0.5
-            * mass
-            * uc::ACC_GRAV
-            * self.veh.chassis.wheel_rr_coef
-            * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().cos();
-        let ascent1 =
-            0.5 * uc::ACC_GRAV * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().sin() * mass;
-        let accel0 = -0.5 * mass * speed_prev.powi(typenum::P2::new()) / dt;
-        let drag0 = 1.0 / 16.0
-            * *vs.air_density.get_fresh(|| format_dbg!())?
-            * self.veh.chassis.drag_coef
-            * self.veh.chassis.frontal_area
-            * speed_prev.powi(typenum::P3::new());
-        let roll0 = 0.5
-            * mass
-            * uc::ACC_GRAV
-            * self.veh.chassis.wheel_rr_coef
-            * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().cos()
-            * speed_prev;
-        let ascent0 = 0.5
-            * uc::ACC_GRAV
-            * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().sin()
-            * mass
-            * speed_prev;
-        let wheel0 = -0.5
-            * self.veh.chassis.wheel_inertia
-            * self.veh.chassis.num_wheels as f64
-            * speed_prev.powi(typenum::P2::new())
-            / (dt
-                * self
-                    .veh
-                    .chassis
-                    .wheel_radius
-                    .with_context(|| format_dbg!())?
-                    .powi(typenum::P2::new()));
-
-        let t3 = drag3;
-        let t2 = accel2 + drag2 + wheel2;
-        let t1 = drag1 + roll1 + ascent1;
-        let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0)
-            - *vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?;
-
-        // initial guess
-        let speed_guess = (1e-3 * uc::MPS).max(cyc_speed);
-        // stop criteria
-        let max_iter = &self.sim_params.ach_speed_max_iter;
-        let xtol = &self.sim_params.ach_speed_tol;
-        // solver gain
-        let g = &self.sim_params.ach_speed_solver_gain;
-        let pwr_err_fn = |speed_guess: si::Velocity| -> si::Power {
-            t3 * speed_guess.powi(typenum::P3::new())
-                + t2 * speed_guess.powi(typenum::P2::new())
-                + t1 * speed_guess
-                + t0
-        };
-        let pwr_err_per_speed_guess_fn = |speed_guess: si::Velocity| {
-            3.0 * t3 * speed_guess.powi(typenum::P2::new()) + 2.0 * t2 * speed_guess + t1
-        };
-        let pwr_err = pwr_err_fn(speed_guess);
-        if almost_eq_uom(&pwr_err, &(0. * uc::W), Some(1e-6)) {
-            // TODO: maybe change to `updated_unchecked`
-            vs.speed_ach.update(cyc_speed, || format_dbg!())?;
-            return Ok(());
-        }
-        let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
-        let new_speed_guess = pwr_err - speed_guess * pwr_err_per_speed_guess;
-        let mut speed_guesses = vec![speed_guess];
-        let mut pwr_errs = vec![pwr_err];
-        let mut d_pwr_err_per_d_speed_guesses = vec![pwr_err_per_speed_guess];
-        let mut new_speed_guesses = vec![new_speed_guess];
-        // speed achieved iteration counter
-        let mut spd_ach_iter_counter = 1;
-        let mut converged = pwr_err <= si::Power::ZERO;
-        let mut speed_ach: si::Velocity = Default::default();
-        while &spd_ach_iter_counter < max_iter && !converged {
-            let speed_guess = *speed_guesses.iter().last().with_context(|| format_dbg!())?
-                * (1.0 - g)
-                - *g * *new_speed_guesses
-                    .iter()
-                    .last()
-                    .with_context(|| format_dbg!())?
-                    / d_pwr_err_per_d_speed_guesses[speed_guesses.len() - 1];
-            let pwr_err = pwr_err_fn(speed_guess);
-            let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
-            let new_speed_guess = pwr_err - speed_guess * pwr_err_per_speed_guess;
-            speed_guesses.push(speed_guess);
-            pwr_errs.push(pwr_err);
-            d_pwr_err_per_d_speed_guesses.push(pwr_err_per_speed_guess);
-            new_speed_guesses.push(new_speed_guess);
-            // is the fractional change between previous and current speed guess smaller than `xtol`
-            converged = &((*speed_guesses.iter().last().with_context(|| format_dbg!())?
-                - speed_guesses[speed_guesses.len() - 2])
-                / speed_guesses[speed_guesses.len() - 2])
-                .abs()
-                < xtol;
-            spd_ach_iter_counter += 1;
-
-            // TODO: verify that assuming `speed_guesses.iter().last()` is the correct solution
-            speed_ach = speed_guesses
-                .last()
-                .with_context(|| format_dbg!("should have had at least one element"))?
-                .max(0.0 * uc::MPS);
-        }
-        */
         let speed_ach = step_info.solve_for_speed(
             self.sim_params.ach_speed_max_iter,
             self.sim_params.ach_speed_tol,
@@ -1216,7 +641,7 @@ pwr deficit: {} kW
         // for calling set_pwr_prop_for_speed(.) again this step.
         // set_pwr_prop_for_speed has already been called so the
         // following variables have already been set fresh but need
-        // to be re-iterated. 
+        // to be re-iterated.
         vs.air_density.mark_stale();
         vs.cyc_met.mark_stale();
         vs.cyc_met_overall.mark_stale();
@@ -1532,12 +957,9 @@ mod tests {
     fn test_sim_drive_bev() {
         let _veh = mock_bev();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
-        let _cyc0 = _cyc.clone();
         let mut sd = SimDrive {
             veh: _veh,
             cyc: _cyc,
-            cyc0: _cyc0,
-            cyc0_cache: None,
             sim_params: Default::default(),
         };
         sd.walk().unwrap();
@@ -1641,55 +1063,6 @@ mod tests {
                     .unwrap()
                     != si::Energy::ZERO
             );
-        }
-    }
-
-    #[test]
-    #[cfg(feature = "resources")]
-    fn test_coasting() {
-        //let mut veh = Vehicle::from_resource("2020 Chevrolet Bolt EV.yaml", false).unwrap();
-        let mut veh = Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
-        veh.set_save_interval(Some(1))
-            .expect("No error expected setting save interval");
-        let cyc = Cycle::from_resource("udds.csv", false).unwrap();
-        let coast_start_speed = 20.0 * uc::MPS;
-        let coast_start_speed_m_per_s = coast_start_speed.get::<si::meter_per_second>();
-        let params = SimParams {
-            coast_allow: true,
-            coast_start_speed,
-            ..Default::default()
-        };
-        let mut sd = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        sd.walk().unwrap();
-        let speed_req_mps: Vec<f64> = cyc
-            .speed
-            .clone()
-            .iter()
-            .map(|v| v.get::<si::meter_per_second>())
-            .collect();
-        let speed_ach_mps: Vec<f64> = sd
-            .veh
-            .history
-            .speed_ach
-            .clone()
-            .iter()
-            .map(|v| {
-                v.get_fresh(|| format_dbg!())
-                    .unwrap()
-                    .get::<si::meter_per_second>()
-            })
-            .collect();
-        assert_eq!(speed_req_mps.len(), speed_ach_mps.len());
-        let mut should_not_equal = false;
-        for idx in 0..speed_req_mps.len() {
-            if should_not_equal || speed_req_mps[idx] > coast_start_speed_m_per_s {
-                should_not_equal = true;
-            } else {
-                assert_eq!(
-                    speed_req_mps[idx], speed_ach_mps[idx],
-                    "Speeds do not match at {idx}"
-                );
-            }
         }
     }
 }
