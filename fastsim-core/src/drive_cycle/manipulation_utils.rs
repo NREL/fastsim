@@ -61,6 +61,9 @@ impl ConstantJerkTrajectory {
         vr: f64,
         dt: f64,
     ) -> ConstantJerkTrajectory {
+        assert!(n > 1);
+        assert!(dr > d0);
+        let n_orig = n;
         let n = n as f64;
         let ddr = dr - d0;
         let dvr = vr - v0;
@@ -73,7 +76,7 @@ impl ConstantJerkTrajectory {
             - ((1.0 / 6.0) * n * (n - 1.0) * (n - 2.0) * dt + 0.25 * n * (n - 1.0) * dt * dt) * k)
             / (0.5 * n * n * dt);
         ConstantJerkTrajectory {
-            steps: n as usize,
+            steps: n_orig,
             distance_m: d0,
             speed_m_per_s: v0,
             acceleration_m_per_s2: a0,
