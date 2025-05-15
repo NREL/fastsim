@@ -446,7 +446,8 @@ impl SimDriveHot {
                     self.vehthrm.fc_htc_to_amb_stop * self.vehthrm.rad_eps,
                 ]),
                 false,
-            )?
+            )
+            .with_context(|| format_dbg!())?
         } else {
             // Calculate heat transfer coefficient for sphere,
             // from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
@@ -467,7 +468,8 @@ impl SimDriveHot {
                     fc_htc_to_amb_sphere * self.vehthrm.rad_eps,
                 ]),
                 false,
-            )?
+            )
+            .with_context(|| format_dbg!())?
         }
 
         self.state.fc_qdot_to_amb_kw = self.state.fc_htc_to_amb

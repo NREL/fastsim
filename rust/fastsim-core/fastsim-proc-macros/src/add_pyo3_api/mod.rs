@@ -108,20 +108,22 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         // tuple struct
         if ast.ident.to_string().contains("Vec") || ast.ident.to_string().contains("Array") {
             assert!(unnamed.len() == 1);
+            let regex_vec = Regex::new(r"Vec < (.+) >").unwrap();
+            let regex_arr = Regex::new(r"Array1 < (.+) >").unwrap();
             for field in unnamed.iter() {
                 let ftype = field.ty.clone();
                 if let syn::Type::Path(type_path) = ftype.clone() {
                     let type_str = type_path.clone().into_token_stream().to_string();
                     let (re, container, py_new_body, tolist_body) = if type_str.contains("Vec") {
                         (
-                            Regex::new(r"Vec < (.+) >").unwrap(),
+                            regex_vec.clone(),
                             "Vec".parse::<TokenStream2>().unwrap(),
                             "Self(v)".parse::<TokenStream2>().unwrap(),
                             "self.0.clone()".parse::<TokenStream2>().unwrap(),
                         )
                     } else if type_str.contains("Array1") {
                         (
-                            Regex::new(r"Array1 < (.+) >").unwrap(),
+                            regex_arr.clone(),
                             "Array1".parse::<TokenStream2>().unwrap(),
                             "Self(Array1::from_vec(v))".parse::<TokenStream2>().unwrap(),
                             "self.0.to_vec()".parse::<TokenStream2>().unwrap(),

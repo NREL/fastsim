@@ -57,26 +57,26 @@ lazy_static! {
     pub fn set_mc_peak_eff_py(&mut self, new_peak: f64) {
         self.set_mc_peak_eff(new_peak);
     }
-    
+
     #[getter]
     pub fn get_mc_eff_range_py(&self) -> anyhow::Result<f64> {
         self.get_mc_eff_range()
-    }   
+    }
 
     #[setter("mc_eff_range")]
     pub fn set_mc_eff_range_py(&mut self, new_range: f64) -> anyhow::Result<()> {
         self.set_mc_eff_range(new_range)
-    }    
+    }
 
     #[getter]
     pub fn get_fc_eff_range_py(&self) -> anyhow::Result<f64> {
         self.get_fc_eff_range()
-    }   
+    }
 
     #[setter("fc_eff_range")]
     pub fn set_fc_eff_range_py(&mut self, new_range: f64) -> anyhow::Result<()> {
         self.set_fc_eff_range(new_range)
-    }   
+    }
 
     #[getter]
     pub fn get_max_fc_eff_kw(&self) -> f64 {
@@ -718,7 +718,10 @@ impl RustVehicle {
             let old_range = self.get_mc_eff_range()?;
             self.mc_eff_map = mc_eff_max + (&self.mc_eff_map - mc_eff_max) * new_range / old_range;
             if self.get_mc_eff_min()? < &0.0 {
-                bail!("`mc_eff_min` ({:.3}) must not be negative", self.get_mc_eff_min()?)
+                bail!(
+                    "`mc_eff_min` ({:.3}) must not be negative",
+                    self.get_mc_eff_min()?
+                )
             }
             ensure!(
                 self.get_mc_eff_max()? <= &1.0,
@@ -763,7 +766,10 @@ impl RustVehicle {
             let old_range = self.get_fc_eff_range()?;
             self.fc_eff_map = fc_eff_max + (&self.fc_eff_map - fc_eff_max) * new_range / old_range;
             if self.get_fc_eff_min()? < 0.0 {
-                bail!("`fc_eff_min` ({:.3}) must not be negative", self.get_fc_eff_min()?)
+                bail!(
+                    "`fc_eff_min` ({:.3}) must not be negative",
+                    self.get_fc_eff_min()?
+                )
             }
             ensure!(
                 self.get_fc_eff_max()? <= 1.0,
@@ -887,12 +893,16 @@ impl RustVehicle {
         // Creates relatively continuous array for fc_eff
         if self.fc_eff_array.is_empty() {
             for x in &self.fc_perc_out_array {
-            self.fc_eff_array.push(interpolate(
-                &x,
-                &Array1::from(self.fc_pwr_out_perc.to_vec()),
-                &self.fc_eff_map,
-                false,
-            )?)}
+                self.fc_eff_array.push(
+                    interpolate(
+                        x,
+                        &Array1::from(self.fc_pwr_out_perc.to_vec()),
+                        &self.fc_eff_map,
+                        false,
+                    )
+                    .with_context(|| format_dbg!())?,
+                )
+            }
         }
 
         if self.mc_eff_map == Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()) {
@@ -923,17 +933,14 @@ impl RustVehicle {
         self.mc_kw_out_array =
             (Array::linspace(0.0, 1.0, self.mc_perc_out_array.len()) * self.mc_max_kw).to_vec();
 
-    for (idx, x) in self
-            .mc_perc_out_array.iter().enumerate(){
-            self.mc_full_eff_array.push(
-                if idx == 0 {
-                    0.0
-                } else {
-                    interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)?
-                }
-            )
+        for (idx, x) in self.mc_perc_out_array.iter().enumerate() {
+            self.mc_full_eff_array.push(if idx == 0 {
+                0.0
+            } else {
+                interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)
+                    .with_context(|| format_dbg!())?
+            })
         }
-
 
         self.mc_kw_in_array = [0.0; 101]
             .iter()
@@ -1207,33 +1214,28 @@ impl RustVehicle {
 
     /// Skews the peak of motor efficiency curve to new x-value, redistributing other
     /// x-values linearly, preserving relative distances between peak and endpoints.  
-    /// Arguments:  
-    /// ----------  
-    /// new_peak_x: new x-value at which to relocate peak  
-
+    /// # Arguments  
+    /// - `new_peak_x`: new x-value at which to relocate peak  
     pub fn set_mc_eff_peak_pwr(&mut self, new_peak_x: f64) -> anyhow::Result<()> {
         let short_arrays = skewness_shift(&self.mc_pwr_out_perc, &self.mc_eff_map, new_peak_x)?;
         self.mc_pwr_out_perc = short_arrays.0;
         self.mc_eff_map = short_arrays.1.clone();
         self.mc_eff_array = short_arrays.1;
         for (idx, x) in self.mc_perc_out_array.iter().enumerate() {
-            self.mc_full_eff_array .push(
-                if idx == 0 {
-                    0.0
-                } else {
-                    interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)?
-                }
-            );
+            self.mc_full_eff_array.push(if idx == 0 {
+                0.0
+            } else {
+                interpolate(x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)
+                    .with_context(|| format_dbg!())?
+            });
         }
         Ok(())
     }
 
     /// Skews the peak of fc efficiency curve to new x-value, redistributing other
     /// x-values linearly, preserving relative distances between peak and endpoints.  
-    /// Arguments:  
-    /// ----------  
-    /// new_peak_x: new x-value at which to relocate peak  
-
+    /// # Arguments
+    /// - `new_peak_x`: new x-value at which to relocate peak  
     pub fn set_fc_eff_peak_pwr(&mut self, new_peak_x: f64) -> anyhow::Result<()> {
         let short_arrays = skewness_shift(&self.fc_pwr_out_perc, &self.fc_eff_map, new_peak_x)?;
         self.fc_pwr_out_perc = short_arrays.0;
@@ -1316,9 +1318,13 @@ mod tests {
     fn test_set_mc_eff_range() {
         let mut veh = RustVehicle::mock_vehicle();
         veh.set_mc_eff_range(0.7).unwrap();
-        assert!(0.699 < veh.get_mc_eff_range().unwrap() && veh.get_mc_eff_range().unwrap() <= 0.701);
+        assert!(
+            0.699 < veh.get_mc_eff_range().unwrap() && veh.get_mc_eff_range().unwrap() <= 0.701
+        );
         veh.set_mc_eff_range(0.5).unwrap();
-        assert!(0.499 < veh.get_mc_eff_range().unwrap() && veh.get_mc_eff_range().unwrap() <= 0.501);
+        assert!(
+            0.499 < veh.get_mc_eff_range().unwrap() && veh.get_mc_eff_range().unwrap() <= 0.501
+        );
         veh.set_mc_eff_range(0.).unwrap();
         assert!(veh.get_mc_eff_range().unwrap() == 0.);
     }
@@ -1473,7 +1479,8 @@ mod tests {
                             0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30
                         ],
                         false,
-                    ).unwrap()
+                    )
+                    .unwrap()
                 })
                 .collect(),
             modern_max: MODERN_MAX,

@@ -22,7 +22,7 @@ pub fn skewness_shift(
 
     // Get index for maximum y-value. Use greatest index, if maximum occurs at
     // multiple indexes.
-    let index_y_max = get_index_for_value(&y, y_max)?;
+    let index_y_max = get_index_for_value(y, y_max)?;
 
     // making vector versions of x and y arrays to manipulate
     let x_vec = x.to_vec();
@@ -80,7 +80,7 @@ pub fn skewness_shift(
         .into_iter()
         .reduce(f64::max)
         .with_context(|| "could not find maximum of new y array")?;
-    let new_index_y_max = get_index_for_value(&y_new.clone().try_into()?, y_new_max)?;
+    let new_index_y_max = get_index_for_value(&y_new.clone().into(), y_new_max)?;
     if x_new[new_index_y_max] != new_peak_x {
         return Err(anyhow!(
             "The maximum in the new y array is not in the correct location."
@@ -92,7 +92,7 @@ pub fn skewness_shift(
         ));
     }
 
-    Ok((x_new.try_into()?, y_new.try_into()?))
+    Ok((x_new.into(), y_new.into()))
 }
 
 /// Gets the index for the a value in an array. If the value occurs more than
@@ -108,7 +108,7 @@ fn get_index_for_value(array: &Array1<f64>, value: f64) -> anyhow::Result<usize>
         if val == &value {
             max_index_vec.push(index);
         }
-        index = index + 1;
+        index += 1;
     }
     Ok(max_index_vec
         .iter()
