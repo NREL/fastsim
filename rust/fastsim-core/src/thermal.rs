@@ -367,7 +367,7 @@ impl SimDriveHot {
         self.sd.solve_step(i)
     }
 
-    pub fn set_thermal_calcs(&mut self, i: usize) {
+    pub fn set_thermal_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         // most of the thermal equations are at [i-1] because the various thermally
         // sensitive component efficiencies dependent on the [i] temperatures, but
         // these are in turn dependent on [i-1] heat transfer processes
@@ -386,11 +386,11 @@ impl SimDriveHot {
         }
 
         if self.vehthrm.exhport_model == ComponentModelTypes::Internal {
-            self.set_exhport_thermal_calcs(i)
+            self.set_exhport_thermal_calcs(i)?
         }
 
         if self.vehthrm.cat_model == ComponentModelTypes::Internal {
-            self.set_cat_thermal_calcs(i)
+            self.set_cat_thermal_calcs(i)?
         }
 
         if self.vehthrm.fc_model != FcModelTypes::External {
@@ -401,18 +401,19 @@ impl SimDriveHot {
                 / self.vehthrm.fc_c_kj__k
                 * self.sd.cyc.dt_s_at_i(i)
         }
+        Ok(())
     }
 
     /// Solve fuel converter thermal behavior assuming convection parameters of sphere.
-    pub fn set_fc_thermal_calcs(&mut self, i: usize) {
+    pub fn set_fc_thermal_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         // Constitutive equations for fuel converter
         // calculation of adiabatic flame temperature
         self.state.fc_te_adiabatic_deg_c = self.air.get_te_from_h(
             ((1.0 + self.state.fc_lambda * self.sd.props.fuel_afr_stoich)
-                * self.air.get_h(self.state.amb_te_deg_c)
+                * self.air.get_h(self.state.amb_te_deg_c)?
                 + self.sd.props.get_fuel_lhv_kj_per_kg() * 1e3 * self.state.fc_lambda.min(1.0))
                 / (1.0 + self.state.fc_lambda * self.sd.props.fuel_afr_stoich),
-        );
+        )?;
 
         // limited between 0 and 1, but should really not get near 1
         self.state.fc_qdot_per_net_heat = (self.vehthrm.fc_coeff_from_comb
@@ -430,8 +431,7 @@ impl SimDriveHot {
         let fc_air_film_re = self.air.get_rho(fc_air_film_te_deg_c, None)
             * self.sd.mps_ach[i - 1]
             * self.vehthrm.fc_l
-            / self.air.get_mu(fc_air_film_te_deg_c);
-
+            / self.air.get_mu(fc_air_film_te_deg_c)?;
         // calculate heat transfer coeff. from engine to ambient [W / (m ** 2 * K)]
         if self.sd.mps_ach[i - 1] < 1.0 {
             // if stopped, scale based on thermostat opening and constant convection
@@ -446,15 +446,15 @@ impl SimDriveHot {
                     self.vehthrm.fc_htc_to_amb_stop * self.vehthrm.rad_eps,
                 ]),
                 false,
-            )
+            )?
         } else {
             // Calculate heat transfer coefficient for sphere,
             // from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
             let fc_sphere_conv_params = get_sphere_conv_params(fc_air_film_re);
             let fc_htc_to_amb_sphere = (fc_sphere_conv_params.0
                 * fc_air_film_re.powf(fc_sphere_conv_params.1))
-                * self.air.get_pr(fc_air_film_te_deg_c).powf(1.0 / 3.0)
-                * self.air.get_k(fc_air_film_te_deg_c)
+                * self.air.get_pr(fc_air_film_te_deg_c)?.powf(1.0 / 3.0)
+                * self.air.get_k(fc_air_film_te_deg_c)?
                 / self.vehthrm.fc_l;
             self.state.fc_htc_to_amb = interpolate(
                 &self.state.fc_te_deg_c,
@@ -467,17 +467,18 @@ impl SimDriveHot {
                     fc_htc_to_amb_sphere * self.vehthrm.rad_eps,
                 ]),
                 false,
-            )
+            )?
         }
 
         self.state.fc_qdot_to_amb_kw = self.state.fc_htc_to_amb
             * 1e-3
             * self.vehthrm.fc_area_ext()
-            * (self.state.fc_te_deg_c - self.state.amb_te_deg_c)
+            * (self.state.fc_te_deg_c - self.state.amb_te_deg_c);
+        Ok(())
     }
 
     /// Solve cabin thermal behavior.
-    pub fn set_cab_thermal_calcs(&mut self, i: usize) {
+    pub fn set_cab_thermal_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         if let CabinHvacModelTypes::Internal(hvac_model) = &mut self.vehthrm.cabin_hvac_model {
             // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
             // Transfer, 7th Edition
@@ -485,22 +486,22 @@ impl SimDriveHot {
             let re_l = self.air.get_rho(cab_te_film_ext_deg_c, None)
                 * self.sd.mps_ach[i - 1]
                 * self.vehthrm.cab_l_length
-                / self.air.get_mu(cab_te_film_ext_deg_c);
+                / self.air.get_mu(cab_te_film_ext_deg_c)?;
             let re_l_crit = 5.0e5; // critical Re for transition to turbulence
 
             let nu_l_bar = if re_l < re_l_crit {
                 // equation 7.30
-                0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c).powf(1.0 / 3.0)
+                0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c)?.powf(1.0 / 3.0)
             } else {
                 // equation 7.38
                 let a = 871.0; // equation 7.39
-                (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c)
+                (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c)?
             };
 
             self.state.cab_qdot_to_amb_kw = if self.sd.mph_ach[i - 1] > 2.0 {
                 1e-3 * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
                     / (1.0
-                        / (nu_l_bar * self.air.get_k(cab_te_film_ext_deg_c)
+                        / (nu_l_bar * self.air.get_k(cab_te_film_ext_deg_c)?
                             / self.vehthrm.cab_l_length)
                         + self.vehthrm.cab_r_to_amb)
                     * (self.state.cab_te_deg_c - self.state.amb_te_deg_c)
@@ -615,10 +616,11 @@ impl SimDriveHot {
                 / self.vehthrm.cab_c_kj__k
                 * self.sd.cyc.dt_s_at_i(i);
         }
+        Ok(())
     }
 
     /// Solve exhport thermal behavior.
-    pub fn set_exhport_thermal_calcs(&mut self, i: usize) {
+    pub fn set_exhport_thermal_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         // lambda index may need adjustment, depending on how this ends up being modeled.
         self.state.exh_mdot = self.sd.fs_kw_out_ach[i - 1] / self.sd.props.get_fuel_lhv_kj_per_kg()
             * (1.0 + self.sd.props.fuel_afr_stoich * self.state.fc_lambda);
@@ -628,7 +630,7 @@ impl SimDriveHot {
         if self.state.exh_mdot > 5e-4 {
             self.state.exhport_exh_te_in_deg_c = min(
                 self.air
-                    .get_te_from_h(self.state.exh_hdot_kw * 1e3 / self.state.exh_mdot),
+                    .get_te_from_h(self.state.exh_hdot_kw * 1e3 / self.state.exh_mdot)?,
                 self.state.fc_te_adiabatic_deg_c,
             );
             // when flow is small, assume inlet temperature is temporally constant
@@ -670,8 +672,8 @@ impl SimDriveHot {
                     * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
                 // max possible heat transfer from exhaust
                 self.state.exh_mdot
-                    * (self.air.get_h(self.state.exhport_exh_te_in_deg_c)
-                        - self.air.get_h(self.state.exhport_te_deg_c)),
+                    * (self.air.get_h(self.state.exhport_exh_te_in_deg_c)?
+                        - self.air.get_h(self.state.exhport_te_deg_c)?),
                 // max possible heat transfer to exhaust port
                 self.vehthrm.exhport_c_kj__k
                     * 1e3
@@ -686,8 +688,8 @@ impl SimDriveHot {
                     * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
                 // max possible heat transfer from exhaust
                 self.state.exh_mdot
-                    * (self.air.get_h(self.state.exhport_exh_te_in_deg_c)
-                        - self.air.get_h(self.state.exhport_te_deg_c)),
+                    * (self.air.get_h(self.state.exhport_exh_te_in_deg_c)?
+                        - self.air.get_h(self.state.exhport_te_deg_c)?),
                 // max possible heat transfer to exhaust port
                 self.vehthrm.exhport_c_kj__k
                     * 1e3
@@ -701,6 +703,7 @@ impl SimDriveHot {
         self.state.exhport_te_deg_c += self.state.exhport_qdot_net
             / (self.vehthrm.exhport_c_kj__k * 1e3)
             * self.sd.cyc.dt_s_at_i(i);
+        Ok(())
     }
 
     pub fn thermal_soak_walk(&mut self) {
@@ -712,7 +715,7 @@ impl SimDriveHot {
     }
 
     /// Solve catalyst thermal behavior.
-    pub fn set_cat_thermal_calcs(&mut self, i: usize) {
+    pub fn set_cat_thermal_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         // external or internal model handling catalyst thermal behavior
 
         // Constitutive equations for catalyst
@@ -722,7 +725,7 @@ impl SimDriveHot {
         self.state.cat_re_ext = self.air.get_rho(cat_te_ext_film_deg_c, None)
             * self.sd.mps_ach[i - 1]
             * self.vehthrm.cat_l
-            / self.air.get_mu(cat_te_ext_film_deg_c);
+            / self.air.get_mu(cat_te_ext_film_deg_c)?;
 
         // calculate heat transfer coeff. from cat to ambient [W / (m ** 2 * K)]
         if self.sd.mps_ach[i - 1] < 1.0 {
@@ -734,8 +737,8 @@ impl SimDriveHot {
             let cat_sphere_conv_params = get_sphere_conv_params(self.state.cat_re_ext);
             self.state.fc_htc_to_amb = (cat_sphere_conv_params.0
                 * self.state.cat_re_ext.powf(cat_sphere_conv_params.1))
-                * self.air.get_pr(cat_te_ext_film_deg_c).powf(1.0 / 3.0)
-                * self.air.get_k(cat_te_ext_film_deg_c)
+                * self.air.get_pr(cat_te_ext_film_deg_c)?.powf(1.0 / 3.0)
+                * self.air.get_k(cat_te_ext_film_deg_c)?
                 / self.vehthrm.cat_l;
         }
 
@@ -772,7 +775,7 @@ impl SimDriveHot {
                 self.air.get_te_from_h(
                     (self.state.exh_hdot_kw * 1e3 - self.state.exhport_qdot_from_exh)
                         / self.state.exh_mdot,
-                ),
+                )?,
                 self.state.fc_te_adiabatic_deg_c,
             );
             // when flow is small, assume inlet temperature is temporally constant
@@ -784,8 +787,8 @@ impl SimDriveHot {
             self.state.cat_qdot_from_exh = min(
                 // limited by exhaust heat capacitance flow
                 self.state.exh_mdot
-                    * (self.air.get_h(self.state.cat_exh_te_in_deg_c)
-                        - self.air.get_h(self.state.cat_te_deg_c)),
+                    * (self.air.get_h(self.state.cat_exh_te_in_deg_c)?
+                        - self.air.get_h(self.state.cat_te_deg_c)?),
                 // limited by catalyst thermal mass temperature change
                 self.vehthrm.cab_c_kj__k
                     * 1e3
@@ -797,8 +800,8 @@ impl SimDriveHot {
             self.state.cat_qdot_from_exh = max(
                 // limited by exhaust heat capacitance flow
                 self.state.exh_mdot
-                    * (self.air.get_h(self.state.cat_exh_te_in_deg_c)
-                        - self.air.get_h(self.state.cat_te_deg_c)),
+                    * (self.air.get_h(self.state.cat_exh_te_in_deg_c)?
+                        - self.air.get_h(self.state.cat_te_deg_c)?),
                 // limited by catalyst thermal mass temperature change
                 self.vehthrm.cat_c_kj__K
                     * 1e3
@@ -816,6 +819,7 @@ impl SimDriveHot {
 
         self.state.cat_te_deg_c +=
             self.state.cat_qdot_net * 1e-3 / self.vehthrm.cat_c_kj__K * self.sd.cyc.dt_s_at_i(i);
+        Ok(())
     }
 
     pub fn set_misc_calcs(&mut self, i: usize) {

@@ -75,7 +75,7 @@ impl AirProperties {
     /// ----------
     /// te_air: Float
     ///     temperature [°C] of air
-    pub fn get_k(&self, te_air: f64) -> f64 {
+    pub fn get_k(&self, te_air: f64) -> anyhow::Result<f64> {
         interp(&te_air, &self.te_array_degc, &self.k_array, false)
     }
 
@@ -84,7 +84,7 @@ impl AirProperties {
     /// ----------
     /// te_air: f64
     ///     temperature [°C] of air
-    pub fn get_cp(&self, te_air: f64) -> f64 {
+    pub fn get_cp(&self, te_air: f64) -> anyhow::Result<f64> {
         interp(&te_air, &self.te_array_degc, &self.c_p_array, false)
     }
 
@@ -93,7 +93,7 @@ impl AirProperties {
     /// ----------
     /// te_air: f64
     ///     temperature [°C] of air
-    pub fn get_h(&self, te_air: f64) -> f64 {
+    pub fn get_h(&self, te_air: f64) -> anyhow::Result<f64> {
         interp(&te_air, &self.te_array_degc, &self.h_array, false)
     }
 
@@ -102,7 +102,7 @@ impl AirProperties {
     /// ----------
     /// te_air: f64
     ///     temperature [°C] of air     
-    pub fn get_pr(&self, te_air: f64) -> f64 {
+    pub fn get_pr(&self, te_air: f64) -> anyhow::Result<f64> {
         interp(&te_air, &self.te_array_degc, &self.pr_array, false)
     }
 
@@ -111,7 +111,7 @@ impl AirProperties {
     /// ----------
     /// te_air: f64
     ///     temperature [°C] of air
-    pub fn get_mu(&self, te_air: f64) -> f64 {
+    pub fn get_mu(&self, te_air: f64) -> anyhow::Result<f64> {
         interp(&te_air, &self.te_array_degc, &self.mu_array, false)
     }
 
@@ -120,7 +120,7 @@ impl AirProperties {
     /// ----------
     /// h: Float
     ///     specific enthalpy [J/kg] of air
-    pub fn get_te_from_h(&self, h: f64) -> f64 {
+    pub fn get_te_from_h(&self, h: f64) -> anyhow::Result<f64> {
         interp(&h, &self.h_array, &self.te_array_degc, false)
     }
 }

@@ -450,24 +450,25 @@ impl RustCycleCache {
 
     /// Interpolate the single-point grade at the given distance.
     /// Assumes that the grade at i applies from sample point (i-1, i]
-    pub fn interp_grade(&self, dist_m: f64) -> f64 {
-        if self.grade_all_zero {
+    pub fn interp_grade(&self, dist_m: f64) -> anyhow::Result<f64> {
+        let v = if self.grade_all_zero {
             0.0
         } else if dist_m <= self.interp_ds[0] {
             self.grades[0]
         } else if dist_m > *self.interp_ds.last().unwrap() {
             *self.grades.last().unwrap()
         } else {
-            let raw_idx = interpolate(&dist_m, &self.interp_ds, &self.interp_is, false);
+            let raw_idx = interpolate(&dist_m, &self.interp_ds, &self.interp_is, false)?;
             let idx = raw_idx.ceil() as usize;
             self.grades[idx]
-        }
+        };
+        Ok(v)
     }
 
     /// Interpolate the elevation at the given distance
-    pub fn interp_elevation(&self, dist_m: f64) -> f64 {
+    pub fn interp_elevation(&self, dist_m: f64) -> anyhow::Result<f64> {
         if self.grade_all_zero {
-            0.0
+            Ok(0.0)
         } else {
             interpolate(&dist_m, &self.interp_ds, &self.interp_hs, false)
         }
@@ -582,7 +583,7 @@ impl RustCycleCache {
         &self,
         distance_start_m: f64,
         delta_distance_m: f64,
-    ) -> f64 {
+    ) -> anyhow::Result<f64> {
         self.average_grade_over_range(distance_start_m, delta_distance_m, None)
     }
 
@@ -929,19 +930,20 @@ impl RustCycle {
         distance_start_m: f64,
         delta_distance_m: f64,
         cache: Option<&RustCycleCache>,
-    ) -> f64 {
+    ) -> anyhow::Result<f64> {
         let tol = 1e-6;
         match &cache {
             Some(rcc) => {
-                if rcc.grade_all_zero {
+                let v = if rcc.grade_all_zero {
                     0.0
                 } else if delta_distance_m <= tol {
-                    rcc.interp_grade(distance_start_m)
+                    rcc.interp_grade(distance_start_m)?
                 } else {
-                    let e0 = rcc.interp_elevation(distance_start_m);
-                    let e1 = rcc.interp_elevation(distance_start_m + delta_distance_m);
+                    let e0 = rcc.interp_elevation(distance_start_m)?;
+                    let e1 = rcc.interp_elevation(distance_start_m + delta_distance_m)?;
                     ((e1 - e0) / delta_distance_m).asin().tan()
-                }
+                };
+                Ok(v)
             }
             None => {
                 let grade_all_zero = {
@@ -954,24 +956,24 @@ impl RustCycle {
                     }
                     all0
                 };
-                if grade_all_zero {
+                let v = if grade_all_zero {
                     0.0
                 } else {
                     let delta_dists = trapz_step_distances(self);
                     let trapz_distances_m = ndarrcumsum(&delta_dists);
                     if delta_distance_m <= tol {
                         if distance_start_m <= trapz_distances_m[0] {
-                            return self.grade[0];
+                            return Ok(self.grade[0]);
                         }
                         let max_idx = self.len() - 1;
                         if distance_start_m > trapz_distances_m[max_idx] {
-                            return self.grade[max_idx];
+                            return Ok(self.grade[max_idx]);
                         }
                         for idx in 1..self.time_s.len() {
                             if distance_start_m > trapz_distances_m[idx - 1]
                                 && distance_start_m <= trapz_distances_m[idx]
                             {
-                                return self.grade[idx];
+                                return Ok(self.grade[idx]);
                             }
                         }
                         self.grade[max_idx]
@@ -987,16 +989,17 @@ impl RustCycle {
                             &trapz_distances_m,
                             &trapz_elevations_m,
                             false,
-                        );
+                        )?;
                         let e1 = interpolate(
                             &(distance_start_m + delta_distance_m),
                             &trapz_distances_m,
                             &trapz_elevations_m,
                             false,
-                        );
+                        )?;
                         ((e1 - e0) / delta_distance_m).asin().tan()
                     }
-                }
+                };
+                Ok(v)
             }
         }
     }

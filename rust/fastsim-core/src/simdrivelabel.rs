@@ -154,7 +154,7 @@ pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> any
             &sd_accel.mph_ach,
             &sd_accel.cyc0.time_s,
             false,
-        ))
+        )?)
     } else {
         #[cfg(feature = "logging")]
         log::warn!("vehicle '{}' never achieves 60 mph", scenario_name);
