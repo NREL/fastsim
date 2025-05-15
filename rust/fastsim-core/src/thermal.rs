@@ -342,7 +342,7 @@ impl SimDriveHot {
     }
 
     pub fn step(&mut self) -> anyhow::Result<()> {
-        self.set_thermal_calcs(self.sd.i);
+        self.set_thermal_calcs(self.sd.i)?;
         self.set_misc_calcs(self.sd.i);
         self.set_comp_lims(self.sd.i)?;
         self.set_power_calcs(self.sd.i)?;
@@ -378,11 +378,11 @@ impl SimDriveHot {
         }
 
         if let FcModelTypes::Internal(..) = &self.vehthrm.fc_model {
-            self.set_fc_thermal_calcs(i);
+            self.set_fc_thermal_calcs(i)?;
         }
 
         if let CabinHvacModelTypes::Internal(_) = &self.vehthrm.cabin_hvac_model {
-            self.set_cab_thermal_calcs(i);
+            self.set_cab_thermal_calcs(i)?;
         }
 
         if self.vehthrm.exhport_model == ComponentModelTypes::Internal {
@@ -708,10 +708,13 @@ impl SimDriveHot {
         Ok(())
     }
 
-    pub fn thermal_soak_walk(&mut self) {
+    pub fn thermal_soak_walk(&mut self) -> anyhow::Result<()> {
         self.sd.i = 1;
-        while self.sd.i < self.sd.cyc.len() {
-            self.set_thermal_calcs(self.sd.i);
+        loop {
+            if self.sd.i < self.sd.cyc.len() {
+                break Ok(());
+            }
+            self.set_thermal_calcs(self.sd.i)?;
             self.sd.i += 1;
         }
     }
