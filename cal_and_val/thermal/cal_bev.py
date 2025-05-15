@@ -260,7 +260,7 @@ for cyc_file_stem, cyc in cycs_for_val.items():
 # Setup model objectives
 # Parameter Functions
 # `param_fns`
-def new_em_eff_max(sd_dict, new_eff_max) -> dict:
+def new_em_eff_max(sd_dict: dict, new_eff_max: float) -> dict:
     """
     Set `new_eff_max` in `ElectricMachine`
     """

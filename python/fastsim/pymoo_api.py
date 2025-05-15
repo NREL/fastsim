@@ -267,7 +267,6 @@ class ModelObjectives(object):
                             # `np.nan` or trigger a constraint violation.
                             objectives[key].append(1.03e12)
                 else:
-                    raise Exception("this is here for debugging and should be deleted")
                     objectives[key].append(mod_sig)
             for constr_fn in self.constr_fns:
                 constraint_violations[key].append(constr_fn(sd_dict))
