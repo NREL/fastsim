@@ -104,12 +104,30 @@ pub struct Maneuver {
     /// Control version
     #[serde(default)]
     pub idm_allow: bool,
+    /// IDM algorithm: a way to specify desired speed by course distance
+    /// traveled. Can simulate changing speed limits over a driving cycle.
+    /// optional list of (distance (m), desired speed (m/s)).
+    pub idm_v_desired_in_m_per_s_by_distance_m: Option<Vec<(f64, f64)>>,
+    /// IDM algorithm: desired speed (m/s). Only used if
+    /// idm_v_desired_in_m_per_s_by_distance_m is NOT set (i.e., is None)
+    pub idm_v_desired_m_per_s: f64,
+    /// IDM algorithm: headway time desired to vehicle in front (s)
+    pub idm_dt_headway_s: f64,
+    /// IDM algorithm: minimum desired gap between vehicle and lead vehicle (m)
+    pub idm_minimum_gap_m: f64,
+    /// IDM algorithm: delta parameter
+    pub idm_delta: f64,
+    /// IDM algorithm: acceleration parameter
+    pub idm_accel_m_per_s2: f64,
+    /// IDM algorithm: deceleration parameter
+    pub idm_decel_m_per_s2: f64,
 
     // Internal Fields
     pub i: usize,
     pub coast_delay_index: Vec<i32>,
     pub impose_coast: Vec<bool>,
     pub idm_target_speed_m_per_s: Vec<f64>,
+
     pub cyc0_cache: CycleCache,
 }
 
@@ -178,6 +196,13 @@ impl Default for Maneuver {
             coast_max_speed: 40.0 * uc::MPS,
             coast_time_horizon_for_adjustment: 20.0 * uc::S,
             idm_allow: false,
+            idm_v_desired_in_m_per_s_by_distance_m: None,
+            idm_v_desired_m_per_s: 33.33,
+            idm_dt_headway_s: 1.0,
+            idm_minimum_gap_m: 2.0,
+            idm_delta: 4.0,
+            idm_accel_m_per_s2: 1.0,
+            idm_decel_m_per_s2: 1.5,
             i: 1,
             coast_delay_index: vec![0, 0],
             impose_coast: vec![false, false],
@@ -258,11 +283,134 @@ impl Maneuver {
     }
 
     fn step(&mut self) {
+        if self.idm_allow {
+            self.idm_target_speed_m_per_s[self.i] =
+                match &self.idm_v_desired_in_m_per_s_by_distance_m {
+                    Some(vtgt_by_dist) => {
+                        let mut found_v_target = vtgt_by_dist[0].1;
+                        let mut current_d = 0.0;
+                        for (idx, d) in self.cyc.dist.iter().enumerate() {
+                            if idx > self.i {
+                                break;
+                            }
+                            current_d += d.get::<si::meter>();
+                        }
+                        for (d, v_target) in vtgt_by_dist {
+                            if current_d >= *d {
+                                found_v_target = *v_target;
+                            } else {
+                                break;
+                            }
+                        }
+                        found_v_target
+                    }
+                    None => self.idm_v_desired_m_per_s,
+                };
+            self.set_speed_for_target_gap_using_idm(self.i);
+        }
         if self.coast_allow {
             self.set_coast_speed(self.i);
             self.cyc.grade[self.i] = self.lookup_grade_for_step(self.i, None);
         }
         self.i += 1;
+    }
+
+    /// Set gap
+    /// - i: non-negative integer, the step index
+    ///
+    /// RETURN: None
+    ///
+    /// EFFECTS:
+    /// - sets the next speed (m/s)
+    ///
+    /// EQUATION:
+    /// parameters:
+    ///     - v_desired: the desired speed (m/s)
+    ///     - delta: number, typical value is 4.0
+    ///     - a: max acceleration, (m/s2)
+    ///     - b: max deceleration, (m/s2)
+    /// s = d_lead - d
+    /// dv/dt = a * (1 - (v/v_desired)**delta - (s_desired(v,v-v_lead)/s)**2)
+    /// s_desired(v, dv) = s0 + max(0, v*dt_headway + (v * dv)/(2.0 * sqrt(a*b)))
+    /// REFERENCE:
+    /// Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
+    ///     Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
+    ///     DOI: <https://doi.org/10.1007/978-3-642-32460-4>
+    pub fn set_speed_for_target_gap_using_idm(&mut self, i: usize) {
+        // PARAMETERS
+        let v_desired_m_per_s = if self.idm_target_speed_m_per_s[i] > 0.0 {
+            self.idm_target_speed_m_per_s[i]
+        } else {
+            let mut v = self.cyc0.speed[0];
+            for vi in &self.cyc0.speed {
+                if *vi > v {
+                    v = *vi;
+                }
+            }
+            v.get::<si::meter_per_second>()
+        };
+        // DERIVED VALUES
+        self.cyc.speed[i] = self.next_speed_by_idm(
+            i,
+            self.idm_accel_m_per_s2,
+            self.idm_decel_m_per_s2,
+            self.idm_dt_headway_s,
+            self.idm_minimum_gap_m,
+            v_desired_m_per_s,
+            self.idm_delta,
+        ) * uc::MPS;
+    }
+
+    /// Calculate the next speed by the Intelligent Driver Model
+    /// - i: int, the index
+    /// - a_m_per_s2: number, max acceleration (m/s2)
+    /// - b_m_per_s2: number, max deceleration (m/s2)
+    /// - dt_headway_s: number, the headway between us and the lead vehicle in seconds
+    /// - s0_m: number, the initial gap between us and the lead vehicle in meters
+    /// - v_desired_m_per_s: number, the desired speed in (m/s)
+    /// - delta: number, a shape parameter; typical value is 4.0
+    ///
+    /// RETURN: number, the next speed (m/s)
+    ///
+    /// REFERENCE:
+    /// Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
+    ///     Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
+    ///     DOI: <https://doi.org/10.1007/978-3-642-32460-4>.
+    #[allow(clippy::too_many_arguments)]
+    pub fn next_speed_by_idm(
+        &mut self,
+        i: usize,
+        a_m_per_s2: f64,
+        b_m_per_s2: f64,
+        dt_headway_s: f64,
+        s0_m: f64,
+        v_desired_m_per_s: f64,
+        delta: f64,
+    ) -> f64 {
+        if v_desired_m_per_s <= 0.0 {
+            return 0.0;
+        }
+        let a_m_per_s2 = a_m_per_s2.abs();
+        let b_m_per_s2 = b_m_per_s2.abs();
+        let dt_headway_s = dt_headway_s.max(0.0);
+        // we assume the vehicles start out a "minimum gap" apart
+        let s0_m = s0_m.max(0.0);
+        // DERIVED VALUES
+        let sqrt_ab = (a_m_per_s2 * b_m_per_s2).powf(0.5);
+        let v0_m_per_s = self.cyc.speed[i - 1].get::<si::meter_per_second>();
+        let v0_lead_m_per_s = self.cyc0.speed[i - 1].get::<si::meter_per_second>();
+        let dv0_m_per_s = v0_m_per_s - v0_lead_m_per_s;
+        let d0_lead_m = self.cyc0_cache.trapz_distances_m[(i - 1).max(0)] + s0_m;
+        let d0_m = trapz_step_start_distance(&self.cyc, i).get::<si::meter>();
+        let s_m = (d0_lead_m - d0_m).max(0.01);
+        let dt = (self.cyc0.time[i] - self.cyc0.time[i - 1]).get::<si::second>();
+        // IDM EQUATIONS
+        let s_target_m = s0_m
+            + ((v0_m_per_s * dt_headway_s) + ((v0_m_per_s * dv0_m_per_s) / (2.0 * sqrt_ab)))
+                .max(0.0);
+        let accel_target_m_per_s2 = a_m_per_s2
+            * (1.0 - ((v0_m_per_s / v_desired_m_per_s).powf(delta)) - ((s_target_m / s_m).powi(2)));
+        (v0_m_per_s + (accel_target_m_per_s2 * dt)).max(0.0)
     }
 
     /// For situations where cyc can deviate from cyc0, this method
