@@ -188,12 +188,12 @@ impl RustSimDrive {
     ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
     ///     and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
     ///     then returns self.cyc.grade\[i\]
-    pub fn estimate_grade_for_step(&self, i: usize) -> f64 {
+    pub fn estimate_grade_for_step(&self, i: usize) -> anyhow::Result<f64> {
         if self.cyc0_cache.grade_all_zero {
-            return 0.0;
+            return Ok(0.0);
         }
         if !self.sim_params.coast_allow && !self.sim_params.idm_allow {
-            return self.cyc.grade[i];
+            return Ok(self.cyc.grade[i]);
         }
         self.cyc0_cache
             .interp_grade(trapz_step_start_distance(&self.cyc, i))
@@ -208,12 +208,12 @@ impl RustSimDrive {
     ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
     ///     and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
     ///     then returns self.cyc.grade\[i\]
-    pub fn lookup_grade_for_step(&self, i: usize, mps_ach: Option<f64>) -> f64 {
+    pub fn lookup_grade_for_step(&self, i: usize, mps_ach: Option<f64>) -> anyhow::Result<f64> {
         if self.cyc0_cache.grade_all_zero {
-            return 0.0;
+            return Ok(0.0);
         }
         if !self.sim_params.coast_allow && !self.sim_params.idm_allow {
-            return self.cyc.grade[i];
+            return Ok(self.cyc.grade[i]);
         }
         match mps_ach {
             Some(mps_ach) => self.cyc0.average_grade_over_range(
@@ -368,7 +368,7 @@ impl RustSimDrive {
     /// Generate a coast trajectory without actually modifying the cycle.
     /// This can be used to calculate the distance to stop via coast using
     /// actual time-stepping and dynamically changing grade.
-    fn generate_coast_trajectory(&self, i: usize) -> CoastTrajectory {
+    fn generate_coast_trajectory(&self, i: usize) -> anyhow::Result<CoastTrajectory> {
         let v0 = self.mps_ach[i - 1];
         let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
@@ -384,25 +384,25 @@ impl RustSimDrive {
             }
         }
         if distances_m.is_empty() {
-            return CoastTrajectory {
+            return Ok(CoastTrajectory {
                 found_trajectory: false,
                 distance_to_stop_via_coast_m: 0.0,
                 start_idx: 0,
                 speeds_m_per_s: None,
                 distance_to_brake_m: None,
-            };
+            });
         }
         let distances_m = Array::from_vec(distances_m);
         let grade_by_distance = Array::from_vec(grade_by_distance);
         // distance traveled while stopping via friction-braking (i.e., distance to brake)
         if v0 <= v_brake {
-            return CoastTrajectory {
+            return Ok(CoastTrajectory {
                 found_trajectory: true,
                 distance_to_stop_via_coast_m: -0.5 * v0 * v0 / a_brake,
                 start_idx: i,
                 speeds_m_per_s: None,
                 distance_to_brake_m: None,
-            };
+            });
         }
         let dtb = -0.5 * v_brake * v_brake / a_brake;
         let mut d = 0.0;
@@ -431,7 +431,7 @@ impl RustSimDrive {
             let dt_s = self.cyc0.dt_s_at_i(idx);
             let mut gr = match unique_grade {
                 Some(g) => g,
-                None => self.cyc0_cache.interp_grade(d + d0),
+                None => self.cyc0_cache.interp_grade(d + d0)?,
             };
             let mut k = self.calc_dvdd(v, gr);
             let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
@@ -445,22 +445,23 @@ impl RustSimDrive {
                 if self.sim_params.favor_grade_accuracy {
                     gr = match unique_grade {
                         Some(g) => g,
-                        None => {
-                            self.cyc0
-                                .average_grade_over_range(d + d0, dd, Some(&self.cyc0_cache))
-                        }
+                        None => self.cyc0.average_grade_over_range(
+                            d + d0,
+                            dd,
+                            Some(&self.cyc0_cache),
+                        )?,
                     };
                 }
             }
             if k >= 0.0 && has_unique_grade {
                 // there is no solution for coastdown -- speed will never decrease
-                return CoastTrajectory {
+                return Ok(CoastTrajectory {
                     found_trajectory: false,
                     distance_to_stop_via_coast_m: 0.0,
                     start_idx: 0,
                     speeds_m_per_s: None,
                     distance_to_brake_m: None,
-                };
+                });
             }
             if v_next <= v_brake {
                 break;
@@ -481,21 +482,21 @@ impl RustSimDrive {
             let dtb = -0.5 * v * v / a_brake;
             let dtb_target = min(max(dts0 - d, 0.5 * dtb), 2.0 * dtb);
             let dtsc = d + dtb_target;
-            return CoastTrajectory {
+            return Ok(CoastTrajectory {
                 found_trajectory: true,
                 distance_to_stop_via_coast_m: dtsc,
                 start_idx: i,
                 speeds_m_per_s: Some(new_speeds_m_per_s),
                 distance_to_brake_m: Some(dtb_target),
-            };
+            });
         }
-        CoastTrajectory {
+        Ok(CoastTrajectory {
             found_trajectory: false,
             distance_to_stop_via_coast_m: 0.0,
             start_idx: 0,
             speeds_m_per_s: None,
             distance_to_brake_m: None,
-        }
+        })
     }
 
     /// Calculate the distance to stop via coasting in meters.
@@ -507,7 +508,7 @@ impl RustSimDrive {
     /// - if a non-negative-number, the distance in meters that the vehicle
     ///     would freely coast if unobstructed. Accounts for grade between
     ///     the current point and end-point
-    fn calc_distance_to_stop_coast_v2(&self, i: usize) -> f64 {
+    fn calc_distance_to_stop_coast_v2(&self, i: usize) -> anyhow::Result<f64> {
         let not_found = -1.0;
         let v0 = self.cyc.mps[i - 1];
         let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
@@ -536,7 +537,7 @@ impl RustSimDrive {
         // distance traveled while stopping via friction-braking (i.e., distance to brake)
         let dtb = -0.5 * v_brake * v_brake / a_brake;
         if v0 <= v_brake {
-            return -0.5 * v0 * v0 / a_brake;
+            return Ok(-0.5 * v0 * v0 / a_brake);
         }
         let unique_grades = ndarrunique(&grade_by_distance);
         if unique_grades.len() == 1 {
@@ -558,14 +559,14 @@ impl RustSimDrive {
                 d = (1.0 / (2.0 * c2)) * (a1.ln() - b1.ln());
             }
             if d != not_found {
-                return d + dtb;
+                return Ok(d + dtb);
             }
         }
-        let ct = self.generate_coast_trajectory(i);
+        let ct = self.generate_coast_trajectory(i)?;
         if ct.found_trajectory {
-            ct.distance_to_stop_via_coast_m
+            Ok(ct.distance_to_stop_via_coast_m)
         } else {
-            not_found
+            Ok(not_found)
         }
     }
 
@@ -576,18 +577,18 @@ impl RustSimDrive {
     /// - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
     /// - ALSO, vehicle must have been at or above the coast brake start speed at beginning of step
     /// - AND, must be at least 4 x distances-to-break away
-    fn should_impose_coast(&self, i: usize) -> bool {
+    fn should_impose_coast(&self, i: usize) -> anyhow::Result<bool> {
         if self.sim_params.coast_start_speed_m_per_s > 0.0 {
-            return self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s;
+            return Ok(self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s);
         }
         let v0 = self.mps_ach[i - 1];
         if v0 < self.sim_params.coast_brake_start_speed_m_per_s {
-            return false;
+            return Ok(false);
         }
         // distance to stop by coasting from start of step (i-1)
-        let dtsc0 = self.calc_distance_to_stop_coast_v2(i);
+        let dtsc0 = self.calc_distance_to_stop_coast_v2(i)?;
         if dtsc0 < 0.0 {
-            return false;
+            return Ok(false);
         }
         // distance to next stop (m)
         let d0 = trapz_step_start_distance(&self.cyc, i);
@@ -595,7 +596,7 @@ impl RustSimDrive {
             .cyc0
             .calc_distance_to_next_stop_from(d0, Some(&self.cyc0_cache));
         let dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2;
-        dtsc0 >= dts0 && dts0 >= (4.0 * dtb)
+        Ok(dtsc0 >= dts0 && dts0 >= (4.0 * dtb))
     }
 
     /// Calculate next rendezvous trajectory for eco-coasting
@@ -707,10 +708,8 @@ impl RustSimDrive {
                             r_bi_jerk_m_per_s3,
                             dt,
                         );
-                        let as_bi_min =
-                            as_bi.to_vec().into_iter().reduce(f64::min).unwrap_or(0.0);
-                        let as_bi_max =
-                            as_bi.to_vec().into_iter().reduce(f64::max).unwrap_or(0.0);
+                        let as_bi_min = as_bi.to_vec().into_iter().reduce(f64::min).unwrap_or(0.0);
+                        let as_bi_max = as_bi.to_vec().into_iter().reduce(f64::max).unwrap_or(0.0);
                         let accel_spread = (as_bi_max - as_bi_min).abs();
                         let flag = (as_bi_max < (max_accel_m_per_s2 + 1e-6)
                             && as_bi_min > (min_accel_m_per_s2 - 1e-6))
@@ -962,8 +961,8 @@ impl RustSimDrive {
     pub fn set_coast_speed(&mut self, i: usize) -> anyhow::Result<()> {
         let tol = 1e-6;
         let v0 = self.mps_ach[i - 1];
-        if v0 > tol && !self.impose_coast[i] && self.should_impose_coast(i) {
-            let ct = self.generate_coast_trajectory(i);
+        if v0 > tol && !self.impose_coast[i] && self.should_impose_coast(i)? {
+            let ct = self.generate_coast_trajectory(i)?;
             if ct.found_trajectory {
                 let d = ct.distance_to_stop_via_coast_m;
                 if d < 0.0 {

@@ -130,8 +130,8 @@ pub fn interpolate(
     x_data_in: &Array1<f64>,
     y_data_in: &Array1<f64>,
     extrapolate: bool,
-) -> f64 {
-    assert!(x_data_in.len() == y_data_in.len());
+) -> anyhow::Result<f64> {
+    ensure!(x_data_in.len() == y_data_in.len());
     let mut new_x_data = Vec::new();
     let mut new_y_data = Vec::new();
     let mut last_x = x_data_in[0];
@@ -167,7 +167,7 @@ pub fn interpolate(
         }
     }
     let dydx = (yr - yl) / (xr - xl);
-    yl + dydx * (x - xl)
+    Ok(yl + dydx * (x - xl))
 }
 
 /// interpolation algorithm from <http://www.cplusplus.com/forum/general/216928/>
@@ -782,7 +782,7 @@ mod tests {
         let xs = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0, 4.0]);
         let ys = Array1::from_vec(vec![0.0, 10.0, 20.0, 30.0, 40.0]);
         let x = 0.5;
-        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let y_lookup = interpolate(&x, &xs, &ys, false).unwrap();
         let expected_y_lookup = 5.0;
         assert_eq!(expected_y_lookup, y_lookup);
         let y_lookup = interpolate_vectors(&x, &xs.to_vec(), &ys.to_vec(), false);
@@ -794,7 +794,7 @@ mod tests {
         let xs = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0, 4.0]);
         let ys = Array1::from_vec(vec![0.0, 10.0, 20.0, 30.0, 40.0]);
         let x = 1.0 / 3.0;
-        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let y_lookup = interpolate(&x, &xs, &ys, false).unwrap();
         let expected_y_lookup = 3.3333333333;
         assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
         let y_lookup = interpolate_vectors(&x, &xs.to_vec(), &ys.to_vec(), false);
@@ -806,7 +806,7 @@ mod tests {
         let xs = Array1::from_vec(vec![0.0, 1.0]);
         let ys = Array1::from_vec(vec![0.0, 10.0]);
         let x = 0.5;
-        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let y_lookup = interpolate(&x, &xs, &ys, false).unwrap();
         let expected_y_lookup = 5.0;
         assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
         let y_lookup = interpolate_vectors(&x, &xs.to_vec(), &ys.to_vec(), false);
@@ -818,7 +818,7 @@ mod tests {
         let xs = Array1::from_vec(vec![0.0, 1.0]);
         let ys = Array1::from_vec(vec![0.0, 10.0]);
         let x = 1.0;
-        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let y_lookup = interpolate(&x, &xs, &ys, false).unwrap();
         let expected_y_lookup = 10.0;
         assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
         let y_lookup = interpolate_vectors(&x, &xs.to_vec(), &ys.to_vec(), false);
@@ -830,7 +830,7 @@ mod tests {
         let xs = Array1::from_vec(vec![0.0, 1.0]);
         let ys = Array1::from_vec(vec![0.0, 10.0]);
         let x = 1.01;
-        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let y_lookup = interpolate(&x, &xs, &ys, false).unwrap();
         let expected_y_lookup = 10.0;
         assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
         let y_lookup = interpolate_vectors(&x, &xs.to_vec(), &ys.to_vec(), false);
@@ -842,7 +842,7 @@ mod tests {
         let xs = Array1::from_vec(vec![0.0, 1.0, 1.0]);
         let ys = Array1::from_vec(vec![0.0, 10.0, 10.0]);
         let x = 1.0;
-        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let y_lookup = interpolate(&x, &xs, &ys, false).unwrap();
         let expected_y_lookup = 10.0;
         assert_eq!(expected_y_lookup, y_lookup);
         let y_lookup = interpolate_vectors(&x, &xs.to_vec(), &ys.to_vec(), false);
@@ -854,7 +854,7 @@ mod tests {
         let xs = Array1::from_vec(vec![0.0, 10.0, 100.0, 1000.0]);
         let ys = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0]);
         let x = 55.0;
-        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let y_lookup = interpolate(&x, &xs, &ys, false).unwrap();
         let expected_y_lookup = 1.5;
         assert_eq!(expected_y_lookup, y_lookup);
         let y_lookup = interpolate_vectors(&x, &xs.to_vec(), &ys.to_vec(), false);

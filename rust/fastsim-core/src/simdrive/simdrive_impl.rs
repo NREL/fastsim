@@ -597,7 +597,7 @@ impl RustSimDrive {
         // TODO: shouldn't the below code always set cyc? Whether coasting or not?
         if self.sim_params.coast_allow || self.sim_params.idm_allow {
             self.cyc.mps[self.i] = self.mps_ach[self.i];
-            self.cyc.grade[self.i] = self.lookup_grade_for_step(self.i, None);
+            self.cyc.grade[self.i] = self.lookup_grade_for_step(self.i, None)?;
         }
 
         self.i += 1; // increment time step counter
@@ -850,7 +850,7 @@ impl RustSimDrive {
             self.cyc.mps[i]
         };
 
-        let grade = self.lookup_grade_for_step(i, Some(mps_ach));
+        let grade = self.lookup_grade_for_step(i, Some(mps_ach))?;
 
         self.drag_kw[i] = 0.5
             * self.props.air_density_kg_per_m3
@@ -945,7 +945,7 @@ impl RustSimDrive {
         }
         //Cycle is not met
         else {
-            let mut grade_estimate = self.estimate_grade_for_step(i);
+            let mut grade_estimate = self.estimate_grade_for_step(i)?;
             let mut grade: f64;
             let grade_tol = 1e-4;
             let mut grade_diff = grade_tol + 1.0;
@@ -1072,7 +1072,7 @@ impl RustSimDrive {
                         .ok_or_else(|| anyhow!(format_dbg!(_ys.min().unwrap())))?],
                     0.0,
                 );
-                grade_estimate = self.lookup_grade_for_step(i, Some(self.mps_ach[i]));
+                grade_estimate = self.lookup_grade_for_step(i, Some(self.mps_ach[i]))?;
                 grade_diff = (grade - grade_estimate).abs();
             }
             self.set_power_calcs(i)?;

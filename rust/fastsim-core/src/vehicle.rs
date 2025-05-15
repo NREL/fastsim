@@ -886,18 +886,13 @@ impl RustVehicle {
             .collect();
         // Creates relatively continuous array for fc_eff
         if self.fc_eff_array.is_empty() {
-            self.fc_eff_array = self
-                .fc_perc_out_array
-                .iter()
-                .map(|x: &f64| -> f64 {
-                    interpolate(
-                        x,
-                        &Array1::from(self.fc_pwr_out_perc.to_vec()),
-                        &self.fc_eff_map,
-                        false,
-                    )
-                })
-                .collect();
+            for x in &self.fc_perc_out_array {
+            self.fc_eff_array.push(interpolate(
+                &x,
+                &Array1::from(self.fc_pwr_out_perc.to_vec()),
+                &self.fc_eff_map,
+                false,
+            )?)}
         }
 
         if self.mc_eff_map == Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()) {
@@ -928,18 +923,17 @@ impl RustVehicle {
         self.mc_kw_out_array =
             (Array::linspace(0.0, 1.0, self.mc_perc_out_array.len()) * self.mc_max_kw).to_vec();
 
-        self.mc_full_eff_array = self
-            .mc_perc_out_array
-            .iter()
-            .enumerate()
-            .map(|(idx, &x): (usize, &f64)| -> f64 {
+    for (idx, x) in self
+            .mc_perc_out_array.iter().enumerate(){
+            self.mc_full_eff_array.push(
                 if idx == 0 {
                     0.0
                 } else {
-                    interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)
+                    interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)?
                 }
-            })
-            .collect();
+            )
+        }
+
 
         self.mc_kw_in_array = [0.0; 101]
             .iter()
@@ -1222,18 +1216,15 @@ impl RustVehicle {
         self.mc_pwr_out_perc = short_arrays.0;
         self.mc_eff_map = short_arrays.1.clone();
         self.mc_eff_array = short_arrays.1;
-        self.mc_full_eff_array = self
-            .mc_perc_out_array
-            .iter()
-            .enumerate()
-            .map(|(idx, &x): (usize, &f64)| -> f64 {
+        for (idx, x) in self.mc_perc_out_array.iter().enumerate() {
+            self.mc_full_eff_array .push(
                 if idx == 0 {
                     0.0
                 } else {
-                    interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)
+                    interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)?
                 }
-            })
-            .collect();
+            );
+        }
         Ok(())
     }
 
@@ -1444,7 +1435,7 @@ mod tests {
                 if idx == 0 {
                     0.0
                 } else {
-                    interpolate(&x, &mc_pwr_out_perc, &mc_eff_map, false)
+                    interpolate(&x, &mc_pwr_out_perc, &mc_eff_map, false).unwrap()
                 }
             })
             .collect();
@@ -1482,7 +1473,7 @@ mod tests {
                             0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30
                         ],
                         false,
-                    )
+                    ).unwrap()
                 })
                 .collect(),
             modern_max: MODERN_MAX,
