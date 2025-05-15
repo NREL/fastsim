@@ -1158,11 +1158,11 @@ impl Cycle {
         jerk: si::Jerk,
         accel0: si::Acceleration,
     ) -> si::Velocity {
-        let jerk_m_per_s3 = jerk.get::<si::meter_per_second_cubed>();
-        let accel0_m_per_s2 = accel0.get::<si::meter_per_second_squared>();
         if n == 0 {
             return si::Velocity::ZERO;
         }
+        let jerk_m_per_s3 = jerk.get::<si::meter_per_second_cubed>();
+        let accel0_m_per_s2 = accel0.get::<si::meter_per_second_squared>();
         let num_samples = self.speed.len();
         if i >= num_samples {
             if num_samples > 0 {
@@ -1209,36 +1209,36 @@ impl Cycle {
         } else {
             brake_accel
         };
+        assert!(brake_accel < si::Acceleration::ZERO);
         if i >= self.time.len() {
             return (*self.speed.last().unwrap(), 0);
         }
         let i = if i < 1 { 1 } else { i };
-        let v0_mps = self.speed[i - 1].get::<si::meter_per_second>();
-        let dt_s = (self.time[i] - self.time[i - 1]).get::<si::second>();
+        let v0 = self.speed[i - 1].get::<si::meter_per_second>();
+        let dt = (self.time[i] - self.time[i - 1]).get::<si::second>();
         let brake_accel_m_per_s2 = brake_accel.get::<si::meter_per_second_squared>();
         // distance-to-stop (m)
         let dts_m = match desired_distance_to_stop {
-            Some(dts) => {
-                let dts_m = dts.get::<si::meter>();
-                if dts_m > 0.0 {
-                    dts_m
+            Some(value) => {
+                let result = value.get::<si::meter>();
+                if result > 0.0 {
+                    result
                 } else {
-                    -0.5 * v0_mps * v0_mps / brake_accel_m_per_s2
+                    -0.5 * v0 * v0 / brake_accel_m_per_s2
                 }
             }
-            None => -0.5 * v0_mps * v0_mps / brake_accel_m_per_s2,
+            None => -0.5 * v0 * v0 / brake_accel_m_per_s2,
         };
         if dts_m <= 0.0 {
-            return (v0_mps * uc::MPS, 0);
+            return (v0 * uc::MPS, 0);
         }
         // time-to-stop (s)
-        let tts_s = -v0_mps / brake_accel_m_per_s2;
+        let tts_s = -v0 / brake_accel_m_per_s2;
         // number of steps to stop
-        let n = (tts_s / dt_s).round() as usize;
+        let n = (tts_s / dt).round() as usize;
         let n = if n < 2 { 2 } else { n }; // need at least 2 steps
-        let traj = ConstantJerkTrajectory::from_speed_and_distance_targets(
-            n, 0.0, v0_mps, dts_m, 0.0, dt_s,
-        );
+        let traj =
+            ConstantJerkTrajectory::from_speed_and_distance_targets(n, 0.0, v0, dts_m, 0.0, dt);
         let v_final = self.modify_by_const_jerk_trajectory(
             i,
             n,

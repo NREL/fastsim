@@ -476,7 +476,15 @@ impl Maneuver {
             }
         }
         // Solve for the actual coasting speed
-        self.solve_step(i);
+        let coast_speed = self.solve_step(i);
+        if self.impose_coast[i - 1] && v1_traj <= v_brake {
+            // NOTE: if we've been coasting for at least one step already
+            // and the current trajectory takes us below v_brake, we should
+            // use that as it is the brake trajectory.
+            self.cyc.speed[i] = v1_traj * uc::MPS;
+        } else {
+            self.cyc.speed[i] = coast_speed;
+        }
         let v_tol = tol * uc::MPS;
         let dt = self.cyc.time[i] - self.cyc.time[i - 1];
         let accel_proposed = (self.cyc.speed[i] - self.cyc.speed[i - 1]) / dt;
@@ -533,6 +541,9 @@ impl Maneuver {
                     } else {
                         // TODO: logging feature?
                         //#[cfg(feature = "logging")]
+                        println!("## WARNING ##");
+                        println!("final_speed={:?} not close to coast_brake_start_speed={:?} for i={:?}; i_for_brake={:?}, traj_n={:?}",
+                            final_speed, self.coast_brake_start_speed, i, i_for_brake, traj_n);
                         //log::warn!(
                         //    "final_speed={}i not close to coast_brake_start_speed={} for i={}; i_for_brake={}, traj_n={}",
                         //    final_speed,
@@ -548,13 +559,13 @@ impl Maneuver {
                 if !self.coast_allow_passing {
                     self.prevent_collisions(i, None);
                 }
-                self.solve_step(i);
+                self.cyc.speed[i] = self.solve_step(i);
             }
         }
     }
 
     // TODO: rename to be more appropriate. Solve for coast speed and set?
-    pub fn solve_step(&mut self, i: usize) {
+    pub fn solve_step(&mut self, i: usize) -> si::Velocity {
         let dt = self.cyc.time[i] - self.cyc.time[i - 1];
         let step_info = StepInfo {
             dt,
@@ -576,7 +587,17 @@ impl Maneuver {
             self.ach_speed_tol,
             self.ach_speed_solver_gain,
         );
-        self.cyc.speed[i] = coast_speed;
+        let max_coast_speed = self.coast_max_speed.min(coast_speed);
+        let brake_start_speed = self.coast_brake_start_speed + 0.1 * uc::MPS;
+        if coast_speed > brake_start_speed {
+            max_coast_speed
+        } else {
+            // NOTE: We follow trace below the brake start speed as the
+            // brake trajectory has been added to the cycle
+            self.cyc.speed[i]
+                .min(max_coast_speed)
+                .max(si::Velocity::ZERO)
+        }
     }
 
     /// Calculate next rendezvous trajectory for eco-coasting
@@ -949,29 +970,30 @@ impl Maneuver {
     }
 
     fn apply_coast_trajectory(&mut self, coast_traj: &CoastTrajectory) {
-        if coast_traj.found_trajectory {
-            let num_speeds = match &coast_traj.speed_m_per_s {
-                Some(speeds_m_per_s) => {
-                    for (di, &new_speed) in speeds_m_per_s.iter().enumerate() {
-                        let idx = coast_traj.start_idx + di;
-                        if idx >= self.cyc0.speed.len() {
-                            break;
-                        }
-                        self.cyc.speed[idx] = new_speed * uc::MPS;
+        if !coast_traj.found_trajectory {
+            return;
+        }
+        let num_speeds = match &coast_traj.speed_m_per_s {
+            Some(speeds_m_per_s) => {
+                for (di, &new_speed) in speeds_m_per_s.iter().enumerate() {
+                    let idx = coast_traj.start_idx + di;
+                    if idx >= self.cyc0.speed.len() {
+                        break;
                     }
-                    speeds_m_per_s.len()
+                    self.cyc.speed[idx] = new_speed * uc::MPS;
                 }
-                None => 0,
-            };
-            let (_, n) = self.cyc.modify_with_braking_trajectory(
-                self.coast_brake_accel,
-                coast_traj.start_idx + num_speeds,
-                coast_traj.distance_to_brake_m.map(|d| d * uc::M),
-            );
-            for di in 0..(self.cyc0.speed.len() - coast_traj.start_idx) {
-                let idx = coast_traj.start_idx + di;
-                self.impose_coast[idx] = di < num_speeds + n;
+                speeds_m_per_s.len()
             }
+            None => 0,
+        };
+        let (_, n) = self.cyc.modify_with_braking_trajectory(
+            self.coast_brake_accel,
+            coast_traj.start_idx + num_speeds,
+            coast_traj.distance_to_brake_m.map(|d| d * uc::M),
+        );
+        for di in 0..(self.cyc0.speed.len() - coast_traj.start_idx) {
+            let idx = coast_traj.start_idx + di;
+            self.impose_coast[idx] = di < num_speeds + n;
         }
     }
 
@@ -1177,6 +1199,8 @@ impl Maneuver {
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::SimDrive;
+
     use super::*;
 
     #[test]
@@ -1200,5 +1224,24 @@ mod tests {
             }
         }
         assert!(speeds_differ);
+    }
+
+    #[test]
+    fn test_advanced_coasting() {
+        let udds = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
+        let veh = crate::vehicle::Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
+        let mut man = Maneuver::from(&udds, &veh);
+        man.coast_allow = true;
+        man.coast_start_speed = 0.0 * uc::MPS;
+        man.coast_brake_start_speed = 20.0 * uc::MPH;
+        man.coast_brake_accel = -2.5 * uc::MPS2;
+        man.favor_grade_accuracy = false;
+        man.coast_allow_passing = true;
+        man.coast_max_speed = 75.0 * uc::MPH;
+        man.coast_time_horizon_for_adjustment = 120.0 * uc::S;
+        man.apply();
+        let udds_mod = man.cyc;
+        let mut sd = SimDrive::new(veh, udds_mod, None);
+        sd.walk().unwrap();
     }
 }
