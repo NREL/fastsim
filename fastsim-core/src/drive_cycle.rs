@@ -91,38 +91,6 @@ impl Cycle {
         Ok(self.extend_time(absolute_time, time_fraction))
     }
 
-    #[getter(time_s)]
-    fn time_s_py(&self) -> PyResult<Vec<f64>> {
-        let mut result: Vec<f64> = Vec::with_capacity(self.time.len());
-        for t in &self.time {
-            result.push(t.get::<si::second>());
-        }
-        Ok(result)
-    }
-
-    #[getter(speed_m_per_s)]
-    fn speed_m_per_s_py(&self) -> PyResult<Vec<f64>> {
-        let mut result: Vec<f64> = Vec::with_capacity(self.speed.len());
-        for v in &self.speed {
-            result.push(v.get::<si::meter_per_second>());
-        }
-        Ok(result)
-    }
-
-    #[getter(grade_ratio)]
-    fn grade_ratio_py(&self) -> PyResult<Vec<f64>> {
-        let n = self.time.len();
-        let mut result: Vec<f64> = Vec::with_capacity(n);
-        for i in 0..n {
-            result.push(if i >= self.grade.len() {
-                0.0
-            } else {
-                self.grade[i].get::<si::ratio>()
-            });
-        }
-        Ok(result)
-    }
-
     #[pyo3(name = "dt_at_i")]
     pub fn dt_at_i_py(&self, i: usize) -> PyResult<f64> {
         let i = std::cmp::max(1, i);

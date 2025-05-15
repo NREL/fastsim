@@ -202,6 +202,8 @@ impl Maneuver {
         } else {
             default_mass
         };
+        // TODO[mok]: what is the proper way to get air_density from the
+        //            vehicle? The below returns 0.0...
         // *veh.state.air_density.get_fresh(|| format_dbg!()).unwrap();
         let air_density = 1.2 * uc::KGPM3;
 
