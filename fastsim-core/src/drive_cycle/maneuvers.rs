@@ -310,8 +310,7 @@ impl Maneuver {
     /// for testing.
     pub fn should_impose_coast(&mut self, i: usize) -> bool {
         if self.coast_start_speed > si::Velocity::ZERO {
-            let spd_ach = self.cyc.speed[i];
-            return spd_ach >= self.coast_start_speed;
+            return self.cyc.speed[i] >= self.coast_start_speed;
         }
         let v0 = self.cyc.speed[i - 1];
         if v0 < self.coast_brake_start_speed {
@@ -479,24 +478,23 @@ impl Maneuver {
         // Solve for the actual coasting speed
         self.solve_step(i);
         let v_tol = tol * uc::MPS;
+        let dt = self.cyc.time[i] - self.cyc.time[i - 1];
+        let accel_proposed = (self.cyc.speed[i] - self.cyc.speed[i - 1]) / dt;
         if self.cyc.speed[i] < v_tol {
             for idx in i..self.cyc0.speed.len() {
                 self.impose_coast[idx] = false;
             }
             self.set_coast_delay(i);
-            self.cyc.speed[i] = 0.0 * uc::MPS;
+            self.cyc.speed[i] = si::Velocity::ZERO;
             return;
         }
-        let dt = self.cyc.time[i] - self.cyc.time[i - 1];
-        let accel_proposed = (self.cyc.speed[i] - self.cyc.speed[i - 1]) / dt;
         if (self.cyc.speed[i] - v1_traj * uc::MPS).abs() > v_tol {
             let mut adjusted_current_speed = false;
             let brake_speed_start_tol = 0.1 * uc::MPS;
             if self.cyc.speed[i] < (self.coast_brake_start_speed - brake_speed_start_tol) {
-                let (_, num_steps) = self
-                    .cyc
-                    .modify_with_braking_trajectory(self.coast_brake_accel, i, None)
-                    .unwrap();
+                let (_, num_steps) =
+                    self.cyc
+                        .modify_with_braking_trajectory(self.coast_brake_accel, i, None);
                 for idx in i..self.cyc0.speed.len() {
                     self.impose_coast[idx] = idx < (i + num_steps);
                 }
@@ -523,14 +521,11 @@ impl Maneuver {
                     adjusted_current_speed = true;
                     let i_for_brake = i + traj_n;
                     if (final_speed - self.coast_brake_start_speed).abs() < brake_speed_start_tol {
-                        let (_, num_steps) = self
-                            .cyc
-                            .modify_with_braking_trajectory(
-                                self.coast_brake_accel,
-                                i_for_brake,
-                                None,
-                            )
-                            .unwrap();
+                        let (_, num_steps) = self.cyc.modify_with_braking_trajectory(
+                            self.coast_brake_accel,
+                            i_for_brake,
+                            None,
+                        );
                         for idx in i_for_brake..self.cyc0.speed.len() {
                             self.impose_coast[idx] = idx < i_for_brake + num_steps;
                         }
@@ -968,15 +963,11 @@ impl Maneuver {
                 }
                 None => 0,
             };
-            let result = self.cyc.modify_with_braking_trajectory(
+            let (_, n) = self.cyc.modify_with_braking_trajectory(
                 self.coast_brake_accel,
                 coast_traj.start_idx + num_speeds,
                 coast_traj.distance_to_brake_m.map(|d| d * uc::M),
             );
-            if result.is_err() {
-                return;
-            }
-            let n = result.unwrap().1;
             for di in 0..(self.cyc0.speed.len() - coast_traj.start_idx) {
                 let idx = coast_traj.start_idx + di;
                 self.impose_coast[idx] = di < num_speeds + n;

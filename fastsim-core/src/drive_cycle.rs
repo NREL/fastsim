@@ -1160,19 +1160,18 @@ impl Cycle {
     ) -> si::Velocity {
         let jerk_m_per_s3 = jerk.get::<si::meter_per_second_cubed>();
         let accel0_m_per_s2 = accel0.get::<si::meter_per_second_squared>();
-        let zero_speed = 0.0 * uc::MPS;
         if n == 0 {
-            return zero_speed;
+            return si::Velocity::ZERO;
         }
         let num_samples = self.speed.len();
         if i >= num_samples {
             if num_samples > 0 {
                 return self.speed[num_samples - 1];
             }
-            return zero_speed;
+            return si::Velocity::ZERO;
         }
         let v0 = self.speed[i - 1].get::<si::meter_per_second>();
-        let dt = self.time[i].get::<si::second>() - self.time[i - 1].get::<si::second>();
+        let dt = (self.time[i] - self.time[i - 1]).get::<si::second>();
         let mut v = v0;
         for ni in 1..(n + 1) {
             let idx_to_set = (i - 1) + ni;
@@ -1204,14 +1203,18 @@ impl Cycle {
         brake_accel: si::Acceleration,
         i: usize,
         desired_distance_to_stop: Option<si::Length>,
-    ) -> anyhow::Result<(si::Velocity, usize)> {
-        ensure!(brake_accel < 0.0 * uc::MPS2);
+    ) -> (si::Velocity, usize) {
+        let brake_accel = if brake_accel > si::Acceleration::ZERO {
+            -brake_accel
+        } else {
+            brake_accel
+        };
         if i >= self.time.len() {
-            return Ok((*self.speed.last().unwrap(), 0));
+            return (*self.speed.last().unwrap(), 0);
         }
         let i = if i < 1 { 1 } else { i };
         let v0_mps = self.speed[i - 1].get::<si::meter_per_second>();
-        let dt_s = self.time[i].get::<si::second>() - self.time[i - 1].get::<si::second>();
+        let dt_s = (self.time[i] - self.time[i - 1]).get::<si::second>();
         let brake_accel_m_per_s2 = brake_accel.get::<si::meter_per_second_squared>();
         // distance-to-stop (m)
         let dts_m = match desired_distance_to_stop {
@@ -1226,7 +1229,7 @@ impl Cycle {
             None => -0.5 * v0_mps * v0_mps / brake_accel_m_per_s2,
         };
         if dts_m <= 0.0 {
-            return Ok((v0_mps * uc::MPS, 0));
+            return (v0_mps * uc::MPS, 0);
         }
         // time-to-stop (s)
         let tts_s = -v0_mps / brake_accel_m_per_s2;
@@ -1242,7 +1245,7 @@ impl Cycle {
             traj.jerk_m_per_s3 * uc::MPS3,
             traj.acceleration_m_per_s2 * uc::MPS2,
         );
-        Ok((v_final, n))
+        (v_final, n)
     }
 }
 
@@ -1704,9 +1707,8 @@ mod tests {
             cyc
         };
         let precision = Some(6);
-        let (v_end, n_steps) = actual
-            .modify_with_braking_trajectory((-4.0 / 3.0) * uc::MPS2, 3, Some(4.0 * uc::M))
-            .expect("No error expected on modifying with braking trajectory");
+        let (v_end, n_steps) =
+            actual.modify_with_braking_trajectory((-4.0 / 3.0) * uc::MPS2, 3, Some(4.0 * uc::M));
         let v_end = round(v_end.get::<si::meter_per_second>(), precision);
         assert_eq!(v_end, 0.0);
         assert_eq!(n_steps, 3);
