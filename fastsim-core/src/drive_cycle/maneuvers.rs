@@ -760,7 +760,7 @@ impl Maneuver {
                     let v = v.get::<si::meter_per_second>();
                     d_lv += dd;
                     let dtlv = (d_lv - d0).abs();
-                    if v < speed_tol && (min_dtlv.is_none() || dtlv < min_dtlv.unwrap()) {
+                    if v < speed_tol && (min_dtlv.is_none() || dtlv <= min_dtlv.unwrap()) {
                         if min_dtlv.is_none()
                             || dtlv < min_dtlv.unwrap()
                             || (d0 < d0_lv && min_dtlv.unwrap() == dtlv)
