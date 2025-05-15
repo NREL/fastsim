@@ -955,7 +955,6 @@ impl Maneuver {
 
     fn apply_coast_trajectory(&mut self, coast_traj: &CoastTrajectory) {
         if coast_traj.found_trajectory {
-            println!("apply_coast_trajectory: Found coast trajectory");
             let num_speeds = match &coast_traj.speed_m_per_s {
                 Some(speeds_m_per_s) => {
                     for (di, &new_speed) in speeds_m_per_s.iter().enumerate() {
