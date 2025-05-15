@@ -309,10 +309,10 @@ impl Maneuver {
     /// about if the vehicle is above the coast-start speed. This is mainly
     /// for testing.
     pub fn should_impose_coast(&mut self, i: usize) -> bool {
-        if self.coast_start_speed > si::Velocity::ZERO {
-            return self.cyc.speed[i] >= self.coast_start_speed;
-        }
         let v0 = self.cyc.speed[i - 1];
+        if self.coast_start_speed > si::Velocity::ZERO {
+            return v0 >= self.coast_start_speed;
+        }
         if v0 < self.coast_brake_start_speed {
             return false;
         }
