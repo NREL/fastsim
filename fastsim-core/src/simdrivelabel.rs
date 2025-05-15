@@ -17,7 +17,7 @@ const CHG_EFF: f64 = 0.86;
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct FuelProperties {
     /// kWh per gallon of fuel
-    pub energy_density: si::,
+    pub energy_density: si::EnergyDensity,
     /// fuel density
     pub density: si::MassDensity,
 }

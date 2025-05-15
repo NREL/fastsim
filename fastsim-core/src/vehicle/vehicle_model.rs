@@ -23,15 +23,15 @@ impl Init for AuxSource {}
 
 #[serde_api]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods, IsVariant)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle
 pub struct Vehicle {
     /// Vehicle name
-    name: String,
+    pub name: String,
     /// Year manufactured
-    year: u8,
+    pub year: u8,
     #[has_state]
     /// type of vehicle powertrain including contained type-specific parameters and variables
     pub pt_type: PowertrainType,
