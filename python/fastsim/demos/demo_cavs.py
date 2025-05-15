@@ -49,7 +49,7 @@ def microtrip_demo():
             )
             if idx >= max_microtrips:
                 break
-        ax.set_title(f"First {num} Microtrips of {cycle_name.upper()}")
+        ax.set_title(f"First {num + 1} Microtrips of {cycle_name.upper()}")
         ax.set_ylabel("Speed (m/s)")
         ax.set_xlabel("Time (s)")
         ax.legend()
@@ -57,8 +57,48 @@ def microtrip_demo():
         plt.show(block=True)
 
 
-def coasting_demo():
-    """Run a demonstration of a coasting maneuver"""
+def plot_speed_by_time(df, c0, save_interval=1, title=None):
+    """Plot speed by time"""
+    fig, ax = plt.subplots()
+    ax.plot(
+        np.array(c0["time_seconds"]),
+        np.array(c0["speed_meters_per_second"]),
+        "k-", label="original")
+    ax.plot(
+        np.array(df["cyc.time_seconds"])[:: save_interval],
+        np.array(df["veh.history.speed_ach_meters_per_second"]),
+        "b:", label="coast")
+    if title is not None:
+        ax.set_title(title)
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Speed [m/s]")
+    ax.legend()
+    fig.tight_layout()
+    plt.show(block=True)
+
+
+def plot_speed_by_dist(df, c0, save_interval=1, title=None):
+    """Plot speed by distance"""
+    fig, ax = plt.subplots()
+    ax.plot(
+        np.array(c0["dist_meters"]),
+        np.array(c0["speed_meters_per_second"]),
+        "k-", label="original")
+    ax.plot(
+        np.array(df["cyc.dist_meters"])[:: save_interval],
+        np.array(df["veh.history.speed_ach_meters_per_second"]),
+        "b:", label="coast")
+    if title is not None:
+        ax.set_title(title)
+    ax.set_xlabel("Distance [m]")
+    ax.set_ylabel("Speed [m/s]")
+    ax.legend()
+    fig.tight_layout()
+    plt.show(block=True)
+
+
+def basic_coasting_demo():
+    """Demonstrate coasting starting from a given speed"""
     # veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
     coast_speed_mps = 20.0
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
@@ -69,7 +109,7 @@ def coasting_demo():
     # a time fraction (e.g., 0.1 to extend it by 10%) is also possible.
     # If both are specified, both will be used: e.g., extending by
     # 10% AND add 100 seconds in addition.
-    cyc = cyc.extend_time(absolute_time_s=100.0, time_fraction=None)
+    cyc = cyc.extend_time(absolute_time_s=120.0, time_fraction=None)
     cyc0 = cyc.copy()
     man = fsim.Maneuver.create_from(cyc, veh.copy())
     # Set coasting variables
@@ -89,26 +129,78 @@ def coasting_demo():
     sd = fsim.SimDrive(veh, cyc)
     sd.walk()
     if SHOW_PLOTS:
+        c0 = cyc0.to_pydict()
         df = sd.to_dataframe()
         if LIST_COLUMN_OPTIONS:
             print("Available Columns:")
             for column_name in df.columns:
                 print(f"- {column_name}")
-        fig, ax = plt.subplots()
-        ax.plot(cyc0.time_s, cyc0.speed_m_per_s, "k-", label="original")
-        ax.plot(
-            np.array(df["cyc.time_seconds"])[:: veh.save_interval],
-            np.array(df["veh.history.speed_ach_meters_per_second"]),
-            "b:", label="coast")
-        ax.set_title(f"Coasting behavior from {coast_speed_mps} m/s")
-        ax.set_xlabel("Time [s]")
-        ax.set_ylabel("Speed [m/s]")
-        ax.legend()
-        fig.tight_layout()
-        plt.show(block=True)
+        plot_speed_by_time(df, c0, title=f"Coasting behavior from {coast_speed_mps} m/s")
+        plot_speed_by_dist(df, c0,
+                           title=f"Coasting Behavior from {coast_speed_mps} m/s (distance-based)")
+
+
+def advanced_coasting_demo():
+    """Demonstrate coasting starting from a given speed"""
+    # veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
+    veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
+    veh.set_save_interval(1)
+    cyc = fsim.Cycle.from_resource("udds.csv")
+    # Add 100 seconds and 10% to the cycle time to allow for delay
+    # caused by coasting.
+    cyc = cyc.extend_time(absolute_time_s=120.0, time_fraction=0.25)
+    cyc0 = cyc.copy()
+    man = fsim.Maneuver.create_from(cyc, veh.copy())
+    # Set coasting variables
+    d = man.to_pydict()
+    # All coasting maneuvers require coast_allow to be set to True
+    d["coast_allow"] = True
+    # Speed at which a coasting vehicle initiates friction braking
+    d["coast_brake_start_speed_meters_per_second"] = 8.9408  # 20 mph
+    # Design deceleration while braking
+    d["coast_brake_accel_meters_per_second_squared"] = -2.5
+    # This parameter is only used when grade is present. If set to true,
+    # the simulation will attempt to iterate to find a better representation
+    # of grade over a step. If false, it will use a simple approximation.
+    d["favor_grade_accuracy"] = True
+    # If true, allow passing the "reference trace". Otherwise, coasting
+    # vehicle will brake to stay at or behind the reference trace. If a
+    # coasting vehicle is forced to apply brakes until the brake start
+    # speed (and thus be short of coasting to the planned stop), the
+    # vehicle will leave coasting mode and just follow the reference
+    # trace.
+    d["coast_allow_passing"] = True
+    # The maximum allowable speed during coast. A vehicle can
+    # increase speed during coast if going downhill. If going to
+    # coast above this speed, friction brakes or regenerative braking
+    # will be employed to prevent it.
+    d["coast_max_speed_meters_per_second"] = 33.5280  # 75 mph
+    # The time horizon for adjustement is a "look-ahead" metric for considering
+    # whether to enter coast or not. The higher the time, the more chance of
+    # taking advantage of coast. However, lower values may be more realistic
+    # depending on what sensors and information technology the vehicle is
+    # equipped with.
+    d["coast_time_horizon_for_adjustment_seconds"] = 120.0
+    # Reset the Maneuver object using the python dictionary
+    man = fsim.Maneuver.from_pydict(d)
+    # Modify the cycle and return it
+    cyc = man.apply_maneuvers()
+    # Run simdrive using the modified cycle
+    sd = fsim.SimDrive(veh, cyc)
+    sd.walk()
+    if SHOW_PLOTS:
+        c0 = cyc0.to_pydict()
+        df = sd.to_dataframe()
+        if LIST_COLUMN_OPTIONS:
+            print("Available Columns:")
+            for column_name in df.columns:
+                print(f"- {column_name}")
+        plot_speed_by_time(df, c0, title="Advanced Coasting Behavior")
+        plot_speed_by_dist(df, c0, title="Advanced Coasting Behavior (distance-based)")
 
 
 if __name__ == "__main__":
     microtrip_demo()
-    coasting_demo()
+    basic_coasting_demo()
+    advanced_coasting_demo()
     print("Done!")
