@@ -4,8 +4,6 @@
 use super::si::*;
 
 use uom::lib::marker::PhantomData;
-use uom::si::f32::ThermalConductance;
-use uom::si::Quantity;
 
 /// Invoking `unit_const!(R, Ratio, 1.0);` yields:
 /// ```ignore
@@ -19,7 +17,7 @@ macro_rules! unit_const {
     ($(#[$docs:meta])* $name:ident, $T:ty, $value:expr) => {
         $(#[$docs])*
         /// defines uom unit const
-        pub const $name: $T = Quantity {
+        pub const $name: $T = uom::si::Quantity {
             dimension: PhantomData,
             units: PhantomData,
             value: $value,

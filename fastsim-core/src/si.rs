@@ -2,10 +2,8 @@
 //! Zero values should be created using standard uom syntax ($Quantity::ZERO) after adding "use crate::imports::*"
 //! Non-zero values should be created using standard uom syntax ($Quantity::new::<$unit>($value)) or multiplication syntax ($value * $UNIT_CONSTANT)
 
-use crate::imports::*;
 use uom::si;
 
-pub use custom::EnergyDensity;
 pub use si::area::square_meter;
 pub use si::available_energy::{joule_per_kilogram, kilojoule_per_kilogram};
 pub use si::dynamic_viscosity::pascal_second;
@@ -39,51 +37,3 @@ pub use si::thermodynamic_temperature::{degree_celsius, kelvin as kelvin_abs};
 pub use si::time::{hour, second};
 pub use si::velocity::{meter_per_second, mile_per_hour};
 pub use si::volume::cubic_meter;
-
-/// module for defining custom units not present in [uom]
-pub mod custom {
-    use super::*;
-    use core::marker::PhantomData;
-    use typenum::bit::{B0, B1};
-    use typenum::int::{NInt, PInt, Z0};
-    use typenum::uint::{UInt, UTerm};
-    use uom::si::amount_of_substance::mole;
-    use uom::si::electric_current::ampere;
-    use uom::si::luminous_intensity::candela;
-    use uom::si::Dimension;
-    use uom::si::Units;
-    use uom::Kind;
-
-    /// Energy Density, e.g. J / m^3
-    ///
-    /// # Derivation
-    /// J / m^3 = (N * m) / m^3 = ((kg * m / s^2) * m) / m^3 = kg^1 * m^-1 * s^2
-    #[derive(PartialEq, Clone)]
-    pub struct EnergyDensity {
-        pub dimension: PhantomData<
-            dyn Dimension<
-                M = PInt<UInt<UTerm, B1>>,
-                L = NInt<UInt<UInt<UTerm, B1>, B0>>,
-                J = Z0,
-                I = Z0,
-                Th = Z0,
-                T = NInt<UInt<UInt<UTerm, B1>, B0>>,
-                Kind = dyn Kind,
-                N = Z0,
-            >,
-        >,
-        pub units: PhantomData<
-            dyn Units<
-                f64,
-                thermodynamic_temperature = kelvin,
-                luminous_intensity = candela,
-                length = meter,
-                amount_of_substance = mole,
-                electric_current = ampere,
-                time = second,
-                mass = kilogram,
-            >,
-        >,
-        pub value: f64,
-    }
-}

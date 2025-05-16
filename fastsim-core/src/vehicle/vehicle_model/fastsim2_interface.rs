@@ -14,7 +14,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
 
         let mut f3veh = Self {
             name: f2veh.scenario_name.clone(),
-            year: f2veh.veh_year,
+            year: f2veh.veh_year as u8,
             pt_type,
             chassis: Chassis::try_from(&f2veh)?,
             cabin: Default::default(),
@@ -585,7 +585,7 @@ impl Vehicle {
                 PowertrainType::PlugInHybridElectricVehicle(_) => "PHEV".into(),
                 PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
             },
-            veh_year: self.year,
+            veh_year: self.year as u32,
             wheel_base_m: self.chassis.wheel_base.get::<si::meter>(),
             wheel_base_m_doc: None,
             wheel_coef_of_fric: self.chassis.wheel_fric_coef.get::<si::ratio>(),

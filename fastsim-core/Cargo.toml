@@ -53,7 +53,7 @@ typenum = "1.18.0"
 pretty_assertions = "1.4.1"
 
 [features]
-default = [ "resources", "serde-default" ]
+default = [ "resources", "serde-default", "simdrivelabel" ]
 ## Enables `pyo3` to provide fastsim-3 structs, methods, and functions to Python
 pyo3 = ["dep:pyo3", "fastsim-2/pyo3"]
 ## Compiles external resources (e.g. vehicle files or cycle files) to be
@@ -75,4 +75,10 @@ yaml = ["dep:serde_yaml"]
 msgpack = ["dep:rmp-serde"]
 ## Enables the simdrivelabel module for calculating EPA label fuel economy
 simdrivelabel = []
+
+#! ### Features needed to allow for custom `uom` quantities and units.  These
+#! ### have no actual effect.
+si = []
+f32 = []
+cargo-clippy = []
 

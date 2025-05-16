@@ -65,7 +65,6 @@ checksum = "75f2b0dada81340718682df780c9a696b090b6ef7e83c3dcc770af6de9302995"
 dependencies = [
  "anyhow",
  "cfg-if",
- "ndarray 0.15.6",
  "num-complex",
  "num-integer",
  "num-traits",
@@ -517,9 +516,9 @@ dependencies = [
 
 [[package]]
 name = "fastsim-core"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48078ad92bcb84c6a1125c77dd7c300cad25a5c4e6bbc4e8e4889d3cc9816c2c"
+checksum = "693403a6d93ded25356e69a77f891a1e31c293531a9a8a84145346039ee85dac"
 dependencies = [
  "anyhow",
  "argmin",
@@ -533,7 +532,7 @@ dependencies = [
  "itertools 0.12.1",
  "lazy_static",
  "log",
- "ndarray 0.15.6",
+ "ndarray",
  "pyo3",
  "rayon",
  "regex",
@@ -559,12 +558,12 @@ dependencies = [
  "duplicate",
  "easy-ext",
  "eng_fmt",
- "fastsim-core 0.1.9",
+ "fastsim-core 0.1.10",
  "fastsim-proc-macros 1.0.0",
  "include_dir",
  "itertools 0.12.1",
  "lazy_static",
- "ndarray 0.16.1",
+ "ndarray",
  "ninterp",
  "nohash-hasher",
  "paste",
@@ -617,7 +616,7 @@ dependencies = [
 name = "fastsim-py"
 version = "1.0.0"
 dependencies = [
- "fastsim-core 0.1.9",
+ "fastsim-core 0.1.10",
  "fastsim-core 1.0.0",
  "ninterp",
  "pyo3",
@@ -1016,20 +1015,6 @@ dependencies = [
 
 [[package]]
 name = "ndarray"
-version = "0.15.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adb12d4e967ec485a5f71c6311fe28158e9d6f4bc4a447b474184d0f91a8fa32"
-dependencies = [
- "matrixmultiply",
- "num-complex",
- "num-integer",
- "num-traits",
- "rawpointer",
- "serde",
-]
-
-[[package]]
-name = "ndarray"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
@@ -1051,7 +1036,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96c04f865f5680781dd2da8ea9a98bb7afeb7f3ebafee514380868a8cb922ef7"
 dependencies = [
  "itertools 0.13.0",
- "ndarray 0.16.1",
+ "ndarray",
  "serde",
  "thiserror 1.0.69",
 ]
