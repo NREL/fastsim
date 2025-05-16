@@ -1394,4 +1394,24 @@ mod tests {
         let mut sd = SimDrive::new(veh, udds_mod, None);
         sd.walk().unwrap();
     }
+
+    #[test]
+    fn test_cruise() {
+        let udds = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
+        let vavg = udds.average_speed(true);
+        let veh = crate::vehicle::Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
+        let mut man = Maneuver::from(&udds, &veh);
+        man.idm_allow = true;
+        man.idm_v_desired_m_per_s = vavg.get::<si::meter_per_second>();
+        man.idm_dt_headway_s = 1.0;
+        man.idm_minimum_gap_m = 1.0;
+        man.idm_delta = 4.0;
+        man.idm_accel_m_per_s2 = 1.0;
+        man.idm_decel_m_per_s2 = 2.5;
+        man.coast_allow = false;
+        man.apply();
+        let udds_mod = man.cyc;
+        let mut sd = SimDrive::new(veh, udds_mod, None);
+        sd.walk().unwrap();
+    }
 }
