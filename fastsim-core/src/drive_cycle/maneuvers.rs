@@ -108,26 +108,26 @@ pub struct Maneuver {
     /// traveled. Can simulate changing speed limits over a driving cycle.
     /// optional list of (distance (m), desired speed (m/s)).
     #[serde(default)]
-    pub idm_v_desired_in_m_per_s_by_distance_m: Option<Vec<(f64, f64)>>,
+    pub idm_desired_speed_by_distance: Option<Vec<(si::Length, si::Velocity)>>,
     /// IDM algorithm: desired speed (m/s). Only used if
     /// idm_v_desired_in_m_per_s_by_distance_m is NOT set (i.e., is None)
     #[serde(default)]
-    pub idm_v_desired_m_per_s: f64,
+    pub idm_desired_speed: si::Velocity,
     /// IDM algorithm: headway time desired to vehicle in front (s)
     #[serde(default)]
-    pub idm_dt_headway_s: f64,
+    pub idm_headway: si::Time,
     /// IDM algorithm: minimum desired gap between vehicle and lead vehicle (m)
     #[serde(default)]
-    pub idm_minimum_gap_m: f64,
+    pub idm_minimum_gap: si::Length,
     /// IDM algorithm: delta parameter
     #[serde(default)]
     pub idm_delta: f64,
     /// IDM algorithm: acceleration parameter
     #[serde(default)]
-    pub idm_accel_m_per_s2: f64,
+    pub idm_acceleration: si::Acceleration,
     /// IDM algorithm: deceleration parameter
     #[serde(default)]
-    pub idm_decel_m_per_s2: f64,
+    pub idm_deceleration: si::Acceleration,
 
     // Internal Fields
     pub i: usize,
@@ -218,13 +218,13 @@ impl Default for Maneuver {
             coast_max_speed: 40.0 * uc::MPS,
             coast_time_horizon_for_adjustment: 20.0 * uc::S,
             idm_allow: false,
-            idm_v_desired_in_m_per_s_by_distance_m: None,
-            idm_v_desired_m_per_s: 33.33,
-            idm_dt_headway_s: 1.0,
-            idm_minimum_gap_m: 2.0,
+            idm_desired_speed_by_distance: None,
+            idm_desired_speed: 75.0 * uc::MPH,
+            idm_headway: 1.0 * uc::S,
+            idm_minimum_gap: 2.0 * uc::M,
             idm_delta: 4.0,
-            idm_accel_m_per_s2: 1.0,
-            idm_decel_m_per_s2: 1.5,
+            idm_acceleration: 1.0 * uc::MPS2,
+            idm_deceleration: 1.5 * uc::MPS2,
             i: 1,
             coast_delay_index: vec![0, 0],
             impose_coast: vec![false, false],
@@ -306,28 +306,27 @@ impl Maneuver {
 
     fn step(&mut self) {
         if self.idm_allow {
-            self.idm_target_speed_m_per_s[self.i] =
-                match &self.idm_v_desired_in_m_per_s_by_distance_m {
-                    Some(vtgt_by_dist) => {
-                        let mut found_v_target = vtgt_by_dist[0].1;
-                        let mut current_d = 0.0;
-                        for (idx, d) in self.cyc.dist.iter().enumerate() {
-                            if idx > self.i {
-                                break;
-                            }
-                            current_d += d.get::<si::meter>();
+            self.idm_target_speed_m_per_s[self.i] = match &self.idm_desired_speed_by_distance {
+                Some(vtgt_by_dist) => {
+                    let mut found_v_target = vtgt_by_dist[0].1;
+                    let mut current_d = si::Length::ZERO;
+                    for (idx, d) in self.cyc.dist.iter().enumerate() {
+                        if idx > self.i {
+                            break;
                         }
-                        for (d, v_target) in vtgt_by_dist {
-                            if current_d >= *d {
-                                found_v_target = *v_target;
-                            } else {
-                                break;
-                            }
-                        }
-                        found_v_target
+                        current_d += *d;
                     }
-                    None => self.idm_v_desired_m_per_s,
-                };
+                    for (d, v_target) in vtgt_by_dist {
+                        if current_d >= *d {
+                            found_v_target = *v_target;
+                        } else {
+                            break;
+                        }
+                    }
+                    found_v_target.get::<si::meter_per_second>()
+                }
+                None => self.idm_desired_speed.get::<si::meter_per_second>(),
+            };
             self.set_speed_for_target_gap_using_idm(self.i);
         }
         if self.coast_allow {
@@ -374,10 +373,10 @@ impl Maneuver {
         // DERIVED VALUES
         self.cyc.speed[i] = self.next_speed_by_idm(
             i,
-            self.idm_accel_m_per_s2,
-            self.idm_decel_m_per_s2,
-            self.idm_dt_headway_s,
-            self.idm_minimum_gap_m,
+            self.idm_acceleration.get::<si::meter_per_second_squared>(),
+            self.idm_deceleration.get::<si::meter_per_second_squared>(),
+            self.idm_headway.get::<si::second>(),
+            self.idm_minimum_gap.get::<si::meter>(),
             v_desired_m_per_s,
             self.idm_delta,
         ) * uc::MPS;
@@ -1424,12 +1423,12 @@ mod tests {
         let veh = crate::vehicle::Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
         let mut man = Maneuver::from(&udds, &veh);
         man.idm_allow = true;
-        man.idm_v_desired_m_per_s = vavg.get::<si::meter_per_second>();
-        man.idm_dt_headway_s = 1.0;
-        man.idm_minimum_gap_m = 1.0;
+        man.idm_desired_speed = vavg;
+        man.idm_headway = 1.0 * uc::S;
+        man.idm_minimum_gap = 1.0 * uc::M;
         man.idm_delta = 4.0;
-        man.idm_accel_m_per_s2 = 1.0;
-        man.idm_decel_m_per_s2 = 2.5;
+        man.idm_acceleration = 1.0 * uc::MPS2;
+        man.idm_deceleration = 2.5 * uc::MPS2;
         man.coast_allow = false;
         man.apply();
         let udds_mod = man.cyc;
@@ -1444,12 +1443,12 @@ mod tests {
         let veh = crate::vehicle::Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
         let mut man = Maneuver::from(&udds, &veh);
         man.idm_allow = true;
-        man.idm_v_desired_m_per_s = vavg.get::<si::meter_per_second>();
-        man.idm_dt_headway_s = 1.0;
-        man.idm_minimum_gap_m = 1.0;
+        man.idm_desired_speed = vavg;
+        man.idm_headway = 1.0 * uc::S;
+        man.idm_minimum_gap = 1.0 * uc::M;
         man.idm_delta = 4.0;
-        man.idm_accel_m_per_s2 = 1.0;
-        man.idm_decel_m_per_s2 = 2.5;
+        man.idm_acceleration = 1.0 * uc::MPS2;
+        man.idm_deceleration = 2.5 * uc::MPS2;
         man.coast_allow = true;
         man.coast_brake_start_speed = 8.9408 * uc::MPS;
         man.coast_brake_accel = -2.5 * uc::MPS2;

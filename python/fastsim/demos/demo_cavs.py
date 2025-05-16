@@ -260,12 +260,12 @@ def basic_cruise_demo():
     # Set coasting variables
     d = man.to_pydict()
     d["idm_allow"] = True
-    d["idm_v_desired_m_per_s"] = vavg
-    d["idm_dt_headway_s"] = 1.0
-    d["idm_minimum_gap_m"] = 1.0
+    d["idm_desired_speed_meters_per_second"] = vavg
+    d["idm_headway_seconds"] = 1.0
+    d["idm_minimum_gap_meters"] = 1.0
     d["idm_delta"] = 4.0
-    d["idm_accel_m_per_s2"] = 1.0
-    d["idm_decel_m_per_s2"] = 2.5
+    d["idm_acceleration_meters_per_second_squared"] = 1.0
+    d["idm_deceleration_meters_per_second_squared"] = 2.5
     # Reset the Maneuver object using the python dictionary
     man = fsim.Maneuver.from_pydict(d)
     # Modify the cycle and return it
@@ -337,12 +337,12 @@ def cruise_and_coast_demo():
     d["coast_time_horizon_for_adjustment_seconds"] = 120.0
     # Add intelligent driver model (IDM) parameters
     d["idm_allow"] = True
-    d["idm_v_desired_m_per_s"] = vavg
-    d["idm_dt_headway_s"] = 1.0
-    d["idm_minimum_gap_m"] = 1.0
+    d["idm_desired_speed_meters_per_second"] = vavg
+    d["idm_headway_seconds"] = 1.0
+    d["idm_minimum_gap_meters"] = 1.0
     d["idm_delta"] = 4.0
-    d["idm_accel_m_per_s2"] = 1.0
-    d["idm_decel_m_per_s2"] = 2.5
+    d["idm_acceleration_meters_per_second_squared"] = 1.0
+    d["idm_deceleration_meters_per_second_squared"] = 2.5
     # Reset the Maneuver object using the python dictionary
     man = fsim.Maneuver.from_pydict(d)
     # Modify the cycle and return it
