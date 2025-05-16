@@ -37,11 +37,12 @@ def microtrip_demo():
         fig, ax = plt.subplots()
         num = min(max_microtrips, len(microtrips))
         for idx, mt in enumerate(microtrips):
+            mtd = mt.to_pydict()
             color = pu.BASE_COLORS[idx % len(pu.BASE_COLORS)]
             line = pu.BASE_LINE_STYLES[idx % len(pu.BASE_LINE_STYLES)]
             ax.plot(
-                mt.time_s,
-                mt.speed_m_per_s,
+                mtd["time_seconds"],
+                mtd["speed_meters_per_second"],
                 marker=".",
                 color=color,
                 linestyle=line,
