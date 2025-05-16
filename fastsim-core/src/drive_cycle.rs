@@ -102,7 +102,14 @@ impl Cycle {
         Ok(dt)
     }
 
-    #[pyo3(name = "aveage_step_speeds_m_per_s")]
+    #[pyo3(name = "average_speed_m_per_s", signature=(while_moving=None))]
+    pub fn average_speed_py(&self, while_moving: Option<bool>) -> PyResult<f64> {
+        let while_moving = while_moving.unwrap_or(false);
+        let vavg = self.average_speed(while_moving);
+        Ok(vavg.get::<si::meter_per_second>())
+    }
+
+    #[pyo3(name = "average_step_speeds_m_per_s")]
     pub fn average_step_speeds_py(&self) -> PyResult<Vec<f64>> {
         Ok(self
             .average_step_speeds()
@@ -697,6 +704,32 @@ impl Cycle {
             microtrips.push(current.clone());
         }
         microtrips
+    }
+
+    /// Determine average speed of cycle.
+    /// -- while_moving: if true, only takes average while moving
+    ///
+    /// RETURN: average speed
+    pub fn average_speed(&self, while_moving: bool) -> si::Velocity {
+        let mut d = si::Length::ZERO;
+        let mut t = si::Time::ZERO;
+        for idx in 1..self.speed.len() {
+            let dt = self.time[idx] - self.time[idx - 1];
+            let vavg = 0.5 * (self.speed[idx] + self.speed[idx - 1]);
+            let dd = vavg * dt;
+            let no_move = (dd.get::<si::meter>().ceil() as i32) == 0;
+            d += dd;
+            t += if while_moving && no_move {
+                si::Time::ZERO
+            } else {
+                dt
+            };
+        }
+        if t > si::Time::ZERO {
+            d / t
+        } else {
+            si::Velocity::ZERO
+        }
     }
 
     /// Return the average step speeds of the cycle as vector of velicities.

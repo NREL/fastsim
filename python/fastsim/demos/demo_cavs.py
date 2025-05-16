@@ -200,8 +200,47 @@ def advanced_coasting_demo():
         plot_speed_by_dist(df, c0, title="Advanced Coasting Behavior (distance-based)")
 
 
+def basic_cruise_demo():
+    """Demonstrate basic Eco-Cruise usage"""
+    veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
+    veh.set_save_interval(1)
+    cyc = fsim.Cycle.from_resource("udds.csv")
+    # Add 100 seconds and 10% to the cycle time to allow for delay
+    # caused by coasting.
+    cyc = cyc.extend_time(absolute_time_s=240.0, time_fraction=0.3)
+    cyc0 = cyc.copy()
+    vavg = cyc0.average_speed_m_per_s(while_moving=True)
+    man = fsim.Maneuver.create_from(cyc, veh.copy())
+    # Set coasting variables
+    d = man.to_pydict()
+    d["idm_allow"] = True
+    d["idm_v_desired_m_per_s"] = vavg
+    d["idm_dt_headway_s"] = 1.0
+    d["idm_minimum_gap_m"] = 1.0
+    d["idm_delta"] = 4.0
+    d["idm_accel_m_per_s2"] = 1.0
+    d["idm_decel_m_per_s2"] = 2.5
+    # Reset the Maneuver object using the python dictionary
+    man = fsim.Maneuver.from_pydict(d)
+    # Modify the cycle and return it
+    cyc = man.apply_maneuvers()
+    # Run simdrive using the modified cycle
+    sd = fsim.SimDrive(veh, cyc)
+    sd.walk()
+    if SHOW_PLOTS:
+        c0 = cyc0.to_pydict()
+        df = sd.to_dataframe()
+        if LIST_COLUMN_OPTIONS:
+            print("Available Columns:")
+            for column_name in df.columns:
+                print(f"- {column_name}")
+        plot_speed_by_time(df, c0, title="Basic Cruise Behavior")
+        plot_speed_by_dist(df, c0, title="Basic Cruise Behavior (distance-based)")
+
+
 if __name__ == "__main__":
     microtrip_demo()
     basic_coasting_demo()
     advanced_coasting_demo()
+    basic_cruise_demo()
     print("Done!")
