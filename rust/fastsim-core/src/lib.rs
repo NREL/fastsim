@@ -38,12 +38,12 @@ extern crate ndarray;
 #[macro_use]
 pub mod macros;
 pub mod air;
+mod calibration;
 pub mod cycle;
 pub mod imports;
 pub mod params;
 pub mod pyo3imports;
 pub mod simdrive;
-mod calibration;
 pub use simdrive::simdrive_impl;
 pub mod simdrivelabel;
 pub mod thermal;

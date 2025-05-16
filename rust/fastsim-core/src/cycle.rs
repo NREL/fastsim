@@ -174,6 +174,7 @@ pub fn trapz_distance_over_range(cyc: &RustCycle, i_start: usize, i_end: usize) 
 
 /// Calculate the time in a cycle spent moving
 /// - stopped_speed_m_per_s: the speed above which we are considered to be moving
+///
 /// RETURN: the time spent moving in seconds
 pub fn time_spent_moving(cyc: &RustCycle, stopped_speed_m_per_s: Option<f64>) -> f64 {
     let mut t_move_s = 0.0;
@@ -263,21 +264,17 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
 ///     if 1, use average speed while moving (i.e., no stopped time)
 ///     else something in between
 /// - min_target_speed_mps: float, the minimum target speed allowed (m/s)
+///
 /// RETURN: list of 2-tuple of (float, float) representing the distance of start of
 ///     each microtrip and target speed for that microtrip
+///
 /// NOTE: target speed per microtrip is not allowed to be below min_target_speed_mps
 pub fn create_dist_and_target_speeds_by_microtrip(
     cyc: &RustCycle,
     blend_factor: f64,
     min_target_speed_mps: f64,
 ) -> Vec<(f64, f64)> {
-    let blend_factor = if blend_factor < 0.0 {
-        0.0
-    } else if blend_factor > 1.0 {
-        1.0
-    } else {
-        blend_factor
-    };
+    let blend_factor = blend_factor.clamp(0.0, 1.0);
     let mut dist_and_tgt_speeds = Vec::new();
     // Split cycle into microtrips
     let microtrips = to_microtrips(cyc, None);
@@ -458,7 +455,8 @@ impl RustCycleCache {
         } else if dist_m > *self.interp_ds.last().unwrap() {
             *self.grades.last().unwrap()
         } else {
-            let raw_idx = interpolate(&dist_m, &self.interp_ds, &self.interp_is, false)?;
+            let raw_idx = interpolate(&dist_m, &self.interp_ds, &self.interp_is, false)
+                .with_context(|| format_dbg!())?;
             let idx = raw_idx.ceil() as usize;
             self.grades[idx]
         };
@@ -471,6 +469,7 @@ impl RustCycleCache {
             Ok(0.0)
         } else {
             interpolate(&dist_m, &self.interp_ds, &self.interp_hs, false)
+                .with_context(|| format_dbg!())
         }
     }
 }
@@ -989,13 +988,15 @@ impl RustCycle {
                             &trapz_distances_m,
                             &trapz_elevations_m,
                             false,
-                        )?;
+                        )
+                        .with_context(|| format_dbg!())?;
                         let e1 = interpolate(
                             &(distance_start_m + delta_distance_m),
                             &trapz_distances_m,
                             &trapz_elevations_m,
                             false,
-                        )?;
+                        )
+                        .with_context(|| format_dbg!())?;
                         ((e1 - e0) / delta_distance_m).asin().tan()
                     }
                 };
@@ -1006,8 +1007,8 @@ impl RustCycle {
 
     /// Calculate the distance to next stop from `distance_m`
     /// - distance_m: non-negative-number, the current distance from start (m)
-    /// RETURN: returns the distance to the next stop from distance_m
-    /// NOTE: distance may be negative if we're beyond the last stop
+    /// # RETURN: returns the distance to the next stop from distance_m
+    /// # NOTE: distance may be negative if we're beyond the last stop
     pub fn calc_distance_to_next_stop_from(
         &self,
         distance_m: f64,
