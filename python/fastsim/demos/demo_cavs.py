@@ -105,13 +105,18 @@ def basic_coasting_demo():
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource("udds.csv")
+    # We can query to see how much idle time exists at the end of
+    # the reference cycle so we can (eventually) duplicate that on
+    # the modified cycle.
+    end_idle_duration_s = cyc.ending_idle_time_s()
+    # Make a copy of the original cycle.
+    cyc0 = cyc.copy()
     # Add 100 seconds to the cycle time to allow for delay caused by
     # coasting. Note: here we are extending by absolute time but
     # a time fraction (e.g., 0.1 to extend it by 10%) is also possible.
     # If both are specified, both will be used: e.g., extending by
     # 10% AND add 100 seconds in addition.
     cyc = cyc.extend_time(absolute_time_s=120.0, time_fraction=None)
-    cyc0 = cyc.copy()
     man = fsim.Maneuver.create_from(cyc, veh.copy())
     # Set coasting variables
     d = man.to_pydict()
@@ -126,6 +131,9 @@ def basic_coasting_demo():
     man = fsim.Maneuver.from_pydict(d)
     # Modify the cycle and return it
     cyc = man.apply_maneuvers()
+    # Now we can trim the maneuver cycle to only have as much
+    # idle time at end as the original reference cycle
+    cyc = cyc.trim_ending_idle(idle_to_keep_s=end_idle_duration_s)
     # Run simdrive using the modified cycle
     sd = fsim.SimDrive(veh, cyc)
     sd.walk()
@@ -147,10 +155,15 @@ def advanced_coasting_demo():
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource("udds.csv")
+    # We can query to see how much idle time exists at the end of
+    # the reference cycle so we can (eventually) duplicate that on
+    # the modified cycle.
+    end_idle_duration_s = cyc.ending_idle_time_s()
+    # Make a copy of the original cycle.
+    cyc0 = cyc.copy()
     # Add 100 seconds and 10% to the cycle time to allow for delay
     # caused by coasting.
     cyc = cyc.extend_time(absolute_time_s=120.0, time_fraction=0.25)
-    cyc0 = cyc.copy()
     man = fsim.Maneuver.create_from(cyc, veh.copy())
     # Set coasting variables
     d = man.to_pydict()
@@ -186,6 +199,9 @@ def advanced_coasting_demo():
     man = fsim.Maneuver.from_pydict(d)
     # Modify the cycle and return it
     cyc = man.apply_maneuvers()
+    # Now we can trim the maneuver cycle to only have as much
+    # idle time at end as the original reference cycle
+    cyc = cyc.trim_ending_idle(idle_to_keep_s=end_idle_duration_s)
     # Run simdrive using the modified cycle
     sd = fsim.SimDrive(veh, cyc)
     sd.walk()
@@ -205,10 +221,11 @@ def basic_cruise_demo():
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource("udds.csv")
+    end_idle_duration_s = cyc.ending_idle_time_s()
     # Add 100 seconds and 10% to the cycle time to allow for delay
     # caused by coasting.
-    cyc = cyc.extend_time(absolute_time_s=240.0, time_fraction=0.3)
     cyc0 = cyc.copy()
+    cyc = cyc.extend_time(absolute_time_s=240.0, time_fraction=0.3)
     vavg = cyc0.average_speed_m_per_s(while_moving=True)
     man = fsim.Maneuver.create_from(cyc, veh.copy())
     # Set coasting variables
@@ -224,6 +241,9 @@ def basic_cruise_demo():
     man = fsim.Maneuver.from_pydict(d)
     # Modify the cycle and return it
     cyc = man.apply_maneuvers()
+    # Trim the manipulated cycle down so it has the same idle
+    # duration as the original cycle
+    cyc = cyc.trim_ending_idle(idle_to_keep_s=end_idle_duration_s)
     # Run simdrive using the modified cycle
     sd = fsim.SimDrive(veh, cyc)
     sd.walk()
