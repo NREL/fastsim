@@ -102,6 +102,18 @@ impl Cycle {
         Ok(dt)
     }
 
+    #[pyo3(name = "ending_idle_time_s")]
+    pub fn ending_idle_time_py(&self) -> PyResult<f64> {
+        let dt_end_idle = self.ending_idle_time();
+        Ok(dt_end_idle.get::<si::second>())
+    }
+
+    #[pyo3(name = "trim_ending_idle", signature=(idle_to_keep_s=None))]
+    pub fn trim_ending_idle_py(&self, idle_to_keep_s: Option<f64>) -> PyResult<Cycle> {
+        let idle_to_keep = idle_to_keep_s.map(|idle| idle * uc::S);
+        Ok(self.trim_ending_idle(idle_to_keep))
+    }
+
     #[pyo3(name = "average_speed_m_per_s", signature=(while_moving=None))]
     pub fn average_speed_py(&self, while_moving: Option<bool>) -> PyResult<f64> {
         let while_moving = while_moving.unwrap_or(false);
@@ -927,9 +939,10 @@ impl Cycle {
             return self.clone();
         }
         let dt = 1.0 * uc::S;
+        let dt_s = dt.get::<si::second>();
         let mut idx = 1;
         loop {
-            let dt_extra_s = dt.get::<si::second>() * idx as f64;
+            let dt_extra_s = dt_s * idx as f64;
             if dt_extra_s > extra_time_s as f64 {
                 break;
             }
@@ -1247,6 +1260,94 @@ impl Cycle {
             traj.acceleration_m_per_s2 * uc::MPS2,
         );
         (v_final, n)
+    }
+
+    /// Report the stopped time (i.e., idle) at the end of a cycle.
+    ///
+    /// RESULT: time vehicle is at zero speed at cycle end
+    pub fn ending_idle_time(&self) -> si::Time {
+        let mut result = si::Time::ZERO;
+        let vzero = si::Velocity::ZERO;
+        for idx in (1..self.time.len()).rev() {
+            let v0 = self.speed[idx - 1];
+            let v1 = self.speed[idx];
+            if v0 != vzero || v1 != vzero {
+                break;
+            } else {
+                let dt = self.time[idx] - self.time[idx - 1];
+                result += dt;
+            }
+        }
+        result
+    }
+
+    /// Remove idel time at end of cycle except for the optionally
+    /// specified duration.
+    /// - idle_to_keep: optional duration of idle time to keep. Default is 0 s
+    ///
+    /// RESULT: a new cycle with idle time trimmed.
+    pub fn trim_ending_idle(&self, idle_to_keep: Option<si::Time>) -> Cycle {
+        let idle_to_keep = idle_to_keep.unwrap_or(si::Time::ZERO).max(si::Time::ZERO);
+        let vzero = si::Velocity::ZERO;
+        let mut idle_start_idx = 0;
+        for idx in (1..self.time.len()).rev() {
+            let v0 = self.speed[idx - 1];
+            let v1 = self.speed[idx];
+            if v0 != vzero || v1 != vzero {
+                idle_start_idx = idx + 1;
+                break;
+            }
+        }
+        if idle_start_idx >= self.time.len() {
+            return self.clone();
+        }
+        let end_idx = if idle_to_keep == si::Time::ZERO {
+            idle_start_idx
+        } else {
+            let mut dt_idle = si::Time::ZERO;
+            let mut idx_drop = idle_start_idx;
+            for idx in idle_start_idx..self.time.len() {
+                let dt = self.time[idx] - self.time[idx - 1];
+                dt_idle += dt;
+                if dt_idle > idle_to_keep {
+                    idx_drop = idx;
+                    break;
+                }
+            }
+            idx_drop
+        };
+        let mut cyc = Cycle {
+            name: self.name.clone(),
+            time: self.time[0..end_idx].to_vec(),
+            speed: self.speed[0..end_idx].to_vec(),
+            init_elev: self.init_elev,
+            grade: if self.grade.is_empty() {
+                vec![]
+            } else {
+                self.grade[0..end_idx].to_vec()
+            },
+            dist: vec![],
+            elev: vec![],
+            pwr_max_chrg: if self.pwr_max_chrg.is_empty() {
+                vec![]
+            } else {
+                self.pwr_max_chrg[0..end_idx].to_vec()
+            },
+            temp_amb_air: if self.temp_amb_air.is_empty() {
+                vec![]
+            } else {
+                self.temp_amb_air[0..end_idx].to_vec()
+            },
+            pwr_solar_load: if self.pwr_solar_load.is_empty() {
+                vec![]
+            } else {
+                self.pwr_solar_load[0..end_idx].to_vec()
+            },
+            grade_interp: None,
+            elev_interp: None,
+        };
+        cyc.init().unwrap();
+        cyc
     }
 }
 
@@ -1765,5 +1866,18 @@ mod tests {
             assert_eq!(av, ev, "speed@t={et}&i={i}");
             assert_eq!(ad, ed, "dist@t={et}&i={i}");
         }
+    }
+
+    #[test]
+    pub fn test_trim() {
+        let c = make_two_triangles_cycle();
+        let cyc = c.extend_time(Some(10.0 * uc::S), None);
+        let dt_idle = cyc.ending_idle_time();
+        assert_eq!(dt_idle, 10.0 * uc::S);
+        // NOTE: extend_time adds time by 1.0 s increments so 10 points
+        assert_eq!(cyc.time.len(), c.time.len() + 10);
+        assert_eq!(*cyc.time.iter().last().unwrap(), 60.0 * uc::S);
+        let cyc_trimmed = cyc.trim_ending_idle(None);
+        assert_eq!(cyc_trimmed.time.len(), c.time.len());
     }
 }
