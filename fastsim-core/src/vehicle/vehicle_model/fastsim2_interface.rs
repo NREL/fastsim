@@ -187,7 +187,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             Strategy::LeftNearest,
                             Extrapolate::Error,
                         )
-                        .unwrap(),
+                        .map_err(|err| anyhow!("{}\n{err}", format_dbg!()))?,
                         eff_interp_at_max_input: None,
                         // pwr_in_frac_interp: Default::default(),
                         pwr_out_max: f2veh.mc_max_kw * uc::KW,
