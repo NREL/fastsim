@@ -68,7 +68,7 @@ def plot_speed_by_time(df, c0, is_coast=None, save_interval=1, title=None):
     ax.plot(
         np.array(df["cyc.time_seconds"])[:: save_interval],
         np.array(df["veh.history.speed_ach_meters_per_second"]),
-        "b:", label="coast")
+        "b:", label="modified")
     if is_coast is not None:
         ax.plot(
             np.array(c0["time_seconds"]),
@@ -93,10 +93,10 @@ def plot_speed_by_dist(df, c0, is_coast=None, save_interval=1, title=None):
     ax.plot(
         np.array(df["cyc.dist_meters"])[:: save_interval],
         np.array(df["veh.history.speed_ach_meters_per_second"]),
-        "b:", label="coast")
+        "b:", label="modified")
     if is_coast is not None:
         ax.plot(
-            np.array(c0["dist_meters"]),
+            np.array(df["cyc.dist_meters"])[:: save_interval],
             np.array(is_coast),
             "r:", label="coast-mode")
     if title is not None:
@@ -345,9 +345,9 @@ def cruise_and_coast_demo():
     d["idm_decel_m_per_s2"] = 2.5
     # Reset the Maneuver object using the python dictionary
     man = fsim.Maneuver.from_pydict(d)
-    mand = man.to_pydict()
     # Modify the cycle and return it
     cyc = man.apply_maneuvers()
+    c = cyc.copy()
     # Now we can trim the maneuver cycle to only have as much
     # idle time at end as the original reference cycle
     cyc = cyc.trim_ending_idle(idle_to_keep_s=end_idle_duration_s)
@@ -357,13 +357,19 @@ def cruise_and_coast_demo():
     if SHOW_PLOTS:
         c0 = cyc0.to_pydict()
         df = sd.to_dataframe()
-        is_coast = np.array(mand["impose_coast"]) * 5.0
+        is_coast = np.array(man.is_coasting()) * 5.0
+        cd = c.to_pydict()
+        dist = cd["dist_meters"]
+        is_coast_d = [
+            np.interp(d, dist, is_coast)
+            for d in df["cyc.dist_meters"]
+        ]
         if LIST_COLUMN_OPTIONS:
             print("Available Columns:")
             for column_name in df.columns:
                 print(f"- {column_name}")
         plot_speed_by_time(df, c0, is_coast, title="Coasting and Cruise")
-        plot_speed_by_dist(df, c0, is_coast, title="Coasting and Cruise")
+        plot_speed_by_dist(df, c0, is_coast_d, title="Coasting and Cruise")
 
 
 if __name__ == "__main__":
