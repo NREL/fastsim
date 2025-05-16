@@ -107,25 +107,34 @@ pub struct Maneuver {
     /// IDM algorithm: a way to specify desired speed by course distance
     /// traveled. Can simulate changing speed limits over a driving cycle.
     /// optional list of (distance (m), desired speed (m/s)).
+    #[serde(default)]
     pub idm_v_desired_in_m_per_s_by_distance_m: Option<Vec<(f64, f64)>>,
     /// IDM algorithm: desired speed (m/s). Only used if
     /// idm_v_desired_in_m_per_s_by_distance_m is NOT set (i.e., is None)
+    #[serde(default)]
     pub idm_v_desired_m_per_s: f64,
     /// IDM algorithm: headway time desired to vehicle in front (s)
+    #[serde(default)]
     pub idm_dt_headway_s: f64,
     /// IDM algorithm: minimum desired gap between vehicle and lead vehicle (m)
+    #[serde(default)]
     pub idm_minimum_gap_m: f64,
     /// IDM algorithm: delta parameter
+    #[serde(default)]
     pub idm_delta: f64,
     /// IDM algorithm: acceleration parameter
+    #[serde(default)]
     pub idm_accel_m_per_s2: f64,
     /// IDM algorithm: deceleration parameter
+    #[serde(default)]
     pub idm_decel_m_per_s2: f64,
 
     // Internal Fields
     pub i: usize,
     pub coast_delay_index: Vec<i32>,
+    #[serde(default)]
     pub impose_coast: Vec<bool>,
+    #[serde(default)]
     pub idm_target_speed_m_per_s: Vec<f64>,
 
     pub cyc0_cache: CycleCache,
@@ -151,6 +160,19 @@ impl Maneuver {
         self.apply();
         let cyc = self.cyc.clone();
         Ok(cyc)
+    }
+
+    #[pyo3(name = "is_coasting")]
+    fn is_coasting_py(&self) -> PyResult<Vec<f64>> {
+        let mut result = Vec::with_capacity(self.impose_coast.len());
+        for ic in &self.impose_coast {
+            if *ic {
+                result.push(1.0);
+            } else {
+                result.push(0.0);
+            }
+        }
+        Ok(result)
     }
 }
 
@@ -1411,6 +1433,39 @@ mod tests {
         man.coast_allow = false;
         man.apply();
         let udds_mod = man.cyc;
+        let mut sd = SimDrive::new(veh, udds_mod, None);
+        sd.walk().unwrap();
+    }
+
+    #[test]
+    fn test_cruise_and_coast() {
+        let udds = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
+        let vavg = udds.average_speed(true);
+        let veh = crate::vehicle::Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
+        let mut man = Maneuver::from(&udds, &veh);
+        man.idm_allow = true;
+        man.idm_v_desired_m_per_s = vavg.get::<si::meter_per_second>();
+        man.idm_dt_headway_s = 1.0;
+        man.idm_minimum_gap_m = 1.0;
+        man.idm_delta = 4.0;
+        man.idm_accel_m_per_s2 = 1.0;
+        man.idm_decel_m_per_s2 = 2.5;
+        man.coast_allow = true;
+        man.coast_brake_start_speed = 8.9408 * uc::MPS;
+        man.coast_brake_accel = -2.5 * uc::MPS2;
+        man.favor_grade_accuracy = true;
+        man.coast_allow_passing = true;
+        man.coast_time_horizon_for_adjustment = 120.0 * uc::S;
+        man.apply();
+        let udds_mod = man.cyc;
+        let mut found_coast = false;
+        for ic in man.impose_coast {
+            if ic {
+                found_coast = true;
+                break;
+            }
+        }
+        assert!(found_coast);
         let mut sd = SimDrive::new(veh, udds_mod, None);
         sd.walk().unwrap();
     }
