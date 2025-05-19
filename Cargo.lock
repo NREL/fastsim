@@ -74,7 +74,6 @@ checksum = "75f2b0dada81340718682df780c9a696b090b6ef7e83c3dcc770af6de9302995"
 dependencies = [
  "anyhow",
  "cfg-if",
- "ndarray 0.15.6",
  "num-complex",
  "num-integer",
  "num-traits",
@@ -542,9 +541,9 @@ dependencies = [
 
 [[package]]
 name = "fastsim-core"
-version = "0.1.9"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48078ad92bcb84c6a1125c77dd7c300cad25a5c4e6bbc4e8e4889d3cc9816c2c"
+checksum = "110e892d9b91295de786de6c5cb94ca26fe5689d4ff5c020cec28dbd34a36c2b"
 dependencies = [
  "anyhow",
  "argmin",
@@ -558,7 +557,7 @@ dependencies = [
  "itertools 0.12.1",
  "lazy_static",
  "log",
- "ndarray 0.15.6",
+ "ndarray",
  "pyo3",
  "rayon",
  "regex",
@@ -585,12 +584,12 @@ dependencies = [
  "duplicate",
  "easy-ext",
  "eng_fmt",
- "fastsim-core 0.1.9",
+ "fastsim-core 0.1.11",
  "fastsim-proc-macros 3.0.0",
  "include_dir",
  "itertools 0.12.1",
  "lazy_static",
- "ndarray 0.16.1",
+ "ndarray",
  "ninterp",
  "nohash-hasher",
  "numpy",
@@ -642,7 +641,7 @@ dependencies = [
 name = "fastsim-py"
 version = "1.0.0"
 dependencies = [
- "fastsim-core 0.1.9",
+ "fastsim-core 0.1.11",
  "fastsim-core 1.0.0",
  "ninterp",
  "pyo3",
@@ -1189,20 +1188,6 @@ dependencies = [
 
 [[package]]
 name = "ndarray"
-version = "0.15.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adb12d4e967ec485a5f71c6311fe28158e9d6f4bc4a447b474184d0f91a8fa32"
-dependencies = [
- "matrixmultiply",
- "num-complex",
- "num-integer",
- "num-traits",
- "rawpointer",
- "serde",
-]
-
-[[package]]
-name = "ndarray"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
@@ -1225,7 +1210,7 @@ checksum = "63257650dc3e5ae35af288f5eeb609fcfad018d0bded3ff57538c359af956e0e"
 dependencies = [
  "dyn-clone",
  "itertools 0.13.0",
- "ndarray 0.16.1",
+ "ndarray",
  "num-traits",
  "serde",
  "serde_unit_struct",
@@ -1278,7 +1263,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b94caae805f998a07d33af06e6a3891e38556051b8045c615470a71590e13e78"
 dependencies = [
  "libc",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex",
  "num-integer",
  "num-traits",
