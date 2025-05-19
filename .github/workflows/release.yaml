@@ -19,7 +19,6 @@ jobs:
           - macos-latest # Apple Silicon runner
           - windows-latest
         python-version:
-          - "9"
           - "10"
           - "11"
         include:
@@ -36,23 +35,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: set up rust
-        if: matrix.os != 'ubuntu-latest'
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
-      - run: rustup target add aarch64-apple-darwin
+      - name: install rust target for MacOS 14+ (Apple Silicon)
+        run: rustup target add aarch64-apple-darwin
         if: matrix.os == 'macos-latest'
 
+      - name: install rust target for MacOS 13 (Intl Mac)
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+        if: matrix.os == 'macos-13'
+
       - name: run cargo tests
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: cd rust/ && cargo test
+        run: cd rust/ && cargo test
 
       - name: set up python
         uses: actions/setup-python@v4
@@ -62,9 +56,8 @@ jobs:
 
       - name: Upgrade to latest pip
         run: python -m pip install --upgrade pip
-        
       - name: install Python dependencies
-        run: pip install -U setuptools wheel twine cibuildwheel pytest
+        run: python -m pip install --upgrade setuptools wheel twine cibuildwheel pytest
 
       - name: build source distribution
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '10'
@@ -132,8 +125,10 @@ jobs:
     name: release files to PyPI
     runs-on: ubuntu-latest
     # Protection Strategies -- use ONE of the following two lines:
-    if: github.event_name == 'release' && github.event.action == 'published' # publish on via explicit publish
-    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') # publish on tag starting w/ 'v'
+    # publish on via explicit publish
+    if: github.event_name == 'release' && github.event.action == 'published'
+    # publish on tag starting w/ 'v'
+    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: download files
         uses: actions/download-artifact@v4
