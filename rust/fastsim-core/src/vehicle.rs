@@ -933,6 +933,7 @@ impl RustVehicle {
         self.mc_kw_out_array =
             (Array::linspace(0.0, 1.0, self.mc_perc_out_array.len()) * self.mc_max_kw).to_vec();
 
+        self.mc_perc_out_array = array![];
         for (idx, x) in self.mc_perc_out_array.iter().enumerate() {
             self.mc_full_eff_array.push(if idx == 0 {
                 0.0
