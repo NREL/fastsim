@@ -526,9 +526,9 @@ dependencies = [
 
 [[package]]
 name = "fastsim-core"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "693403a6d93ded25356e69a77f891a1e31c293531a9a8a84145346039ee85dac"
+checksum = "110e892d9b91295de786de6c5cb94ca26fe5689d4ff5c020cec28dbd34a36c2b"
 dependencies = [
  "anyhow",
  "argmin",
@@ -568,7 +568,7 @@ dependencies = [
  "duplicate",
  "easy-ext",
  "eng_fmt",
- "fastsim-core 0.1.10",
+ "fastsim-core 0.1.11",
  "fastsim-proc-macros 1.0.0",
  "include_dir",
  "itertools 0.12.1",
@@ -626,7 +626,7 @@ dependencies = [
 name = "fastsim-py"
 version = "1.0.0"
 dependencies = [
- "fastsim-core 0.1.10",
+ "fastsim-core 0.1.11",
  "fastsim-core 1.0.0",
  "ninterp",
  "pyo3",
