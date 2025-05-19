@@ -320,7 +320,7 @@ impl Init for ElectricMachine {
         let _ = self
             .mass()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        let _ = check_interp_frac_data(match self.eff_interp_achieved  {InterpolatorEnum::Interp1D(interp) => &interp.data.grid[0].as_slice().ok_or(Error::Other("Cannot convert to slice".to_string()))?, _ => {
+        let _ = check_interp_frac_data(match &mut self.eff_interp_achieved  {InterpolatorEnum::Interp1D(interp) => &interp.data.grid[0].as_slice().ok_or(Error::Other("Cannot convert to slice".to_string()))?, _ => {
             return Err(Error::InitError(format_dbg!(
                 "Only 1-D interpolators are supported"
             )))
@@ -336,12 +336,12 @@ impl Init for ElectricMachine {
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
         // TODO: what should the default strategy be for eff_interp_bwd?
-        let eff_interp_at_max_input = match self.eff_interp_achieved {
+        let eff_interp_at_max_input = match &self.eff_interp_achieved {
             InterpolatorEnum::Interp1D(interp) => {
                 InterpolatorEnum::new_1d(
                     interp.data.grid[0]
                         .iter()
-                        .zip(interp.data.values)
+                        .zip(&interp.data.values)
                         .map(|(x, y)| x / y)
                         .collect(),
                     interp.data.values.clone(),
@@ -354,7 +354,7 @@ impl Init for ElectricMachine {
             }
             _ => unimplemented!(),
         }
-        .map_err(ninterp::error::ValidateError::from)?;
+        .map_err(|e| Error::NinterpError(e.to_string()))?;
         self.eff_interp_at_max_input = Some(eff_interp_at_max_input);
         Ok(())
     }
