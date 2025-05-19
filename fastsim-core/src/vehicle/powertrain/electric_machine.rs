@@ -255,37 +255,38 @@ impl ElectricMachine {
             .set_extrapolate(Extrapolate::Error)?;
 
         self.state.eff = uc::R
-            * self
-                .eff_interp_achieved
-                .interpolate(
-                    &[{
-                        let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
-                            Ok({
-                                if self
-                                    .eff_interp_achieved
-                                    .x()?
-                                    .first()
-                                    .with_context(|| anyhow!(format_dbg!()))?
-                                    >= &0.
-                                {
-                                    pwr_uncorrected.max(0.)
-                                } else {
-                                    pwr_uncorrected
-                                }
-                            })
-                        };
-                        pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
-                    }], // &self.eff_interp_fwd.x()?,
-                        // &self.eff_interp_fwd,
-                        // Extrapolate::Error,
-                )
-                .with_context(|| {
-                    anyhow!(
-                        "{}\n failed to calculate {}",
-                        format_dbg!(),
-                        stringify!(self.state.eff)
-                    )
-                })?;
+            * match &self.eff_interp_achieved {
+                InterpolatorEnum::Interp1D(interp) => {
+                    interp
+                        .interpolate(
+                            &[{
+                                let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
+                                    Ok({
+                                        if interp.data.grid[0]
+                                            .first()
+                                            .with_context(|| anyhow!(format_dbg!()))?
+                                            >= &0.
+                                        {
+                                            pwr_uncorrected.max(0.)
+                                        } else {
+                                            pwr_uncorrected
+                                        }
+                                    })
+                                };
+                                pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
+                            }], // &self.eff_interp_fwd.x()?,
+                                // &self.eff_interp_fwd,
+                                // Extrapolate::Error,
+                        )
+                        .with_context(|| format_dbg!())?
+                }
+                _ => {
+                    return Err(Error::InitError(format_dbg!(
+                        "Only 1-D interpolators are supported"
+                    ))
+                    .into())
+                }
+            };
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
@@ -319,7 +320,11 @@ impl Init for ElectricMachine {
         let _ = self
             .mass()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        let _ = check_interp_frac_data(self.eff_interp_achieved.x()?, InterpRange::Either)
+        let _ = check_interp_frac_data(match self.eff_interp_achieved  {InterpolatorEnum::Interp1D(interp) => &interp.data.grid[0].as_slice().ok_or(Error::Other("Cannot convert to slice".to_string()))?, _ => {
+            return Err(Error::InitError(format_dbg!(
+                "Only 1-D interpolators are supported"
+            )))
+        }}, InterpRange::Either)
             .map_err(|err|
                 Error::InitError(format!(
                     "{}\nInvalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1].",
@@ -514,32 +519,60 @@ impl ElectricMachine {
     /// is equal to new range.  Will change max if needed to ensure no values are
     /// less than zero.
     pub fn set_eff_fwd_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        let eff_max_fwd = self.get_eff_fwd_max()?;
-        let eff_max_bwd = self.get_eff_max_bwd()?;
+        let eff_max_fwd = self.get_eff_fwd_max()?.to_owned();
+        let eff_max_bwd = self.get_eff_max_bwd()?.to_owned();
         if eff_range == 0.0 {
             let f_x_fwd = vec![
                 eff_max_fwd;
-                self.eff_interp_achieved
-                    .f_x()
-                    .with_context(|| "eff_interp_fwd does not have f_x field")?
-                    .len()
+                match &self.eff_interp_achieved {
+                    InterpolatorEnum::Interp1D(interp) => interp.data.values.len(),
+                    _ => {
+                        return Err(Error::InitError(format_dbg!(
+                            "Only 1-D interpolators are supported"
+                        ))
+                        .into());
+                    }
+                }
             ];
-            self.eff_interp_achieved.set_f_x(f_x_fwd)?;
+            match &mut self.eff_interp_achieved {
+                InterpolatorEnum::Interp1D(interp) => interp.data.values = Array::from_vec(f_x_fwd),
+                _ => {
+                    return Err(Error::InitError(format_dbg!(
+                        "Only 1-D interpolators are supported"
+                    ))
+                    .into());
+                }
+            };
             let f_x_bwd = vec![
                 eff_max_bwd;
                 match &self.eff_interp_at_max_input {
                     Some(interp) => {
-                        interp
-                            .f_x()
-                            .with_context(|| "eff_interp_bwd does not have f_x field")?
-                            .len()
+                        match interp {
+                            InterpolatorEnum::Interp1D(interp) => interp.data.values.len(),
+                            _ => {
+                                return Err(Error::InitError(format_dbg!(
+                                    "Only 1-D interpolators are supported"
+                                ))
+                                .into());
+                            }
+                        }
                     }
                     None => bail!("eff_interp_bwd should be Some by this point."),
                 }
             ];
             self.eff_interp_at_max_input
                 .as_mut()
-                .map(|interpolator| interpolator.set_f_x(f_x_bwd))
+                .map(|interpolator| match interpolator {
+                    InterpolatorEnum::Interp1D(interp) => {
+                        interp.data.values = Array::from_vec(f_x_bwd);
+                        Ok(())
+                    }
+                    _ => {
+                        return Err(Error::InitError(format_dbg!(
+                            "Only 1-D interpolators are supported"
+                        )));
+                    }
+                })
                 .transpose()?;
             Ok(())
         } else if (0.0..=1.0).contains(&eff_range) {
@@ -563,7 +596,7 @@ impl ElectricMachine {
                 _ => bail!("{}\n", "Only `InterpolatorEnum::Interp1D` is allowed."),
             }
             if self.get_eff_min_fwd()? < &0. {
-                let x_neg = self.get_eff_min_fwd()?;
+                let x_neg = *self.get_eff_min_fwd()?;
                 match &mut self.eff_interp_achieved {
                     InterpolatorEnum::Interp1D(interp) => {
                         interp.data.values.map_inplace(|x| *x -= x_neg);
@@ -587,7 +620,7 @@ impl ElectricMachine {
             }
 
             //TODO
-            match self.eff_interp_at_max_input {
+            match &mut self.eff_interp_at_max_input {
                 Some(InterpolatorEnum::Interp1D(interp)) => {
                     interp.data.values = interp
                         .data
@@ -600,7 +633,7 @@ impl ElectricMachine {
             }
 
             if self.get_eff_min_at_max_input()? < &0.0 {
-                let x_neg = self.get_eff_min_at_max_input()?;
+                let x_neg = *self.get_eff_min_at_max_input()?;
                 self.eff_interp_at_max_input
                     .as_mut()
                     .map(|interpolator| match interpolator {
