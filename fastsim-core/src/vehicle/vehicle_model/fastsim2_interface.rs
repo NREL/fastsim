@@ -237,8 +237,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     em: ElectricMachine {
                         state: Default::default(),
                         eff_interp_achieved: InterpolatorEnum::new_1d(
-                            f2veh.mc_pwr_out_perc,
-                            f2veh.mc_eff_array,
+                            f2veh.mc_pwr_out_perc.clone(),
+                            f2veh.mc_eff_array.clone(),
                             strategy::LeftNearest,
                             Extrapolate::Error,
                         )?,
