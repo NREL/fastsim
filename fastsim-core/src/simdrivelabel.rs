@@ -15,9 +15,11 @@ const CHG_EFF: f64 = 0.86;
 #[serde_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct FuelProperties {
-    /// TODO: make a way to serialize/deserialize with "J/m^3"
-    /// fuel energy density
-    pub energy_density: si::EnergyDensity,
+    // TODO: make a way to serialize/deserialize with "J/m^3"
+    // fuel energy density
+    /// fuel energy density (i.e. energy per unit mass, which has the same base
+    /// units as pressure)
+    pub energy_density: si::Pressure,
     /// fuel density
     pub density: si::MassDensity,
 }

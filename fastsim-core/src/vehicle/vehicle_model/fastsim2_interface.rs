@@ -14,9 +14,9 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
 
         let mut f3veh = Self {
             name: f2veh.scenario_name.clone(),
-            year: f2veh.veh_year as u8,
+            year: f2veh.veh_year,
             pt_type,
-            chassis: Chassis::try_from(&f2veh)?,
+            chassis: Chassis::try_from(&f2veh).with_context(|| format_dbg!())?,
             cabin: Default::default(),
             hvac: Default::default(),
             pwr_aux_base: f2veh.aux_kw * uc::KW,
@@ -72,7 +72,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                                 f2veh.fc_eff_array.to_vec(),
                                 Strategy::LeftNearest,
                                 Extrapolate::Error,
-                            )?,
+                            )
+                            .with_context(|| format_dbg!())?,
                             pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
                             // this means that aux power must include idle fuel
                             pwr_idle_fuel: si::Power::ZERO,
@@ -148,7 +149,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                                 f2veh.fc_eff_array.to_vec(),
                                 Strategy::LeftNearest,
                                 Extrapolate::Error,
-                            )?,
+                            )
+                            .with_context(|| format_dbg!())?,
                             pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
                             // this means that aux power must include idle fuel
                             pwr_idle_fuel: si::Power::ZERO,
@@ -187,7 +189,13 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             Strategy::LeftNearest,
                             Extrapolate::Error,
                         )
-                        .unwrap(),
+                        .with_context(|| {
+                            format!(
+                                "{}\n{}",
+                                format_dbg!(f2veh.mc_full_eff_array.len()),
+                                format_dbg!(f2veh.mc_perc_out_array.len())
+                            )
+                        })?,
                         eff_interp_at_max_input: None,
                         // pwr_in_frac_interp: Default::default(),
                         pwr_out_max: f2veh.mc_max_kw * uc::KW,
@@ -236,21 +244,25 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             f2veh.mc_eff_array.to_vec(),
                             Strategy::LeftNearest,
                             Extrapolate::Error,
-                        )?,
-                        eff_interp_at_max_input: Some(Interpolator::new_1d(
-                            // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
-                            // be transferred over as done here, or does a new defualt need to be defined?
-                            f2veh
-                                .mc_pwr_out_perc
-                                .to_vec()
-                                .iter()
-                                .zip(f2veh.mc_eff_array.to_vec().iter())
-                                .map(|(x, y)| x / y)
-                                .collect(),
-                            f2veh.mc_eff_array.to_vec(),
-                            Strategy::LeftNearest,
-                            Extrapolate::Error,
-                        )?),
+                        )
+                        .with_context(|| format_dbg!())?,
+                        eff_interp_at_max_input: Some(
+                            Interpolator::new_1d(
+                                // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
+                                // be transferred over as done here, or does a new defualt need to be defined?
+                                f2veh
+                                    .mc_pwr_out_perc
+                                    .to_vec()
+                                    .iter()
+                                    .zip(f2veh.mc_eff_array.to_vec().iter())
+                                    .map(|(x, y)| x / y)
+                                    .collect(),
+                                f2veh.mc_eff_array.to_vec(),
+                                Strategy::LeftNearest,
+                                Extrapolate::Error,
+                            )
+                            .with_context(|| format_dbg!())?,
+                        ),
                         pwr_out_max: f2veh.mc_max_kw * uc::KW,
                         specific_pwr: None,
                         mass: None,
