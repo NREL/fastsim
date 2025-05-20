@@ -29,9 +29,9 @@ impl Init for AuxSource {}
 /// Struct for simulating vehicle
 pub struct Vehicle {
     /// Vehicle name
-    name: String,
+    pub name: String,
     /// Year manufactured
-    year: u32,
+    pub year: u32,
     #[has_state]
     /// type of vehicle powertrain including contained type-specific parameters and variables
     pub pt_type: PowertrainType,
