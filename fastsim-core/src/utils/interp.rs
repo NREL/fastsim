@@ -114,7 +114,7 @@ impl Init for Interpolator {
 }
 impl SerdeAPI for Interpolator {
     #[cfg(feature = "resources")]
-    const RESOURCE_SUBDIR: &'static str = "interpolators";
+    const RESOURCES_SUBDIR: &'static str = "interpolators";
 }
 
 #[cfg(test)]
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_resources() {
-        let resource_list = StructWithResources::list_resources();
+        let resource_list = StructWithResources::list_resources().unwrap();
         assert!(!resource_list.is_empty());
 
         // verify that resources can all load

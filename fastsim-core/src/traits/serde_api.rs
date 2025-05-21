@@ -23,7 +23,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     #[cfg(feature = "resources")]
     const RESOURCES_DIR: &'static Dir<'_> = &include_dir!("$CARGO_MANIFEST_DIR/resources");
     #[cfg(feature = "resources")]
-    const RESOURCE_SUBDIR: &'static str = "";
+    const RESOURCES_SUBDIR: &'static str = "";
 
     /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
     ///
@@ -32,7 +32,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     /// * `filepath` - Filepath, relative to the top of the `resources` folder (excluding any relevant prefix), from which to read the object
     #[cfg(feature = "resources")]
     fn from_resource<P: AsRef<Path>>(filepath: P, skip_init: bool) -> Result<Self, Error> {
-        let filepath = Path::new(Self::RESOURCE_SUBDIR).join(filepath);
+        let filepath = Path::new(Self::RESOURCES_SUBDIR).join(filepath);
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
@@ -48,17 +48,35 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     /// List the available resources in the resources directory
     ///
     /// RETURNS: a vector of strings for resources that can be loaded
-    fn list_resources() -> Vec<String> {
-        if let Some(resources_path) = Self::RESOURCES_DIR.get_dir(Self::RESOURCE_SUBDIR) {
-            let mut file_names: Vec<String> = resources_path
-                .files()
-                .filter_map(|entry| entry.path().file_name()?.to_str().map(String::from))
-                .collect();
-            file_names.sort();
-            file_names
-        } else {
-            Vec::<String>::new()
+    fn list_resources() -> Result<Vec<PathBuf>, Error> {
+        // Recursive function to walk the directory
+        fn collect_paths(dir: &Dir, paths: &mut Vec<PathBuf>) {
+            for entry in dir.entries() {
+                match entry {
+                    include_dir::DirEntry::Dir(subdir) => {
+                        // Recursively process subdirectory
+                        collect_paths(subdir, paths);
+                    }
+                    include_dir::DirEntry::File(file) => {
+                        // Add file path
+                        paths.push(file.path().to_path_buf());
+                    }
+                }
+            }
         }
+
+        let mut paths = Vec::new();
+        if let Some(resources_subdir) = Self::RESOURCES_DIR.get_dir(Self::RESOURCES_SUBDIR) {
+            collect_paths(resources_subdir, &mut paths);
+            for p in paths.iter_mut() {
+                *p = p
+                    .strip_prefix(Self::RESOURCES_SUBDIR)
+                    .map_err(|err| Error::SerdeError(format!("{err}")))?
+                    .to_path_buf();
+            }
+            paths.sort();
+        }
+        Ok(paths)
     }
 
     /// Instantiates an object from a url.  Accepts yaml and json file types  

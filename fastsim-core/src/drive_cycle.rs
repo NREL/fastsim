@@ -54,13 +54,6 @@ pub struct Cycle {
 
 #[named_struct_pyo3_api]
 impl Cycle {
-    #[pyo3(name = "list_resources")]
-    #[staticmethod]
-    /// list available cycle resources
-    fn list_resources_py() -> Vec<String> {
-        Self::list_resources()
-    }
-
     #[pyo3(name = "len")]
     fn len_py(&self) -> PyResult<usize> {
         Ok(self.len_checked()?)
@@ -181,7 +174,7 @@ impl SerdeAPI for Cycle {
         "yaml",
     ];
     #[cfg(feature = "resources")]
-    const RESOURCE_SUBDIR: &'static str = "cycles";
+    const RESOURCES_SUBDIR: &'static str = "cycles";
 
     /// Write (serialize) an object into anything that implements [`std::io::Write`]
     ///
@@ -594,7 +587,7 @@ mod tests {
 
     #[test]
     fn test_resources() {
-        let resource_list = StructWithResources::list_resources();
+        let resource_list = StructWithResources::list_resources().unwrap();
         assert!(!resource_list.is_empty());
 
         // verify that resources can all load

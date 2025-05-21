@@ -120,14 +120,6 @@ impl Vehicle {
     //     Ok(self.mass()?.map(|m| m))
     // }
 
-    #[cfg(feature = "resources")]
-    #[pyo3(name = "list_resources")]
-    #[staticmethod]
-    /// list available vehicle resources
-    fn list_resources_py() -> Vec<String> {
-        Self::list_resources()
-    }
-
     /// Load vehicle from file saved in fastsim-2 format
     #[pyo3(name = "from_f2_file")]
     #[staticmethod]
@@ -228,7 +220,7 @@ impl Mass for Vehicle {
 
 impl SerdeAPI for Vehicle {
     #[cfg(feature = "resources")]
-    const RESOURCE_SUBDIR: &'static str = "vehicles";
+    const RESOURCES_SUBDIR: &'static str = "vehicles";
 }
 impl Init for Vehicle {
     fn init(&mut self) -> Result<(), Error> {
@@ -830,7 +822,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_resources() {
-        let resource_list = StructWithResources::list_resources();
+        let resource_list = StructWithResources::list_resources().unwrap();
         assert!(!resource_list.is_empty());
 
         // verify that resources can all load
