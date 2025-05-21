@@ -1,7 +1,6 @@
 use crate::imports::*;
 use crate::prelude::*;
 #[cfg(feature = "pyo3")]
-use crate::resources;
 use fastsim_2::cycle::RustCycle as Cycle2;
 
 #[serde_api]
@@ -59,7 +58,7 @@ impl Cycle {
     #[staticmethod]
     /// list available cycle resources
     fn list_resources_py() -> Vec<String> {
-        resources::list_resources(Self::RESOURCE_PREFIX)
+        Self::list_resources()
     }
 
     #[pyo3(name = "len")]
@@ -164,6 +163,8 @@ impl SerdeAPI for Cycle {
         "csv",
         #[cfg(feature = "json")]
         "json",
+        #[cfg(feature = "msgpack")]
+        "msgpack",
         #[cfg(feature = "toml")]
         "toml",
         #[cfg(feature = "yaml")]
@@ -180,7 +181,7 @@ impl SerdeAPI for Cycle {
         "yaml",
     ];
     #[cfg(feature = "resources")]
-    const RESOURCE_PREFIX: &'static str = "cycles";
+    const RESOURCE_SUBDIR: &'static str = "cycles";
 
     /// Write (serialize) an object into anything that implements [`std::io::Write`]
     ///
@@ -587,5 +588,18 @@ mod tests {
                 .map(|x| *x * uc::M)
                 .collect::<Vec<si::Length>>()
         );
+    }
+
+    type StructWithResources = Cycle;
+
+    #[test]
+    fn test_resources() {
+        let resource_list = StructWithResources::list_resources();
+        assert!(!resource_list.is_empty());
+
+        // verify that resources can all load
+        for resource in resource_list {
+            StructWithResources::from_resource(resource, false).unwrap();
+        }
     }
 }
