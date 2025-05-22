@@ -194,6 +194,21 @@ pub trait SaveState {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
 }
 
+/// Trait that provides method for incrementing `i` field of this and all contained structs,
+/// recursively
+pub trait Step {
+    /// Increments `i` field of this and all contained structs, recursively
+    /// # Arguments
+    /// - `loc`: closure that returns file and line number where called
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
+}
+
+/// Trait for setting cumulative values based on rate values
+pub trait SetCumulative {
+    /// Sets cumulative values based on rate values
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()>;
+}
+
 /// Provides methods for getting and setting the save interval
 pub trait HistoryMethods: SaveState {
     /// Recursively sets save interval
@@ -207,15 +222,6 @@ pub trait HistoryMethods: SaveState {
     fn clear(&mut self);
 }
 
-/// Trait that provides method for incrementing `i` field of this and all contained structs,
-/// recursively
-pub trait Step {
-    /// Increments `i` field of this and all contained structs, recursively
-    /// # Arguments
-    /// - `loc`: closure that returns file and line number where called
-    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
-}
-
 /// Provides method for checking if struct is default
 pub trait EqDefault: std::default::Default + PartialEq {
     /// If `self` is default, returns true
@@ -225,12 +231,6 @@ pub trait EqDefault: std::default::Default + PartialEq {
 }
 
 impl<T: Default + PartialEq> EqDefault for T {}
-
-/// Trait for setting cumulative values based on rate values
-pub trait SetCumulative {
-    /// Sets cumulative values based on rate values
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()>;
-}
 
 #[cfg(test)]
 mod tests {

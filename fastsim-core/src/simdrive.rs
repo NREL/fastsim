@@ -340,7 +340,7 @@ impl SimDrive {
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.set_cumulative(dt)?;
+        self.set_cumulative(dt, || format_dbg!())?;
         Ok(())
     }
 
@@ -722,8 +722,8 @@ pwr deficit: {} kW
 }
 
 impl SetCumulative for SimDrive {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.veh.set_cumulative(dt)?;
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+        self.veh.set_cumulative(dt, || format_dbg!())?;
         Ok(())
     }
 }
