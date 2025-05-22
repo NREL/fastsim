@@ -70,17 +70,31 @@ impl Cycle {
     }
 
     #[pyo3(name = "len")]
+    /// return the length of the cycle
     fn len_py(&self) -> PyResult<usize> {
         Ok(self.len_checked()?)
     }
 
     #[pyo3(name = "to_microtrips", signature=(stop_speed_m_per_s=None))]
+    /// convert cycle to a list of microtrips.
+    /// If stop speed is specified, it signifies the speed at or below which
+    /// a vehicle should be considered as stopped. This can be useful when
+    /// processing real-world data.
     fn to_microtrips_py(&self, stop_speed_m_per_s: Option<f64>) -> PyResult<Vec<Cycle>> {
         let stop_speed = stop_speed_m_per_s.map(|v| v * uc::MPS);
         Ok(self.to_microtrips(stop_speed))
     }
 
     #[pyo3(name = "extend_time", signature=(absolute_time_s=None, time_fraction=None))]
+    /// extend cycle with idle time.
+    /// This is useful when a cycle's duration needs to be extended.
+    /// - absolute_time_s: optional time to extend the cycle
+    /// - time_fraction: optional fraction of cycle's duration to add to cycle.
+    ///
+    /// NOTE: if both absolute time and time fraction are specified, they
+    /// both add to extend the cycle. For example, if we have a 100 s cycle
+    /// and specify an absolute_time_s of 10 and time_fraction of 0.5, the
+    /// resulting cycle will have a duration of 160 s = 100.0 + (10 + 100.0 * 0.5)
     fn extend_time_py(
         &mut self,
         absolute_time_s: Option<f64>,
@@ -92,6 +106,7 @@ impl Cycle {
     }
 
     #[pyo3(name = "dt_at_i")]
+    /// time step duration at step i.
     pub fn dt_at_i_py(&self, i: usize) -> PyResult<f64> {
         let i = std::cmp::max(1, i);
         let dt = if i < self.time.len() {
@@ -103,18 +118,32 @@ impl Cycle {
     }
 
     #[pyo3(name = "ending_idle_time_s")]
+    /// calculate and return the ending "idle" time of a cycle.
+    /// "Idle" time is defined as the amount of contiguous time
+    /// at the end of a cycle where the vehicle is not moving.
     pub fn ending_idle_time_py(&self) -> PyResult<f64> {
         let dt_end_idle = self.ending_idle_time();
         Ok(dt_end_idle.get::<si::second>())
     }
 
     #[pyo3(name = "trim_ending_idle", signature=(idle_to_keep_s=None))]
+    /// trim ending "idle" time from a cycle.
+    /// The "idle" time is the time the vehicle is not moving.
+    /// - idle_to_keep_s: the amount of time to keep
+    ///
+    /// NOTE: if idle_to_keep_s is specified, the ending idle duration
+    /// will be UP TO this idle_to_keep_s amount but could be less if
+    /// there is insufficient idle time.
     pub fn trim_ending_idle_py(&self, idle_to_keep_s: Option<f64>) -> PyResult<Cycle> {
         let idle_to_keep = idle_to_keep_s.map(|idle| idle * uc::S);
         Ok(self.trim_ending_idle(idle_to_keep))
     }
 
     #[pyo3(name = "average_speed_m_per_s", signature=(while_moving=None))]
+    /// calculate and return the average speed of the cycle in (m/s).
+    /// - while_moving: if specified and true, calculate the speed only
+    ///   while the vehicle is moving. Otherwise, calculate the average speed
+    ///   including stopped time.
     pub fn average_speed_py(&self, while_moving: Option<bool>) -> PyResult<f64> {
         let while_moving = while_moving.unwrap_or(false);
         let vavg = self.average_speed(while_moving);
@@ -122,6 +151,7 @@ impl Cycle {
     }
 
     #[pyo3(name = "average_step_speeds_m_per_s")]
+    /// calculate and return the average speeds per time-step in (m/s).
     pub fn average_step_speeds_py(&self) -> PyResult<Vec<f64>> {
         Ok(self
             .average_step_speeds()
@@ -131,6 +161,7 @@ impl Cycle {
     }
 
     #[pyo3(name = "average_step_speed_in_m_per_s_at")]
+    /// calculate the average step speed at the given step in (m/s).
     pub fn average_step_speed_at_py(&self, i: usize) -> PyResult<f64> {
         Ok(self.average_step_speed_at(i).get::<si::meter_per_second>())
     }
@@ -431,6 +462,7 @@ impl Cycle {
             - *self.time.get(i - 1).with_context(|| format_dbg!())?)
     }
 
+    /// return the length of the cycle
     pub fn len_checked(&self) -> anyhow::Result<usize> {
         ensure!(
             self.time.len() == self.speed.len(),
@@ -477,10 +509,12 @@ impl Cycle {
         Ok(self.time.len())
     }
 
+    /// return true if the cycle is empty, else false
     pub fn is_empty(&self) -> anyhow::Result<bool> {
         Ok(self.len_checked().with_context(|| format_dbg!())? == 0)
     }
 
+    /// append the given cycle element
     pub fn push(&mut self, element: CycleElement) -> anyhow::Result<()> {
         // TODO: maybe automate generation of this function as derive macro
         // TODO: maybe automate `ensure!` that all vec fields are same length before returning result
@@ -506,6 +540,7 @@ impl Cycle {
         Ok(())
     }
 
+    /// extend the cycle by a vector of elements
     pub fn extend(&mut self, vec: Vec<CycleElement>) -> anyhow::Result<()> {
         self.time.extend(vec.iter().map(|x| x.time).clone());
         todo!();
@@ -534,6 +569,9 @@ impl Cycle {
         // Ok(())
     }
 
+    /// trim the cycle to the given start_idx and end_idx.
+    ///
+    /// NOTE: ending cycle will include start_idx but NOT end_idx
     pub fn trim(&mut self, start_idx: Option<usize>, end_idx: Option<usize>) -> anyhow::Result<()> {
         let start_idx = start_idx.unwrap_or_default();
         let len = self.len_checked().with_context(|| format_dbg!())?;
@@ -585,6 +623,7 @@ impl Cycle {
         Ok(cyc2)
     }
 
+    /// convert cycle to a vector of CycleElement
     pub fn to_elements(&self) -> Vec<CycleElement> {
         let mut result = Vec::with_capacity(self.time.len());
         for idx in 0..self.time.len() {
@@ -778,6 +817,7 @@ impl Cycle {
         result
     }
 
+    /// The elevation climb each step using trapezoidal integration.
     pub fn trapz_step_elevations(&self) -> Vec<si::Length> {
         let mut result = Vec::with_capacity(self.time.len());
         result.push(0.0 * uc::M);
@@ -917,7 +957,8 @@ impl Cycle {
         result
     }
 
-    // Add idle time to Cycle.
+    /// Add idle time to Cycle.
+    /// By "idle" time, we mean "stopped" time (i.e., vehicle not moving).
     pub fn extend_time(
         &self,
         absolute_time: Option<si::Time>,

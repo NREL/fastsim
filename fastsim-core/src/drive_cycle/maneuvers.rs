@@ -151,11 +151,13 @@ impl Maneuver {
 
     #[pyo3(name = "create_from")]
     #[staticmethod]
+    /// create a maneuver object based on the given cycle and vehicle.
     fn create_from_py(cyc: &Cycle, veh: &Vehicle) -> PyResult<Self> {
         Ok(Maneuver::from(cyc, veh))
     }
 
     #[pyo3(name = "apply_maneuvers")]
+    /// apply all maneuvers to the cycle and return it.
     fn apply_maneuvers_py(&mut self) -> PyResult<Cycle> {
         self.apply();
         let cyc = self.cyc.clone();
@@ -163,6 +165,7 @@ impl Maneuver {
     }
 
     #[pyo3(name = "is_coasting")]
+    /// return a vector of signals indicating 1.0 for coast, otherwise 0.0
     fn is_coasting_py(&self) -> PyResult<Vec<f64>> {
         let mut result = Vec::with_capacity(self.impose_coast.len());
         for ic in &self.impose_coast {

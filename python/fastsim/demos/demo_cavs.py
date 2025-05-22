@@ -259,12 +259,20 @@ def basic_cruise_demo():
     man = fsim.Maneuver.create_from(cyc, veh.copy())
     # Set coasting variables
     d = man.to_pydict()
+    # Set "idm_allow" to True to turn on the intelligent driver model (IDM).
     d["idm_allow"] = True
+    # This is the simplest way to command the IDM target speed -- this
+    # sets the vehicle's speed over the cycle to be the desired speed below.
     d["idm_desired_speed_meters_per_second"] = vavg
+    # Headway is the time in seconds "ahead" of the reference vehicle.
     d["idm_headway_seconds"] = 1.0
+    # Minimum gap is the desired "gap" with the reference vehicle trace.
     d["idm_minimum_gap_meters"] = 1.0
+    # Shape parameter for the IDM algorithm.
     d["idm_delta"] = 4.0
+    # Base acceleration for the IDM.
     d["idm_acceleration_meters_per_second_squared"] = 1.0
+    # Base decelleration for the IDM.
     d["idm_deceleration_meters_per_second_squared"] = 2.5
     # Reset the Maneuver object using the python dictionary
     man = fsim.Maneuver.from_pydict(d)
@@ -336,12 +344,20 @@ def cruise_and_coast_demo():
     # equipped with.
     d["coast_time_horizon_for_adjustment_seconds"] = 120.0
     # Add intelligent driver model (IDM) parameters
+    # Set "idm_allow" to True to turn on the intelligent driver model (IDM).
     d["idm_allow"] = True
+    # This is the simplest way to command the IDM target speed -- this
+    # sets the vehicle's speed over the cycle to be the desired speed below.
     d["idm_desired_speed_meters_per_second"] = vavg
+    # Headway is the time in seconds "ahead" of the reference vehicle.
     d["idm_headway_seconds"] = 1.0
+    # Minimum gap is the desired "gap" with the reference vehicle trace.
     d["idm_minimum_gap_meters"] = 1.0
+    # Shape parameter for the IDM algorithm.
     d["idm_delta"] = 4.0
+    # Base acceleration for the IDM.
     d["idm_acceleration_meters_per_second_squared"] = 1.0
+    # Base decelleration for the IDM.
     d["idm_deceleration_meters_per_second_squared"] = 2.5
     # Reset the Maneuver object using the python dictionary
     man = fsim.Maneuver.from_pydict(d)
