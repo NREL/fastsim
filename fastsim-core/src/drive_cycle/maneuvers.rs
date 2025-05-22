@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use crate::resources;
 use crate::{imports::*, simdrive::roadload::StepInfo, simdrive::SimParams, vehicle::Vehicle};
 
 use super::manipulation_utils::trapz_distance_for_step;
@@ -142,13 +141,6 @@ pub struct Maneuver {
 
 #[named_struct_pyo3_api]
 impl Maneuver {
-    #[pyo3(name = "list_resources")]
-    #[staticmethod]
-    /// list available maneuver resources
-    fn list_resources_py() -> Vec<String> {
-        resources::list_resources(Self::RESOURCE_PREFIX)
-    }
-
     #[pyo3(name = "create_from")]
     #[staticmethod]
     /// create a maneuver object based on the given cycle and vehicle.
@@ -181,7 +173,7 @@ impl Maneuver {
 
 impl SerdeAPI for Maneuver {
     #[cfg(feature = "resources")]
-    const RESOURCE_PREFIX: &'static str = "maneuvers";
+    const RESOURCES_SUBDIR: &'static str = "maneuvers";
 }
 
 impl Init for Maneuver {
