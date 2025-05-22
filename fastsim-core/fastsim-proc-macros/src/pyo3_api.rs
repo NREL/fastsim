@@ -58,6 +58,15 @@ fn add_serde_methods(py_impl_block: &mut TokenStream2) {
             ).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
 
+        #[cfg(feature = "resources")]
+        #[pyo3(name = "list_resources")]
+        #[staticmethod]
+        /// list available vehicle resources
+        fn list_resources_py() -> PyResult<Vec<PathBuf>> {
+            Self::list_resources().map_err(|e| PyException::new_err(format!("{:?}", e)))
+        }
+
+
         /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
         ///
         /// # Arguments:

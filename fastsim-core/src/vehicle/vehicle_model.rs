@@ -1,6 +1,4 @@
 use crate::prelude::*;
-#[cfg(feature = "resources")]
-use crate::resources;
 
 use super::{hev::HEVPowertrainControls, *};
 pub mod fastsim2_interface;
@@ -122,14 +120,6 @@ impl Vehicle {
     //     Ok(self.mass()?.map(|m| m))
     // }
 
-    #[cfg(feature = "resources")]
-    #[pyo3(name = "list_resources")]
-    #[staticmethod]
-    /// list available vehicle resources
-    fn list_resources_py() -> Vec<String> {
-        resources::list_resources(Self::RESOURCE_PREFIX)
-    }
-
     /// Load vehicle from file saved in fastsim-2 format
     #[pyo3(name = "from_f2_file")]
     #[staticmethod]
@@ -230,7 +220,7 @@ impl Mass for Vehicle {
 
 impl SerdeAPI for Vehicle {
     #[cfg(feature = "resources")]
-    const RESOURCE_PREFIX: &'static str = "vehicles";
+    const RESOURCES_SUBDIR: &'static str = "vehicles";
 }
 impl Init for Vehicle {
     fn init(&mut self) -> Result<(), Error> {
@@ -826,5 +816,18 @@ pub(crate) mod tests {
         let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
         let mut sd2 = sd.to_fastsim2().unwrap();
         sd2.sim_drive(None, None).unwrap();
+    }
+
+    type StructWithResources = Vehicle;
+
+    #[test]
+    fn test_resources() {
+        let resource_list = StructWithResources::list_resources().unwrap();
+        assert!(!resource_list.is_empty());
+
+        // verify that resources can all load
+        for resource in resource_list {
+            StructWithResources::from_resource(resource, false).unwrap();
+        }
     }
 }
