@@ -84,6 +84,9 @@ impl HistoryMethods for HVACOption {
         }
     }
 }
+
+impl StateMethods for HVACOption {}
+
 impl SaveState for HVACOption {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {

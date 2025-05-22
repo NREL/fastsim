@@ -313,6 +313,8 @@ impl PowertrainType {
     }
 }
 
+impl StateMethods for PowertrainType {}
+
 impl SaveState for PowertrainType {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {

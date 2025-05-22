@@ -4,7 +4,7 @@ use crate::imports::*;
 use crate::prelude::*;
 
 #[serde_api]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
@@ -340,7 +340,7 @@ impl SimDrive {
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.veh.set_cumulative(dt)?;
+        self.set_cumulative(dt)?;
         Ok(())
     }
 
@@ -721,7 +721,14 @@ pwr deficit: {} kW
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
+impl SetCumulative for SimDrive {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.veh.set_cumulative(dt)?;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 // NOTE: consider embedding this in TraceMissOptions::AllowChecked

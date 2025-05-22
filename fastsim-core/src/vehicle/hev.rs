@@ -509,6 +509,8 @@ impl Step for HEVPowertrainControls {
     }
 }
 
+impl StateMethods for HEVPowertrainControls {}
+
 impl SaveState for HEVPowertrainControls {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {

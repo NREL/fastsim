@@ -182,6 +182,9 @@ impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
     }
 }
 
+/// Super trait to ensure that related traits are implemented together
+pub trait StateMethods: SetCumulative + SaveState + Step + CheckAndResetState {}
+
 /// Provides method that saves `self.state` to `self.history` and propagates to any fields with
 /// `state`
 pub trait SaveState {

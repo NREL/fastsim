@@ -562,6 +562,8 @@ pub enum FuelConverterThermalOption {
     None,
 }
 
+impl StateMethods for FuelConverterThermalOption {}
+
 impl SaveState for FuelConverterThermalOption {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {

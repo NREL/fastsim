@@ -19,7 +19,7 @@ impl SerdeAPI for DriveTypes {}
 impl Init for DriveTypes {}
 
 #[serde_api]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle

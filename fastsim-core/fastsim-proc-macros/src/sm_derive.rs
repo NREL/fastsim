@@ -111,6 +111,10 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
         });
     }
 
+    impl_block.extend::<TokenStream2>(quote! {
+        impl StateMethods for #ident {}
+    });
+
     if struct_has_save_interval {
         impl_block.extend::<TokenStream2>(quote! {
             #[automatically_derived]

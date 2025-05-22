@@ -15,6 +15,9 @@ pub enum CabinOption {
     #[default]
     None,
 }
+
+impl StateMethods for CabinOption {}
+
 impl SaveState for CabinOption {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {

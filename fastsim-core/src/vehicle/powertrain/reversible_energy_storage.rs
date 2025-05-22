@@ -899,6 +899,9 @@ impl SetCumulative for RESThermalOption {
         Ok(())
     }
 }
+
+impl StateMethods for RESThermalOption {}
+
 impl SaveState for RESThermalOption {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
