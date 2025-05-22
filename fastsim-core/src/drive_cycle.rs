@@ -7,7 +7,6 @@ use crate::drive_cycle::manipulation_utils::{
 use crate::imports::*;
 use crate::prelude::*;
 #[cfg(feature = "pyo3")]
-use crate::resources;
 use fastsim_2::cycle::RustCycle as Cycle2;
 use std::cmp;
 
@@ -62,13 +61,6 @@ pub struct Cycle {
 
 #[named_struct_pyo3_api]
 impl Cycle {
-    #[pyo3(name = "list_resources")]
-    #[staticmethod]
-    /// list available cycle resources
-    fn list_resources_py() -> Vec<String> {
-        resources::list_resources(Self::RESOURCE_PREFIX)
-    }
-
     #[pyo3(name = "len")]
     /// return the length of the cycle
     fn len_py(&self) -> PyResult<usize> {
@@ -267,6 +259,8 @@ impl SerdeAPI for Cycle {
         "csv",
         #[cfg(feature = "json")]
         "json",
+        #[cfg(feature = "msgpack")]
+        "msgpack",
         #[cfg(feature = "toml")]
         "toml",
         #[cfg(feature = "yaml")]
@@ -283,7 +277,7 @@ impl SerdeAPI for Cycle {
         "yaml",
     ];
     #[cfg(feature = "resources")]
-    const RESOURCE_PREFIX: &'static str = "cycles";
+    const RESOURCES_SUBDIR: &'static str = "cycles";
 
     /// Write (serialize) an object into anything that implements [`std::io::Write`]
     ///
@@ -1920,5 +1914,17 @@ mod tests {
         assert_eq!(*cyc.time.iter().last().unwrap(), 60.0 * uc::S);
         let cyc_trimmed = cyc.trim_ending_idle(None);
         assert_eq!(cyc_trimmed.time.len(), c.time.len());
+    }
+    type StructWithResources = Cycle;
+
+    #[test]
+    fn test_resources() {
+        let resource_list = StructWithResources::list_resources().unwrap();
+        assert!(!resource_list.is_empty());
+
+        // verify that resources can all load
+        for resource in resource_list {
+            StructWithResources::from_resource(resource, false).unwrap();
+        }
     }
 }
