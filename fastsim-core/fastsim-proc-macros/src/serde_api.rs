@@ -4,7 +4,7 @@ use serde_utils::*;
 
 pub(crate) fn serde_api(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // TODO: put this in the right place
-    let mut impl_block = TokenStream2::default();
+    let impl_block = TokenStream2::default();
     let mut output = TokenStream2::default();
 
     let mut struct_ast = syn::parse_macro_input!(item as syn::ItemStruct);
