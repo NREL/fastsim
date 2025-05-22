@@ -21,16 +21,8 @@ pub fn serde_api(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 /// macro for creating appropriate setters and getters for pyo3 struct attributes
 /// and other, non-python API functionality
-pub fn named_struct_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
-    pyo3_api::named_struct_pyo3_api(attr, item)
-}
-
-#[proc_macro_error]
-#[proc_macro_attribute]
-/// macro for creating appropriate setters and getters for pyo3 struct attributes
-/// and other, non-python API functionality
-pub fn tuple_struct_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
-    pyo3_api::tuple_struct_pyo3_api(attr, item)
+pub fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
+    pyo3_api::pyo3_api(attr, item)
 }
 
 #[proc_macro_error]

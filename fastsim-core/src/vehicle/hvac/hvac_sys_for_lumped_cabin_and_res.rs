@@ -62,7 +62,7 @@ pub struct HVACSystemForLumpedCabinAndRES {
     pub history: HVACSystemForLumpedCabinAndRESStateHistoryVec,
     pub save_interval: Option<usize>,
 }
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl HVACSystemForLumpedCabinAndRES {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -1228,7 +1228,7 @@ pub struct HVACSystemForLumpedCabinAndRESState {
 impl Init for HVACSystemForLumpedCabinAndRESState {}
 impl SerdeAPI for HVACSystemForLumpedCabinAndRESState {}
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl HVACSystemForLumpedCabinAndRESState {}
 
 impl HVACSystemForLumpedCabinAndRESState {

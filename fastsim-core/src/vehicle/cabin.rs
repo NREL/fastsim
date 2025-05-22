@@ -126,7 +126,7 @@ pub struct LumpedCabin {
     pub save_interval: Option<usize>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl LumpedCabin {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -307,7 +307,7 @@ pub struct LumpedCabinState {
     pub reynolds_for_plate: TrackedState<si::Ratio>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl LumpedCabinState {
     #[pyo3(name = "default")]
     #[staticmethod]

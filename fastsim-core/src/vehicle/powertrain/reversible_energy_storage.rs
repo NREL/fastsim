@@ -52,7 +52,7 @@ pub struct ReversibleEnergyStorage {
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl ReversibleEnergyStorage {
     // #[getter("eff_max")]
     // fn get_eff_max_py(&self) -> f64 {
@@ -848,7 +848,7 @@ pub struct ReversibleEnergyStorageState {
     pub energy_out_chemical: TrackedState<si::Energy>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl ReversibleEnergyStorageState {}
 
 impl Default for ReversibleEnergyStorageState {
@@ -1019,7 +1019,7 @@ pub struct RESLumpedThermal {
     pub save_interval: Option<usize>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl RESLumpedThermal {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -1139,7 +1139,7 @@ pub struct RESLumpedThermalState {
     pub energy_thrml_loss: TrackedState<si::Energy>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl RESLumpedThermalState {
     #[pyo3(name = "default")]
     #[staticmethod]

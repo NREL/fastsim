@@ -33,7 +33,7 @@ pub struct SimParams {
     pub f2_const_air_density: bool,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl SimParams {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -91,7 +91,7 @@ pub struct SimDrive {
     pub sim_params: SimParams,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl SimDrive {
     #[new]
     #[pyo3(signature = (veh, cyc, sim_params=None))]

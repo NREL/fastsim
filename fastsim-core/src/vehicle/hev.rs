@@ -39,7 +39,7 @@ pub struct HybridElectricVehicle {
     pub soc_bal_iters: TrackedState<u32>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl HybridElectricVehicle {}
 
 impl HistoryMethods for HybridElectricVehicle {
@@ -686,7 +686,7 @@ pub struct RESGreedyWithDynamicBuffers {
     pub history: RGWDBStateHistoryVec,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl RESGreedyWithDynamicBuffers {}
 
 impl HistoryMethods for RESGreedyWithDynamicBuffers {

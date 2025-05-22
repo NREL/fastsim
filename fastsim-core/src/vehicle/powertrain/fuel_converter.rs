@@ -48,7 +48,7 @@ pub struct FuelConverter {
     pub history: FuelConverterStateHistoryVec,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverter {
     // optional, custom, struct-specific pymethods
     #[getter("eff_max")]
@@ -545,7 +545,7 @@ pub struct FuelConverterState {
     pub time_on: TrackedState<si::Time>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverterState {}
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
@@ -721,7 +721,7 @@ pub struct FuelConverterThermal {
     pub save_interval: Option<usize>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverterThermal {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -1048,7 +1048,7 @@ pub struct FuelConverterThermalState {
     /// Cumulative thermal energy flowing from combustion to [FuelConverter] thermal mass
     pub energy_thrml_to_tm: TrackedState<si::Energy>,
 }
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverterThermalState {}
 
 impl Init for FuelConverterThermalState {}

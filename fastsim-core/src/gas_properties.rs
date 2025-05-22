@@ -23,7 +23,7 @@ pub struct Air {}
 impl Init for Air {}
 impl SerdeAPI for Air {}
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl Air {
     #[new]
     fn __new__() -> Self {
@@ -630,7 +630,7 @@ pub struct Octane {}
 impl Init for Octane {}
 impl SerdeAPI for Octane {}
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl Octane {
     /// Returns specific energy [J/kg] of octane  
     /// # Arguments  
