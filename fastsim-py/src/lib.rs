@@ -42,10 +42,6 @@ fn fastsim(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<SimDrive>()?;
     m.add_class::<SimParams>()?;
     m.add_class::<fastsim_2::simdrive::RustSimDrive>()?;
-    m.add_class::<Pyo3VecWrapper>()?;
-    m.add_class::<Pyo3Vec2Wrapper>()?;
-    m.add_class::<Pyo3Vec3Wrapper>()?;
-    m.add_class::<Pyo3VecBoolWrapper>()?;
 
     // List enabled features
     m.add_function(wrap_pyfunction!(fastsim_core::enabled_features, m)?)?;

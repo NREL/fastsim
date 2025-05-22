@@ -1,19 +1,8 @@
 use super::*;
 
-#[fastsim_api(
-    // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
-    // #[setter("__mass_kg")]
-    // fn set_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {
-    //     self.set_mass(mass_kg.map(|m| m * uc::KG))?;
-    //     Ok(())
-    // }
-
-    // #[getter("mass_kg")]
-    // fn get_mass_py(&self) -> PyResult<Option<f64>> {
-    //     Ok(self.mass()?.map(|m| m.get::<si::kilogram>()))
-    // }
-)]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, SetCumulative)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 pub struct FuelStorage {
@@ -30,6 +19,21 @@ pub struct FuelStorage {
     pub(in super::super) mass: Option<si::Mass>,
     // TODO: add state to track fuel level and make sure mass changes propagate up to vehicle level,
     // which should then include vehicle mass in state
+}
+
+#[named_struct_pyo3_api]
+impl FuelStorage {
+    // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
+    // #[setter("__mass_kg")]
+    // fn set_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {
+    //     self.set_mass(mass_kg.map(|m| m * uc::KG))?;
+    //     Ok(())
+    // }
+
+    // #[getter("mass_kg")]
+    // fn get_mass_py(&self) -> PyResult<Option<f64>> {
+    //     Ok(self.mass()?.map(|m| m.get::<si::kilogram>()))
+    // }
 }
 
 impl SerdeAPI for FuelStorage {}

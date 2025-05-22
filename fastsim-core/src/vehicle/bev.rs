@@ -1,9 +1,10 @@
 use super::*;
 
-#[fastsim_api]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods)]
+#[serde_api]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, StateMethods, SetCumulative)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Battery electric vehicle
 pub struct BatteryElectricVehicle {
     #[has_state]
@@ -14,6 +15,9 @@ pub struct BatteryElectricVehicle {
     pub transmission: Transmission,
     pub(crate) mass: Option<si::Mass>,
 }
+
+#[named_struct_pyo3_api]
+impl BatteryElectricVehicle {}
 
 impl Init for BatteryElectricVehicle {
     fn init(&mut self) -> Result<(), Error> {
@@ -133,7 +137,6 @@ impl Powertrain for BatteryElectricVehicle {
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        _veh_state: VehicleState,
         _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
@@ -153,8 +156,16 @@ impl Powertrain for BatteryElectricVehicle {
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         Ok((
-            self.em.state.pwr_mech_fwd_out_max,
-            self.em.state.pwr_mech_regen_max,
+            *self
+                .em
+                .state
+                .pwr_mech_fwd_out_max
+                .get_fresh(|| format_dbg!())?,
+            *self
+                .em
+                .state
+                .pwr_mech_regen_max
+                .get_fresh(|| format_dbg!())?,
         ))
     }
 
@@ -162,7 +173,7 @@ impl Powertrain for BatteryElectricVehicle {
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-        _veh_state: VehicleState,
+        _veh_state: &VehicleState,
     ) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
         let disch_buffer = si::Energy::ZERO;
@@ -176,8 +187,8 @@ impl Powertrain for BatteryElectricVehicle {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.em
             .set_curr_pwr_prop_out_max(
-                self.res.state.pwr_prop_max,
-                self.res.state.pwr_regen_max,
+                *self.res.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+                *self.res.state.pwr_regen_max.get_fresh(|| format_dbg!())?,
                 dt,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -186,11 +197,16 @@ impl Powertrain for BatteryElectricVehicle {
     }
 
     /// Regen braking power, positive means braking is happening
-    fn pwr_regen(&self) -> si::Power {
+    fn pwr_regen(&self) -> anyhow::Result<si::Power> {
         // When `pwr_mech_prop_out` is negative, regen is happening.  First, clip it at 0, and then negate it.
         // see https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e8f7af5a6e436dd1163fa3c70931d18d
         // for example
-        -(self.em.state.pwr_mech_prop_out.max(si::Power::ZERO))
+        Ok(-self
+            .em
+            .state
+            .pwr_mech_prop_out
+            .get_fresh(|| format_dbg!())?
+            .max(si::Power::ZERO))
     }
 }
 

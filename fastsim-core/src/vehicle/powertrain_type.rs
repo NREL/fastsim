@@ -24,12 +24,22 @@ impl Init for PowertrainType {
     }
 }
 
+impl SetCumulative for PowertrainType {
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => conv.set_cumulative(dt),
+            Self::HybridElectricVehicle(hev) => hev.set_cumulative(dt),
+            Self::BatteryElectricVehicle(bev) => bev.set_cumulative(dt),
+        }
+    }
+}
+
 impl Powertrain for PowertrainType {
     fn set_curr_pwr_prop_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-        veh_state: VehicleState,
+        veh_state: &VehicleState,
     ) -> anyhow::Result<()> {
         match self {
             Self::ConventionalVehicle(v) => v.set_curr_pwr_prop_out_max(pwr_aux, dt, veh_state),
@@ -38,20 +48,15 @@ impl Powertrain for PowertrainType {
         }
     }
 
-    fn solve(
-        &mut self,
-        pwr_out_req: si::Power,
-        veh_state: VehicleState,
-        enabled: bool,
-        dt: si::Time,
-    ) -> anyhow::Result<()> {
+    fn solve(&mut self, pwr_out_req: si::Power, enabled: bool, dt: si::Time) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, veh_state, enabled, dt),
-            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, veh_state, enabled, dt),
-            Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, veh_state, enabled, dt),
+            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, enabled, dt),
+            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
+            Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
         }
     }
 
+    /// Returns max power for forward direction and backward direction
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         match self {
             Self::ConventionalVehicle(v) => v.get_curr_pwr_prop_out_max(),
@@ -60,7 +65,7 @@ impl Powertrain for PowertrainType {
         }
     }
 
-    fn pwr_regen(&self) -> si::Power {
+    fn pwr_regen(&self) -> anyhow::Result<si::Power> {
         match self {
             Self::ConventionalVehicle(v) => v.pwr_regen(),
             Self::HybridElectricVehicle(v) => v.pwr_regen(),
@@ -309,21 +314,32 @@ impl PowertrainType {
 }
 
 impl SaveState for PowertrainType {
-    fn save_state(&mut self) {
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => conv.save_state(),
-            Self::HybridElectricVehicle(hev) => hev.save_state(),
-            Self::BatteryElectricVehicle(bev) => bev.save_state(),
+            Self::ConventionalVehicle(conv) => conv.save_state(loc)?,
+            Self::HybridElectricVehicle(hev) => hev.save_state(loc)?,
+            Self::BatteryElectricVehicle(bev) => bev.save_state(loc)?,
         }
+        Ok(())
+    }
+}
+impl CheckAndResetState for PowertrainType {
+    fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => conv.check_and_reset(loc)?,
+            Self::HybridElectricVehicle(hev) => hev.check_and_reset(loc)?,
+            Self::BatteryElectricVehicle(bev) => bev.check_and_reset(loc)?,
+        }
+        Ok(())
     }
 }
 
 impl Step for PowertrainType {
-    fn step(&mut self) {
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => conv.step(),
-            Self::HybridElectricVehicle(hev) => hev.step(),
-            Self::BatteryElectricVehicle(bev) => bev.step(),
+            Self::ConventionalVehicle(conv) => conv.step(loc),
+            Self::HybridElectricVehicle(hev) => hev.step(loc),
+            Self::BatteryElectricVehicle(bev) => bev.step(loc),
         }
     }
 }

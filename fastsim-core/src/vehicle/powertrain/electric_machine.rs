@@ -6,7 +6,48 @@ use super::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3::*;
 
-#[fastsim_api(
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods, SetCumulative)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+/// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
+/// electronics.
+pub struct ElectricMachine {
+    /// Efficiency interpolator corresponding to achieved output power
+    ///
+    /// Note that the Extrapolate field of this variable is changed in [Self::get_pwr_in_req]
+    pub eff_interp_achieved: InterpolatorEnumOwned<f64>,
+    /// Efficiency interpolator corresponding to max input power
+    /// If `None`, will be set during [Self::init].
+    ///
+    /// Note that the Extrapolate field of this variable is changed in [Self::set_curr_pwr_prop_out_max]
+    pub eff_interp_at_max_input: Option<InterpolatorEnumOwned<f64>>,
+    /// Electrical input power fraction array at which efficiencies are evaluated.
+    /// Calculated during runtime if not provided.
+    // /// this will disappear and instead be in eff_interp_bwd
+    // pub pwr_in_frac_interp: Vec<f64>,
+    /// ElectricMachine maximum output power \[W\]
+    pub pwr_out_max: si::Power,
+    /// ElectricMachine specific power
+    pub specific_pwr: Option<si::SpecificPower>,
+    /// ElectricMachine mass
+    pub(in super::super) mass: Option<si::Mass>,
+    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    pub state: ElectricMachineState,
+    /// Custom vector of [Self::state]
+    #[serde(
+        default,
+        skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty"
+    )]
+    pub history: ElectricMachineStateHistoryVec,
+}
+
+#[named_struct_pyo3_api]
+impl ElectricMachine {
     // #[new]
     // fn __new__(
     //     pwr_out_frac_interp: Vec<f64>,
@@ -54,43 +95,6 @@ use crate::pyo3::*;
         self.set_eff_fwd_range(eff_range)?;
         Ok(())
     }
-)]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
-#[non_exhaustive]
-#[serde(deny_unknown_fields)]
-/// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
-/// electronics.
-pub struct ElectricMachine {
-    /// Efficiency interpolator corresponding to achieved output power
-    ///
-    /// Note that the Extrapolate field of this variable is changed in [Self::get_pwr_in_req]
-    pub eff_interp_achieved: InterpolatorEnumOwned<f64>,
-    /// Efficiency interpolator corresponding to max input power
-    /// If `None`, will be set during [Self::init].
-    ///
-    /// Note that the Extrapolate field of this variable is changed in [Self::set_curr_pwr_prop_out_max]
-    pub eff_interp_at_max_input: Option<InterpolatorEnumOwned<f64>>,
-    /// Electrical input power fraction array at which efficiencies are evaluated.
-    /// Calculated during runtime if not provided.
-    // /// this will disappear and instead be in eff_interp_bwd
-    // pub pwr_in_frac_interp: Vec<f64>,
-    /// ElectricMachine maximum output power \[W\]
-    pub pwr_out_max: si::Power,
-    /// ElectricMachine specific power
-    pub specific_pwr: Option<si::SpecificPower>,
-    /// ElectricMachine mass
-    pub(in super::super) mass: Option<si::Mass>,
-    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
-    pub save_interval: Option<usize>,
-    /// struct for tracking current state
-    #[serde(default)]
-    pub state: ElectricMachineState,
-    /// Custom vector of [Self::state]
-    #[serde(
-        default,
-        skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty"
-    )]
-    pub history: ElectricMachineStateHistoryVec,
 }
 
 impl ElectricMachine {
@@ -136,71 +140,86 @@ impl ElectricMachine {
             })?
             .set_extrapolate(Extrapolate::Clamp)?;
 
-        self.state.eff_fwd_at_max_input = uc::R
-            * self
-                .eff_interp_at_max_input
-                .as_ref()
-                .map(|interpolator| {
-                    interpolator
-                        .interpolate(&[abs_checked_x_val(
-                            (pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
-                            match interpolator {
-                                InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
-                                    .as_slice()
-                                    .ok_or_else(|| anyhow!(format_dbg!()))?,
-                                _ => bail!("Only `InterpolatorEnum::Interp1D` is allowed."),
-                            },
-                        )?])
-                        .map_err(|e| anyhow!(e))
-                })
-                .ok_or(anyhow!(
-                    "eff_interp_bwd is None, which should never be the case at this point."
-                ))?
-                .with_context(|| {
-                    anyhow!(
-                        "{}\n failed to calculate {}",
-                        format_dbg!(),
-                        stringify!(eff_pos)
-                    )
-                })?;
-        self.state.eff_at_max_regen = uc::R
-            * self
-                .eff_interp_at_max_input
-                .as_ref()
-                .map(|interpolator| {
-                    interpolator
-                        .interpolate(&[abs_checked_x_val(
-                            (pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
-                            match interpolator {
-                                InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
-                                    .as_slice()
-                                    .ok_or_else(|| anyhow!(format_dbg!()))?,
-                                _ => bail!("Only `InterpolatorEnum::Interp1D` is allowed."),
-                            },
-                        )?])
-                        .map_err(|e| anyhow!(e))
-                })
-                .ok_or(anyhow!(
-                    "eff_interp_bwd is None, which should never be the case at this point."
-                ))?
-                .with_context(|| {
-                    anyhow!(
-                        "{}\n failed to calculate {}",
-                        format_dbg!(),
-                        stringify!(eff_neg)
-                    )
-                })?;
+        self.state.eff_fwd_at_max_input.update(
+            uc::R
+                * self
+                    .eff_interp_at_max_input
+                    .as_ref()
+                    .map(|interpolator| {
+                        interpolator
+                            .interpolate(&[abs_checked_x_val(
+                                (pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                match interpolator {
+                                    InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
+                                        .as_slice()
+                                        .ok_or_else(|| anyhow!(format_dbg!()))?,
+                                    _ => bail!("Only `InterpolatorEnum::Interp1D` is allowed."),
+                                },
+                            )?])
+                            .map_err(|e| anyhow!(e))
+                    })
+                    .ok_or(anyhow!(
+                        "eff_interp_bwd is None, which should never be the case at this point."
+                    ))?
+                    .with_context(|| {
+                        anyhow!(
+                            "{}\n failed to calculate {}",
+                            format_dbg!(),
+                            stringify!(eff_pos)
+                        )
+                    })?,
+            || format_dbg!(),
+        )?;
+        self.state.eff_at_max_regen.update(
+            uc::R
+                * self
+                    .eff_interp_at_max_input
+                    .as_ref()
+                    .map(|interpolator| {
+                        interpolator
+                            .interpolate(&[abs_checked_x_val(
+                                (pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                match interpolator {
+                                    InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
+                                        .as_slice()
+                                        .ok_or_else(|| anyhow!(format_dbg!()))?,
+                                    _ => bail!("Only `InterpolatorEnum::Interp1D` is allowed."),
+                                },
+                            )?])
+                            .map_err(|e| anyhow!(e))
+                    })
+                    .ok_or(anyhow!(
+                        "eff_interp_bwd is None, which should never be the case at this point."
+                    ))?
+                    .with_context(|| {
+                        anyhow!(
+                            "{}\n failed to calculate {}",
+                            format_dbg!(),
+                            stringify!(eff_neg)
+                        )
+                    })?,
+            || format_dbg!(),
+        )?;
 
         // maximum power in forward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power based on what the ReversibleEnergyStorage can provide
-        self.state.pwr_mech_fwd_out_max = self
-            .pwr_out_max
-            .min(pwr_in_fwd_lim * self.state.eff_fwd_at_max_input);
+        self.state.pwr_mech_fwd_out_max.update(
+            self.pwr_out_max.min(
+                pwr_in_fwd_lim
+                    * *self
+                        .state
+                        .eff_fwd_at_max_input
+                        .get_fresh(|| format_dbg!())?,
+            ),
+            || format_dbg!(),
+        )?;
         // maximum power in backward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
-        self.state.pwr_mech_regen_max = self
-            .pwr_out_max
-            .min(pwr_in_bwd_lim / self.state.eff_at_max_regen);
+        self.state.pwr_mech_regen_max.update(
+            self.pwr_out_max
+                .min(pwr_in_bwd_lim / *self.state.eff_at_max_regen.get_fresh(|| format_dbg!())?),
+            || format_dbg!(),
+        )?;
         Ok(())
     }
 
@@ -224,93 +243,125 @@ impl ElectricMachine {
             ),
         );
         ensure!(
-            almost_le_uom(&pwr_out_req , &self.state.pwr_mech_fwd_out_max, None),
+            almost_le_uom(&pwr_out_req , self.state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?, None),
             format!(
                 "{}\nedrv required propulsion power ({} kW) exceeds current max propulsion power ({} kW) by {} kW",
-                format_dbg!(pwr_out_req <= self.state.pwr_mech_fwd_out_max),
+                format_dbg!(pwr_out_req <= *self.state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?),
                 pwr_out_req.get::<si::kilowatt>().format_eng(Some(6)),
                 self.state
                     .pwr_mech_fwd_out_max
+                    .get_fresh(|| format_dbg!())?
                     .get::<si::kilowatt>()
                     .format_eng(Some(6)),
-                    (pwr_out_req - self.state.pwr_mech_fwd_out_max).get::<si::kilowatt>().format_eng(Some(6))
+                    (pwr_out_req - *self.state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?).get::<si::kilowatt>().format_eng(Some(6))
             ),
         );
         if pwr_out_req < si::Power::ZERO {
             ensure!(
-                almost_le_uom(&pwr_out_req.abs(), &self.state.pwr_mech_regen_max, None),
+                almost_le_uom(
+                    &pwr_out_req.abs(),
+                    self.state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?,
+                    None
+                ),
                 format!(
                     "{}\nedrv charge power ({:.6} kW) exceeds current max charge power ({:.6} kW)",
                     format_dbg!(),
                     -pwr_out_req.get::<si::kilowatt>(),
-                    self.state.pwr_mech_regen_max.get::<si::kilowatt>()
+                    self.state
+                        .pwr_mech_regen_max
+                        .get_fresh(|| format_dbg!())?
+                        .get::<si::kilowatt>()
                 ),
             );
         }
 
-        self.state.pwr_out_req = pwr_out_req;
+        self.state
+            .pwr_out_req
+            .update(pwr_out_req, || format_dbg!())?;
 
         // ensuring eff_interp_fwd has Extrapolate set to Error before calculating self.state.eff
         self.eff_interp_achieved
             .set_extrapolate(Extrapolate::Error)?;
 
-        self.state.eff = uc::R
-            * match &self.eff_interp_achieved {
-                InterpolatorEnum::Interp1D(interp) => {
-                    interp
-                        .interpolate(
-                            &[{
-                                let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
-                                    Ok({
-                                        if interp.data.grid[0]
-                                            .first()
-                                            .with_context(|| anyhow!(format_dbg!()))?
-                                            >= &0.
-                                        {
-                                            pwr_uncorrected.max(0.)
-                                        } else {
-                                            pwr_uncorrected
-                                        }
-                                    })
-                                };
-                                pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
-                            }], // &self.eff_interp_fwd.x()?,
-                                // &self.eff_interp_fwd,
-                                // Extrapolate::Error,
-                        )
-                        .with_context(|| format_dbg!())?
-                }
-                _ => {
-                    return Err(Error::InitError(format_dbg!(
-                        "Only 1-D interpolators are supported"
-                    ))
-                    .into())
-                }
-            };
-
+        self.state.eff.update(
+            uc::R
+                * match &self.eff_interp_achieved {
+                    InterpolatorEnum::Interp1D(interp) => interp
+                        .interpolate(&[{
+                            let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
+                                Ok({
+                                    if interp.data.grid[0]
+                                        .first()
+                                        .with_context(|| anyhow!(format_dbg!()))?
+                                        >= &0.
+                                    {
+                                        pwr_uncorrected.max(0.)
+                                    } else {
+                                        pwr_uncorrected
+                                    }
+                                })
+                            };
+                            pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
+                        }])
+                        .with_context(|| {
+                            anyhow!(
+                                "{}\n failed to calculate {}",
+                                format_dbg!(),
+                                stringify!(self.state.eff)
+                            )
+                        })?,
+                    _ => {
+                        return Err(Error::InitError(format_dbg!(
+                            "Only 1-D interpolators are supported"
+                        ))
+                        .into())
+                    }
+                },
+            || format_dbg!(),
+        )?;
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
-        self.state.pwr_mech_prop_out = pwr_out_req.max(-self.state.pwr_mech_regen_max);
+        self.state.pwr_mech_prop_out.update(
+            pwr_out_req.max(-*self.state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?),
+            || format_dbg!(),
+        )?;
 
-        self.state.pwr_mech_dyn_brake = -(pwr_out_req - self.state.pwr_mech_prop_out);
+        self.state.pwr_mech_dyn_brake.update(
+            -(pwr_out_req - *self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?),
+            || format_dbg!(),
+        )?;
         ensure!(
-            self.state.pwr_mech_dyn_brake >= si::Power::ZERO,
+            *self.state.pwr_mech_dyn_brake.get_fresh(|| format_dbg!())? >= si::Power::ZERO,
             "Mech Dynamic Brake Power cannot be below 0.0"
         );
 
         // if pwr_out_req is negative, need to multiply by eff
-        self.state.pwr_elec_prop_in = if pwr_out_req > si::Power::ZERO {
-            self.state.pwr_mech_prop_out / self.state.eff
-        } else {
-            self.state.pwr_mech_prop_out * self.state.eff
-        };
+        self.state.pwr_elec_prop_in.update(
+            if pwr_out_req > si::Power::ZERO {
+                *self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?
+                    / *self.state.eff.get_fresh(|| format_dbg!())?
+            } else {
+                *self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?
+                    * *self.state.eff.get_fresh(|| format_dbg!())?
+            },
+            || format_dbg!(),
+        )?;
 
-        self.state.pwr_elec_dyn_brake = self.state.pwr_mech_dyn_brake * self.state.eff;
+        self.state.pwr_elec_dyn_brake.update(
+            *self.state.pwr_mech_dyn_brake.get_fresh(|| format_dbg!())?
+                * *self.state.eff.get_fresh(|| format_dbg!())?,
+            || format_dbg!(),
+        )?;
 
         // loss does not account for dynamic braking
-        self.state.pwr_loss = (self.state.pwr_mech_prop_out - self.state.pwr_elec_prop_in).abs();
+        self.state.pwr_loss.update(
+            (*self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?
+                - *self.state.pwr_elec_prop_in.get_fresh(|| format_dbg!())?)
+            .abs(),
+            || format_dbg!(),
+        )?;
 
-        Ok(self.state.pwr_elec_prop_in)
+        Ok(*self.state.pwr_elec_prop_in.get_fresh(|| format_dbg!())?)
     }
 }
 
@@ -369,12 +420,6 @@ impl HistoryMethods for ElectricMachine {
     }
     fn clear(&mut self) {
         self.history.clear();
-    }
-}
-
-impl SetCumulative for ElectricMachine {
-    fn set_cumulative(&mut self, dt: si::Time) {
-        self.state.set_cumulative(dt);
     }
 }
 
@@ -662,58 +707,69 @@ impl ElectricMachine {
     }
 }
 
-#[fastsim_api]
+#[serde_api]
 #[derive(
-    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    StateMethods,
+    SetCumulative,
 )]
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+
 pub struct ElectricMachineState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedState<usize>,
     /// Component efficiency based on current power demand.
-    pub eff: si::Ratio,
+    pub eff: TrackedState<si::Ratio>,
     // Component limits
     /// Maximum possible positive traction power.
-    pub pwr_mech_fwd_out_max: si::Power,
+    pub pwr_mech_fwd_out_max: TrackedState<si::Power>,
     /// efficiency in forward direction at max possible input power from `FuelConverter` and `ReversibleEnergyStorage`
-    pub eff_fwd_at_max_input: si::Ratio,
+    pub eff_fwd_at_max_input: TrackedState<si::Ratio>,
     /// Maximum possible regeneration power going to ReversibleEnergyStorage.
-    pub pwr_mech_regen_max: si::Power,
+    pub pwr_mech_regen_max: TrackedState<si::Power>,
     /// efficiency in backward direction at max possible input power from `FuelConverter` and `ReversibleEnergyStorage`
-    pub eff_at_max_regen: si::Ratio,
-    /// max ramp-up rate
-    pub pwr_rate_out_max: si::PowerRate,
+    pub eff_at_max_regen: TrackedState<si::Ratio>,
 
     // Current values
     /// Raw power requirement from boundary conditions
-    pub pwr_out_req: si::Power,
+    pub pwr_out_req: TrackedState<si::Power>,
     /// Integral of [Self::pwr_out_req]
-    pub energy_out_req: si::Energy,
+    pub energy_out_req: TrackedState<si::Energy>,
     /// Electrical power to propulsion from ReversibleEnergyStorage and Generator.
     /// negative value indicates regenerative braking
-    pub pwr_elec_prop_in: si::Power,
+    pub pwr_elec_prop_in: TrackedState<si::Power>,
     /// Integral of [Self::pwr_elec_prop_in]
-    pub energy_elec_prop_in: si::Energy,
+    pub energy_elec_prop_in: TrackedState<si::Energy>,
     /// Mechanical power to propulsion, corrected by efficiency, from ReversibleEnergyStorage and Generator.
     /// Negative value indicates regenerative braking.
-    pub pwr_mech_prop_out: si::Power,
+    pub pwr_mech_prop_out: TrackedState<si::Power>,
     /// Integral of [Self::pwr_mech_prop_out]
-    pub energy_mech_prop_out: si::Energy,
+    pub energy_mech_prop_out: TrackedState<si::Energy>,
     /// Mechanical power from dynamic braking.  Positive value indicates braking; this should be zero otherwise.
-    pub pwr_mech_dyn_brake: si::Power,
+    pub pwr_mech_dyn_brake: TrackedState<si::Power>,
     /// Integral of [Self::pwr_mech_dyn_brake]
-    pub energy_mech_dyn_brake: si::Energy,
+    pub energy_mech_dyn_brake: TrackedState<si::Energy>,
     /// Electrical power from dynamic braking, dissipated as heat.
-    pub pwr_elec_dyn_brake: si::Power,
+    pub pwr_elec_dyn_brake: TrackedState<si::Power>,
     /// Integral of [Self::pwr_elec_dyn_brake]
-    pub energy_elec_dyn_brake: si::Energy,
+    pub energy_elec_dyn_brake: TrackedState<si::Energy>,
     /// Power lost in regeneratively converting mechanical power to power that can be absorbed by the battery.
-    pub pwr_loss: si::Power,
+    pub pwr_loss: TrackedState<si::Power>,
     /// Integral of [Self::pwr_loss]
-    pub energy_loss: si::Energy,
+    pub energy_loss: TrackedState<si::Energy>,
 }
+
+#[named_struct_pyo3_api]
+impl ElectricMachineState {}
 
 impl Init for ElectricMachineState {}
 impl SerdeAPI for ElectricMachineState {}

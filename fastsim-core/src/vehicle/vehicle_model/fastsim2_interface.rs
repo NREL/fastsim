@@ -16,7 +16,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             name: f2veh.scenario_name.clone(),
             year: f2veh.veh_year,
             pt_type,
-            chassis: Chassis::try_from(&f2veh)?,
+            chassis: Chassis::try_from(&f2veh).with_context(|| format_dbg!())?,
             cabin: Default::default(),
             hvac: Default::default(),
             pwr_aux_base: f2veh.aux_kw * uc::KW,
@@ -72,7 +72,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                                 f2veh.fc_eff_array.clone().into(),
                                 strategy::LeftNearest,
                                 Extrapolate::Error,
-                            )?,
+                            )
+                            .with_context(|| format_dbg!())?,
                             pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
                             // this means that aux power must include idle fuel
                             pwr_idle_fuel: si::Power::ZERO,
@@ -114,9 +115,6 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                                 * uc::R,
                         ),
                         frac_of_most_eff_pwr_to_run_fc: None,
-                        // TODO: make sure these actually do something, if deemed worthwhile
-                        frac_res_chrg_for_fc: f2veh.ess_chg_to_fc_max_eff_perc * uc::R,
-                        frac_res_dschrg_for_fc: f2veh.ess_dischg_to_fc_max_eff_perc * uc::R,
                         temp_fc_forced_on: None,
                         temp_fc_allowed_off: None,
                         save_interval: Some(1),
@@ -151,7 +149,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                                 f2veh.fc_eff_array.clone().into(),
                                 strategy::LeftNearest,
                                 Extrapolate::Error,
-                            )?,
+                            )
+                            .with_context(|| format_dbg!())?,
                             pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
                             // this means that aux power must include idle fuel
                             pwr_idle_fuel: si::Power::ZERO,
@@ -191,7 +190,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             strategy::LeftNearest,
                             Extrapolate::Error,
                         )
-                        .unwrap(),
+                        .with_context(|| format_dbg!())?,
                         eff_interp_at_max_input: None,
                         // pwr_in_frac_interp: Default::default(),
                         pwr_out_max: f2veh.mc_max_kw * uc::KW,
@@ -211,9 +210,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     mass: None,
                     sim_params: Default::default(),
                     aux_cntrl: Default::default(),
-                    state: Default::default(),
-                    history: Default::default(),
                     soc_bal_iter_history: Default::default(),
+                    soc_bal_iters: Default::default(),
                 };
                 hev.init()?;
                 Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))

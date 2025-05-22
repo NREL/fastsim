@@ -516,11 +516,13 @@ impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
 /// `state`
 pub trait SaveState {
     /// Saves `self.state` to `self.history` and propagates to any fields with `state`
-    fn save_state(&mut self) {}
+    /// # Arguments
+    /// - `loc`: closure that returns file and line number where called
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
 }
 
 /// Provides methods for getting and setting the save interval
-pub trait HistoryMethods {
+pub trait HistoryMethods: SaveState {
     /// Recursively sets save interval
     /// # Arguments
     /// - `save_interval`: time step interval at which to save `self.state` to `self.history`
@@ -536,7 +538,9 @@ pub trait HistoryMethods {
 /// recursively
 pub trait Step {
     /// Increments `i` field of this and all contained structs, recursively
-    fn step(&mut self) {}
+    /// # Arguments
+    /// - `loc`: closure that returns file and line number where called
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
 }
 
 /// Provides method for checking if struct is default
@@ -552,10 +556,7 @@ impl<T: Default + PartialEq> EqDefault for T {}
 /// Trait for setting cumulative values based on rate values
 pub trait SetCumulative {
     /// Sets cumulative values based on rate values
-    fn set_cumulative(&mut self, dt: si::Time);
-    /// Sets any cumulative values that won't be handled by the macro
-    #[allow(unused_variables)]
-    fn set_custom_cumu_vals(&mut self, dt: si::Time) {}
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()>;
 }
 
 #[cfg(test)]

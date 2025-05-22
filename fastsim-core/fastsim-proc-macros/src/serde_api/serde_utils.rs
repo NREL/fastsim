@@ -21,7 +21,7 @@ macro_rules! extract_units {
 ///
 /// - field: struct field name as ident
 /// - unit_name: plural name of units being used (generate using extract_units)
-fn impl_serde_for_si(field: &mut syn::Field, unit_name: &str) {
+fn serde_attrs_for_si_field(field: &mut syn::Field, unit_name: &str) {
     let ident = field.ident.clone().unwrap();
     match unit_name {
         "" => {}
@@ -31,7 +31,7 @@ fn impl_serde_for_si(field: &mut syn::Field, unit_name: &str) {
                 let field_name_lit_str = format!("{ident}_{unit_name}");
                 field.attrs.push(syn::parse_quote! {
                     #[serde(rename = #field_name_lit_str)]
-                })
+                });
             }
         }
     }
@@ -58,23 +58,15 @@ fn extract_type_path(ty: &syn::Type) -> Option<&syn::Path> {
     }
 }
 
-/// adapted from https://stackoverflow.com/questions/55271857/how-can-i-get-the-t-from-an-optiont-when-using-syn
-fn extract_type_from_option(ty: &syn::Type) -> Option<&syn::Type> {
-    fn extract_option_argument(path: &Path) -> Option<&GenericArgument> {
+fn extract_type_from_container(ty: &syn::Type) -> Option<&syn::Type> {
+    fn extract_container_arg(path: &Path) -> Option<&GenericArgument> {
         let mut ident_path = String::new();
         for segment in &path.segments {
             ident_path.push_str(&segment.ident.to_string());
 
             // Exit when the inner brackets are found
             match &segment.arguments {
-                syn::PathArguments::AngleBracketed(params) => {
-                    return match ident_path.as_str() {
-                        "Option" | "std::option::Option" | "core::option::Option" => {
-                            params.args.first()
-                        }
-                        _ => None,
-                    };
-                }
+                syn::PathArguments::AngleBracketed(params) => return params.args.first(),
                 syn::PathArguments::None => {}
                 _ => return None,
             }
@@ -85,7 +77,7 @@ fn extract_type_from_option(ty: &syn::Type) -> Option<&syn::Type> {
     }
 
     extract_type_path(ty)
-        .and_then(extract_option_argument)
+        .and_then(extract_container_arg)
         .and_then(|generic_arg| match *generic_arg {
             GenericArgument::Type(ref ty) => Some(ty),
             _ => None,
@@ -150,12 +142,12 @@ fn extract_si_quantity(path: &syn::Path) -> Option<String> {
     Some(path.segments[i + 1].ident.to_string())
 }
 
-pub(crate) fn impl_getters_and_setters(field: &mut syn::Field) -> Option<()> {
+pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
     let ftype = field.ty.clone();
     let mut vec_layers: u8 = 0;
     let mut inner_type = &ftype;
 
-    if let Some(opt_inner_type) = extract_type_from_option(inner_type) {
+    while let Some(opt_inner_type) = extract_type_from_container(inner_type) {
         inner_type = opt_inner_type;
     }
 
@@ -230,7 +222,7 @@ pub(crate) fn impl_getters_and_setters(field: &mut syn::Field) -> Option<()> {
             ),
         };
         for (_, unit_name) in &unit_impls {
-            impl_serde_for_si(field, unit_name);
+            serde_attrs_for_si_field(field, unit_name);
         }
     }
     Some(())

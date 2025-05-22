@@ -21,7 +21,58 @@ pub enum AuxSource {
 impl SerdeAPI for AuxSource {}
 impl Init for AuxSource {}
 
-#[fastsim_api(
+#[serde_api]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+/// Struct for simulating vehicle
+pub struct Vehicle {
+    /// Vehicle name
+    name: String,
+    /// Year manufactured
+    year: u32,
+    #[has_state]
+    /// type of vehicle powertrain including contained type-specific parameters and variables
+    pub pt_type: PowertrainType,
+
+    /// Chassis model with various chassis-related parameters
+    pub chassis: Chassis,
+
+    /// Cabin thermal model
+    #[serde(default, skip_serializing_if = "CabinOption::is_none")]
+    #[has_state]
+    pub cabin: CabinOption,
+
+    /// HVAC model
+    #[serde(default, skip_serializing_if = "HVACOption::is_none")]
+    #[has_state]
+    pub hvac: HVACOption,
+
+    /// Total vehicle mass
+    pub(crate) mass: Option<si::Mass>,
+
+    /// Baseline power required by auxilliary systems
+    pub pwr_aux_base: si::Power,
+
+    /// transmission efficiency
+    // TODO: check if `trans_eff` is redundant (most likely) and fix
+    // TODO: make `transmission::{Transmission, TransmissionState}` and
+    // `Transmission` should have field `efficency: Efficiency`.
+    pub trans_eff: si::Ratio,
+
+    /// time step interval at which `state` is saved into `history`
+    save_interval: Option<usize>,
+    /// current state of vehicle
+    #[serde(default)]
+    pub state: VehicleState,
+    /// Vector-like history of [Self::state]
+    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
+    pub history: VehicleStateHistoryVec,
+}
+
+#[named_struct_pyo3_api]
+impl Vehicle {
     #[staticmethod]
     fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {
         Ok(Self::try_from(veh.clone())?)
@@ -31,7 +82,8 @@ impl Init for AuxSource {}
     #[pyo3(signature = (save_interval=None))]
     /// Set save interval and cascade to nested components.
     fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> PyResult<()> {
-        self.set_save_interval(save_interval).map_err(|e| PyAttributeError::new_err(e.to_string()))
+        self.set_save_interval(save_interval)
+            .map_err(|e| PyAttributeError::new_err(e.to_string()))
     }
 
     // despite having `getter` here, this seems to work as a function
@@ -89,53 +141,6 @@ impl Init for AuxSource {}
     fn clear_py(&mut self) {
         self.clear()
     }
-)]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
-#[non_exhaustive]
-#[serde(deny_unknown_fields)]
-/// Struct for simulating vehicle
-pub struct Vehicle {
-    /// Vehicle name
-    name: String,
-    /// Year manufactured
-    year: u32,
-    #[has_state]
-    /// type of vehicle powertrain including contained type-specific parameters and variables
-    pub pt_type: PowertrainType,
-
-    /// Chassis model with various chassis-related parameters
-    pub chassis: Chassis,
-
-    /// Cabin thermal model
-    #[serde(default, skip_serializing_if = "CabinOption::is_none")]
-    #[has_state]
-    pub cabin: CabinOption,
-
-    /// HVAC model
-    #[serde(default, skip_serializing_if = "HVACOption::is_none")]
-    #[has_state]
-    pub hvac: HVACOption,
-
-    /// Total vehicle mass
-    pub(crate) mass: Option<si::Mass>,
-
-    /// Baseline power required by auxilliary systems
-    pub pwr_aux_base: si::Power,
-
-    /// transmission efficiency
-    // TODO: check if `trans_eff` is redundant (most likely) and fix
-    // TODO: make `transmission::{Transmission, TransmissionState}` and
-    // `Transmission` should have field `efficency: Efficiency`.
-    pub trans_eff: si::Ratio,
-
-    /// time step interval at which `state` is saved into `history`
-    save_interval: Option<usize>,
-    /// current state of vehicle
-    #[serde(default)]
-    pub state: VehicleState,
-    /// Vector-like history of [Self::state]
-    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
-    pub history: VehicleStateHistoryVec,
 }
 
 impl Mass for Vehicle {
@@ -268,19 +273,17 @@ const PHEV: &str = "PHEV";
 const BEV: &str = "BEV";
 
 impl SetCumulative for Vehicle {
-    fn set_cumulative(&mut self, dt: si::Time) {
-        self.state.set_cumulative(dt);
-        if let Some(fc) = self.fc_mut() {
-            fc.set_cumulative(dt);
-        }
-        if let Some(res) = self.res_mut() {
-            res.set_cumulative(dt);
-        }
-        if let Some(em) = self.em_mut() {
-            em.set_cumulative(dt);
-        }
-        self.cabin.set_cumulative(dt);
-        self.state.dist += self.state.speed_ach * dt;
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.state.set_cumulative(dt)?;
+        self.pt_type.set_cumulative(dt)?;
+        self.cabin.set_cumulative(dt)?;
+        self.hvac.set_cumulative(dt)?;
+        // this does not get handled by the `SetCumulative` derive macro
+        self.state.dist.increment(
+            *self.state.speed_ach.get_fresh(|| format_dbg!())? * dt,
+            || format_dbg!(),
+        )?;
+        Ok(())
     }
 }
 
@@ -288,12 +291,11 @@ impl Vehicle {
     /// # Assumptions
     /// - peak power of all components can be produced concurrently.
     pub fn get_pwr_rated(&self) -> si::Power {
-        if self.fc().is_some() && self.res().is_some() {
-            self.fc().unwrap().pwr_out_max + self.res().unwrap().pwr_out_max
-        } else if self.fc().is_some() {
-            self.fc().unwrap().pwr_out_max
-        } else {
-            self.res().unwrap().pwr_out_max
+        match (self.fc(), self.res()) {
+            (Some(fc), Some(res)) => fc.pwr_out_max + res.pwr_out_max,
+            (Some(fc), None) => fc.pwr_out_max,
+            (None, Some(res)) => res.pwr_out_max,
+            (None, None) => unreachable!(),
         }
     }
 
@@ -394,27 +396,42 @@ impl Vehicle {
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         self.pt_type
             .solve(
-                self.state.pwr_tractive,
-                self.state,
+                *self.state.pwr_tractive.get_fresh(|| format_dbg!())?,
                 true, // `enabled` should always be true at the powertrain level
                 dt,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.state.pwr_brake =
-            -self.state.pwr_tractive.max(si::Power::ZERO) - self.pt_type.pwr_regen();
+        self.state.pwr_brake.update(
+            -self
+                .state
+                .pwr_tractive
+                .get_fresh(|| format_dbg!())?
+                .max(si::Power::ZERO)
+                - self.pt_type.pwr_regen().with_context(|| format_dbg!())?,
+            || format_dbg!(),
+        )?;
         Ok(())
     }
 
     pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: account for traction limits here
         self.pt_type
-            .set_curr_pwr_prop_out_max(self.state.pwr_aux, dt, self.state)
+            .set_curr_pwr_prop_out_max(
+                *self.state.pwr_aux.get_fresh(|| format_dbg!())?,
+                dt,
+                &self.state,
+            )
             .with_context(|| anyhow!(format_dbg!()))?;
-
-        (self.state.pwr_prop_fwd_max, self.state.pwr_prop_bwd_max) = self
+        let pwr_prop_maxes = self
             .pt_type
             .get_curr_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
+        self.state
+            .pwr_prop_fwd_max
+            .update(pwr_prop_maxes.0, || format_dbg!())?;
+        self.state
+            .pwr_prop_bwd_max
+            .update(pwr_prop_maxes.1, || format_dbg!())?;
 
         Ok(())
     }
@@ -424,15 +441,29 @@ impl Vehicle {
         te_amb_air: si::Temperature,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        let te_fc: Option<si::Temperature> = self.fc().and_then(|fc| fc.temperature());
-        let res_thrml_state = self.res().and_then(|res| res.res_thrml_state());
-        let pwr_thrml_cab_to_res: si::Power = self
-            .res()
-            .and_then(|res| match &res.thrml {
-                RESThermalOption::RESLumpedThermal(rlt) => Some(rlt.state.pwr_thrml_from_cabin),
-                RESThermalOption::None => None,
-            })
-            .unwrap_or_default();
+        let te_fc: Option<si::Temperature> = self
+            .fc()
+            .and_then(|fc| fc.temperature().map(|fct| fct.get_stale(|| format_dbg!())))
+            .transpose()
+            .with_context(|| {
+                format!(
+                    "{}\nfuel converter temperature has not been properly set",
+                    format_dbg!()
+                )
+            })?
+            .copied();
+        let pwr_thrml_cab_to_res: si::Power = match self.res() {
+            Some(res) => match &res.thrml {
+                RESThermalOption::RESLumpedThermal(rlt) => {
+                    *rlt.state.pwr_thrml_from_cabin.get_stale(|| format_dbg!())?
+                }
+                RESThermalOption::None => si::Power::ZERO,
+            },
+            None => si::Power::ZERO,
+        };
+
+        let res_thrml_state: Option<RESLumpedThermalState> =
+            self.res().and_then(|res| res.res_thrml_state().cloned());
 
         let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab) =
             self.solve_hvac_cab_res(te_amb_air, dt, te_fc, res_thrml_state, pwr_thrml_cab_to_res)?;
@@ -468,12 +499,14 @@ impl Vehicle {
             Option<si::Temperature>,
         ) = match (&mut self.cabin, &mut self.hvac) {
             (CabinOption::None, HVACOption::None) => {
-                self.state.pwr_aux = self.pwr_aux_base;
+                self.state
+                    .pwr_aux
+                    .update(self.pwr_aux_base, || format_dbg!())?;
                 (None, None, None)
             }
             (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabin(hvac)) => {
                 let (pwr_thrml_hvac_to_cabin, pwr_thrml_fc_to_cab) = hvac
-                    .solve(te_amb_air, te_fc, cab.state, cab.heat_capacitance, dt)
+                    .solve(te_amb_air, te_fc, &cab.state, cab.heat_capacitance, dt)
                     .with_context(|| format_dbg!())?;
                 let te_cab = cab
                     .solve(
@@ -484,7 +517,14 @@ impl Vehicle {
                         dt,
                     )
                     .with_context(|| format_dbg!())?;
-                self.state.pwr_aux = self.pwr_aux_base + hvac.state.pwr_aux_for_hvac;
+                self.state.pwr_aux.update(
+                    self.pwr_aux_base
+                        + *hvac
+                            .state
+                            .pwr_aux_for_hvac
+                            .get_fresh(|| format_dbg!("hvac.state.pwr_aux_for_hvac"))?,
+                    || format_dbg!(),
+                )?;
                 (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
             }
             (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabinAndRES(hvac)) => {
@@ -492,7 +532,7 @@ impl Vehicle {
                     .solve(
                         te_amb_air,
                         te_fc,
-                        cab.state,
+                        &cab.state,
                         cab.heat_capacitance,
                         res_thrml_state
                         .with_context(
@@ -510,11 +550,20 @@ impl Vehicle {
                         dt,
                     )
                     .with_context(|| format_dbg!())?;
-                self.state.pwr_aux = self.pwr_aux_base
-                    + hvac.state.pwr_aux_for_cab_hvac
-                    + hvac.state.pwr_aux_for_res_hvac;
+                self.state.pwr_aux.update(
+                    self.pwr_aux_base
+                        + *hvac
+                            .state
+                            .pwr_aux_for_cab_hvac
+                            .get_fresh(|| format_dbg!())?
+                        + *hvac
+                            .state
+                            .pwr_aux_for_res_hvac
+                            .get_fresh(|| format_dbg!())?,
+                    || format_dbg!(),
+                )?;
                 ensure!(
-                    self.state.pwr_aux > si::Power::ZERO,
+                    *self.state.pwr_aux.get_fresh(|| format_dbg!())? > si::Power::ZERO,
                     format!(
                         "{}\n{}\n{}",
                         format_dbg!(self.state.pwr_aux),
@@ -562,79 +611,81 @@ impl Vehicle {
 }
 
 /// Vehicle state for current time step
-#[fastsim_api]
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
+#[serde_api]
+#[derive(
+    Clone, Debug, Deserialize, Serialize, PartialEq, HistoryVec, StateMethods, SetCumulative,
+)]
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct VehicleState {
     /// time step index
-    pub i: usize,
+    pub i: TrackedState<usize>,
 
     /// elapsed simulation time since start
-    pub time: si::Time,
+    pub time: TrackedState<si::Time>,
 
     // power and energy fields
     /// maximum forward propulsive power vehicle can produce
-    pub pwr_prop_fwd_max: si::Power,
+    pub pwr_prop_fwd_max: TrackedState<si::Power>,
     /// pwr exerted on wheels by powertrain
     /// maximum backward propulsive power (e.g. regenerative braking) vehicle can produce
-    pub pwr_prop_bwd_max: si::Power,
+    pub pwr_prop_bwd_max: TrackedState<si::Power>,
     /// Tractive power for achieved speed
-    pub pwr_tractive: si::Power,
+    pub pwr_tractive: TrackedState<si::Power>,
     /// Tractive power required for prescribed speed
-    pub pwr_tractive_for_cyc: si::Power,
+    pub pwr_tractive_for_cyc: TrackedState<si::Power>,
     /// integral of [Self::pwr_tractive]
-    pub energy_tractive: si::Energy,
+    pub energy_tractive: TrackedState<si::Energy>,
     /// time varying aux load
-    pub pwr_aux: si::Power,
+    pub pwr_aux: TrackedState<si::Power>,
     /// integral of [Self::pwr_aux]
-    pub energy_aux: si::Energy,
+    pub energy_aux: TrackedState<si::Energy>,
     /// Power applied to aero drag
-    pub pwr_drag: si::Power,
+    pub pwr_drag: TrackedState<si::Power>,
     /// integral of [Self::pwr_drag]
-    pub energy_drag: si::Energy,
+    pub energy_drag: TrackedState<si::Energy>,
     /// Power applied to acceleration (includes deceleration)
-    pub pwr_accel: si::Power,
+    pub pwr_accel: TrackedState<si::Power>,
     /// integral of [Self::pwr_accel]
-    pub energy_accel: si::Energy,
+    pub energy_accel: TrackedState<si::Energy>,
     /// Power applied to grade ascent
-    pub pwr_ascent: si::Power,
+    pub pwr_ascent: TrackedState<si::Power>,
     /// integral of [Self::pwr_ascent]
-    pub energy_ascent: si::Energy,
+    pub energy_ascent: TrackedState<si::Energy>,
     /// Power applied to rolling resistance
-    pub pwr_rr: si::Power,
+    pub pwr_rr: TrackedState<si::Power>,
     /// integral of [Self::pwr_rr]
-    pub energy_rr: si::Energy,
+    pub energy_rr: TrackedState<si::Energy>,
     /// Power applied to wheel and tire inertia
-    pub pwr_whl_inertia: si::Power,
+    pub pwr_whl_inertia: TrackedState<si::Power>,
     /// integral of [Self::pwr_whl_inertia]
-    pub energy_whl_inertia: si::Energy,
+    pub energy_whl_inertia: TrackedState<si::Energy>,
     /// Total braking power including regen
-    pub pwr_brake: si::Power,
+    pub pwr_brake: TrackedState<si::Power>,
     /// integral of [Self::pwr_brake]
-    pub energy_brake: si::Energy,
+    pub energy_brake: TrackedState<si::Energy>,
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in current time step
     // because it should be assumed true in the first time step
-    pub cyc_met: bool,
+    pub cyc_met: TrackedState<bool>,
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in entire cycle
-    pub cyc_met_overall: bool,
+    pub cyc_met_overall: TrackedState<bool>,
     /// actual achieved speed
-    pub speed_ach: si::Velocity,
+    pub speed_ach: TrackedState<si::Velocity>,
     /// cumulative distance traveled, integral of [Self::speed_ach]
-    pub dist: si::Length,
+    pub dist: TrackedState<si::Length>,
     /// current grade
-    pub grade_curr: si::Ratio,
+    pub grade_curr: TrackedState<si::Ratio>,
     /// current grade
     // will be overridden during simulation anyway
-    pub elev_curr: si::Length,
+    pub elev_curr: TrackedState<si::Length>,
     /// current air density
-    pub air_density: si::MassDensity,
+    pub air_density: TrackedState<si::MassDensity>,
     /// current mass
     // TODO: make sure this gets updated appropriately
-    pub mass: si::Mass,
+    pub mass: TrackedState<si::Mass>,
 }
 
 impl SerdeAPI for VehicleState {}
@@ -642,37 +693,37 @@ impl Init for VehicleState {}
 impl Default for VehicleState {
     fn default() -> Self {
         Self {
-            i: Default::default(),
-            time: si::Time::ZERO,
-            pwr_prop_fwd_max: si::Power::ZERO,
-            pwr_prop_bwd_max: si::Power::ZERO,
-            pwr_tractive: si::Power::ZERO,
-            pwr_tractive_for_cyc: si::Power::ZERO,
-            energy_tractive: si::Energy::ZERO,
-            pwr_aux: si::Power::ZERO,
-            energy_aux: si::Energy::ZERO,
-            pwr_drag: si::Power::ZERO,
-            energy_drag: si::Energy::ZERO,
-            pwr_accel: si::Power::ZERO,
-            energy_accel: si::Energy::ZERO,
-            pwr_ascent: si::Power::ZERO,
-            energy_ascent: si::Energy::ZERO,
-            pwr_rr: si::Power::ZERO,
-            energy_rr: si::Energy::ZERO,
-            pwr_whl_inertia: si::Power::ZERO,
-            energy_whl_inertia: si::Energy::ZERO,
-            pwr_brake: si::Power::ZERO,
-            energy_brake: si::Energy::ZERO,
-            cyc_met: true,
-            cyc_met_overall: true,
-            speed_ach: si::Velocity::ZERO,
-            dist: si::Length::ZERO,
+            i: TrackedState::new(Default::default()),
+            time: Default::default(),
+            pwr_prop_fwd_max: Default::default(),
+            pwr_prop_bwd_max: Default::default(),
+            pwr_tractive: Default::default(),
+            pwr_tractive_for_cyc: Default::default(),
+            energy_tractive: Default::default(),
+            pwr_aux: Default::default(),
+            energy_aux: Default::default(),
+            pwr_drag: Default::default(),
+            energy_drag: Default::default(),
+            pwr_accel: Default::default(),
+            energy_accel: Default::default(),
+            pwr_ascent: Default::default(),
+            energy_ascent: Default::default(),
+            pwr_rr: Default::default(),
+            energy_rr: Default::default(),
+            pwr_whl_inertia: Default::default(),
+            energy_whl_inertia: Default::default(),
+            pwr_brake: Default::default(),
+            energy_brake: Default::default(),
+            cyc_met: TrackedState::new(true),
+            cyc_met_overall: TrackedState::new(true),
+            speed_ach: Default::default(),
+            dist: Default::default(),
             // note that this value will be overwritten
-            grade_curr: si::Ratio::ZERO,
+            grade_curr: Default::default(),
             // note that this value will be overwritten
-            elev_curr: *H_STD,
-            air_density: Air::get_density(None, None),
-            mass: uc::KG * f64::NAN,
+            elev_curr: Default::default(),
+            air_density: Default::default(),
+            mass: TrackedState::new(uc::KG * f64::NAN),
         }
     }
 }
