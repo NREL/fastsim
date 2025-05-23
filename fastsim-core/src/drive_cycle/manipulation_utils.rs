@@ -129,6 +129,10 @@ impl ConstantJerkTrajectory {
         }
         accels
     }
+    pub fn maximum_acceleration(&self) -> f64 {
+        let accels = self.all_accelerations();
+        accels.max().unwrap_or(0.0)
+    }
 }
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
@@ -613,6 +617,61 @@ impl CycleCache {
     }
 }
 
+/// Calculate a rendezvous trajectory for re-rendezvous with reference cycle.
+/// - i: the index where speed has changed from reference
+/// - max_steps: the maximum number of time-steps ahead that a rendezvous will be considered. Minimum is 2.
+/// - cyc: the reference cycle
+/// - speed_ach: the current best effort speed that deviates from reference cycle at i.
+///
+/// RESULT: returns a RendezvousTrajectory which describes a constant-jerk trajectory path
+/// that will rendezvous with the reference trace between n=2 and max_steps steps. The trajectory
+/// chosen will have the smallest peak acceleration of all options investigated.
+pub fn calc_best_rendezvous(
+    i: usize,
+    max_steps: usize,
+    cyc: &Cycle,
+    speed_ach: si::Velocity,
+) -> ConstantJerkTrajectory {
+    let max_steps = (cyc.time.len() - i).min(max_steps);
+    let i = i.clamp(1, cyc.time.len() - 1);
+    let dt = cyc.time[i] - cyc.time[i - 1];
+    let start_distance = 0.5 * (speed_ach + cyc.speed[i - 1]) * dt;
+    let mut best = ConstantJerkTrajectory {
+        steps: 0,
+        distance_m: start_distance.get::<si::meter>(),
+        speed_m_per_s: speed_ach.get::<si::meter_per_second>(),
+        acceleration_m_per_s2: 0.0,
+        jerk_m_per_s3: 0.0,
+        step_duration_s: dt.get::<si::second>(),
+    };
+    if max_steps < 2 {
+        return best;
+    }
+    let mut rendezvous_distance = 0.5 * (cyc.speed[i] + cyc.speed[i - 1]) * dt;
+    let mut max_accel_m_per_s2 = 100.0;
+    for n in 1..max_steps {
+        let j = i + n;
+        let dt = cyc.time[j] - cyc.time[j - 1];
+        rendezvous_distance += 0.5 * (cyc.speed[j] + cyc.speed[j - 1]) * dt;
+        if n >= 2 {
+            let candidate = ConstantJerkTrajectory::from_speed_and_distance_targets(
+                n,
+                start_distance.get::<si::meter>(),
+                speed_ach.get::<si::meter_per_second>(),
+                rendezvous_distance.get::<si::meter>(),
+                cyc.speed[j].get::<si::meter_per_second>(),
+                dt.get::<si::second>(),
+            );
+            let candidate_max_accel_m_per_s2 = candidate.maximum_acceleration();
+            if candidate_max_accel_m_per_s2 < max_accel_m_per_s2 {
+                max_accel_m_per_s2 = candidate_max_accel_m_per_s2;
+                best = candidate;
+            }
+        }
+    }
+    best
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -911,5 +970,55 @@ mod tests {
         let value = interp.interpolate(&[1.0]).unwrap();
         let expected = 2.0;
         assert_eq!(value, expected);
+    }
+
+    #[test]
+    fn test_calc_best_rendezvous() {
+        let cyc = {
+            let mut c = Cycle {
+                name: String::from("Trapezoidal Trace"),
+                init_elev: None,
+                time: vec![
+                    0.0 * uc::S,
+                    1.0 * uc::S,
+                    2.0 * uc::S,
+                    3.0 * uc::S,
+                    4.0 * uc::S,
+                    5.0 * uc::S,
+                    6.0 * uc::S,
+                    7.0 * uc::S,
+                    8.0 * uc::S,
+                ],
+                speed: vec![
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    8.0 * uc::MPS,
+                    8.0 * uc::MPS,
+                    8.0 * uc::MPS,
+                    8.0 * uc::MPS,
+                    8.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                    0.0 * uc::MPS,
+                ],
+                dist: vec![],
+                grade: vec![],
+                elev: vec![],
+                pwr_max_chrg: vec![],
+                temp_amb_air: vec![],
+                pwr_solar_load: vec![],
+                grade_interp: None,
+                elev_interp: None,
+            };
+            c.init().unwrap();
+            c
+        };
+        let i = 2;
+        let max_steps = 4;
+        let speed_ach = 4.0 * uc::MPS;
+        let result = calc_best_rendezvous(i, max_steps, &cyc, speed_ach);
+        assert!(result.steps >= 2);
+        let expected_distance_m = 4.0 + 8.0 * (result.steps as f64);
+        let actual_distance_m = result.end_distance();
+        assert_eq!(actual_distance_m, expected_distance_m);
     }
 }

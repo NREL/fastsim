@@ -4,6 +4,7 @@ use roadload::StepInfo;
 
 use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
+use crate::drive_cycle::manipulation_utils::calc_best_rendezvous;
 use crate::imports::*;
 use crate::prelude::*;
 
@@ -605,7 +606,12 @@ pwr deficit: {} kW
                     .get::<si::kilowatt>()
                     .format_eng(None)
                 ),
-                TraceMissOptions::Correct => todo!(),
+                TraceMissOptions::Correct => {
+                    // We will correct the deviation from trace by modifying the cycle to re-rendezvous with a later time/distance.
+                    // In so doing, we will use a less agressive roadload.
+                    // NOTE: actual correction occurs later but we need to calculate
+                    // the achieved speed first.
+                }
             }
         }
         let vs = &mut self.veh.state;
@@ -631,12 +637,25 @@ pwr deficit: {} kW
             pwr_prop_fwd_max: *vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?,
         };
         let speed_ach = step_info.solve_for_speed(
-            self.sim_params.ach_speed_max_iter,
+            self.sim_params.ach_speed_max_iter * 10,
             self.sim_params.ach_speed_tol,
             self.sim_params.ach_speed_solver_gain,
         );
+        let speed_ach_floored = {
+            // NOTE: what we are doing here is "flooring" the speed to the nearest tength of a m/s.
+            // The purpose is to slightly reduce the target speed below the max power threshold
+            // to prevent float precision issues from sending us right back into trace miss.
+            let v = ((speed_ach.get::<si::meter_per_second>() * 10.0).floor() / 10.0) * uc::MPS;
+            // NOTE: if after "flooring" we happen to exactly be the same as
+            // previous, we subtract off a tenth of a m/s but prevent going below 0 m/s.
+            if v == speed_ach {
+                (v - 0.1 * uc::MPS).max(si::Velocity::ZERO)
+            } else {
+                v
+            }
+        };
 
-        vs.speed_ach.update(speed_ach, || format_dbg!())?;
+        vs.speed_ach.update(speed_ach_floored, || format_dbg!())?;
         // NOTE: need to reset tracked state to allow
         // for calling set_pwr_prop_for_speed(.) again this step.
         // set_pwr_prop_for_speed has already been called so the
@@ -656,14 +675,33 @@ pwr deficit: {} kW
         vs.speed_ach.mark_stale();
 
         // Rerun again to ensure we have updated achieved speed and state
-        self.set_pwr_prop_for_speed(
-            *self.veh.state.speed_ach.get_stale(|| format_dbg!())?,
-            speed_prev,
-            dt,
-        )
-        .with_context(|| format_dbg!())?;
+        self.set_pwr_prop_for_speed(speed_ach_floored, speed_prev, dt)
+            .with_context(|| format_dbg!())?;
         self.set_ach_speed(speed_ach, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
+
+        if self.sim_params.trace_miss_opts == TraceMissOptions::Correct {
+            let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
+            let max_steps = 6;
+            let correction = calc_best_rendezvous(i, max_steps, &self.cyc, speed_ach_floored);
+            if correction.steps >= 2 {
+                // NOTE: in theory, grade could be slightly
+                // off with this deviation from trace. However, since we
+                // rendezvous in a small number of time steps, it should be
+                // close. The call again to init() should correct distance
+                // and elevation calculations.
+                self.cyc.speed[i] = speed_ach_floored;
+                self.cyc.modify_by_const_jerk_trajectory(
+                    i + 1,
+                    correction.steps,
+                    correction.jerk_m_per_s3 * uc::MPS3,
+                    correction.acceleration_m_per_s2 * uc::MPS2,
+                );
+                self.cyc.dist.clear();
+                self.cyc.elev.clear();
+                self.cyc.init().unwrap();
+            }
+        }
 
         Ok(())
     }
