@@ -68,7 +68,8 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
             // this tells the compiler that the `SetCumulative` trait is not manually derived
             #[automatically_derived]
             impl SetCumulative for #ident {
-                fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+                // fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+                fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
                     #(self
                         .#energy_fields
                         .increment(
@@ -85,9 +86,10 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
             // this tells the compiler that the `SetCumulative` trait is not manually derived
             #[automatically_derived]
             impl SetCumulative for #ident {
-                fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+                // fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+                fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
                     self.state.set_cumulative(dt)?;
-                    #(self.#fields_with_state.set_cumulative(dt, || format_dbg!())?;)*
+                    #(self.#fields_with_state.set_cumulative(dt)?;)*
                     Ok(())
                 }
             }
@@ -97,8 +99,9 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
             // this tells the compiler that the `SetCumulative` trait is not manually derived
             #[automatically_derived]
             impl SetCumulative for #ident {
-                fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
-                    #(self.#fields_with_state.set_cumulative(dt, || format_dbg!())?;)*
+                // fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+                fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+                    #(self.#fields_with_state.set_cumulative(dt)?;)*
                     Ok(())
                 }
             }

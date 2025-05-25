@@ -264,10 +264,10 @@ const BEV: &str = "BEV";
 
 impl SetCumulative for Vehicle {
     fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt, || format_dbg!())?;
-        self.pt_type.set_cumulative(dt, || format_dbg!())?;
-        self.cabin.set_cumulative(dt, || format_dbg!())?;
-        self.hvac.set_cumulative(dt, || format_dbg!())?;
+        self.state.set_cumulative(dt)?;
+        self.pt_type.set_cumulative(dt)?;
+        self.cabin.set_cumulative(dt)?;
+        self.hvac.set_cumulative(dt)?;
         // this does not get handled by the `SetCumulative` derive macro
         self.state.dist.increment(
             *self.state.speed_ach.get_fresh(|| format_dbg!())? * dt,

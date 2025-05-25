@@ -206,7 +206,8 @@ pub trait Step {
 /// Trait for setting cumulative values based on rate values
 pub trait SetCumulative {
     /// Sets cumulative values based on rate values
-    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()>;
+    // fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()>;
+    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()>;
 }
 
 /// Provides methods for getting and setting the save interval
