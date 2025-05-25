@@ -493,7 +493,9 @@ impl Default for HEVPowertrainControls {
 impl SetCumulative for HEVPowertrainControls {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::RGWDB(rgwdb) => rgwdb.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?,
+            Self::RGWDB(rgwdb) => {
+                rgwdb.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::Placeholder => {}
         }
         Ok(())
