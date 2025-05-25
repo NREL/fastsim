@@ -92,10 +92,11 @@ impl HistoryMethods for CabinOption {
     }
 }
 impl SetCumulative for CabinOption {
-    // fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.set_cumulative(dt)?,
+            Self::LumpedCabin(lc) => {
+                lc.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::LumpedCabinWithShell => todo!(),
             Self::None => {}
         }

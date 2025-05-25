@@ -891,9 +891,9 @@ pub enum RESThermalOption {
     None,
 }
 impl SetCumulative for RESThermalOption {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::RESLumpedThermal(rlt) => rlt.set_cumulative(dt)?,
+            Self::RESLumpedThermal(rlt) => rlt.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?,
             Self::None => {}
         }
         Ok(())

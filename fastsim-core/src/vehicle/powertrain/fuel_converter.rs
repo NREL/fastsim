@@ -603,9 +603,9 @@ impl Init for FuelConverterThermalOption {
 }
 impl SerdeAPI for FuelConverterThermalOption {}
 impl SetCumulative for FuelConverterThermalOption {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::FuelConverterThermal(fct) => fct.set_cumulative(dt)?,
+            Self::FuelConverterThermal(fct) => fct.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?,
             Self::None => {}
         }
         Ok(())
@@ -959,8 +959,8 @@ impl FuelConverterThermal {
 }
 impl SerdeAPI for FuelConverterThermal {}
 impl SetCumulative for FuelConverterThermal {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+        self.state.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
     }
 }
 impl Init for FuelConverterThermal {
