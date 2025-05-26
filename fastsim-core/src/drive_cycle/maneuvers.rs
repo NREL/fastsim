@@ -287,6 +287,7 @@ impl Maneuver {
         self.walk(cyc_len);
     }
 
+    /// Walk from step to step for the maneuver simulation.
     fn walk(&mut self, cyc_len: usize) {
         while self.i < cyc_len {
             self.step();
@@ -299,6 +300,7 @@ impl Maneuver {
         self.cyc.init().unwrap();
     }
 
+    /// Step: compute a single time-step for the maneuver simulation.
     fn step(&mut self) {
         if self.idm_allow {
             self.idm_target_speed_m_per_s[self.i] = match &self.idm_desired_speed_by_distance {
@@ -730,7 +732,7 @@ impl Maneuver {
         }
     }
 
-    // TODO: rename to be more appropriate. Solve for coast speed and set?
+    /// Solve for coast speed and set.
     pub fn solve_step(&mut self, i: usize) -> si::Velocity {
         let dt = self.cyc.time[i] - self.cyc.time[i - 1];
         let step_info = StepInfo {
@@ -1135,6 +1137,7 @@ impl Maneuver {
         }
     }
 
+    /// Allply the given coasting trajectory to the drive cycle.
     fn apply_coast_trajectory(&mut self, coast_traj: &CoastTrajectory) {
         if !coast_traj.found_trajectory {
             return;

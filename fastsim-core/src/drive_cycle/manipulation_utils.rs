@@ -1,6 +1,8 @@
 use crate::drive_cycle::Cycle;
 use crate::imports::*;
 
+/// Rendezvous Trajectory that uses a constant-jerk trajectory to rendezvous
+/// with another trace in distance/time.
 pub struct RendezvousTrajectory {
     pub found_trajectory: bool,
     pub idx: usize,
@@ -11,6 +13,7 @@ pub struct RendezvousTrajectory {
     pub accel_spread: f64,
 }
 
+/// Coasting trajectory that describes the characteristics of a time/speed coast.
 pub struct CoastTrajectory {
     pub found_trajectory: bool,
     pub distance_to_stop_via_coast_m: f64,
@@ -84,6 +87,7 @@ impl ConstantJerkTrajectory {
             step_duration_s: dt,
         }
     }
+    /// Calculate the distance traveled by the end of the nth step in m.
     pub fn distance_at_step(&self, n: usize) -> f64 {
         let n = n as f64;
         let d0 = self.distance_m;
@@ -98,9 +102,11 @@ impl ConstantJerkTrajectory {
         let term2 = 0.5 * dt * dt * ((n * a0) + (0.5 * n * (n - 1.0) * k * dt));
         d0 + term1 + term2
     }
+    /// Calculate the ending distance of the trajectory in m.
     pub fn end_distance(&self) -> f64 {
         self.distance_at_step(self.steps)
     }
+    /// Calculate the ending speed for the nth step in m/s.
     pub fn speed_at_step(&self, n: usize) -> f64 {
         let n = n as f64;
         let v0 = self.speed_m_per_s;
@@ -109,9 +115,11 @@ impl ConstantJerkTrajectory {
         let dt = self.step_duration_s;
         v0 + (n * a0 * dt) + (0.5 * n * (n - 1.0) * k * dt)
     }
+    /// Calculate the ending speed in m/s.
     pub fn end_speed(&self) -> f64 {
         self.speed_at_step(self.steps)
     }
+    /// Calculate the acceleration for step n in m/s2.
     pub fn acceleration_at_step(&self, n: usize) -> f64 {
         let n = n as f64;
         let a0 = self.acceleration_m_per_s2;
@@ -119,9 +127,12 @@ impl ConstantJerkTrajectory {
         let dt = self.step_duration_s;
         a0 + (n * k * dt)
     }
+    /// Calculate the acceleration at end of the trajectory in m/s2.
     pub fn end_acceleration(&self) -> f64 {
         self.acceleration_at_step(self.steps)
     }
+    /// Calculate and return a vector of all of the step-wise accelerations for
+    /// the trajectory in m/s2.
     pub fn all_accelerations(&self) -> Vec<f64> {
         let mut accels = Vec::with_capacity(self.steps);
         for n_idx in 0..self.steps {
@@ -129,6 +140,7 @@ impl ConstantJerkTrajectory {
         }
         accels
     }
+    /// Calculate and return the maximum acceleration over the trajectory in m/s2.
     pub fn maximum_acceleration(&self) -> f64 {
         let accels = self.all_accelerations();
         accels.max().unwrap_or(0.0)
