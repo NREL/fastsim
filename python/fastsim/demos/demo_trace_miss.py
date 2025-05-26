@@ -28,6 +28,10 @@ def trace_miss_demo():
     veh.set_save_interval(1)
     params = fsim.SimParams.default().to_pydict()
     params["trace_miss_opts"] = "Correct"  # "Allow"
+    # This is the maximum number of time steps with which to re-rendezvous with
+    # the reference trace. The trajectory with the "gentlest" acceleration will
+    # be chosen up to the maximum number of time steps.
+    params["trace_miss_correct_max_steps"] = 6
     sd = fsim.SimDrive(veh, cyc, fsim.SimParams.from_pydict(params))
     sd.walk()
     if SHOW_PLOTS:

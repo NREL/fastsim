@@ -33,6 +33,12 @@ pub struct SimParams {
     pub trace_miss_tol: TraceMissTolerance,
     #[serde(default = "SimParams::def_trace_miss_opts")]
     pub trace_miss_opts: TraceMissOptions,
+    #[serde(default = "SimParams::def_trace_miss_correct_max_steps")]
+    /// the maximum number of steps in which to re-rendezvous with reference
+    /// trace after a trace miss. Note: this field only applies when
+    /// trace_miss_opts is set to TraceMissOptions::Correct. Note: must
+    /// be 2 or greater. Defaults to 6.
+    pub trace_miss_correct_max_steps: u32,
     /// whether to use FASTSim-2 style air density
     #[serde(default = "SimParams::def_f2_const_air_density")]
     pub f2_const_air_density: bool,
@@ -63,6 +69,9 @@ impl SimParams {
     fn def_trace_miss_opts() -> TraceMissOptions {
         Self::default().trace_miss_opts
     }
+    fn def_trace_miss_correct_max_steps() -> u32 {
+        Self::default().trace_miss_correct_max_steps
+    }
     fn def_f2_const_air_density() -> bool {
         Self::default().f2_const_air_density
     }
@@ -79,6 +88,7 @@ impl Default for SimParams {
             ach_speed_solver_gain: 0.9,
             trace_miss_tol: Default::default(),
             trace_miss_opts: Default::default(),
+            trace_miss_correct_max_steps: 6,
             f2_const_air_density: true,
         }
     }
@@ -682,7 +692,7 @@ pwr deficit: {} kW
 
         if self.sim_params.trace_miss_opts == TraceMissOptions::Correct {
             let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
-            let max_steps = 6;
+            let max_steps = self.sim_params.trace_miss_correct_max_steps.max(2) as usize;
             let correction = calc_best_rendezvous(i, max_steps, &self.cyc, speed_ach_floored);
             if correction.steps >= 2 {
                 // NOTE: in theory, grade could be slightly
