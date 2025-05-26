@@ -157,6 +157,14 @@ impl Cycle {
     pub fn average_step_speed_at_py(&self, i: usize) -> PyResult<f64> {
         Ok(self.average_step_speed_at(i).get::<si::meter_per_second>())
     }
+
+    #[pyo3(name = "resample")]
+    /// create a new cycle with the values resampled to the given time-step
+    /// duration.
+    pub fn resample_py(&self, time_step_s: f64) -> PyResult<Cycle> {
+        let time_step = time_step_s.max(0.01) * uc::S;
+        Ok(self.resample(time_step))
+    }
 }
 
 lazy_static! {
@@ -1384,6 +1392,128 @@ impl Cycle {
         cyc.init().unwrap();
         cyc
     }
+
+    /// Resample cycle to a lower or higher frequency.
+    /// - dt: the new step duration.
+    ///
+    /// RETURN: cycle
+    /// NOTE: a value of dt <= 0 s implies to just clone the current cycle
+    /// "as is"
+    pub fn resample(&self, dt: si::Time) -> Cycle {
+        if dt <= si::Time::ZERO {
+            return self.clone();
+        }
+        let mut t = si::Time::ZERO;
+        let speed_interp = Interpolator::new_1d(
+            self.time.iter().map(|x| x.get::<si::second>()).collect(),
+            self.speed
+                .iter()
+                .map(|y| y.get::<si::meter_per_second>())
+                .collect(),
+            Strategy::Linear,
+            Extrapolate::Clamp,
+        )
+        .unwrap();
+        let grade_interp = Interpolator::new_1d(
+            self.time.iter().map(|x| x.get::<si::second>()).collect(),
+            self.grade.iter().map(|y| y.get::<si::ratio>()).collect(),
+            Strategy::RightNearest,
+            Extrapolate::Clamp,
+        )
+        .unwrap();
+        let temp_interp = if self.temp_amb_air.len() == self.time.len() {
+            Some(
+                Interpolator::new_1d(
+                    self.time.iter().map(|t| t.get::<si::second>()).collect(),
+                    self.temp_amb_air
+                        .iter()
+                        .map(|temp| temp.get::<si::kelvin_abs>())
+                        .collect(),
+                    Strategy::Linear,
+                    Extrapolate::Clamp,
+                )
+                .unwrap(),
+            )
+        } else {
+            None
+        };
+        let solar_interp = if self.pwr_solar_load.len() == self.time.len() {
+            Some(
+                Interpolator::new_1d(
+                    self.time.iter().map(|t| t.get::<si::second>()).collect(),
+                    self.pwr_solar_load
+                        .iter()
+                        .map(|p| p.get::<si::kilowatt>())
+                        .collect(),
+                    Strategy::Linear,
+                    Extrapolate::Clamp,
+                )
+                .unwrap(),
+            )
+        } else {
+            None
+        };
+        let chg_pwr_interp = if self.pwr_max_chrg.len() == self.time.len() {
+            Some(
+                Interpolator::new_1d(
+                    self.time.iter().map(|t| t.get::<si::second>()).collect(),
+                    self.pwr_max_chrg
+                        .iter()
+                        .map(|p| p.get::<si::kilowatt>())
+                        .collect(),
+                    Strategy::Linear,
+                    Extrapolate::Clamp,
+                )
+                .unwrap(),
+            )
+        } else {
+            None
+        };
+        let mut ts = vec![];
+        let mut vs = vec![];
+        let mut gs = vec![];
+        let mut pwr_chg = vec![];
+        let mut temps = vec![];
+        let mut solars = vec![];
+        while t <= self.time[self.time.len() - 1] {
+            ts.push(t);
+            let t0 = t.get::<si::second>();
+            let v = speed_interp.interpolate(&[t0]).unwrap();
+            vs.push(v * uc::MPS);
+            let g = grade_interp.interpolate(&[t0]).unwrap();
+            gs.push(g * uc::R);
+            if let Some(ref interp) = chg_pwr_interp {
+                let pchg = interp.interpolate(&[t0]).unwrap();
+                pwr_chg.push(pchg * uc::KW);
+            }
+            if let Some(ref interp) = temp_interp {
+                let temp = interp.interpolate(&[t0]).unwrap();
+                temps.push(temp * uc::KELVIN);
+            }
+            if let Some(ref interp) = solar_interp {
+                let solar = interp.interpolate(&[t0]).unwrap();
+                solars.push(solar * uc::KW);
+            }
+            t += dt;
+        }
+
+        let mut cyc = Cycle {
+            name: self.name.clone(),
+            init_elev: self.init_elev,
+            time: ts,
+            speed: vs,
+            dist: vec![],
+            grade: gs,
+            elev: vec![],
+            pwr_max_chrg: pwr_chg,
+            temp_amb_air: temps,
+            pwr_solar_load: solars,
+            grade_interp: None,
+            elev_interp: None,
+        };
+        cyc.init().unwrap();
+        cyc
+    }
 }
 
 #[serde_api]
@@ -1926,5 +2056,47 @@ mod tests {
         for resource in resource_list {
             StructWithResources::from_resource(resource, false).unwrap();
         }
+    }
+
+    #[test]
+    fn test_resample() {
+        let cyc0 = {
+            let mut c = Cycle {
+                name: String::from("a test"),
+                time: vec![0.0 * uc::S, 10.0 * uc::S, 20.0 * uc::S],
+                speed: vec![0.0 * uc::MPS, 10.0 * uc::MPS, 0.0 * uc::MPS],
+                grade: vec![0.01 * uc::R, 0.01 * uc::R, -0.01 * uc::R],
+                init_elev: None,
+                dist: vec![],
+                elev: vec![],
+                pwr_max_chrg: vec![],
+                temp_amb_air: vec![],
+                pwr_solar_load: vec![],
+                grade_interp: None,
+                elev_interp: None,
+            };
+            c.init().unwrap();
+            c
+        };
+        let cyc1 = cyc0.resample(1.0 * uc::S);
+        assert_eq!(21, cyc1.time.len());
+        assert_eq!(
+            cyc1.time[cyc1.time.len() - 1],
+            cyc0.time[cyc0.time.len() - 1]
+        );
+        assert_eq!(cyc1.time[0], cyc0.time[0]);
+        assert_eq!(cyc1.time[0], 0.0 * uc::S);
+        assert_eq!(cyc1.time[5], 5.0 * uc::S);
+        assert_eq!(cyc1.speed[5], 5.0 * uc::MPS);
+        assert_eq!(cyc1.grade[5], 0.01 * uc::R);
+        assert_eq!(cyc1.time[10], 10.0 * uc::S);
+        assert_eq!(cyc1.speed[10], 10.0 * uc::MPS);
+        assert_eq!(cyc1.grade[10], 0.01 * uc::R);
+        assert_eq!(cyc1.time[11], 11.0 * uc::S);
+        assert_eq!(cyc1.speed[11], 9.0 * uc::MPS);
+        assert_eq!(cyc1.grade[11], -0.01 * uc::R);
+        assert_eq!(cyc1.time[20], 20.0 * uc::S);
+        assert_eq!(cyc1.speed[20], 0.0 * uc::MPS);
+        assert_eq!(cyc1.grade[20], -0.01 * uc::R);
     }
 }
