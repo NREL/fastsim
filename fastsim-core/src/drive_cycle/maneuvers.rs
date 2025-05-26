@@ -293,6 +293,8 @@ impl Maneuver {
             self.step();
         }
         // NOTE: force dist and elev to recalculate
+        // TODO: need to investigate re-deriving grade from interpolation of
+        // elevation by distance.
         self.cyc.dist = vec![];
         self.cyc.elev = vec![];
         self.cyc.init().unwrap();
