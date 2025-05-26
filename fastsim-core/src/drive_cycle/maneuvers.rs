@@ -292,11 +292,9 @@ impl Maneuver {
         while self.i < cyc_len {
             self.step();
         }
-        // TODO: need to re-init cycle to recalculate vectored items
-        // if changes were made. Need to re-apply the grades using
-        // elevation by distance... Test that this can be applied
-        // at the end...
-        // Maybe add a new method to cycle: set grade by distance?
+        // NOTE: force dist and elev to recalculate
+        self.cyc.dist = vec![];
+        self.cyc.elev = vec![];
         self.cyc.init().unwrap();
     }
 
