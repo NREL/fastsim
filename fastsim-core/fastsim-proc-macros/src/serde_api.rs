@@ -21,7 +21,7 @@ pub(crate) fn serde_api(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     } else {
         abort_call_site!(
-            "Invalid use of `fastsim_api` macro.  Expected tuple struct or C-style struct."
+            "Invalid use of `serde_api` macro.  Expected tuple struct or C-style struct."
         );
     };
 
