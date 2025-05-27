@@ -41,7 +41,7 @@ pub struct HVACSystemForLumpedCabin {
     pub save_interval: Option<usize>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl HVACSystemForLumpedCabin {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -533,7 +533,7 @@ pub struct HVACSystemForLumpedCabinState {
     /// Cumulative thermal energy from [FuelConverter] to [Cabin]
     pub energy_thrml_fc_to_cabin: TrackedState<si::Energy>,
 }
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl HVACSystemForLumpedCabinState {
     #[pyo3(name = "default")]
     #[staticmethod]

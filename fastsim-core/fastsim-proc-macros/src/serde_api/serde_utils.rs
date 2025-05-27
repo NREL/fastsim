@@ -188,6 +188,10 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
                 uom::si::heat_transfer::watt_per_square_meter_kelvin,
                 uom::si::heat_transfer::watt_per_square_meter_degree_celsius
             ),
+            "Curvature" => extract_units!(
+                uom::si::curvature::radian_per_meter,
+                uom::si::curvature::degree_per_meter
+            ),
             "HeatCapacity" => {
                 extract_units!(
                     uom::si::heat_capacity::joule_per_kelvin,

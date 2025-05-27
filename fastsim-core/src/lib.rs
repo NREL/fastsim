@@ -28,7 +28,6 @@ pub mod imports;
 pub mod prelude;
 // #[cfg(feature = "pyo3")] -- feature gate provided inside module
 pub mod pyo3;
-pub mod resources;
 pub mod si;
 pub mod simdrive;
 #[cfg(feature = "simdrivelabel")]

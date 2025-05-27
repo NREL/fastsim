@@ -30,7 +30,7 @@ impl Init for PowertrainType {
 }
 
 impl SetCumulative for PowertrainType {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
             Self::ConventionalVehicle(conv) => conv.set_cumulative(dt),
             Self::HybridElectricVehicle(hev) => hev.set_cumulative(dt),
@@ -359,6 +359,8 @@ impl PowertrainType {
         }
     }
 }
+
+impl StateMethods for PowertrainType {}
 
 impl SaveState for PowertrainType {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
