@@ -18,7 +18,6 @@
 #[macro_use]
 pub mod macros;
 
-#[macro_use]
 extern crate uom;
 
 pub mod drive_cycle;
