@@ -48,7 +48,7 @@ pub struct FuelConverter {
     pub history: FuelConverterStateHistoryVec,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverter {
     // optional, custom, struct-specific pymethods
     #[getter("eff_max")]
@@ -545,7 +545,7 @@ pub struct FuelConverterState {
     pub time_on: TrackedState<si::Time>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverterState {}
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
@@ -561,6 +561,8 @@ pub enum FuelConverterThermalOption {
     #[default]
     None,
 }
+
+impl StateMethods for FuelConverterThermalOption {}
 
 impl SaveState for FuelConverterThermalOption {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
@@ -601,9 +603,9 @@ impl Init for FuelConverterThermalOption {
 }
 impl SerdeAPI for FuelConverterThermalOption {}
 impl SetCumulative for FuelConverterThermalOption {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::FuelConverterThermal(fct) => fct.set_cumulative(dt)?,
+            Self::FuelConverterThermal(fct) => fct.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?,
             Self::None => {}
         }
         Ok(())
@@ -721,7 +723,7 @@ pub struct FuelConverterThermal {
     pub save_interval: Option<usize>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverterThermal {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -957,8 +959,8 @@ impl FuelConverterThermal {
 }
 impl SerdeAPI for FuelConverterThermal {}
 impl SetCumulative for FuelConverterThermal {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+        self.state.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
     }
 }
 impl Init for FuelConverterThermal {
@@ -1048,7 +1050,7 @@ pub struct FuelConverterThermalState {
     /// Cumulative thermal energy flowing from combustion to [FuelConverter] thermal mass
     pub energy_thrml_to_tm: TrackedState<si::Energy>,
 }
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverterThermalState {}
 
 impl Init for FuelConverterThermalState {}

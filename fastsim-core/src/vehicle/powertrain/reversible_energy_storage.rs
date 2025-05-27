@@ -52,7 +52,7 @@ pub struct ReversibleEnergyStorage {
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl ReversibleEnergyStorage {
     // #[getter("eff_max")]
     // fn get_eff_max_py(&self) -> f64 {
@@ -848,7 +848,7 @@ pub struct ReversibleEnergyStorageState {
     pub energy_out_chemical: TrackedState<si::Energy>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl ReversibleEnergyStorageState {}
 
 impl Default for ReversibleEnergyStorageState {
@@ -891,14 +891,17 @@ pub enum RESThermalOption {
     None,
 }
 impl SetCumulative for RESThermalOption {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::RESLumpedThermal(rlt) => rlt.set_cumulative(dt)?,
+            Self::RESLumpedThermal(rlt) => rlt.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?,
             Self::None => {}
         }
         Ok(())
     }
 }
+
+impl StateMethods for RESThermalOption {}
+
 impl SaveState for RESThermalOption {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
@@ -1019,7 +1022,7 @@ pub struct RESLumpedThermal {
     pub save_interval: Option<usize>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl RESLumpedThermal {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -1139,7 +1142,7 @@ pub struct RESLumpedThermalState {
     pub energy_thrml_loss: TrackedState<si::Energy>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl RESLumpedThermalState {
     #[pyo3(name = "default")]
     #[staticmethod]

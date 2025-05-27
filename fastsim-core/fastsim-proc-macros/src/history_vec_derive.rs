@@ -61,7 +61,7 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
             #vec_fields
         }
 
-        #[named_struct_pyo3_api]
+        #[pyo3_api]
         impl #new_name {
             #[pyo3(name = "len")]
             fn len_py(&self) -> usize {

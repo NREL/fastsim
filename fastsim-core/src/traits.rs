@@ -182,6 +182,15 @@ impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
     }
 }
 
+/// Super trait to ensure that related traits are implemented together
+pub trait StateMethods: SetCumulative + SaveState + Step + CheckAndResetState {}
+
+/// Trait for setting cumulative values based on rate values
+pub trait SetCumulative {
+    /// Sets cumulative values based on rate values
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()>;
+}
+
 /// Provides method that saves `self.state` to `self.history` and propagates to any fields with
 /// `state`
 pub trait SaveState {
@@ -189,6 +198,15 @@ pub trait SaveState {
     /// # Arguments
     /// - `loc`: closure that returns file and line number where called
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
+}
+
+/// Trait that provides method for incrementing `i` field of this and all contained structs,
+/// recursively
+pub trait Step {
+    /// Increments `i` field of this and all contained structs, recursively
+    /// # Arguments
+    /// - `loc`: closure that returns file and line number where called
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
 }
 
 /// Provides methods for getting and setting the save interval
@@ -204,15 +222,6 @@ pub trait HistoryMethods: SaveState {
     fn clear(&mut self);
 }
 
-/// Trait that provides method for incrementing `i` field of this and all contained structs,
-/// recursively
-pub trait Step {
-    /// Increments `i` field of this and all contained structs, recursively
-    /// # Arguments
-    /// - `loc`: closure that returns file and line number where called
-    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
-}
-
 /// Provides method for checking if struct is default
 pub trait EqDefault: std::default::Default + PartialEq {
     /// If `self` is default, returns true
@@ -222,12 +231,6 @@ pub trait EqDefault: std::default::Default + PartialEq {
 }
 
 impl<T: Default + PartialEq> EqDefault for T {}
-
-/// Trait for setting cumulative values based on rate values
-pub trait SetCumulative {
-    /// Sets cumulative values based on rate values
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()>;
-}
 
 #[cfg(test)]
 mod tests {

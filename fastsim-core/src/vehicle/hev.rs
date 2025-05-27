@@ -39,7 +39,7 @@ pub struct HybridElectricVehicle {
     pub soc_bal_iters: TrackedState<u32>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl HybridElectricVehicle {}
 
 impl HistoryMethods for HybridElectricVehicle {
@@ -491,9 +491,11 @@ impl Default for HEVPowertrainControls {
 }
 
 impl SetCumulative for HEVPowertrainControls {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::RGWDB(rgwdb) => rgwdb.set_cumulative(dt)?,
+            Self::RGWDB(rgwdb) => {
+                rgwdb.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::Placeholder => {}
         }
         Ok(())
@@ -508,6 +510,8 @@ impl Step for HEVPowertrainControls {
         Ok(())
     }
 }
+
+impl StateMethods for HEVPowertrainControls {}
 
 impl SaveState for HEVPowertrainControls {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
@@ -686,7 +690,7 @@ pub struct RESGreedyWithDynamicBuffers {
     pub history: RGWDBStateHistoryVec,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl RESGreedyWithDynamicBuffers {}
 
 impl HistoryMethods for RESGreedyWithDynamicBuffers {

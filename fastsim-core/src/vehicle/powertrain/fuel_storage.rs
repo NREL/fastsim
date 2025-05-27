@@ -21,7 +21,7 @@ pub struct FuelStorage {
     // which should then include vehicle mass in state
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelStorage {
     // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
     // #[setter("__mass_kg")]
