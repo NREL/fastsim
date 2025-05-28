@@ -48,6 +48,7 @@ url = { version = "2.5.0", optional = true }
 ninterp = { workspace = true }
 thiserror = { workspace = true }
 typenum = "1.18.0"
+num-traits = "0.2.19"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

@@ -576,6 +576,7 @@ dependencies = [
  "ndarray",
  "ninterp",
  "nohash-hasher",
+ "num-traits",
  "paste",
  "pretty_assertions",
  "project-root",

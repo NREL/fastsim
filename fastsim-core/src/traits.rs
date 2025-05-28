@@ -1,6 +1,7 @@
 use crate::error::Error;
 use crate::imports::*;
 pub mod serde_api;
+use num_traits::Bounded;
 pub use serde_api::*;
 
 pub trait Linspace {
@@ -24,54 +25,92 @@ pub trait Linspace {
 
 impl Linspace for Vec<f64> {}
 
-pub trait Min {
-    fn min(&self) -> anyhow::Result<f64>;
+pub trait Min<T> {
+    fn min(&self) -> anyhow::Result<T>;
 }
-impl Min for &[f64] {
-    fn min(&self) -> anyhow::Result<f64> {
-        Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
+impl<T> Min<T> for &[T]
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn min(&self) -> anyhow::Result<T> {
+        Ok(self.iter().fold(
+            T::max_value(),
+            |acc, curr| if *curr < acc { *curr } else { acc },
+        ))
     }
 }
-impl Min for Vec<f64> {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T> Min<T> for Vec<T>
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn min(&self) -> anyhow::Result<T> {
         self.as_slice().min()
     }
 }
-impl Min for &[&f64] {
-    fn min(&self) -> anyhow::Result<f64> {
-        Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(**curr)))
+impl<T> Min<T> for &[&T]
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn min(&self) -> anyhow::Result<T> {
+        Ok(self.iter().fold(
+            T::max_value(),
+            |acc, curr| if **curr < acc { **curr } else { acc },
+        ))
     }
 }
-impl Min for Vec<&f64> {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T> Min<T> for Vec<&T>
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn min(&self) -> anyhow::Result<T> {
         self.as_slice().min()
     }
 }
-impl Min for &[Vec<f64>] {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T> Min<T> for &[Vec<T>]
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn min(&self) -> anyhow::Result<T> {
         self.iter()
             .map(|v| v.min())
-            .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
+            .try_fold(T::max_value(), |acc, x| {
+                let x = x.with_context(|| format_dbg!())?;
+                let min = if x < acc { x } else { acc };
+                Ok(min)
+            })
     }
 }
-impl Min for Vec<Vec<f64>> {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T> Min<T> for Vec<Vec<T>>
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn min(&self) -> anyhow::Result<T> {
         self.as_slice().min()
     }
 }
-impl Min for &[Vec<Vec<f64>>] {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T> Min<T> for &[Vec<Vec<T>>]
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn min(&self) -> anyhow::Result<T> {
         self.iter()
             .map(|v| v.min())
-            .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
+            .try_fold(T::max_value(), |acc, x| {
+                let x = x.with_context(|| format_dbg!())?;
+                let min = if x < acc { x } else { acc };
+                Ok(min)
+            })
     }
 }
-impl Min for Vec<Vec<Vec<f64>>> {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T> Min<T> for Vec<Vec<Vec<T>>>
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn min(&self) -> anyhow::Result<T> {
         self.as_slice().min()
     }
 }
-impl Min for Interpolator {
+impl Min<f64> for Interpolator {
     fn min(&self) -> anyhow::Result<f64> {
         match self {
             Interpolator::Interp0D(value) => Ok(*value),
@@ -86,58 +125,93 @@ impl Min for Interpolator {
     }
 }
 
-pub trait Max {
-    fn max(&self) -> anyhow::Result<f64>;
+pub trait Max<T> {
+    fn max(&self) -> anyhow::Result<T>;
 }
-impl Max for &[f64] {
-    fn max(&self) -> anyhow::Result<f64> {
-        Ok(self
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
+impl<T> Max<T> for &[T]
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn max(&self) -> anyhow::Result<T> {
+        Ok(self.iter().fold(
+            T::min_value(),
+            |acc, curr| if *curr > acc { *curr } else { acc },
+        ))
     }
 }
-impl Max for Vec<f64> {
-    fn max(&self) -> anyhow::Result<f64> {
+
+impl<T> Max<T> for Vec<T>
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn max(&self) -> anyhow::Result<T> {
         self.as_slice().max()
     }
 }
-impl Max for &[&f64] {
-    fn max(&self) -> anyhow::Result<f64> {
-        Ok(self
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(**curr)))
+impl<T> Max<T> for &[&T]
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn max(&self) -> anyhow::Result<T> {
+        Ok(self.iter().fold(
+            T::min_value(),
+            |acc, curr| if **curr > acc { **curr } else { acc },
+        ))
     }
 }
-impl Max for Vec<&f64> {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<T> Max<T> for Vec<&T>
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn max(&self) -> anyhow::Result<T> {
         self.as_slice().max()
     }
 }
-impl Max for &[Vec<f64>] {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<T> Max<T> for &[Vec<T>]
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn max(&self) -> anyhow::Result<T> {
         self.iter()
             .map(|v| v.max())
-            .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
+            .try_fold(T::min_value(), |acc, x| {
+                let x = x.with_context(|| format_dbg!())?;
+                let min = if x > acc { x } else { acc };
+                Ok(min)
+            })
     }
 }
-impl Max for Vec<Vec<f64>> {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<T> Max<T> for Vec<Vec<T>>
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn max(&self) -> anyhow::Result<T> {
         self.as_slice().max()
     }
 }
-impl Max for &[Vec<Vec<f64>>] {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<T> Max<T> for &[Vec<Vec<T>>]
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn max(&self) -> anyhow::Result<T> {
         self.iter()
             .map(|v| v.max())
-            .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
+            .try_fold(T::min_value(), |acc, x| {
+                let x = x.with_context(|| format_dbg!())?;
+                let min = if x > acc { x } else { acc };
+                Ok(min)
+            })
     }
 }
-impl Max for Vec<Vec<Vec<f64>>> {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<T> Max<T> for Vec<Vec<Vec<T>>>
+where
+    T: PartialOrd + Copy + Bounded,
+{
+    fn max(&self) -> anyhow::Result<T> {
         self.as_slice().max()
     }
 }
-impl Max for Interpolator {
+impl Max<f64> for Interpolator {
     fn max(&self) -> anyhow::Result<f64> {
         match self {
             Interpolator::Interp0D(value) => Ok(*value),
