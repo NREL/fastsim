@@ -3,10 +3,9 @@
 use std::collections::HashMap;
 
 // crate local
-use crate::drive_cycle::CYC_ACCEL;
+use crate::drive_cycle::{Cycle, CYC_ACCEL};
 use crate::imports::*;
-use crate::prelude::*;
-use crate::simdrive::{SimDrive, SimParams};
+use crate::simdrive::SimDrive;
 use crate::vehicle::{PowertrainType, Vehicle};
 
 /// Return first index of `arr` greater than `cut`
@@ -19,41 +18,48 @@ fn first_grtr(arr: &[f64], cut: f64) -> Option<usize> {
 }
 
 /// Returns time [s] for 0-60 mph acceleration at max power
-pub fn get_net_accel(sd_accel: &mut SimDrive) -> anyhow::Result<Option<f64>> {
-    sd_accel.walk().with_context(|| format_dbg!())?;
-    if sd_accel
-        .veh
-        .history
-        .speed_ach
+pub fn get_net_accel(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
+    sd_accel.walk()?;
+
+    // Extract speed values in mph
+    let mut speed_mph: Vec<f64> = vec![];
+    for s in sd_accel.veh.history.speed_ach.clone() {
+        speed_mph.push(s.get_fresh(|| format_dbg!())?.get::<si::mile_per_hour>())
+    }
+
+    // Extract time values in seconds
+    let time_s: Vec<f64> = sd_accel
+        .cyc
+        .time
         .iter()
-        .any(|&x| x.get_fresh(loc) >= 60.0 * uc::MPH)
-    {
-        let interp = Interpolator::new_1d(
-            {
-                let s_mph = vec![];
-                for s in sd_accel.veh.history.speed_ach {
-                    s_mph.push(s.get_fresh(|| format_dbg!())?.get::<si::mile_per_hour>());
-                }
-                s_mph
-            },
-            sd_accel.cyc.time.iter().map(|t| t.get::<si::second>()),
-            statStrategy::Linear,
-            Extrapolate::Clamp,
-        )?;
-        Ok(Some(
-            interpolate(&60., &sd_accel.mph_ach, &sd_accel.cyc0.time_s, false)
-                .with_context(|| format_dbg!())?,
-        ))
+        .map(|t| t.get::<si::second>())
+        .collect();
+
+    // Check if vehicle reaches 60 mph
+    if speed_mph.iter().any(|&x| x >= 60.0) {
+        // Create interpolator from speed to time
+        let interp = Interpolator::new_1d(speed_mph, time_s, Strategy::Linear, Extrapolate::Clamp)
+            .with_context(|| format_dbg!())?;
+
+        // Interpolate time at 60 mph
+        let accel_time = interp.interpolate(&[60.0])?;
+        Ok(accel_time)
     } else {
-        Ok(None)
+        // Vehicle doesn't reach 60 mph
+        println!(
+            "Warning: Vehicle '{}' doesn't reach 60 mph in the acceleration test",
+            sd_accel.veh.name
+        );
+        Ok(f64::NAN)
     }
 }
 
-const MPH_PER_MPS: f64 = 2.2369362921;
-const CHG_EFF: f64 = 0.86;
+// const MPH_PER_MPS: f64 = 2.2369362921;
+const DEFAULT_CHG_EFF: f64 = 0.86;
 
 #[serde_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct FuelProperties {
     // TODO: make a way to serialize/deserialize with "J/m^3"
     // fuel energy density
@@ -63,6 +69,12 @@ pub struct FuelProperties {
     /// fuel density
     pub density: si::MassDensity,
 }
+
+impl Init for FuelProperties {}
+impl SerdeAPI for FuelProperties {}
+
+#[pyo3_api]
+impl FuelProperties {}
 
 impl Default for FuelProperties {
     /// Default values for gasoline
@@ -126,6 +138,7 @@ impl VehicleEfficiency for Vehicle {
 
 #[serde_api]
 #[derive(Clone, Default, Debug, Deserialize, Serialize, PartialEq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct LabelFe {
     pub veh: Option<Vehicle>,
     pub adj_params: AdjCoef,
@@ -154,8 +167,15 @@ pub struct LabelFe {
     pub net_phev_cd_miles: Option<f64>,
 }
 
+#[pyo3_api]
+impl LabelFe {}
+
+impl Init for LabelFe {}
+impl SerdeAPI for LabelFe {}
+
 #[serde_api]
 #[derive(Default, Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Label fuel economy values for a PHEV vehicle
 pub struct LabelFePHEV {
     pub regen_soc_buffer: si::Ratio,
@@ -163,8 +183,15 @@ pub struct LabelFePHEV {
     pub hwy: PHEVCycleCalc,
 }
 
+#[pyo3_api]
+impl LabelFePHEV {}
+
+impl Init for LabelFePHEV {}
+impl SerdeAPI for LabelFePHEV {}
+
 #[serde_api]
 #[derive(Default, Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 /// Label fuel economy calculations for a specific cycle of a PHEV vehicle
 pub struct PHEVCycleCalc {
     /// Charge depletion battery kW-hr
@@ -182,7 +209,7 @@ pub struct PHEVCycleCalc {
     /// Fraction of transition cycles spent in charge depletion
     pub cd_frac_in_trans: f64,
     /// SOC change during 1 cycle
-    pub trans_init_soc: f64,
+    pub trans_init_soc: si::Ratio,
     /// charge depletion battery kW-hr
     pub trans_ess_kwh: f64,
     pub trans_ess_kwh_per_mi: f64,
@@ -215,18 +242,31 @@ pub struct PHEVCycleCalc {
     pub adj_mpgge: f64,
     pub adj_kwh_per_mi: f64,
     pub adj_ess_kwh_per_mi: f64,
-    pub delta_soc: f64,
+    pub delta_soc: si::Ratio,
     /// Total number of miles in charge depletion mode, assuming constant kWh_per_mi
     pub total_cd_miles: f64,
 }
 
+impl Init for PHEVCycleCalc {}
+impl SerdeAPI for PHEVCycleCalc {}
+
+#[pyo3_api]
+impl PHEVCycleCalc {}
+
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct AdjCoef {
     pub city_intercept: f64,
     pub city_slope: f64,
     pub hwy_intercept: f64,
     pub hwy_slope: f64,
 }
+
+#[pyo3_api]
+impl AdjCoef {}
+
+impl Init for AdjCoef {}
+impl SerdeAPI for AdjCoef {}
 
 impl Default for AdjCoef {
     fn default() -> Self {
@@ -240,7 +280,8 @@ impl Default for AdjCoef {
 }
 
 #[serde_api]
-#[derive(Default, Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct PhevUtilizationParams {
     pub ld_fe_adj_coef: AdjCoefMap,
     /// Frequency of recharge events
@@ -249,13 +290,22 @@ pub struct PhevUtilizationParams {
     pub uf_array: Vec<f64>,
 }
 
+impl Init for PhevUtilizationParams {}
+impl SerdeAPI for PhevUtilizationParams {}
+
+impl Default for PhevUtilizationParams {
+    fn default() -> Self {
+        todo!()
+    }
+}
+
 #[derive(Default, Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct AdjCoefMap {
     pub adj_coef_map: HashMap<String, AdjCoef>,
 }
 
 /// Generates label fuel economy (FE) values for a provided vehicle.
-
+///
 /// # Arguments
 ///
 /// - `veh`: vehicle::Vehicle
@@ -263,7 +313,7 @@ pub struct AdjCoefMap {
 ///     If True, sim_drive objects for each cycle are also returned.
 /// - `verbose`: boolean, default false
 ///     If true, print out key results
-
+///
 /// Returns label fuel economy values as a struct and (optionally)
 /// simdrive::SimDrive objects.
 pub fn get_label_fe(
@@ -271,10 +321,11 @@ pub fn get_label_fe(
     max_epa_adj: Option<f64>,
     full_detail: Option<bool>,
     fuel_props: Option<FuelProperties>,
+    phev_utilization_params: Option<PhevUtilizationParams>,
     verbose: Option<bool>,
 ) -> anyhow::Result<(LabelFe, Option<HashMap<&str, SimDrive>>)> {
     let max_epa_adj = max_epa_adj.unwrap_or(0.3);
-    let phev_utilization_params = PhevUtilizationParams::default();
+    let phev_utilization_params = &phev_utilization_params.unwrap_or_default();
     let fuel_props = fuel_props.unwrap_or_default();
 
     let mut cyc: HashMap<&str, Cycle> = HashMap::new();
@@ -284,7 +335,7 @@ pub fn get_label_fe(
     label_fe.veh = Some(veh.clone());
 
     // load the cycles and instantiate simdrive objects
-    cyc.insert("accel", *CYC_ACCEL);
+    cyc.insert("accel", CYC_ACCEL.clone());
     cyc.insert("udds", Cycle::from_resource("udds.csv", false)?);
     cyc.insert("hwy", Cycle::from_resource("hwfet.csv", false)?);
 
@@ -300,7 +351,7 @@ pub fn get_label_fe(
     sd.insert("hwy", SimDrive::new(veh.clone(), cyc["hwy"].clone(), None));
 
     for (k, val) in sd.iter_mut() {
-        val.walk()?;
+        val.walk().with_context(|| format_dbg!(k))?;
     }
 
     // find year-based adjustment parameters
@@ -377,7 +428,7 @@ pub fn get_label_fe(
                         * fuel_props.kwh_per_gge()
                         * (1. - max_epa_adj),
                 )) * fuel_props.kwh_per_gge()
-                    / CHG_EFF;
+                    / DEFAULT_CHG_EFF;
             label_fe.adj_hwy_kwh_per_mi =
                 (1. / f64::max(
                     1. / (adj_params.hwy_intercept
@@ -387,13 +438,13 @@ pub fn get_label_fe(
                         * fuel_props.kwh_per_gge()
                         * (1. - max_epa_adj),
                 )) * fuel_props.kwh_per_gge()
-                    / CHG_EFF;
+                    / DEFAULT_CHG_EFF;
             label_fe.adj_comb_kwh_per_mi =
                 0.55 * label_fe.adj_udds_kwh_per_mi + 0.45 * label_fe.adj_hwy_kwh_per_mi;
 
-            label_fe.adj_udds_ess_kwh_per_mi = label_fe.adj_udds_kwh_per_mi * CHG_EFF;
-            label_fe.adj_hwy_ess_kwh_per_mi = label_fe.adj_hwy_kwh_per_mi * CHG_EFF;
-            label_fe.adj_comb_ess_kwh_per_mi = label_fe.adj_comb_kwh_per_mi * CHG_EFF;
+            label_fe.adj_udds_ess_kwh_per_mi = label_fe.adj_udds_kwh_per_mi * DEFAULT_CHG_EFF;
+            label_fe.adj_hwy_ess_kwh_per_mi = label_fe.adj_hwy_kwh_per_mi * DEFAULT_CHG_EFF;
+            label_fe.adj_comb_ess_kwh_per_mi = label_fe.adj_comb_kwh_per_mi * DEFAULT_CHG_EFF;
 
             // range for combined city/highway
             // Get energy capacity from the proper powertrain
@@ -409,10 +460,10 @@ pub fn get_label_fe(
         // PHEV
         let phev_calcs = get_label_fe_phev(
             veh,
-            &mut sd,
-            &phev_utilization_params,
+            phev_utilization_params,
             adj_params,
             max_epa_adj,
+            &fuel_props,
         )?;
         label_fe.phev_calcs = Some(phev_calcs.clone());
 
@@ -455,7 +506,7 @@ pub fn get_label_fe(
             &phev_utilization_params.rechg_freq_miles,
             0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles,
         )
-        .unwrap()
+        .with_context(|| format_dbg!())?
             - 1];
 
         label_fe.net_phev_cd_miles =
@@ -464,19 +515,20 @@ pub fn get_label_fe(
         // For PHEVs, calculate net range as the sum of CD range and CS range
         if let PowertrainType::PlugInHybridElectricVehicle(phev) = &veh.pt_type {
             // Get CS range by determining how much fuel energy remains after depleting the battery
-            let fuel_energy_kwh = phev.fs.energy_capacity;
+            let fuel_energy_kwh = phev.fs.energy_capacity.get::<si::kilowatt_hour>();
             let fuel_energy_gge = fuel_energy_kwh / fuel_props.kwh_per_gge();
 
             label_fe.net_range_miles = (fuel_energy_gge
-                - label_fe.net_phev_cd_miles.unwrap() / label_fe.adj_cd_comb_mpgge.unwrap())
-                * label_fe.adj_cs_comb_mpgge.unwrap()
-                + label_fe.net_phev_cd_miles.unwrap();
+                - label_fe.net_phev_cd_miles.with_context(|| format_dbg!())?
+                    / label_fe.adj_cd_comb_mpgge.with_context(|| format_dbg!())?)
+                * label_fe.adj_cs_comb_mpgge.with_context(|| format_dbg!())?
+                + label_fe.net_phev_cd_miles.with_context(|| format_dbg!())?;
         }
     }
 
     // run accelerating sim_drive
     let mut sd_accel = SimDrive::new(veh.clone(), cyc["accel"].clone(), None);
-    label_fe.net_accel = get_net_accel(&mut sd_accel, &veh.name)?;
+    label_fe.net_accel = get_net_accel(&mut sd_accel)?;
     sd.insert("accel", sd_accel);
 
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
@@ -497,14 +549,28 @@ pub fn get_label_fe(
 
 #[cfg(feature = "pyo3")]
 #[pyfunction(name = "get_label_fe")]
-#[cfg_attr(feature = "pyo3", pyo3(signature = (veh, full_detail=None, verbose=None)))]
+#[cfg_attr(
+    feature = "pyo3",
+    pyo3(signature = (
+        veh, max_epa_adj=None, full_detail=None, fuel_props=None, phev_utilization_params=None, verbose=None))
+)]
 /// pyo3 version of [get_label_fe]
 pub fn get_label_fe_py(
     veh: &Vehicle,
+    max_epa_adj: Option<f64>,
     full_detail: Option<bool>,
+    fuel_props: Option<FuelProperties>,
+    phev_utilization_params: Option<PhevUtilizationParams>,
     verbose: Option<bool>,
-) -> anyhow::Result<(LabelFe, Option<HashMap<&str, SimDrive>>)> {
-    let label_fe = get_label_fe(veh, full_detail, verbose)?;
+) -> anyhow::Result<LabelFe> {
+    let (label_fe, _) = get_label_fe(
+        veh,
+        max_epa_adj,
+        full_detail,
+        fuel_props,
+        phev_utilization_params,
+        verbose,
+    )?;
     Ok(label_fe)
 }
 
@@ -517,141 +583,226 @@ pub fn get_label_fe_py(
 /// label fuel economy values for PHEV as a struct.
 pub fn get_label_fe_phev(
     veh: &Vehicle,
-    sd: &mut HashMap<&str, SimDrive>,
-    phev_tilization_params: &PhevUtilizationParams,
+    phev_utilization_params: &PhevUtilizationParams,
     adj_params: &AdjCoef,
     max_epa_adj: f64,
+    fuel_props: &FuelProperties,
 ) -> anyhow::Result<LabelFePHEV> {
     // Get access to the PHEV powertrain
-    let phev_max_soc;
-    let phev_min_soc;
-    let phev_max_regen;
-    let phev_veh_kg;
-    let phev_mc_peak_eff;
-    let phev_ess_max_kwh;
-    let phev_chg_eff;
+    let max_soc: si::Ratio;
+    let min_soc: si::Ratio;
+    let phev_max_regen: si::Ratio;
+    let veh_mass: si::Mass;
+    // equivalent to fastsim-2 `mc_peak_eff`
+    let em_peak_eff: si::Ratio;
+    // battery total energy capacity from soc of 1.0 to 0.0
+    let energy_capacity: si::Energy;
+    let chg_eff: f64;
 
     if let PowertrainType::PlugInHybridElectricVehicle(phev) = &veh.pt_type {
-        phev_max_soc = phev.res.max_soc;
-        phev_min_soc = phev.res.min_soc;
-        phev_max_regen = veh
-            .state
-            .max_regen
-            .get_fresh(|| format_dbg!())?
-            .unwrap_or(0.0);
-        phev_veh_kg = veh.mass().unwrap_or(0.0).get::<si::kilogram>();
-        phev_mc_peak_eff = phev.em.get_peak_eff();
-        phev_ess_max_kwh = phev.res.energy_capacity().unwrap_or(0.0);
-        phev_chg_eff = phev
-            .state
-            .chg_eff
-            .get_fresh(|| format_dbg!())?
-            .unwrap_or(CHG_EFF);
+        max_soc = phev.res.max_soc;
+        min_soc = phev.res.min_soc;
+        phev_max_regen = 0.98 * uc::R;
+        veh_mass = *veh.state.mass.get_fresh(|| format_dbg!())?;
+        em_peak_eff = phev
+            .em
+            .eff_interp_achieved
+            .max()
+            .with_context(|| format_dbg!())?
+            * uc::R;
+        energy_capacity = phev.res.energy_capacity;
+        chg_eff = DEFAULT_CHG_EFF; // Use default charging efficiency
     } else {
         bail!("Vehicle is not a PHEV");
     }
 
-    let mut phev_calcs = LabelFePHEV {
-        regen_soc_buffer: f64::min(
-            ((0.5 * phev_veh_kg * ((60. * (1. / MPH_PER_MPS)).powi(2)))
-                * (1. / 3600.)
-                * (1. / 1000.)
-                * phev_max_regen
-                * phev_mc_peak_eff)
-                / phev_ess_max_kwh,
-            (phev_max_soc - phev_min_soc) / 2.0,
-        ),
+    let mut label_fe_phev = LabelFePHEV {
+        regen_soc_buffer: ((0.5 * veh_mass * ((60. * uc::MPH).powi(P2::new())))
+            * phev_max_regen
+            * em_peak_eff
+            / energy_capacity)
+            .min((max_soc - min_soc) / 2.0),
         ..Default::default()
     };
 
+    // Create SimDrive objects for PHEV calculations
+    let mut sd: HashMap<&str, SimDrive> = HashMap::new();
+    sd.insert(
+        "udds",
+        SimDrive::new(veh.clone(), Cycle::from_resource("udds.csv", false)?, None),
+    );
+    sd.insert(
+        "hwy",
+        SimDrive::new(veh.clone(), Cycle::from_resource("hwfet.csv", false)?, None),
+    );
+
     // charge sustaining behavior
-    for (key, sd_val) in sd.iter_mut() {
+    for (key, sd) in sd.iter_mut() {
         // do PHEV soc iteration
         // This runs 1 cycle starting at max SOC then runs 1 cycle starting at min SOC.
         // By assuming that the battery SOC depletion per mile is constant across cycles,
         // the first cycle can be extrapolated until charge sustaining kicks in.
-        sd_val.walk()?;
+        sd.walk()?;
         let mut phev_calc = PHEVCycleCalc::default();
 
         // charge depletion cycle has already been simulated
         // charge depletion battery kW-hr
-        phev_calc.cd_ess_kwh = (phev_max_soc - phev_min_soc) * phev_ess_max_kwh;
+        phev_calc.cd_ess_kwh = ((max_soc - min_soc) * energy_capacity).get::<si::kilowatt_hour>();
+
+        // Get SOC and distance values
+        let res = sd.veh.res().with_context(|| format_dbg!())?;
+        let soc_start = *res
+            .history
+            .soc
+            .first()
+            .with_context(|| format_dbg!())?
+            .get_fresh(|| format_dbg!())?;
+        let soc_end = *res
+            .history
+            .soc
+            .last()
+            .with_context(|| format_dbg!())?
+            .get_fresh(|| format_dbg!())?;
+        let dist_mi = sd
+            .veh
+            .state
+            .dist
+            .get_fresh(|| format_dbg!())?
+            .get::<si::mile>();
 
         // SOC change during 1 cycle
-        phev_calc.delta_soc = sd_val.soc[0] - sd_val.soc.last().unwrap();
+        phev_calc.delta_soc = soc_start - soc_end;
         // total number of miles in charge depletion mode, assuming constant kWh_per_mi
-        phev_calc.total_cd_miles =
-            (phev_max_soc - phev_min_soc) * phev_ess_max_kwh / sd_val.battery_kwh_per_mi;
+        phev_calc.total_cd_miles = ((max_soc - min_soc) * energy_capacity)
+            .get::<si::kilowatt_hour>()
+            / sd.veh.kwh_per_mi()?;
         // number of cycles in charge depletion mode, up to transition
-        phev_calc.cd_cycs = phev_calc.total_cd_miles / sd_val.dist_mi.sum();
+        phev_calc.cd_cycs = phev_calc.total_cd_miles / dist_mi;
         // fraction of transition cycle spent in charge depletion
         phev_calc.cd_frac_in_trans = phev_calc.cd_cycs % phev_calc.cd_cycs.floor();
 
-        // charge depletion fuel gallons
-        phev_calc.cd_fs_gal = sd_val.fs_kwh_out_ach.sum() / fuel_props.kwh_per_gge();
-        phev_calc.cd_fs_kwh = sd_val.fs_kwh_out_ach.sum();
-        phev_calc.cd_ess_kwh_per_mi = sd_val.battery_kwh_per_mi;
-        phev_calc.cd_mpg = sd_val.mpgge;
+        // charge depletion fuel gallons - get from fuel converter
+        let fuel_energy_kwh = if let Some(fc) = sd.veh.fc() {
+            fc.state
+                .energy_fuel
+                .get_fresh(|| format_dbg!())?
+                .get::<si::kilowatt_hour>()
+        } else {
+            0.0
+        };
+        phev_calc.cd_fs_gal = fuel_energy_kwh / fuel_props.kwh_per_gge();
+        phev_calc.cd_fs_kwh = fuel_energy_kwh;
+        phev_calc.cd_ess_kwh_per_mi = sd.veh.kwh_per_mi()?;
+        phev_calc.cd_mpg = sd.veh.mpg(fuel_props.energy_density)?;
 
         // utility factor calculation for last charge depletion iteration and transition iteration
         // ported from excel
-        let interp_x_vals =
-            Array1::range(0.0, phev_calc.cd_cycs.ceil() + 1.0, 1.0) * sd_val.dist_mi.sum();
-        phev_calc.lab_iter_uf = interp_x_vals
-            .iter()
-            .map(|x: &f64| -> f64 {
-                phev_tilization_params.uf_array
-                    [first_grtr(&phev_tilization_params.rechg_freq_miles, *x).unwrap() - 1]
-            })
+        let interp_x_vals: Vec<f64> = (0..((phev_calc.cd_cycs.ceil() + 1.0) as usize))
+            .map(|i| i as f64 * dist_mi)
             .collect();
 
-        // transition cycle
-        phev_calc.trans_init_soc = phev_max_soc - phev_calc.cd_cycs.floor() * phev_calc.delta_soc;
+        phev_calc.lab_iter_uf = vec![];
+        for x in interp_x_vals {
+            phev_calc.lab_iter_uf.push(
+                phev_utilization_params.uf_array[first_grtr(
+                    &phev_utilization_params.rechg_freq_miles,
+                    x,
+                )
+                .with_context(|| format_dbg!())?
+                    - 1],
+            );
+        }
 
-        // run the transition cycle
-        sd_val.sim_drive(Some(phev_calc.trans_init_soc), None)?;
+        // transition cycle
+        phev_calc.trans_init_soc = max_soc - phev_calc.cd_cycs.floor() * phev_calc.delta_soc;
+
+        // run the transition cycle by setting initial SOC
+        let res_mut = sd.veh.res_mut().with_context(|| format_dbg!())?;
+        res_mut.state.soc.mark_stale();
+        res_mut
+            .state
+            .soc
+            .update(phev_calc.trans_init_soc, || format_dbg!())?;
+        sd.walk()?;
+
         // charge depletion battery kW-hr
         phev_calc.trans_ess_kwh =
-            phev_calc.cd_ess_kwh_per_mi * sd_val.dist_mi.sum() * phev_calc.cd_frac_in_trans;
+            phev_calc.cd_ess_kwh_per_mi * dist_mi * phev_calc.cd_frac_in_trans;
         phev_calc.trans_ess_kwh_per_mi = phev_calc.cd_ess_kwh_per_mi * phev_calc.cd_frac_in_trans;
 
         // charge sustaining
         // the 0.01 is here to be consistent with Excel
-        let init_soc = sd_val.veh.min_soc + 0.01;
-        sd_val.sim_drive(Some(init_soc), None)?;
+        let init_soc = min_soc + 0.01 * uc::R;
+        let res_mut = sd.veh.res_mut().with_context(|| format_dbg!())?;
+        res_mut.state.soc.mark_stale();
+        res_mut.state.soc.update(init_soc, || format_dbg!())?;
+        sd.walk()?;
+
         // charge sustaining fuel gallons
-        phev_calc.cs_fs_gal = sd_val.fs_kwh_out_ach.sum() / fuel_props.kwh_per_gge();
+        let cs_fuel_energy_kwh = if let Some(fc) = sd.veh.fc() {
+            fc.state
+                .energy_fuel
+                .get_fresh(|| format_dbg!())?
+                .get::<si::kilowatt_hour>()
+        } else {
+            0.0
+        };
+        phev_calc.cs_fs_gal = cs_fuel_energy_kwh / fuel_props.kwh_per_gge();
         // charge depletion fuel gallons, dependent on phev_calc.trans_fs_gal
         phev_calc.trans_fs_gal = phev_calc.cs_fs_gal * (1.0 - phev_calc.cd_frac_in_trans);
-        phev_calc.cs_fs_kwh = sd_val.fs_kwh_out_ach.sum();
+        phev_calc.cs_fs_kwh = cs_fuel_energy_kwh;
         phev_calc.trans_fs_kwh = phev_calc.cs_fs_kwh * (1.0 - phev_calc.cd_frac_in_trans);
         // charge sustaining battery kW-hr
-        phev_calc.cs_ess_kwh = sd_val.ess_dischg_kj;
-        phev_calc.cs_ess_kwh_per_mi = sd_val.battery_kwh_per_mi;
+        let cs_ess_energy_kwh = if let Some(res) = sd.veh.res() {
+            res.state
+                .energy_out_chemical
+                .get_fresh(|| format_dbg!())?
+                .get::<si::kilowatt_hour>()
+        } else {
+            0.0
+        };
+        phev_calc.cs_ess_kwh = cs_ess_energy_kwh;
+        phev_calc.cs_ess_kwh_per_mi = sd.veh.kwh_per_mi()?;
 
-        let lab_iter_uf_diff = diff(&phev_calc.lab_iter_uf);
-        phev_calc.lab_uf_gpm = Array1::from_vec(vec![
-            phev_calc.trans_fs_gal * lab_iter_uf_diff.last().unwrap(),
-            phev_calc.cs_fs_gal * (1.0 - phev_calc.lab_iter_uf.last().unwrap()),
-        ]) / sd_val.dist_mi.sum();
+        let lab_iter_uf_diff = phev_calc.lab_iter_uf.diff();
+        phev_calc.lab_uf_gpm = [
+            phev_calc.trans_fs_gal * lab_iter_uf_diff.last().with_context(|| format_dbg!())?,
+            phev_calc.cs_fs_gal
+                * (1.0
+                    - phev_calc
+                        .lab_iter_uf
+                        .last()
+                        .with_context(|| format_dbg!())?),
+        ]
+        .iter()
+        .map(|x| *x / dist_mi)
+        .collect();
 
-        phev_calc.cd_mpg = sd_val.mpgge;
+        phev_calc.cd_mpg = sd.veh.mpg(fuel_props.energy_density)?;
 
         // city and highway cycle ranges
+        let min_soc_in_cycle = phev_calc.delta_soc.abs(); // Use delta_soc as proxy for min SOC change
         phev_calc.cd_miles =
-            if (phev_max_soc - phev_calcs.regen_soc_buffer - sd_val.soc.min()?) < 0.01 {
+            if (max_soc - label_fe_phev.regen_soc_buffer - min_soc_in_cycle) < 0.01 * uc::R {
                 1000.0
             } else {
-                phev_calc.cd_cycs.ceil() * sd_val.dist_mi.sum()
+                phev_calc.cd_cycs.ceil() * dist_mi
             };
-        phev_calc.cd_lab_mpg =
-            phev_calc.lab_iter_uf.last().unwrap() / (phev_calc.trans_fs_gal / sd_val.dist_mi.sum());
+        phev_calc.cd_lab_mpg = phev_calc
+            .lab_iter_uf
+            .last()
+            .with_context(|| format_dbg!())?
+            / (phev_calc.trans_fs_gal / dist_mi);
 
         // charge sustaining
-        phev_calc.cs_mpg = sd_val.dist_mi.sum() / phev_calc.cs_fs_gal;
+        phev_calc.cs_mpg = dist_mi / phev_calc.cs_fs_gal;
 
-        phev_calc.lab_uf = phev_tilization_params.uf_array
-            [first_grtr(&phev_tilization_params.rechg_freq_miles, phev_calc.cd_miles).unwrap() - 1];
+        phev_calc.lab_uf = phev_utilization_params.uf_array[first_grtr(
+            &phev_utilization_params.rechg_freq_miles,
+            phev_calc.cd_miles,
+        )
+        .with_context(|| format_dbg!())?
+            - 1];
 
         // labCombMpgge
         phev_calc.cd_adj_mpg =
@@ -667,21 +818,27 @@ pub fn get_label_fe_phev(
             .extend(vec![phev_calc.cd_ess_kwh_per_mi; phev_calc.cd_cycs.floor() as usize].iter());
         lab_iter_kwh_per_mi_vals.push(phev_calc.trans_ess_kwh_per_mi);
         lab_iter_kwh_per_mi_vals.push(0.0);
-        phev_calc.lab_iter_kwh_per_mi = Array1::from_vec(lab_iter_kwh_per_mi_vals);
+        phev_calc.lab_iter_kwh_per_mi = lab_iter_kwh_per_mi_vals;
+
+        let uf_diff = phev_calc.lab_iter_uf.diff();
         let mut vals = Vec::new();
         vals.push(0.0);
-        vals.extend(
-            (&phev_calc
-                .lab_iter_kwh_per_mi
-                .slice(s![1..phev_calc.lab_iter_kwh_per_mi.len() - 1])
-                * &diff(&phev_calc.lab_iter_uf).slice(s![1..]))
-                .iter(),
-        );
+        for i in 1..phev_calc.lab_iter_kwh_per_mi.len() - 1 {
+            if i - 1 < uf_diff.len() {
+                vals.push(phev_calc.lab_iter_kwh_per_mi[i] * uf_diff[i - 1]);
+            }
+        }
         vals.push(0.0);
-        phev_calc.lab_iter_uf_kwh_per_mi = Array1::from_vec(vals);
+        phev_calc.lab_iter_uf_kwh_per_mi = vals;
 
-        phev_calc.lab_kwh_per_mi =
-            phev_calc.lab_iter_uf_kwh_per_mi.sum() / phev_calc.lab_iter_uf.max()?;
+        phev_calc.lab_kwh_per_mi = phev_calc
+            .lab_iter_uf_kwh_per_mi
+            .iter()
+            .fold(0.0, |acc, x| acc + x)
+            / phev_calc
+                .lab_iter_uf
+                .iter()
+                .fold(0.0f64, |acc, x| acc.max(*x));
 
         let mut adj_iter_mpgge_vals = vec![0.0; phev_calc.cd_cycs.floor() as usize];
         let mut adj_iter_kwh_per_mi_vals = vec![0.0; phev_calc.lab_iter_kwh_per_mi.len()];
@@ -689,17 +846,37 @@ pub fn get_label_fe_phev(
             adj_iter_mpgge_vals.push(f64::max(
                 1.0 / (adj_params.city_intercept
                     + (adj_params.city_slope
-                        / (sd_val.dist_mi.sum()
+                        / (sd
+                            .veh
+                            .state
+                            .dist
+                            .get_fresh(|| format_dbg!())?
+                            .get::<si::mile>()
                             / (phev_calc.trans_fs_kwh / fuel_props.kwh_per_gge())))),
-                sd_val.dist_mi.sum() / (phev_calc.trans_fs_kwh / fuel_props.kwh_per_gge())
+                sd.veh
+                    .state
+                    .dist
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::mile>()
+                    / (phev_calc.trans_fs_kwh / fuel_props.kwh_per_gge())
                     * (1.0 - max_epa_adj),
             ));
             adj_iter_mpgge_vals.push(f64::max(
                 1.0 / (adj_params.city_intercept
                     + (adj_params.city_slope
-                        / (sd_val.dist_mi.sum()
+                        / (sd
+                            .veh
+                            .state
+                            .dist
+                            .get_fresh(|| format_dbg!())?
+                            .get::<si::mile>()
                             / (phev_calc.cs_fs_kwh / fuel_props.kwh_per_gge())))),
-                sd_val.dist_mi.sum() / (phev_calc.cs_fs_kwh / fuel_props.kwh_per_gge())
+                sd.veh
+                    .state
+                    .dist
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::mile>()
+                    / (phev_calc.cs_fs_kwh / fuel_props.kwh_per_gge())
                     * (1.0 - max_epa_adj),
             ));
 
@@ -723,17 +900,37 @@ pub fn get_label_fe_phev(
             adj_iter_mpgge_vals.push(f64::max(
                 1.0 / (adj_params.hwy_intercept
                     + (adj_params.hwy_slope
-                        / (sd_val.dist_mi.sum()
+                        / (sd
+                            .veh
+                            .state
+                            .dist
+                            .get_fresh(|| format_dbg!())?
+                            .get::<si::mile>()
                             / (phev_calc.trans_fs_kwh / fuel_props.kwh_per_gge())))),
-                sd_val.dist_mi.sum() / (phev_calc.trans_fs_kwh / fuel_props.kwh_per_gge())
+                sd.veh
+                    .state
+                    .dist
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::mile>()
+                    / (phev_calc.trans_fs_kwh / fuel_props.kwh_per_gge())
                     * (1.0 - max_epa_adj),
             ));
             adj_iter_mpgge_vals.push(f64::max(
                 1.0 / (adj_params.hwy_intercept
                     + (adj_params.hwy_slope
-                        / (sd_val.dist_mi.sum()
+                        / (sd
+                            .veh
+                            .state
+                            .dist
+                            .get_fresh(|| format_dbg!())?
+                            .get::<si::mile>()
                             / (phev_calc.cs_fs_kwh / fuel_props.kwh_per_gge())))),
-                sd_val.dist_mi.sum() / (phev_calc.cs_fs_kwh / fuel_props.kwh_per_gge())
+                sd.veh
+                    .state
+                    .dist
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::mile>()
+                    / (phev_calc.cs_fs_kwh / fuel_props.kwh_per_gge())
                     * (1.0 - max_epa_adj),
             ));
 
@@ -754,125 +951,168 @@ pub fn get_label_fe_phev(
                 }
             }
         }
-        phev_calc.adj_iter_mpgge = Array1::from(adj_iter_mpgge_vals);
-        phev_calc.adj_iter_kwh_per_mi = Array1::from(adj_iter_kwh_per_mi_vals);
+        phev_calc.adj_iter_mpgge = adj_iter_mpgge_vals;
+        phev_calc.adj_iter_kwh_per_mi = adj_iter_kwh_per_mi_vals;
 
-        phev_calc.adj_iter_cd_miles =
-            Array1::from_vec(vec![0.0; phev_calc.cd_cycs.ceil() as usize + 2]);
+        phev_calc.adj_iter_cd_miles = vec![0.0; phev_calc.cd_cycs.ceil() as usize + 2];
         for c in 0..phev_calc.adj_iter_cd_miles.len() {
             if c == 0 {
                 phev_calc.adj_iter_cd_miles[c] = 0.0;
             } else if c <= phev_calc.cd_cycs.floor() as usize {
                 phev_calc.adj_iter_cd_miles[c] = phev_calc.adj_iter_cd_miles[c - 1]
-                    + phev_calc.cd_ess_kwh_per_mi * sd_val.dist_mi.sum()
+                    + phev_calc.cd_ess_kwh_per_mi
+                        * sd.veh
+                            .state
+                            .dist
+                            .get_fresh(|| format_dbg!())?
+                            .get::<si::mile>()
                         / phev_calc.adj_iter_kwh_per_mi[c];
             } else if c == phev_calc.cd_cycs.floor() as usize + 1 {
                 phev_calc.adj_iter_cd_miles[c] = phev_calc.adj_iter_cd_miles[c - 1]
-                    + phev_calc.trans_ess_kwh_per_mi * sd_val.dist_mi.sum()
+                    + phev_calc.trans_ess_kwh_per_mi
+                        * sd.veh
+                            .state
+                            .dist
+                            .get_fresh(|| format_dbg!())?
+                            .get::<si::mile>()
                         / phev_calc.adj_iter_kwh_per_mi[c];
             } else {
                 phev_calc.adj_iter_cd_miles[c] = 0.0;
             }
         }
 
-        phev_calc.adj_cd_miles =
-            if phev_max_soc - phev_calcs.regen_soc_buffer - sd_val.soc.min()? < 0.01 {
-                1000.0
-            } else {
-                phev_calc.adj_iter_cd_miles.max()?
-            };
+        let mut soc_hist: Vec<f64> = vec![];
+        for soc in sd
+            .veh
+            .res()
+            .with_context(|| format_dbg!())?
+            .history
+            .soc
+            .clone()
+        {
+            soc_hist.push(soc.get_fresh(|| format_dbg!())?.get::<si::ratio>());
+        }
+
+        phev_calc.adj_cd_miles = if max_soc
+            - label_fe_phev.regen_soc_buffer
+            - (soc_hist.min()? * uc::R)
+            < 0.01 * uc::R
+        {
+            1000.0
+        } else {
+            phev_calc.adj_iter_cd_miles.max()?
+        };
 
         // utility factor calculation for last charge depletion iteration and transition iteration
         // ported from excel
-        phev_calc.adj_iter_uf = phev_calc
-            .adj_iter_cd_miles
-            .iter()
-            .map(|x: &f64| -> f64 {
-                phev_tilization_params.uf_array
-                    [first_grtr(&phev_tilization_params.rechg_freq_miles, *x).unwrap() - 1]
-            })
-            .collect();
 
-        let adj_iter_uf_diff = diff(&phev_calc.adj_iter_uf);
+        phev_calc.adj_iter_uf = vec![];
+        for x in phev_calc.adj_iter_cd_miles.clone() {
+            phev_calc.adj_iter_uf.push(
+                phev_utilization_params.uf_array[first_grtr(
+                    &phev_utilization_params.rechg_freq_miles,
+                    x,
+                )
+                .with_context(|| format_dbg!())?
+                    - 1],
+            )
+        }
+
+        let adj_iter_uf_diff = phev_calc.adj_iter_uf.diff();
         phev_calc.adj_iter_uf_gpm = vec![0.0; phev_calc.cd_cycs.floor() as usize];
         phev_calc.adj_iter_uf_gpm.push(
             (1.0 / phev_calc.adj_iter_mpgge[phev_calc.adj_iter_mpgge.len() - 2])
                 * adj_iter_uf_diff[adj_iter_uf_diff.len() - 2],
         );
         phev_calc.adj_iter_uf_gpm.push(
-            (1.0 / phev_calc.adj_iter_mpgge.last().unwrap())
+            (1.0 / phev_calc
+                .adj_iter_mpgge
+                .last()
+                .with_context(|| format_dbg!())?)
                 * (1.0 - phev_calc.adj_iter_uf[phev_calc.adj_iter_uf.len() - 2]),
         );
 
-        phev_calc.adj_iter_uf_kwh_per_mi =
-            &phev_calc.adj_iter_kwh_per_mi * &diff(&phev_calc.adj_iter_uf);
+        let adj_uf_diff = phev_calc.adj_iter_uf.diff();
+        phev_calc.adj_iter_uf_kwh_per_mi = phev_calc
+            .adj_iter_kwh_per_mi
+            .iter()
+            .zip(adj_uf_diff.iter())
+            .map(|(kwh, uf)| kwh * uf)
+            .collect();
 
-        phev_calc.adj_cd_mpgge = 1.0
-            / phev_calc.adj_iter_uf_gpm[phev_calc.adj_iter_uf_gpm.len() - 2]
-            * phev_calc.adj_iter_uf.max()?;
-        phev_calc.adj_cs_mpgge = 1.0 / phev_calc.adj_iter_uf_gpm.last().unwrap()
-            * (1.0 - phev_calc.adj_iter_uf.max()?);
+        let max_uf: f64 = phev_calc
+            .adj_iter_uf
+            .iter()
+            .fold(0.0f64, |acc, x| acc.max(*x));
+        phev_calc.adj_cd_mpgge =
+            1.0 / phev_calc.adj_iter_uf_gpm[phev_calc.adj_iter_uf_gpm.len() - 2] * max_uf;
+        phev_calc.adj_cs_mpgge = 1.0
+            / phev_calc
+                .adj_iter_uf_gpm
+                .last()
+                .with_context(|| format_dbg!())?
+            * (1.0 - max_uf);
 
-        phev_calc.adj_uf = phev_tilization_params.uf_array[first_grtr(
-            &phev_tilization_params.rechg_freq_miles,
+        phev_calc.adj_uf = phev_utilization_params.uf_array[first_grtr(
+            &phev_utilization_params.rechg_freq_miles,
             phev_calc.adj_cd_miles,
         )
-        .unwrap()
+        .with_context(|| format_dbg!())?
             - 1];
 
         phev_calc.adj_mpgge = 1.0
             / (phev_calc.adj_uf / phev_calc.adj_cd_mpgge
                 + (1.0 - phev_calc.adj_uf) / phev_calc.adj_cs_mpgge);
 
-        phev_calc.adj_kwh_per_mi =
-            phev_calc.adj_iter_uf_kwh_per_mi.sum() / phev_calc.adj_iter_uf.max()? / phev_chg_eff;
+        let uf_kwh_sum: f64 = phev_calc
+            .adj_iter_uf_kwh_per_mi
+            .iter()
+            .fold(0.0, |acc, x| acc + x);
+        phev_calc.adj_kwh_per_mi = uf_kwh_sum / max_uf / chg_eff;
 
-        phev_calc.adj_ess_kwh_per_mi =
-            phev_calc.adj_iter_uf_kwh_per_mi.sum() / phev_calc.adj_iter_uf.max()?;
+        phev_calc.adj_ess_kwh_per_mi = uf_kwh_sum / max_uf;
 
         match *key {
-            "udds" => phev_calcs.udds = phev_calc.clone(),
-            "hwy" => phev_calcs.hwy = phev_calc.clone(),
+            "udds" => label_fe_phev.udds = phev_calc.clone(),
+            "hwy" => label_fe_phev.hwy = phev_calc.clone(),
             &_ => bail!("No field for cycle {}", key),
         };
     }
 
-    Ok(phev_calcs)
+    Ok(label_fe_phev)
 }
 
-#[cfg(feature = "pyo3")]
-#[pyfunction(name = "get_label_fe_phev")]
-/// pyo3 version of [get_label_fe_phev]
-pub fn get_label_fe_phev_py(
-    veh: &Vehicle,
-    sd_dict: pyo3::Bound<'_, pyo3::types::PyDict>,
-    adj_params: AdjCoef,
-    long_params: PhevUtilizationParams,
-    sim_params: &SimParams,
-    props: RustPhysicalProperties,
-) -> anyhow::Result<LabelFePHEV> {
-    let mut sd_mut: HashMap<String, SimDrive> = HashMap::new();
+// #[cfg(feature = "pyo3")]
+// #[pyfunction(name = "get_label_fe_phev")]
+// /// pyo3 version of [get_label_fe_phev]
+// pub fn get_label_fe_phev_py(
+//     veh: &Vehicle,
+//     sd_dict: pyo3::Bound<'_, pyo3::types::PyDict>,
+//     adj_params: AdjCoef,
+//     long_params: PhevUtilizationParams,
+//     sim_params: &SimParams,
+// ) -> anyhow::Result<LabelFePHEV> {
+//     let mut sd_mut: HashMap<String, SimDrive> = HashMap::new();
 
-    for (key, value) in sd_dict.iter() {
-        let key_extracted = key
-            .extract::<String>()
-            .with_context(|| format!("{}\nFailed to extract key", format_dbg!()))?;
-        let value_extracted = value
-            .extract()
-            .with_context(|| format!("{}\nFailed to extract value", format_dbg!()))?;
-        sd_mut.insert(key_extracted, value_extracted);
-    }
+//     for (key, value) in sd_dict.iter() {
+//         let key_extracted = key
+//             .extract::<String>()
+//             .with_context(|| format!("{}\nFailed to extract key", format_dbg!()))?;
+//         let value_extracted = value
+//             .extract()
+//             .with_context(|| format!("{}\nFailed to extract value", format_dbg!()))?;
+//         sd_mut.insert(key_extracted, value_extracted);
+//     }
 
-    // type conversion on keys to satisfy function arg below
-    let mut sd_mut =
-        HashMap::from_iter(sd_mut.iter().map(|item| (item.0.as_str(), item.1.clone())));
+//     // type conversion on keys to satisfy function arg below
+//     let mut sd_mut =
+//         HashMap::from_iter(sd_mut.iter().map(|item| (item.0.as_str(), item.1.clone())));
 
-    get_label_fe_phev(
-        veh,
-        &mut sd_mut,
-        &long_params,
-        &adj_params,
-        sim_params,
-        &props,
-    )
-}
+//     get_label_fe_phev(
+//         veh,
+//         &phev_utilization_params,
+//         adj_params,
+//         max_epa_adj,
+//         &fuel_props,
+//     )
+// }

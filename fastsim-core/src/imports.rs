@@ -37,5 +37,6 @@ pub(crate) use std::marker::PhantomData;
 pub(crate) use std::num::{NonZeroU16, NonZeroUsize};
 pub(crate) use std::ops::{Deref, DerefMut, IndexMut, Sub};
 pub(crate) use std::path::{Path, PathBuf};
+pub(crate) use typenum::{P1, P2, P3};
 pub(crate) use uom::typenum;
 pub(crate) use uom::ConstZero;

@@ -597,7 +597,7 @@ impl Vehicle {
                 PowertrainType::PlugInHybridElectricVehicle(_) => "PHEV".into(),
                 PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
             },
-            veh_year: self.year as u32,
+            veh_year: self.year,
             wheel_base_m: self.chassis.wheel_base.get::<si::meter>(),
             wheel_base_m_doc: None,
             wheel_coef_of_fric: self.chassis.wheel_fric_coef.get::<si::ratio>(),

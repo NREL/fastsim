@@ -465,7 +465,7 @@ impl SimDrive {
         })?;
         vs.pwr_accel.update(
             mass / (2.0 * dt)
-                * (speed.powi(typenum::P2::new()) - speed_prev.powi(typenum::P2::new())),
+                * (speed.powi(P2::new()) - speed_prev.powi(P2::new())),
             || format_dbg!(),
         )?;
         vs.pwr_ascent.update(
@@ -482,7 +482,7 @@ impl SimDrive {
             * Air::get_density(None, None)
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
-            * ((speed + speed_prev) / 2.0).powi(typenum::P3::new()),
+            * ((speed + speed_prev) / 2.0).powi(P3::new()),
             || format_dbg!(),
         )?;
         vs.pwr_rr.update(
@@ -502,14 +502,14 @@ impl SimDrive {
                         .chassis
                         .wheel_radius
                         .with_context(|| format_dbg!())?)
-                .powi(typenum::P2::new())
+                .powi(P2::new())
                     - (speed_prev
                         / self
                             .veh
                             .chassis
                             .wheel_radius
                             .with_context(|| format_dbg!())?)
-                    .powi(typenum::P2::new()))
+                    .powi(P2::new()))
                 / self.cyc.dt_at_i(i).with_context(|| format_dbg!())?,
             || format_dbg!(),
         )?;
@@ -617,14 +617,14 @@ pwr deficit: {} kW
                     .chassis
                     .wheel_radius
                     .with_context(|| format_dbg!())?
-                    .powi(typenum::P2::new()));
+                    .powi(P2::new()));
         let drag1 = 3.0 / 16.0
             * *vs.air_density.get_fresh(|| format_dbg!())?
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
             * vs.speed_ach
                 .get_fresh(|| format_dbg!())?
-                .powi(typenum::P2::new());
+                .powi(P2::new());
         let roll1 = 0.5
             * mass
             * uc::ACC_GRAV
@@ -632,12 +632,12 @@ pwr deficit: {} kW
             * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().cos();
         let ascent1 =
             0.5 * uc::ACC_GRAV * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().sin() * mass;
-        let accel0 = -0.5 * mass * speed_prev.powi(typenum::P2::new()) / dt;
+        let accel0 = -0.5 * mass * speed_prev.powi(P2::new()) / dt;
         let drag0 = 1.0 / 16.0
             * *vs.air_density.get_fresh(|| format_dbg!())?
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
-            * speed_prev.powi(typenum::P3::new());
+            * speed_prev.powi(P3::new());
         let roll0 = 0.5
             * mass
             * uc::ACC_GRAV
@@ -652,14 +652,14 @@ pwr deficit: {} kW
         let wheel0 = -0.5
             * self.veh.chassis.wheel_inertia
             * self.veh.chassis.num_wheels as f64
-            * speed_prev.powi(typenum::P2::new())
+            * speed_prev.powi(P2::new())
             / (dt
                 * self
                     .veh
                     .chassis
                     .wheel_radius
                     .with_context(|| format_dbg!())?
-                    .powi(typenum::P2::new()));
+                    .powi(P2::new()));
 
         let t3 = drag3;
         let t2 = accel2 + drag2 + wheel2;
@@ -675,13 +675,13 @@ pwr deficit: {} kW
         // solver gain
         let g = &self.sim_params.ach_speed_solver_gain;
         let pwr_err_fn = |speed_guess: si::Velocity| -> si::Power {
-            t3 * speed_guess.powi(typenum::P3::new())
-                + t2 * speed_guess.powi(typenum::P2::new())
+            t3 * speed_guess.powi(P3::new())
+                + t2 * speed_guess.powi(P2::new())
                 + t1 * speed_guess
                 + t0
         };
         let pwr_err_per_speed_guess_fn = |speed_guess: si::Velocity| {
-            3.0 * t3 * speed_guess.powi(typenum::P2::new()) + 2.0 * t2 * speed_guess + t1
+            3.0 * t3 * speed_guess.powi(P2::new()) + 2.0 * t2 * speed_guess + t1
         };
         let pwr_err = pwr_err_fn(speed_guess);
         if almost_eq_uom(&pwr_err, &(0. * uc::W), Some(1e-6)) {

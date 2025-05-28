@@ -856,7 +856,7 @@ impl FuelConverterThermal {
         self.state.pwr_thrml_to_amb.update(
             *self.state.htc_to_amb.get_fresh(|| format_dbg!())?
                 * PI
-                * self.length_for_convection.powi(typenum::P2::new())
+                * self.length_for_convection.powi(P2::new())
                 / 4.0
                 * (self
                     .state

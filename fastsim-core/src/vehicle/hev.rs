@@ -105,11 +105,11 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     * (rgwdb
                         .speed_soc_disch_buffer
                         .with_context(|| format_dbg!())?
-                        .powi(typenum::P2::new())
+                        .powi(P2::new())
                         - veh_state
                             .speed_ach
                             .get_stale(|| format_dbg!())?
-                            .powi(typenum::P2::new())))
+                            .powi(P2::new())))
                 .max(si::Energy::ZERO)
                     * rgwdb
                         .speed_soc_disch_buffer_coeff
@@ -120,11 +120,11 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     * (veh_state
                         .speed_ach
                         .get_stale(|| format_dbg!())?
-                        .powi(typenum::P2::new())
+                        .powi(P2::new())
                         - rgwdb
                             .speed_soc_regen_buffer
                             .with_context(|| format_dbg!())?
-                            .powi(typenum::P2::new())))
+                            .powi(P2::new())))
                 .max(si::Energy::ZERO)
                     * rgwdb
                         .speed_soc_regen_buffer_coeff
@@ -867,11 +867,11 @@ impl RESGreedyWithDynamicBuffers {
                     * (self
                         .speed_soc_fc_on_buffer
                         .with_context(|| format_dbg!())?
-                        .powi(typenum::P2::new())
+                        .powi(P2::new())
                         - veh_state
                             .speed_ach
                             .get_stale(|| format_dbg!())?
-                            .powi(typenum::P2::new()));
+                            .powi(P2::new()));
                 energy_delta_to_buffer_speed.max(si::Energy::ZERO)
                     * self
                         .speed_soc_fc_on_buffer_coeff

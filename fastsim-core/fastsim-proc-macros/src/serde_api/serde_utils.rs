@@ -220,7 +220,7 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
             ),
             "Volume" => extract_units!(uom::si::volume::cubic_meter, uom::si::volume::liter),
             "EnergyDensity" => vec![(
-                TokenStream2::from(quote! {EnergyDensity}),
+                quote! {EnergyDensity},
                 String::from("joule_per_cubic_meter"),
             )],
             "MassDensity" => extract_units!(uom::si::mass_density::kilogram_per_cubic_meter),
