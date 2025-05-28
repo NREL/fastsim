@@ -190,7 +190,13 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             strategy::LeftNearest,
                             Extrapolate::Error,
                         )
-                        .with_context(|| format_dbg!())?,
+                        .with_context(|| {
+                            format!(
+                                "{}\n{}",
+                                format_dbg!(f2veh.mc_full_eff_array.len()),
+                                format_dbg!(f2veh.mc_perc_out_array.len())
+                            )
+                        })?,
                         eff_interp_at_max_input: None,
                         // pwr_in_frac_interp: Default::default(),
                         pwr_out_max: f2veh.mc_max_kw * uc::KW,

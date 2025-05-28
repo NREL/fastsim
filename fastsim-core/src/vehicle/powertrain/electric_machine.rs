@@ -46,7 +46,7 @@ pub struct ElectricMachine {
     pub history: ElectricMachineStateHistoryVec,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl ElectricMachine {
     // #[new]
     // fn __new__(
@@ -768,7 +768,7 @@ pub struct ElectricMachineState {
     pub energy_loss: TrackedState<si::Energy>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl ElectricMachineState {}
 
 impl Init for ElectricMachineState {}

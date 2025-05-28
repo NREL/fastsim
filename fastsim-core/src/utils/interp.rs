@@ -200,7 +200,25 @@ where
         + serde::de::DeserializeOwned,
 {
     #[cfg(feature = "resources")]
-    const RESOURCE_PREFIX: &'static str = "interpolators";
+    const RESOURCES_SUBDIR: &'static str = "interpolators";
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type StructWithResources = Interpolator;
+
+    #[test]
+    fn test_resources() {
+        let resource_list = StructWithResources::list_resources().unwrap();
+        assert!(!resource_list.is_empty());
+
+        // verify that resources can all load
+        for resource in resource_list {
+            StructWithResources::from_resource(resource, false).unwrap();
+        }
+    }
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
