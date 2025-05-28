@@ -7,6 +7,7 @@ pub(crate) use crate::pyo3::*;
 
 pub(crate) use crate::error::Error;
 pub(crate) use crate::si;
+pub(crate) use crate::simdrive::TraceMissOptions;
 pub(crate) use crate::traits::*;
 pub(crate) use crate::uc;
 pub(crate) use crate::utils;

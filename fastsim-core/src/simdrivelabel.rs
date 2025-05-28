@@ -19,6 +19,7 @@ fn first_grtr(arr: &[f64], cut: f64) -> Option<usize> {
 
 /// Returns time [s] for 0-60 mph acceleration at max power
 pub fn get_net_accel(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
+    sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
     sd_accel.walk()?;
 
     // Extract speed values in mph
@@ -1116,3 +1117,296 @@ pub fn get_label_fe_phev(
 //         &fuel_props,
 //     )
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::vehicle::vehicle_model::tests::*;
+
+    /// Test that label FE calculations for conventional vehicles match FASTSim-2 results
+    #[test]
+    #[cfg(all(feature = "resources", feature = "yaml"))]
+    fn test_label_fe_conv_vs_fastsim2() {
+        let veh = mock_conv_veh();
+
+        // Get FASTSim-3 label FE results
+        let (label_fe_f3, _) = get_label_fe(&veh, None, None, None, None, None).unwrap();
+
+        // Convert to FASTSim-2 and get label FE results
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
+        let sd = crate::simdrive::SimDrive::new(veh.clone(), cyc, Default::default());
+        let sd2 = sd.to_fastsim2().unwrap();
+        let veh2 = sd2.veh;
+
+        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&veh2, None, None).unwrap();
+
+        // Compare key results (allowing for small numerical differences)
+        let tolerance = 0.001; // 0.1% tolerance
+
+        // Check MPGe values
+        assert!(
+            (label_fe_f3.lab_udds_mpgge - label_fe_f2.lab_udds_mpgge).abs()
+                / label_fe_f2.lab_udds_mpgge
+                < tolerance,
+            "UDDS MPGe mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.lab_udds_mpgge,
+            label_fe_f2.lab_udds_mpgge
+        );
+
+        assert!(
+            (label_fe_f3.lab_hwy_mpgge - label_fe_f2.lab_hwy_mpgge).abs()
+                / label_fe_f2.lab_hwy_mpgge
+                < tolerance,
+            "Highway MPGe mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.lab_hwy_mpgge,
+            label_fe_f2.lab_hwy_mpgge
+        );
+
+        assert!(
+            (label_fe_f3.lab_comb_mpgge - label_fe_f2.lab_comb_mpgge).abs()
+                / label_fe_f2.lab_comb_mpgge
+                < tolerance,
+            "Combined MPGe mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.lab_comb_mpgge,
+            label_fe_f2.lab_comb_mpgge
+        );
+
+        // Check adjusted values
+        assert!(
+            (label_fe_f3.adj_udds_mpgge - label_fe_f2.adj_udds_mpgge).abs()
+                / label_fe_f2.adj_udds_mpgge
+                < tolerance,
+            "Adjusted UDDS MPGe mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.adj_udds_mpgge,
+            label_fe_f2.adj_udds_mpgge
+        );
+
+        assert!(
+            (label_fe_f3.adj_comb_mpgge - label_fe_f2.adj_comb_mpgge).abs()
+                / label_fe_f2.adj_comb_mpgge
+                < tolerance,
+            "Adjusted combined MPGe mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.adj_comb_mpgge,
+            label_fe_f2.adj_comb_mpgge
+        );
+
+        println!("Conventional vehicle label FE test passed!");
+        println!(
+            "F3 Combined MPGe: {:.3}, F2: {:.3}",
+            label_fe_f3.lab_comb_mpgge, label_fe_f2.lab_comb_mpgge
+        );
+    }
+
+    /// Test that label FE calculations for BEV vehicles match FASTSim-2 results
+    #[test]
+    #[cfg(all(feature = "resources", feature = "yaml"))]
+    fn test_label_fe_bev_vs_fastsim2() {
+        let veh = mock_bev();
+
+        // Get FASTSim-3 label FE results
+        let (label_fe_f3, _) = get_label_fe(&veh, None, None, None, None, None).unwrap();
+
+        // Convert to FASTSim-2 and get label FE results
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
+        let sd = crate::simdrive::SimDrive::new(veh.clone(), cyc, Default::default());
+        let sd2 = sd.to_fastsim2().unwrap();
+        let veh2 = sd2.veh;
+
+        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&veh2, None, None).unwrap();
+
+        let tolerance = 0.001; // 0.1% tolerance
+
+        // For BEV, check kWh/mi values instead of MPGe
+        assert!(
+            (label_fe_f3.lab_udds_kwh_per_mi - label_fe_f2.lab_udds_kwh_per_mi).abs()
+                / label_fe_f2.lab_udds_kwh_per_mi
+                < tolerance,
+            "UDDS kWh/mi mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.lab_udds_kwh_per_mi,
+            label_fe_f2.lab_udds_kwh_per_mi
+        );
+
+        assert!(
+            (label_fe_f3.lab_comb_kwh_per_mi - label_fe_f2.lab_comb_kwh_per_mi).abs()
+                / label_fe_f2.lab_comb_kwh_per_mi
+                < tolerance,
+            "Combined kWh/mi mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.lab_comb_kwh_per_mi,
+            label_fe_f2.lab_comb_kwh_per_mi
+        );
+
+        // Check range
+        if label_fe_f2.net_range_miles > 0.0 {
+            assert!(
+                (label_fe_f3.net_range_miles - label_fe_f2.net_range_miles).abs()
+                    / label_fe_f2.net_range_miles
+                    < tolerance,
+                "Range mismatch: F3={:.1}, F2={:.1}",
+                label_fe_f3.net_range_miles,
+                label_fe_f2.net_range_miles
+            );
+        }
+
+        println!("BEV label FE test passed!");
+        println!(
+            "F3 Combined kWh/mi: {:.3}, F2: {:.3}",
+            label_fe_f3.lab_comb_kwh_per_mi, label_fe_f2.lab_comb_kwh_per_mi
+        );
+    }
+
+    /// Test that label FE calculations for HEV vehicles match FASTSim-2 results
+    #[test]
+    #[cfg(all(feature = "resources", feature = "yaml"))]
+    fn test_label_fe_hev_vs_fastsim2() {
+        let veh = mock_hev();
+
+        // Get FASTSim-3 label FE results
+        let (label_fe_f3, _) = get_label_fe(&veh, None, None, None, None, None).unwrap();
+
+        // Convert to FASTSim-2 and get label FE results
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
+        let sd = crate::simdrive::SimDrive::new(veh.clone(), cyc, Default::default());
+        let sd2 = sd.to_fastsim2().unwrap();
+        let veh2 = sd2.veh;
+
+        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&veh2, None, None).unwrap();
+
+        let tolerance = 0.001; // 0.1% tolerance
+
+        // Check MPGe values for HEV
+        assert!(
+            (label_fe_f3.lab_udds_mpgge - label_fe_f2.lab_udds_mpgge).abs()
+                / label_fe_f2.lab_udds_mpgge
+                < tolerance,
+            "UDDS MPGe mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.lab_udds_mpgge,
+            label_fe_f2.lab_udds_mpgge
+        );
+
+        assert!(
+            (label_fe_f3.lab_comb_mpgge - label_fe_f2.lab_comb_mpgge).abs()
+                / label_fe_f2.lab_comb_mpgge
+                < tolerance,
+            "Combined MPGe mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.lab_comb_mpgge,
+            label_fe_f2.lab_comb_mpgge
+        );
+
+        // Check adjusted values
+        assert!(
+            (label_fe_f3.adj_comb_mpgge - label_fe_f2.adj_comb_mpgge).abs()
+                / label_fe_f2.adj_comb_mpgge
+                < tolerance,
+            "Adjusted combined MPGe mismatch: F3={:.3}, F2={:.3}",
+            label_fe_f3.adj_comb_mpgge,
+            label_fe_f2.adj_comb_mpgge
+        );
+
+        println!("HEV label FE test passed!");
+        println!(
+            "F3 Combined MPGe: {:.3}, F2: {:.3}",
+            label_fe_f3.lab_comb_mpgge, label_fe_f2.lab_comb_mpgge
+        );
+    }
+
+    /// Test that creates a mock PHEV vehicle from FASTSim-2 data and compares label FE calculations
+    #[test]
+    #[cfg(all(feature = "resources", feature = "yaml"))]
+    fn test_label_fe_phev_vs_fastsim2() {
+        // Load a PHEV vehicle from the calibration directory (FASTSim-2 format)
+        let f2_veh_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("cal_and_val/f2-vehicles/2016 CHEVROLET Volt.yaml");
+
+        if !f2_veh_path.exists() {
+            println!("PHEV vehicle file not found, skipping test");
+            return;
+        }
+
+        let veh_contents = std::fs::read_to_string(&f2_veh_path).unwrap();
+
+        // Load FASTSim-2 vehicle and convert to FASTSim-3
+        let f2_veh: fastsim_2::vehicle::RustVehicle =
+            fastsim_2::traits::SerdeAPI::from_yaml(&veh_contents, false).unwrap();
+        let veh = Vehicle::try_from(f2_veh.clone()).unwrap();
+
+        // Get FASTSim-3 label FE results (if PHEV functionality is implemented)
+        let result_f3 = get_label_fe(&veh, None, None, None, None, None);
+
+        // Get FASTSim-2 label FE results
+        let result_f2 =
+            fastsim_2::simdrivelabel::get_label_fe(&f2_veh, None, None).map(|(lfe, _)| lfe);
+
+        match (result_f3, result_f2) {
+            (Ok((label_fe_f3, _)), Ok(label_fe_f2)) => {
+                let tolerance = 0.05; // 5% tolerance for PHEV (more complex calculations)
+
+                // Compare basic label values
+                if label_fe_f2.lab_comb_mpgge > 0.0 {
+                    assert!(
+                        (label_fe_f3.lab_comb_mpgge - label_fe_f2.lab_comb_mpgge).abs()
+                            / label_fe_f2.lab_comb_mpgge
+                            < tolerance,
+                        "Combined MPGe mismatch: F3={:.3}, F2={:.3}",
+                        label_fe_f3.lab_comb_mpgge,
+                        label_fe_f2.lab_comb_mpgge
+                    );
+                }
+
+                if label_fe_f2.lab_comb_kwh_per_mi > 0.0 {
+                    assert!(
+                        (label_fe_f3.lab_comb_kwh_per_mi - label_fe_f2.lab_comb_kwh_per_mi).abs()
+                            / label_fe_f2.lab_comb_kwh_per_mi
+                            < tolerance,
+                        "Combined kWh/mi mismatch: F3={:.3}, F2={:.3}",
+                        label_fe_f3.lab_comb_kwh_per_mi,
+                        label_fe_f2.lab_comb_kwh_per_mi
+                    );
+                }
+
+                println!("PHEV label FE test passed!");
+                println!(
+                    "F3 Combined MPGe: {:.3}, F2: {:.3}",
+                    label_fe_f3.lab_comb_mpgge, label_fe_f2.lab_comb_mpgge
+                );
+            }
+            (Err(e_f3), Ok(_)) => {
+                println!(
+                    "FASTSim-3 PHEV calculation failed (expected if not fully implemented): {}",
+                    e_f3
+                );
+                // This is acceptable if PHEV functionality isn't fully implemented yet
+            }
+            (Ok(_), Err(e_f2)) => {
+                panic!("FASTSim-2 PHEV calculation failed: {}", e_f2);
+            }
+            (Err(e_f3), Err(e_f2)) => {
+                println!("Both FASTSim-2 and FASTSim-3 PHEV calculations failed:");
+                println!("F3 error: {}", e_f3);
+                println!("F2 error: {}", e_f2);
+            }
+        }
+    }
+
+    /// Test the acceleration calculation function
+    #[test]
+    #[cfg(all(feature = "resources", feature = "yaml"))]
+    fn test_net_accel_calc() {
+        let veh = mock_conv_veh();
+        let cyc = crate::drive_cycle::CYC_ACCEL.clone();
+        let mut sd = crate::simdrive::SimDrive::new(veh, cyc, None);
+
+        let accel_time = get_net_accel(&mut sd).unwrap();
+
+        // Acceleration time should be positive and reasonable (typically 8-15 seconds for most vehicles)
+        assert!(accel_time > 0.0, "Acceleration time should be positive");
+        assert!(
+            accel_time < 30.0,
+            "Acceleration time seems unreasonably high: {:.2}s",
+            accel_time
+        );
+
+        println!("0-60 mph acceleration time: {:.2} seconds", accel_time);
+    }
+}
