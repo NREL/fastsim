@@ -203,24 +203,6 @@ where
     const RESOURCES_SUBDIR: &'static str = "interpolators";
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    type StructWithResources = Interpolator;
-
-    #[test]
-    fn test_resources() {
-        let resource_list = StructWithResources::list_resources().unwrap();
-        assert!(!resource_list.is_empty());
-
-        // verify that resources can all load
-        for resource in resource_list {
-            StructWithResources::from_resource(resource, false).unwrap();
-        }
-    }
-}
-
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
 pub enum ScalingMethods {
     #[default]
@@ -381,5 +363,18 @@ mod tests {
         assert!(almost_eq(interp_1d.range().unwrap(), 2., Some(1e-3)));
         assert!(almost_eq(interp_2d.range().unwrap(), 7., Some(1e-3)));
         assert!(almost_eq(interp_3d.range().unwrap(), 5., Some(1e-3)));
+    }
+
+    type StructWithResources = InterpolatorEnumOwned<f64>;
+
+    #[test]
+    fn test_resources() {
+        let resource_list = StructWithResources::list_resources().unwrap();
+        assert!(!resource_list.is_empty());
+
+        // verify that resources can all load
+        for resource in resource_list {
+            StructWithResources::from_resource(resource, false).unwrap();
+        }
     }
 }
