@@ -1,4 +1,4 @@
-![FASTSim Logo](https://www.nrel.gov/transportation/assets/images/icon-fastsim.jpg)
+<img src="https://raw.githubusercontent.com/NREL/fastsim/refs/heads/fastsim-2/docs/assets/fastsim-icon.svg" height="200">
 
 [![homepage](https://img.shields.io/badge/homepage-fastsim-blue)](https://www.nrel.gov/transportation/fastsim.html)
 [![tests](https://github.com/NREL/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/tests.yaml)
