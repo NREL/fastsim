@@ -3,7 +3,7 @@ use crate::imports::*;
 pub mod serde_api;
 pub use serde_api::*;
 
-use ninterp::num_traits::Zero;
+use ninterp::num_traits::{Num, Zero};
 
 pub trait Linspace {
     /// Generate linearly spaced vec
@@ -104,7 +104,7 @@ where
 impl<S> Min<S::Elem> for InterpolatorEnum<S>
 where
     S: ndarray::Data + ndarray::RawDataClone + Clone,
-    S::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
+    S::Elem: Num + PartialOrd + Copy + std::fmt::Debug,
 {
     fn min(&self) -> anyhow::Result<&S::Elem> {
         match self {
@@ -195,7 +195,7 @@ where
 impl<S> Max<S::Elem> for InterpolatorEnum<S>
 where
     S: ndarray::Data + ndarray::RawDataClone + Clone,
-    S::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
+    S::Elem: Num + PartialOrd + Copy + std::fmt::Debug,
 {
     fn max(&self) -> anyhow::Result<&S::Elem> {
         match self {
@@ -240,19 +240,67 @@ where
         Ok(*self.max()? - *self.min()?)
     }
 }
+impl<T> Range<T> for Interp0D<T>
+where
+    T: Zero + PartialOrd + Sub<Output = T>,
+{
+    fn range(&self) -> anyhow::Result<T> {
+        Ok(T::zero())
+    }
+}
+impl<D, S> Range<D::Elem> for Interp1D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
+    S: strategy::traits::Strategy1D<D> + Clone,
+{
+    fn range(&self) -> anyhow::Result<D::Elem> {
+        self.data.values.range()
+    }
+}
+impl<D, S> Range<D::Elem> for Interp2D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
+    S: strategy::traits::Strategy2D<D> + Clone,
+{
+    fn range(&self) -> anyhow::Result<D::Elem> {
+        self.data.values.range()
+    }
+}
+impl<D, S> Range<D::Elem> for Interp3D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
+    S: strategy::traits::Strategy3D<D> + Clone,
+{
+    fn range(&self) -> anyhow::Result<D::Elem> {
+        self.data.values.range()
+    }
+}
+impl<D, S> Range<D::Elem> for InterpND<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
+    S: strategy::traits::StrategyND<D> + Clone,
+{
+    fn range(&self) -> anyhow::Result<D::Elem> {
+        self.data.values.range()
+    }
+}
 impl<S> Range<S::Elem> for InterpolatorEnum<S>
 where
     S: ndarray::Data + ndarray::RawDataClone + Clone,
-    S::Elem: ninterp::num_traits::Num + PartialOrd + Copy + std::fmt::Debug,
+    S::Elem: Num + PartialOrd + Copy + std::fmt::Debug,
     ArrayBase<S, Ix1>: Range<S::Elem>,
 {
     fn range(&self) -> anyhow::Result<S::Elem> {
         match self {
-            Self::Interp0D(_) => Ok(S::Elem::zero()),
-            Self::Interp1D(interp) => interp.data.values.range(),
-            Self::Interp2D(interp) => interp.data.values.range(),
-            Self::Interp3D(interp) => interp.data.values.range(),
-            Self::InterpND(interp) => interp.data.values.range(),
+            Self::Interp0D(interp) => interp.range(),
+            Self::Interp1D(interp) => interp.range(),
+            Self::Interp2D(interp) => interp.range(),
+            Self::Interp3D(interp) => interp.range(),
+            Self::InterpND(interp) => interp.range(),
         }
     }
 }

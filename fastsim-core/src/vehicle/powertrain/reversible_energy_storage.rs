@@ -272,7 +272,7 @@ impl ReversibleEnergyStorage {
             ],
         };
         state.eff.update(
-            self.eff_interp.as_interp_enum().interpolate(interp_pt)? * uc::R,
+            self.eff_interp.interpolate(interp_pt)? * uc::R,
             || format_dbg!(),
         )?;
         ensure!(
@@ -548,7 +548,7 @@ impl ReversibleEnergyStorage {
 
     /// Returns max value of [Self::eff_interp]
     pub fn get_eff_max(&self) -> anyhow::Result<f64> {
-        Ok(*self.eff_interp.as_interp_enum().max()?)
+        Ok(*self.eff_interp.max()?)
     }
 
     /// Scales eff_interp by ratio of new `eff_max` per current calculated
@@ -558,12 +558,12 @@ impl ReversibleEnergyStorage {
         eff_max: f64,
         scaling: Option<ScalingMethods>,
     ) -> anyhow::Result<()> {
-        self.eff_interp.as_interp_enum().set_max(eff_max, scaling)
+        self.eff_interp.set_max(eff_max, scaling)
     }
 
     /// Returns min value of [Self::eff_interp]
     pub fn get_eff_min(&self) -> anyhow::Result<&f64> {
-        Ok(self.eff_interp.as_interp_enum().min()?)
+        Ok(self.eff_interp.min()?)
     }
 
     /// Scales eff_interp by ratio of new `eff_min` per current calculated
@@ -573,19 +573,19 @@ impl ReversibleEnergyStorage {
         eff_min: f64,
         scaling: Option<ScalingMethods>,
     ) -> anyhow::Result<()> {
-        self.eff_interp.as_interp_enum().set_min(eff_min, scaling)
+        self.eff_interp.set_min(eff_min, scaling)
     }
 
     /// Max value of `eff_interp` minus min value of `eff_interp`.
     pub fn get_eff_range(&self) -> anyhow::Result<f64> {
-        self.eff_interp.as_interp_enum().range()
+        self.eff_interp.range()
     }
 
     /// Scales values of `eff_interp` without changing max such that max - min
     /// is equal to new range.  Will change max if needed to ensure no values are
     /// less than zero.
     pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        self.eff_interp.as_interp_enum().set_range(eff_range)
+        self.eff_interp.set_range(eff_range)
     }
 
     /// Usable energy capacity, accounting for SOC limits
@@ -1196,14 +1196,83 @@ pub enum EffInterp {
     // TODO: finish adding possible variants
 }
 
-impl EffInterp {
-    fn as_interp_enum(&self) -> InterpolatorEnumViewed<&f64> {
+impl Interpolator<f64> for EffInterp {
+    fn ndim(&self) -> usize {
         match self {
-            EffInterp::Constant(interp0d) => interp0d.to_owned().into(),
-            EffInterp::CRate(interp1d) => interp1d.view().into(),
-            EffInterp::CRateSOC(interp2d) => interp2d.view().into(),
-            EffInterp::CRateTemperature(interp2d) => interp2d.view().into(),
-            EffInterp::CRateSOCTemperature(interp3d) => interp3d.view().into(),
+            EffInterp::Constant(interp) => interp.ndim(),
+            EffInterp::CRate(interp) => interp.ndim(),
+            EffInterp::CRateSOC(interp) => interp.ndim(),
+            EffInterp::CRateTemperature(interp) => interp.ndim(),
+            EffInterp::CRateSOCTemperature(interp) => interp.ndim(),
+        }
+    }
+
+    fn validate(&mut self) -> Result<(), ninterp::error::ValidateError> {
+        match self {
+            EffInterp::Constant(interp) => interp.validate(),
+            EffInterp::CRate(interp) => interp.validate(),
+            EffInterp::CRateSOC(interp) => interp.validate(),
+            EffInterp::CRateTemperature(interp) => interp.validate(),
+            EffInterp::CRateSOCTemperature(interp) => interp.validate(),
+        }
+    }
+
+    fn interpolate(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError> {
+        match self {
+            EffInterp::Constant(interp) => interp.interpolate(point),
+            EffInterp::CRate(interp) => interp.interpolate(point),
+            EffInterp::CRateSOC(interp) => interp.interpolate(point),
+            EffInterp::CRateTemperature(interp) => interp.interpolate(point),
+            EffInterp::CRateSOCTemperature(interp) => interp.interpolate(point),
+        }
+    }
+
+    fn set_extrapolate(
+        &mut self,
+        extrapolate: Extrapolate<f64>,
+    ) -> Result<(), ninterp::error::ValidateError> {
+        match self {
+            EffInterp::Constant(interp) => interp.set_extrapolate(extrapolate),
+            EffInterp::CRate(interp) => interp.set_extrapolate(extrapolate),
+            EffInterp::CRateSOC(interp) => interp.set_extrapolate(extrapolate),
+            EffInterp::CRateTemperature(interp) => interp.set_extrapolate(extrapolate),
+            EffInterp::CRateSOCTemperature(interp) => interp.set_extrapolate(extrapolate),
+        }
+    }
+}
+
+impl Min<f64> for EffInterp {
+    fn min(&self) -> anyhow::Result<&f64> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.min(),
+            EffInterp::CRate(interp1d) => interp1d.min(),
+            EffInterp::CRateSOC(interp2d) => interp2d.min(),
+            EffInterp::CRateTemperature(interp2d) => interp2d.min(),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.min(),
+        }
+    }
+}
+
+impl Max<f64> for EffInterp {
+    fn max(&self) -> anyhow::Result<&f64> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.max(),
+            EffInterp::CRate(interp1d) => interp1d.max(),
+            EffInterp::CRateSOC(interp2d) => interp2d.max(),
+            EffInterp::CRateTemperature(interp2d) => interp2d.max(),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.max(),
+        }
+    }
+}
+
+impl Range<f64> for EffInterp {
+    fn range(&self) -> anyhow::Result<f64> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.range(),
+            EffInterp::CRate(interp1d) => interp1d.range(),
+            EffInterp::CRateSOC(interp2d) => interp2d.range(),
+            EffInterp::CRateTemperature(interp2d) => interp2d.range(),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.range(),
         }
     }
 }
