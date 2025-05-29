@@ -1173,9 +1173,9 @@ dependencies = [
 
 [[package]]
 name = "ninterp"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e257c3615413a4c4c5efc4912f77f6121f7d056a84a653ceb95c3e765ab730e"
+checksum = "b1878f95a4001c9d82aef704b96699ad5083ff078871df0726e4e255fdb7554e"
 dependencies = [
  "dyn-clone",
  "itertools 0.13.0",

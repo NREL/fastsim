@@ -235,13 +235,13 @@ impl ReversibleEnergyStorage {
             );
         }
         let interp_pt: &[f64] = match &self.eff_interp {
-            EffInterp::Constant(interp0d) => &[],
-            EffInterp::CRate(interp) => &[state
+            EffInterp::Constant(_) => &[],
+            EffInterp::CRate(_) => &[state
                 .pwr_out_electrical
                 .get_fresh(|| format_dbg!())?
                 .get::<si::watt>()
                 / self.energy_capacity.get::<si::watt_hour>()],
-            EffInterp::CRateSOC(interp2d) => &[
+            EffInterp::CRateSOC(_) => &[
                 state
                     .pwr_out_electrical
                     .get_fresh(|| format_dbg!())?
@@ -249,7 +249,7 @@ impl ReversibleEnergyStorage {
                     / self.energy_capacity.get::<si::watt_hour>(),
                 state.soc.get_stale(|| format_dbg!())?.get::<si::ratio>(),
             ],
-            EffInterp::CRateTemperature(interp2d) => &[
+            EffInterp::CRateTemperature(_) => &[
                 state
                     .pwr_out_electrical
                     .get_fresh(|| format_dbg!())?
@@ -259,7 +259,7 @@ impl ReversibleEnergyStorage {
                     .with_context(|| format_dbg!("Expected thermal model to be configured"))?
                     .get::<si::degree_celsius>(),
             ],
-            EffInterp::CRateSOCTemperature(interp3d) => &[
+            EffInterp::CRateSOCTemperature(_) => &[
                 state
                     .pwr_out_electrical
                     .get_fresh(|| format_dbg!())?
@@ -272,7 +272,7 @@ impl ReversibleEnergyStorage {
             ],
         };
         state.eff.update(
-            self.eff_interp.to_interp_enum().interpolate(interp_pt)? * uc::R,
+            self.eff_interp.as_interp_enum().interpolate(interp_pt)? * uc::R,
             || format_dbg!(),
         )?;
         ensure!(
@@ -548,7 +548,7 @@ impl ReversibleEnergyStorage {
 
     /// Returns max value of [Self::eff_interp]
     pub fn get_eff_max(&self) -> anyhow::Result<&f64> {
-        self.eff_interp.to_interp_enum().max()
+        self.eff_interp.as_interp_enum().max()
     }
 
     /// Scales eff_interp by ratio of new `eff_max` per current calculated
@@ -558,12 +558,12 @@ impl ReversibleEnergyStorage {
         eff_max: f64,
         scaling: Option<ScalingMethods>,
     ) -> anyhow::Result<()> {
-        self.eff_interp.to_interp_enum().set_max(eff_max, scaling)
+        self.eff_interp.as_interp_enum().set_max(eff_max, scaling)
     }
 
     /// Returns min value of [Self::eff_interp]
     pub fn get_eff_min(&self) -> anyhow::Result<&f64> {
-        self.eff_interp.to_interp_enum().min()
+        self.eff_interp.as_interp_enum().min()
     }
 
     /// Scales eff_interp by ratio of new `eff_min` per current calculated
@@ -573,19 +573,19 @@ impl ReversibleEnergyStorage {
         eff_min: f64,
         scaling: Option<ScalingMethods>,
     ) -> anyhow::Result<()> {
-        self.eff_interp.to_interp_enum().set_min(eff_min, scaling)
+        self.eff_interp.as_interp_enum().set_min(eff_min, scaling)
     }
 
     /// Max value of `eff_interp` minus min value of `eff_interp`.
     pub fn get_eff_range(&self) -> anyhow::Result<f64> {
-        self.eff_interp.to_interp_enum().range()
+        self.eff_interp.as_interp_enum().range()
     }
 
     /// Scales values of `eff_interp` without changing max such that max - min
     /// is equal to new range.  Will change max if needed to ensure no values are
     /// less than zero.
     pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        self.eff_interp.to_interp_enum().set_range(eff_range)
+        self.eff_interp.as_interp_enum().set_range(eff_range)
     }
 
     /// Usable energy capacity, accounting for SOC limits
@@ -1197,13 +1197,13 @@ pub enum EffInterp {
 }
 
 impl EffInterp {
-    fn to_interp_enum(&self) -> InterpolatorEnumOwned<_> {
-        match &self {
-            EffInterp::Constant(interp0d) => InterpolatorEnumOwned::<f64>::from(interp0d),
-            EffInterp::CRate(interp) => InterpolatorEnumOwned::<_>::from(interp),
-            EffInterp::CRateSOC(interp2d) => InterpolatorEnumOwned::<_>::from(interp2d),
-            EffInterp::CRateTemperature(interp2d) => InterpolatorEnumOwned::<_>::from(interp2d),
-            EffInterp::CRateSOCTemperature(interp3d) => InterpolatorEnumOwned::<_>::from(interp3d),
-        };
+    fn as_interp_enum(&self) -> InterpolatorEnumViewed<&f64> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.to_owned().into(),
+            EffInterp::CRate(interp1d) => interp1d.view().into(),
+            EffInterp::CRateSOC(interp2d) => interp2d.view().into(),
+            EffInterp::CRateTemperature(interp2d) => interp2d.view().into(),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.view().into(),
+        }
     }
 }
