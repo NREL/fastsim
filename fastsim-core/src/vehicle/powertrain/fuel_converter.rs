@@ -1,7 +1,7 @@
 use super::utils::ScalingMethods;
 use super::*;
 use crate::prelude::*;
-use crate::utils::interp::InterpolatorMethods;
+use crate::utils::interp::InterpolatorMutMethods;
 use std::f64::consts::PI;
 
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
@@ -546,7 +546,9 @@ impl SerdeAPI for FuelConverterThermalOption {}
 impl SetCumulative for FuelConverterThermalOption {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::FuelConverterThermal(fct) => fct.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?,
+            Self::FuelConverterThermal(fct) => {
+                fct.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::None => {}
         }
         Ok(())
@@ -901,7 +903,8 @@ impl FuelConverterThermal {
 impl SerdeAPI for FuelConverterThermal {}
 impl SetCumulative for FuelConverterThermal {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
+        self.state
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
     }
 }
 impl Init for FuelConverterThermal {

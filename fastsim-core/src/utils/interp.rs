@@ -1,7 +1,8 @@
 use crate::imports::*;
 
-/// Methods for proportionally scaling interpolator function data
-pub trait InterpolatorMethods {
+/// Methods for mutating interpolator data, e.g. proportionally scaling
+/// interpolator function data
+pub trait InterpolatorMutMethods {
     fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()>;
     fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()>;
     fn set_range(&mut self, range: f64) -> anyhow::Result<()>;
@@ -10,7 +11,7 @@ pub trait InterpolatorMethods {
 // This can be made more generic by using a `ninterp::num_traits` bound instead of f64
 // If there are future methods that *do not* mutate the interpolator,
 // we should define a new trait and impl it for `InterpolatorEnum<D> where D: ndarray::Data`
-impl InterpolatorMethods for InterpolatorEnumOwned<f64> {
+impl InterpolatorMutMethods for InterpolatorEnumOwned<f64> {
     // scale all values so that the min is the new min
     // (Note: this may change the max, depending on what scaling method is chosen)
     fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {

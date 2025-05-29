@@ -1,5 +1,5 @@
 use super::{utils::ScalingMethods, *};
-use crate::utils::interp::InterpolatorMethods;
+use crate::utils::interp::InterpolatorMutMethods;
 
 #[allow(unused_imports)]
 #[cfg(feature = "pyo3")]
@@ -547,8 +547,8 @@ impl ReversibleEnergyStorage {
     }
 
     /// Returns max value of [Self::eff_interp]
-    pub fn get_eff_max(&self) -> anyhow::Result<&f64> {
-        self.eff_interp.as_interp_enum().max()
+    pub fn get_eff_max(&self) -> anyhow::Result<f64> {
+        Ok(*self.eff_interp.as_interp_enum().max()?)
     }
 
     /// Scales eff_interp by ratio of new `eff_max` per current calculated
@@ -563,7 +563,7 @@ impl ReversibleEnergyStorage {
 
     /// Returns min value of [Self::eff_interp]
     pub fn get_eff_min(&self) -> anyhow::Result<&f64> {
-        self.eff_interp.as_interp_enum().min()
+        Ok(self.eff_interp.as_interp_enum().min()?)
     }
 
     /// Scales eff_interp by ratio of new `eff_min` per current calculated
@@ -1204,6 +1204,16 @@ impl EffInterp {
             EffInterp::CRateSOC(interp2d) => interp2d.view().into(),
             EffInterp::CRateTemperature(interp2d) => interp2d.view().into(),
             EffInterp::CRateSOCTemperature(interp3d) => interp3d.view().into(),
+        }
+    }
+
+    fn get_mut(&mut self) -> InterpolatorEnumOwned<&f64> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.to_owned().into(),
+            EffInterp::CRate(interp1d) => interp1d.into(),
+            EffInterp::CRateSOC(interp2d) => interp2d.into(),
+            EffInterp::CRateTemperature(interp2d) => interp2d.into(),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.into(),
         }
     }
 }
