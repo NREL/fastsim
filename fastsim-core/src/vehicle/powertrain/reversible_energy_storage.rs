@@ -602,7 +602,13 @@ impl ReversibleEnergyStorage {
     ///    °C corresponds to `eta_interp_values[0][5]` in ALTRIOS
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_interp(&mut self) -> anyhow::Result<()> {
-        self.eff_interp = InterpolatorEnum::from_resource("res/default_pwr.yaml", false)?;
+        if let InterpolatorEnum::Interp1D(interp1d) =
+            InterpolatorEnum::from_resource("res/default_pwr.yaml", false)?
+        {
+            self.eff_interp = EffInterp::CRate(interp1d);
+        } else {
+            bail!("Invalid interpolator format. Expected `Interp1D`")
+        }
         Ok(())
     }
 
@@ -619,8 +625,13 @@ impl ReversibleEnergyStorage {
     ///    ALTRIOS, the outermost layer is SOC and innermost is power)
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_and_soc_interp(&mut self) -> anyhow::Result<()> {
-        self.eff_interp_inputs = EffInterp::CRateSOC;
-        self.eff_interp = InterpolatorEnum::from_resource("res/default_pwr_and_soc.yaml", false)?;
+        if let InterpolatorEnum::Interp2D(interp2d) =
+            InterpolatorEnum::from_resource("res/default_pwr_and_soc.yaml", false)?
+        {
+            self.eff_interp = EffInterp::CRateSOC(interp2d);
+        } else {
+            bail!("Invalid interpolator format. Expected `Interp2D`")
+        }
         Ok(())
     }
 
@@ -628,8 +639,13 @@ impl ReversibleEnergyStorage {
     ///    constant 50% SOC
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_and_temp_interp(&mut self) -> anyhow::Result<()> {
-        self.eff_interp_inputs = EffInterp::CRateTemperature;
-        self.eff_interp = InterpolatorEnum::from_resource("res/default_pwr_and_temp.yaml", false)?;
+        if let InterpolatorEnum::Interp2D(interp2d) =
+            InterpolatorEnum::from_resource("res/default_pwr_and_temp.yaml", false)?
+        {
+            self.eff_interp = EffInterp::CRateTemperature(interp2d);
+        } else {
+            bail!("Invalid interpolator format. Expected `Interp2D`")
+        }
         Ok(())
     }
 
@@ -648,9 +664,13 @@ impl ReversibleEnergyStorage {
     ///    ALTRIOS, the outermost layer is temperature and innermost is power)
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_soc_and_temp_interp(&mut self) -> anyhow::Result<()> {
-        self.eff_interp_inputs = EffInterp::CRateSOCTemperature;
-        self.eff_interp =
-            InterpolatorEnum::from_resource("res/default_pwr_soc_and_temp.yaml", false)?;
+        if let InterpolatorEnum::Interp3D(interp3d) =
+            InterpolatorEnum::from_resource("res/default_pwr_soc_and_temp.yaml", false)?
+        {
+            self.eff_interp = EffInterp::CRateSOCTemperature(interp3d);
+        } else {
+            bail!("Invalid interpolator format. Expected `Interp2D`")
+        }
         Ok(())
     }
 

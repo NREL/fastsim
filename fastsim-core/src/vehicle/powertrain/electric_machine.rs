@@ -371,7 +371,8 @@ impl Init for ElectricMachine {
         let _ = self
             .mass()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        let _ = check_interp_frac_data(match &mut self.eff_interp_achieved  {InterpolatorEnum::Interp1D(interp) => &interp.data.grid[0].as_slice().ok_or(Error::Other("Cannot convert to slice".to_string()))?, _ => {
+        let _ = check_interp_frac_data(match &mut self.eff_interp_achieved  {
+                InterpolatorEnum::Interp1D(interp) => interp.data.grid[0].as_slice().ok_or(Error::Other("Cannot convert to slice".to_string()))?, _ => {
             return Err(Error::InitError(format_dbg!(
                 "Only 1-D interpolators are supported"
             )))

@@ -519,7 +519,9 @@ mod tests {
 
         // verify that resources can all load
         for resource in resource_list {
-            StructWithResources::from_resource(resource, false).unwrap();
+            StructWithResources::from_resource(resource.clone(), false)
+                .with_context(|| format_dbg!(resource))
+                .unwrap();
         }
     }
 }

@@ -1,6 +1,5 @@
-use powertrain::reversible_energy_storage::EffInterp;
-
 use super::*;
+use crate::vehicle::powertrain::reversible_energy_storage::EffInterp as ResEffInterp;
 
 impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
@@ -169,7 +168,9 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         specific_energy: None,
                         pwr_out_max: f2veh.ess_max_kw * uc::KW,
                         energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-                        eff_interp: InterpolatorEnum::new_0d(f2veh.ess_round_trip_eff.sqrt()),
+                        eff_interp: ResEffInterp::Constant(Interp0D::new(
+                            f2veh.ess_round_trip_eff.sqrt(),
+                        )),
                         min_soc: f2veh.min_soc * uc::R,
                         max_soc: f2veh.max_soc * uc::R,
                         save_interval: Some(1),
@@ -230,7 +231,9 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         specific_energy: None,
                         pwr_out_max: f2veh.ess_max_kw * uc::KW,
                         energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-                        eff_interp: InterpolatorEnum::new_0d(f2veh.ess_round_trip_eff.sqrt()),
+                        eff_interp: ResEffInterp::Constant(Interp0D::new(
+                            f2veh.ess_round_trip_eff.sqrt(),
+                        )),
                         min_soc: f2veh.min_soc * uc::R,
                         max_soc: f2veh.max_soc * uc::R,
                         save_interval: Some(1),
@@ -343,7 +346,7 @@ impl Vehicle {
             ess_round_trip_eff: self
                 .res()
                 .map(|res| {
-                    if let InterpolatorEnum::Interp0D(Interp0D(eff)) = res.eff_interp {
+                    if let ResEffInterp::Constant(Interp0D(eff)) = res.eff_interp {
                         Ok(eff.powi(2))
                     } else {
                         bail!("`to_fastsim2` is not implemented for non-0D `res.eff_interp`")
