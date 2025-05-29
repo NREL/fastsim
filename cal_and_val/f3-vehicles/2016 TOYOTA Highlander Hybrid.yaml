@@ -8,7 +8,8 @@ pt_type:
       specific_energy_joules_per_kilogram: ~
       pwr_out_max_watts: 37000.0
       energy_capacity_joules: 7200000.0
-      eff_interp: 0.9848857801796105
+      eff_interp:
+        Constant: 0.9848857801796105
       min_soc: 0.4
       max_soc: 0.8
       save_interval: 1
@@ -244,7 +245,7 @@ pt_type:
           grid:
             - v: 1
               dim:
-                - 100
+                - 101
               data:
                 - 0.0
                 - 0.01
@@ -350,7 +351,7 @@ pt_type:
           values:
             v: 1
             dim:
-              - 100
+              - 101
             data:
               - 0.85
               - 0.85
@@ -460,7 +461,7 @@ pt_type:
           grid:
             - v: 1
               dim:
-                - 100
+                - 101
               data:
                 - 0.0
                 - 0.011764705882352941
@@ -566,7 +567,7 @@ pt_type:
           values:
             v: 1
             dim:
-              - 100
+              - 101
             data:
               - 0.85
               - 0.85

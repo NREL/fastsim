@@ -8,7 +8,8 @@ pt_type:
       specific_energy_joules_per_kilogram: ~
       pwr_out_max_watts: 86000.0
       energy_capacity_joules: 86400000.0
-      eff_interp: 0.9848857801796105
+      eff_interp:
+        Constant: 0.9848857801796105
       min_soc: 0.05
       max_soc: 0.95
       save_interval: 1

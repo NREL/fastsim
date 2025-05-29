@@ -836,4 +836,31 @@ pub(crate) mod tests {
                 .unwrap();
         }
     }
+
+    #[test]
+    fn test_resources_deser() {
+        let mut time_to_panic = false;
+
+        let paths = std::fs::read_dir("../cal_and_val/f3-vehicles").unwrap();
+        for path in paths {
+            let p = path.unwrap().path();
+            if let Err(e) = crate::vehicle::Vehicle::from_file(p.clone(), false) {
+                time_to_panic = true;
+                eprintln!("Error loading {:?}: {}\n", p, e);
+            }
+        }
+
+        let paths = std::fs::read_dir("../cal_and_val/thermal/f3-vehicles").unwrap();
+        for path in paths {
+            let p = path.unwrap().path();
+            if let Err(e) = crate::vehicle::Vehicle::from_file(p.clone(), false) {
+                time_to_panic = true;
+                eprintln!("Error loading {:?}: {}\n", p, e);
+            }
+        }
+
+        if time_to_panic {
+            panic!()
+        }
+    }
 }
