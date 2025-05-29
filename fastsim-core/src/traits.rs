@@ -53,6 +53,54 @@ where
             .ok_or_else(|| anyhow!("Empty slice has no minimum"))
     }
 }
+impl<T> Min<T> for Interp0D<T>
+where
+    T: PartialOrd,
+{
+    fn min(&self) -> anyhow::Result<&T> {
+        Ok(&self.0)
+    }
+}
+impl<D, S> Min<D::Elem> for Interp1D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy1D<D> + Clone,
+{
+    fn min(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.min()
+    }
+}
+impl<D, S> Min<D::Elem> for Interp2D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy2D<D> + Clone,
+{
+    fn min(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.min()
+    }
+}
+impl<D, S> Min<D::Elem> for Interp3D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy3D<D> + Clone,
+{
+    fn min(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.min()
+    }
+}
+impl<D, S> Min<D::Elem> for InterpND<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::StrategyND<D> + Clone,
+{
+    fn min(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.min()
+    }
+}
 impl<S> Min<S::Elem> for InterpolatorEnum<S>
 where
     S: ndarray::Data + ndarray::RawDataClone + Clone,
@@ -60,11 +108,11 @@ where
 {
     fn min(&self) -> anyhow::Result<&S::Elem> {
         match self {
-            Self::Interp0D(Interp0D(value)) => Ok(value),
-            Self::Interp1D(interp) => interp.data.values.min(),
-            Self::Interp2D(interp) => interp.data.values.min(),
-            Self::Interp3D(interp) => interp.data.values.min(),
-            Self::InterpND(interp) => interp.data.values.min(),
+            Self::Interp0D(interp) => interp.min(),
+            Self::Interp1D(interp) => interp.min(),
+            Self::Interp2D(interp) => interp.min(),
+            Self::Interp3D(interp) => interp.min(),
+            Self::InterpND(interp) => interp.min(),
         }
     }
 }
@@ -96,6 +144,54 @@ where
             .ok_or_else(|| anyhow!("Empty slice has no maximum"))
     }
 }
+impl<T> Max<T> for Interp0D<T>
+where
+    T: PartialOrd,
+{
+    fn max(&self) -> anyhow::Result<&T> {
+        Ok(&self.0)
+    }
+}
+impl<D, S> Max<D::Elem> for Interp1D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy1D<D> + Clone,
+{
+    fn max(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.max()
+    }
+}
+impl<D, S> Max<D::Elem> for Interp2D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy2D<D> + Clone,
+{
+    fn max(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.max()
+    }
+}
+impl<D, S> Max<D::Elem> for Interp3D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy3D<D> + Clone,
+{
+    fn max(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.max()
+    }
+}
+impl<D, S> Max<D::Elem> for InterpND<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::StrategyND<D> + Clone,
+{
+    fn max(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.max()
+    }
+}
 impl<S> Max<S::Elem> for InterpolatorEnum<S>
 where
     S: ndarray::Data + ndarray::RawDataClone + Clone,
@@ -103,11 +199,11 @@ where
 {
     fn max(&self) -> anyhow::Result<&S::Elem> {
         match self {
-            Self::Interp0D(Interp0D(value)) => Ok(value),
-            Self::Interp1D(interp) => interp.data.values.max(),
-            Self::Interp2D(interp) => interp.data.values.max(),
-            Self::Interp3D(interp) => interp.data.values.max(),
-            Self::InterpND(interp) => interp.data.values.max(),
+            Self::Interp0D(interp) => interp.max(),
+            Self::Interp1D(interp) => interp.max(),
+            Self::Interp2D(interp) => interp.max(),
+            Self::Interp3D(interp) => interp.max(),
+            Self::InterpND(interp) => interp.max(),
         }
     }
 }

@@ -1206,14 +1206,36 @@ impl EffInterp {
             EffInterp::CRateSOCTemperature(interp3d) => interp3d.view().into(),
         }
     }
+}
 
-    fn get_mut(&mut self) -> InterpolatorEnumOwned<&f64> {
+impl InterpolatorMutMethods for EffInterp {
+    fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
         match self {
-            EffInterp::Constant(interp0d) => interp0d.to_owned().into(),
-            EffInterp::CRate(interp1d) => interp1d.into(),
-            EffInterp::CRateSOC(interp2d) => interp2d.into(),
-            EffInterp::CRateTemperature(interp2d) => interp2d.into(),
-            EffInterp::CRateSOCTemperature(interp3d) => interp3d.into(),
+            EffInterp::Constant(interp0d) => interp0d.set_min(min, scaling),
+            EffInterp::CRate(interp1d) => interp1d.set_min(min, scaling),
+            EffInterp::CRateSOC(interp2d) => interp2d.set_min(min, scaling),
+            EffInterp::CRateTemperature(interp2d) => interp2d.set_min(min, scaling),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.set_min(min, scaling),
+        }
+    }
+
+    fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.set_max(max, scaling),
+            EffInterp::CRate(interp1d) => interp1d.set_max(max, scaling),
+            EffInterp::CRateSOC(interp2d) => interp2d.set_max(max, scaling),
+            EffInterp::CRateTemperature(interp2d) => interp2d.set_max(max, scaling),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.set_max(max, scaling),
+        }
+    }
+
+    fn set_range(&mut self, range: f64) -> anyhow::Result<()> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.set_range(range),
+            EffInterp::CRate(interp1d) => interp1d.set_range(range),
+            EffInterp::CRateSOC(interp2d) => interp2d.set_range(range),
+            EffInterp::CRateTemperature(interp2d) => interp2d.set_range(range),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.set_range(range),
         }
     }
 }

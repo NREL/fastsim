@@ -8,47 +8,35 @@ pub trait InterpolatorMutMethods {
     fn set_range(&mut self, range: f64) -> anyhow::Result<()>;
 }
 
-// This can be made more generic by using a `ninterp::num_traits` bound instead of f64
-// If there are future methods that *do not* mutate the interpolator,
-// we should define a new trait and impl it for `InterpolatorEnum<D> where D: ndarray::Data`
-impl InterpolatorMutMethods for InterpolatorEnumOwned<f64> {
-    // scale all values so that the min is the new min
-    // (Note: this may change the max, depending on what scaling method is chosen)
+impl InterpolatorMutMethods for Interp0D<f64> {
+    fn set_min(&mut self, min: f64, _scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        self.0 = min;
+        Ok(())
+    }
+
+    fn set_max(&mut self, max: f64, _scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        self.0 = max;
+        Ok(())
+    }
+
+    fn set_range(&mut self, _range: f64) -> anyhow::Result<()> {
+        bail!("Cannot set range for 0D interpolator")
+    }
+}
+
+impl<S> InterpolatorMutMethods for Interp1DOwned<f64, S>
+where
+    S: ninterp::strategy::traits::Strategy1D<ndarray::OwnedRepr<f64>> + Clone,
+{
     fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
-        let scaling = scaling.unwrap_or_default();
         let old_min = *self.min()?;
-        match scaling {
+        match scaling.unwrap_or_default() {
             utils::interp::ScalingMethods::Proportional => {
                 ensure!(
                     old_min != 0.,
                     "Cannot modify min proportionally when old_min == 0."
                 );
-                match self {
-                    Self::Interp0D(Interp0D(v)) => {
-                        *v = min;
-                        Ok(())
-                    }
-                    Self::Interp1D(interp) => {
-                        interp.data.values.map_inplace(|v| *v *= min / old_min);
-                        interp.validate()?;
-                        Ok(())
-                    }
-                    Self::Interp2D(interp) => {
-                        interp.data.values.map_inplace(|v| *v *= min / old_min);
-                        interp.validate()?;
-                        Ok(())
-                    }
-                    Self::Interp3D(interp) => {
-                        interp.data.values.map_inplace(|v| *v *= min / old_min);
-                        interp.validate()?;
-                        Ok(())
-                    }
-                    Self::InterpND(interp) => {
-                        interp.data.values.map_inplace(|v| *v *= min / old_min);
-                        interp.validate()?;
-                        Ok(())
-                    }
-                }
+                self.data.values.map_inplace(|v| *v *= min / old_min);
             }
             utils::interp::ScalingMethods::AnchoredProportional => {
                 todo!()
@@ -57,45 +45,19 @@ impl InterpolatorMutMethods for InterpolatorEnumOwned<f64> {
                 todo!()
             }
         }
+        self.validate()?;
+        Ok(())
     }
 
-    // scale all values so that the max is the new max
-    // (Note: may change the min, depending on what scaling method is chosen)
     fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
-        let scaling = scaling.unwrap_or_default();
         let old_max = *self.max()?;
-        match scaling {
+        match scaling.unwrap_or_default() {
             utils::interp::ScalingMethods::Proportional => {
                 ensure!(
                     old_max != 0.,
                     "Cannot modify max proportionally when old_max == 0."
                 );
-                match self {
-                    Self::Interp0D(Interp0D(v)) => {
-                        *v = max;
-                        Ok(())
-                    }
-                    Self::Interp1D(interp) => {
-                        interp.data.values.map_inplace(|v| *v *= max / old_max);
-                        interp.validate()?;
-                        Ok(())
-                    }
-                    Self::Interp2D(interp) => {
-                        interp.data.values.map_inplace(|v| *v *= max / old_max);
-                        interp.validate()?;
-                        Ok(())
-                    }
-                    Self::Interp3D(interp) => {
-                        interp.data.values.map_inplace(|v| *v *= max / old_max);
-                        interp.validate()?;
-                        Ok(())
-                    }
-                    Self::InterpND(interp) => {
-                        interp.data.values.map_inplace(|v| *v *= max / old_max);
-                        interp.validate()?;
-                        Ok(())
-                    }
-                }
+                self.data.values.map_inplace(|v| *v *= max / old_max);
             }
             utils::interp::ScalingMethods::AnchoredProportional => {
                 todo!()
@@ -104,6 +66,8 @@ impl InterpolatorMutMethods for InterpolatorEnumOwned<f64> {
                 todo!()
             }
         }
+        self.validate()?;
+        Ok(())
     }
 
     fn set_range(&mut self, range: f64) -> anyhow::Result<()> {
@@ -112,65 +76,245 @@ impl InterpolatorMutMethods for InterpolatorEnumOwned<f64> {
         ensure!(old_range != 0., "Cannot modify range when min == max");
         // if the new range is 0., chooses the max as the value for all elements of the array
         if range == 0. {
-            match self {
-                Self::Interp0D(_) => unreachable!("The above `ensure` should trigger"),
-                Self::Interp1D(interp) => {
-                    interp.data.values = interp.data.values.map(|_| old_max);
-                    interp.validate()?;
-                    Ok(())
-                }
-                Self::Interp2D(interp) => {
-                    interp.data.values = interp.data.values.map(|_| old_max);
-                    interp.validate()?;
-                    Ok(())
-                }
-                Self::Interp3D(interp) => {
-                    interp.data.values = interp.data.values.map(|_| old_max);
-                    interp.validate()?;
-                    Ok(())
-                }
-                Self::InterpND(interp) => {
-                    interp.data.values = interp.data.values.map(|_| old_max);
-                    interp.validate()?;
-                    Ok(())
-                }
-            }
+            self.data.values = self.data.values.map(|_| old_max);
         } else {
-            match self {
-                Self::Interp0D(_) => unreachable!("The above `ensure` should trigger"),
-                Self::Interp1D(interp) => {
-                    interp.data.values = interp
-                        .data
-                        .values
-                        .map(|x| old_max + (x - old_max) * range / old_range);
-                    interp.validate()?;
-                    Ok(())
-                }
-                Self::Interp2D(interp) => {
-                    interp.data.values = interp
-                        .data
-                        .values
-                        .map(|x| old_max + (x - old_max) * range / old_range);
-                    interp.validate()?;
-                    Ok(())
-                }
-                Self::Interp3D(interp) => {
-                    interp.data.values = interp
-                        .data
-                        .values
-                        .map(|x| old_max + (x - old_max) * range / old_range);
-                    interp.validate()?;
-                    Ok(())
-                }
-                Self::InterpND(interp) => {
-                    interp.data.values = interp
-                        .data
-                        .values
-                        .map(|x| old_max + (x - old_max) * range / old_range);
-                    interp.validate()?;
-                    Ok(())
-                }
+            self.data.values = self
+                .data
+                .values
+                .map(|x| old_max + (x - old_max) * range / old_range);
+        }
+        self.validate()?;
+        Ok(())
+    }
+}
+
+impl<S> InterpolatorMutMethods for Interp2DOwned<f64, S>
+where
+    S: ninterp::strategy::traits::Strategy2D<ndarray::OwnedRepr<f64>> + Clone,
+{
+    fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        let old_min = *self.min()?;
+        match scaling.unwrap_or_default() {
+            utils::interp::ScalingMethods::Proportional => {
+                ensure!(
+                    old_min != 0.,
+                    "Cannot modify min proportionally when old_min == 0."
+                );
+                self.data.values.map_inplace(|v| *v *= min / old_min);
             }
+            utils::interp::ScalingMethods::AnchoredProportional => {
+                todo!()
+            }
+            utils::interp::ScalingMethods::Offset => {
+                todo!()
+            }
+        }
+        self.validate()?;
+        Ok(())
+    }
+
+    fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        let old_max = *self.max()?;
+        match scaling.unwrap_or_default() {
+            utils::interp::ScalingMethods::Proportional => {
+                ensure!(
+                    old_max != 0.,
+                    "Cannot modify max proportionally when old_max == 0."
+                );
+                self.data.values.map_inplace(|v| *v *= max / old_max);
+            }
+            utils::interp::ScalingMethods::AnchoredProportional => {
+                todo!()
+            }
+            utils::interp::ScalingMethods::Offset => {
+                todo!()
+            }
+        }
+        self.validate()?;
+        Ok(())
+    }
+
+    fn set_range(&mut self, range: f64) -> anyhow::Result<()> {
+        let old_max = *self.max()?;
+        let old_range = old_max - self.min()?;
+        ensure!(old_range != 0., "Cannot modify range when min == max");
+        // if the new range is 0., chooses the max as the value for all elements of the array
+        if range == 0. {
+            self.data.values = self.data.values.map(|_| old_max);
+        } else {
+            self.data.values = self
+                .data
+                .values
+                .map(|x| old_max + (x - old_max) * range / old_range);
+        }
+        self.validate()?;
+        Ok(())
+    }
+}
+
+impl<S> InterpolatorMutMethods for Interp3DOwned<f64, S>
+where
+    S: ninterp::strategy::traits::Strategy3D<ndarray::OwnedRepr<f64>> + Clone,
+{
+    fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        let old_min = *self.min()?;
+        match scaling.unwrap_or_default() {
+            utils::interp::ScalingMethods::Proportional => {
+                ensure!(
+                    old_min != 0.,
+                    "Cannot modify min proportionally when old_min == 0."
+                );
+                self.data.values.map_inplace(|v| *v *= min / old_min);
+            }
+            utils::interp::ScalingMethods::AnchoredProportional => {
+                todo!()
+            }
+            utils::interp::ScalingMethods::Offset => {
+                todo!()
+            }
+        }
+        self.validate()?;
+        Ok(())
+    }
+
+    fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        let old_max = *self.max()?;
+        match scaling.unwrap_or_default() {
+            utils::interp::ScalingMethods::Proportional => {
+                ensure!(
+                    old_max != 0.,
+                    "Cannot modify max proportionally when old_max == 0."
+                );
+                self.data.values.map_inplace(|v| *v *= max / old_max);
+            }
+            utils::interp::ScalingMethods::AnchoredProportional => {
+                todo!()
+            }
+            utils::interp::ScalingMethods::Offset => {
+                todo!()
+            }
+        }
+        self.validate()?;
+        Ok(())
+    }
+
+    fn set_range(&mut self, range: f64) -> anyhow::Result<()> {
+        let old_max = *self.max()?;
+        let old_range = old_max - self.min()?;
+        ensure!(old_range != 0., "Cannot modify range when min == max");
+        // if the new range is 0., chooses the max as the value for all elements of the array
+        if range == 0. {
+            self.data.values = self.data.values.map(|_| old_max);
+        } else {
+            self.data.values = self
+                .data
+                .values
+                .map(|x| old_max + (x - old_max) * range / old_range);
+        }
+        self.validate()?;
+        Ok(())
+    }
+}
+
+impl<S> InterpolatorMutMethods for InterpNDOwned<f64, S>
+where
+    S: ninterp::strategy::traits::StrategyND<ndarray::OwnedRepr<f64>> + Clone,
+{
+    fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        let old_min = *self.min()?;
+        match scaling.unwrap_or_default() {
+            utils::interp::ScalingMethods::Proportional => {
+                ensure!(
+                    old_min != 0.,
+                    "Cannot modify min proportionally when old_min == 0."
+                );
+                self.data.values.map_inplace(|v| *v *= min / old_min);
+            }
+            utils::interp::ScalingMethods::AnchoredProportional => {
+                todo!()
+            }
+            utils::interp::ScalingMethods::Offset => {
+                todo!()
+            }
+        }
+        self.validate()?;
+        Ok(())
+    }
+
+    fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        let old_max = *self.max()?;
+        match scaling.unwrap_or_default() {
+            utils::interp::ScalingMethods::Proportional => {
+                ensure!(
+                    old_max != 0.,
+                    "Cannot modify max proportionally when old_max == 0."
+                );
+                self.data.values.map_inplace(|v| *v *= max / old_max);
+            }
+            utils::interp::ScalingMethods::AnchoredProportional => {
+                todo!()
+            }
+            utils::interp::ScalingMethods::Offset => {
+                todo!()
+            }
+        }
+        self.validate()?;
+        Ok(())
+    }
+
+    fn set_range(&mut self, range: f64) -> anyhow::Result<()> {
+        let old_max = *self.max()?;
+        let old_range = old_max - self.min()?;
+        ensure!(old_range != 0., "Cannot modify range when min == max");
+        // if the new range is 0., chooses the max as the value for all elements of the array
+        if range == 0. {
+            self.data.values = self.data.values.map(|_| old_max);
+        } else {
+            self.data.values = self
+                .data
+                .values
+                .map(|x| old_max + (x - old_max) * range / old_range);
+        }
+        self.validate()?;
+        Ok(())
+    }
+}
+
+// This can be made more generic by using a `ninterp::num_traits` bound instead of f64
+// If there are future methods that *do not* mutate the interpolator,
+// we should define a new trait and impl it for `InterpolatorEnum<D> where D: ndarray::Data`
+impl InterpolatorMutMethods for InterpolatorEnumOwned<f64> {
+    // scale all values so that the min is the new min
+    // (Note: this may change the max, depending on what scaling method is chosen)
+    fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        match self {
+            Self::Interp0D(interp) => interp.set_min(min, scaling),
+            Self::Interp1D(interp) => interp.set_min(min, scaling),
+            Self::Interp2D(interp) => interp.set_min(min, scaling),
+            Self::Interp3D(interp) => interp.set_min(min, scaling),
+            Self::InterpND(interp) => interp.set_min(min, scaling),
+        }
+    }
+
+    // scale all values so that the max is the new max
+    // (Note: may change the min, depending on what scaling method is chosen)
+    fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        match self {
+            Self::Interp0D(interp) => interp.set_max(max, scaling),
+            Self::Interp1D(interp) => interp.set_max(max, scaling),
+            Self::Interp2D(interp) => interp.set_max(max, scaling),
+            Self::Interp3D(interp) => interp.set_max(max, scaling),
+            Self::InterpND(interp) => interp.set_max(max, scaling),
+        }
+    }
+
+    fn set_range(&mut self, range: f64) -> anyhow::Result<()> {
+        match self {
+            Self::Interp0D(interp) => interp.set_range(range),
+            Self::Interp1D(interp) => interp.set_range(range),
+            Self::Interp2D(interp) => interp.set_range(range),
+            Self::Interp3D(interp) => interp.set_range(range),
+            Self::InterpND(interp) => interp.set_range(range),
         }
     }
 }
