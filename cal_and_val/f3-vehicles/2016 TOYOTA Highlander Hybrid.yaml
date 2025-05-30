@@ -682,18 +682,16 @@ pt_type:
       save_interval: 1
     pt_cntrl:
       RGWDB:
-        speed_soc_disch_buffer: 17.8816
+        speed_soc_disch_buffer_meters_per_second: 17.8816
         speed_soc_disch_buffer_coeff: 1.0
-        speed_soc_fc_on_buffer: 19.66976
+        speed_soc_fc_on_buffer_meters_per_second: 19.66976
         speed_soc_fc_on_buffer_coeff: 1.0
-        speed_soc_regen_buffer: 13.4112
+        speed_soc_regen_buffer_meters_per_second: 13.4112
         speed_soc_regen_buffer_coeff: 1.0
-        fc_min_time_on: 5.0
-        speed_fc_forced_on: 0.44704
+        fc_min_time_on_seconds: 5.0
+        speed_fc_forced_on_meters_per_second: 0.44704
         frac_pwr_demand_fc_forced_on: 0.4784688995215311
         frac_of_most_eff_pwr_to_run_fc: 1.0
-        frac_res_chrg_for_fc: 0.0
-        frac_res_dschrg_for_fc: 0.0
     aux_cntrl: AuxOnResPriority
     mass_kilograms: ~
     sim_params:

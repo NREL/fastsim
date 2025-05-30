@@ -846,7 +846,7 @@ pub(crate) mod tests {
             let p = path.unwrap().path();
             if let Err(e) = crate::vehicle::Vehicle::from_file(p.clone(), false) {
                 time_to_panic = true;
-                eprintln!("Error loading {:?}: {}\n", p, e);
+                eprintln!("Error loading {p:?}: {e}\n");
             }
         }
 
@@ -855,7 +855,7 @@ pub(crate) mod tests {
             let p = path.unwrap().path();
             if let Err(e) = crate::vehicle::Vehicle::from_file(p.clone(), false) {
                 time_to_panic = true;
-                eprintln!("Error loading {:?}: {}\n", p, e);
+                eprintln!("Error loading {p:?}: {e}\n");
             }
         }
 
