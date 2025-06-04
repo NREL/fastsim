@@ -5,13 +5,12 @@ import time
 import seaborn as sns
 
 import fastsim as fsim
-
-from plot_utils import (  # type: ignore[import-not-found]
+from fastsim.demos.plot_utils import (
     plot_bev_hvac_pwr,
     plot_bev_res_energy,
     plot_bev_res_pwr,
-    plot_road_loads,
     plot_bev_temperatures,
+    plot_road_loads,
 )
 
 sns.set_theme()

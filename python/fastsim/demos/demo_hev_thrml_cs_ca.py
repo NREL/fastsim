@@ -1,17 +1,15 @@
 # %%
-from plot_utils import *
-
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-import seaborn as sns
-from pathlib import Path
-import time
-import json
 import os
-from typing import Tuple
+import time
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+
 import fastsim as fsim
+from fastsim.demos.plot_utils import *
 
 sns.set_theme()
 
@@ -29,7 +27,7 @@ temp_amb_and_init = -6.7 + celsius_to_kelvin
 # load 2021 Hyundai Sonata HEV from file
 veh_dict = fsim.Vehicle.from_file(
     fsim.package_root()
-    / "../../cal_and_val/thermal/f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml"
+    / "../../cal_and_val/thermal/f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml",
 ).to_pydict()
 veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_amb_and_init
 veh_dict["pt_type"]["HybridElectricVehicle"]["res"]["thrml"]["RESLumpedThermal"]["state"][
@@ -66,7 +64,7 @@ sd_dict = sd.to_pydict(flatten=True)
 # # Visualize results
 
 
-def plot_temperatures() -> Tuple[Figure, Axes]:
+def plot_temperatures() -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Component Temperatures")
 
@@ -124,7 +122,7 @@ def plot_temperatures() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-def plot_fc_pwr() -> Tuple[Figure, Axes]:
+def plot_fc_pwr() -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Fuel Converter Power")
 
@@ -194,7 +192,7 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-def plot_fc_energy() -> Tuple[Figure, Axes]:
+def plot_fc_energy() -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Fuel Converter Energy")
 
@@ -231,14 +229,14 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
 
     plt.tight_layout()
     if SAVE_FIGS:
-        plt.savefig(Path(f"./plots/fc_energy.svg"))
+        plt.savefig(Path("./plots/fc_energy.svg"))
     if SHOW_PLOTS:
         plt.show()
 
     return fig, ax
 
 
-def plot_res_pwr() -> Tuple[Figure, Axes]:
+def plot_res_pwr() -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Reversible Energy Storage Power")
 
@@ -284,7 +282,7 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-def plot_res_energy() -> Tuple[Figure, Axes]:
+def plot_res_energy() -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Reversible Energy Storage Energy")
 
@@ -330,7 +328,7 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-def plot_road_loads() -> Tuple[Figure, Axes]:
+def plot_road_loads_comparison() -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Road Loads")
 
@@ -377,14 +375,14 @@ fig_fc_energy, ax_fc_energy = plot_fc_energy()
 fig_res_pwr, ax_res_pwr = plot_res_pwr()
 fig_res_energy, ax_res_energy = plot_res_energy()
 fig_temps, ax_temps = plot_temperatures()
-fig, ax = plot_road_loads()
+fig, ax = plot_road_loads_comparison()
 
 # %%
 
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
 res = fsim.ReversibleEnergyStorage.from_pydict(
-    sd.to_pydict()["veh"]["pt_type"]["HybridElectricVehicle"]["res"]
+    sd.to_pydict()["veh"]["pt_type"]["HybridElectricVehicle"]["res"],
 )
 res.set_default_pwr_interp()
 

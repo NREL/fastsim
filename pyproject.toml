@@ -30,6 +30,9 @@ dependencies = [
     "executing~=2.0",
     "pip",
     "types-seaborn~=0.13.2",
+    "pylsp-mypy>=0.7.0",
+    "pylsp-rope>=0.1.17",
+    "ruff>=0.11.9",
 ]
 
 [project.urls]
