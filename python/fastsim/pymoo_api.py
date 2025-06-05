@@ -37,7 +37,7 @@ try:
 except ModuleNotFoundError as err:
     print(
         f"{err}\nTry running `pip install pymoo==0.6.0.1` to use all features in "
-        + "`fastsim.calibration`",
+        + "`fastsim.pymoo_api`",
     )
     PYMOO_AVAILABLE = False
 
@@ -135,9 +135,7 @@ class ModelObjectives:
 
     def __post_init__(self):
         assert self.n_obj is None, "`n_obj` is not intended to be user provided"
-        assert len(self.dfs) == len(self.models), (
-            f"{len(self.dfs)} != {len(self.models)}"
-        )
+        assert len(self.dfs) == len(self.models), f"{len(self.dfs)} != {len(self.models)}"
         self.param_fns = tuple([pb[0] for pb in self.param_fns_and_bounds])
         self.bounds = tuple([pb[1] for pb in self.param_fns_and_bounds])
         assert len(self.bounds) == len(self.param_fns)
@@ -222,9 +220,7 @@ class ModelObjectives:
                 sd_dict = sd.to_pydict()
                 walk_success = True
                 print(err)
-                if len(sd_dict["veh"]["history"]["time_seconds"]) < np.floor(
-                    len(df_exp) / 2
-                ):
+                if len(sd_dict["veh"]["history"]["time_seconds"]) < np.floor(len(df_exp) / 2):
                     walk_success = False
 
             if self.verbose:
@@ -251,9 +247,7 @@ class ModelObjectives:
                     mod_sig = obj_fn[0](sd_dict)
                     ref_sig = None
                 else:
-                    raise ValueError(
-                        "Each element in `self.obj_fns` must have length of 1 or 2"
-                    )
+                    raise ValueError("Each element in `self.obj_fns` must have length of 1 or 2")
 
                 if ref_sig is not None:
                     time_s = sd_dict["veh"]["history"]["time_seconds"]
