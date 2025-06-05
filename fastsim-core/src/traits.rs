@@ -3,6 +3,8 @@ use crate::imports::*;
 pub mod serde_api;
 pub use serde_api::*;
 
+use ninterp::num_traits::{Num, Zero};
+
 pub trait Linspace {
     /// Generate linearly spaced vec
     /// # Arguments
@@ -24,130 +26,281 @@ pub trait Linspace {
 
 impl Linspace for Vec<f64> {}
 
-pub trait Min {
-    fn min(&self) -> anyhow::Result<f64>;
+pub trait Min<T: PartialOrd> {
+    fn min(&self) -> anyhow::Result<&T>;
 }
-impl Min for &[f64] {
-    fn min(&self) -> anyhow::Result<f64> {
-        Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
-    }
-}
-impl Min for Vec<f64> {
-    fn min(&self) -> anyhow::Result<f64> {
-        self.as_slice().min()
-    }
-}
-impl Min for &[&f64] {
-    fn min(&self) -> anyhow::Result<f64> {
-        Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(**curr)))
-    }
-}
-impl Min for Vec<&f64> {
-    fn min(&self) -> anyhow::Result<f64> {
-        self.as_slice().min()
-    }
-}
-impl Min for &[Vec<f64>] {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T: PartialOrd> Min<T> for [T] {
+    fn min(&self) -> anyhow::Result<&T> {
         self.iter()
-            .map(|v| v.min())
-            .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| anyhow!("Empty slice has no minimum"))
     }
 }
-impl Min for Vec<Vec<f64>> {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<T: PartialOrd> Min<T> for Vec<T> {
+    fn min(&self) -> anyhow::Result<&T> {
         self.as_slice().min()
     }
 }
-impl Min for &[Vec<Vec<f64>>] {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<S, D> Min<S::Elem> for ArrayBase<S, D>
+where
+    S: ndarray::Data,
+    S::Elem: PartialOrd,
+    D: ndarray::Dimension,
+{
+    fn min(&self) -> anyhow::Result<&S::Elem> {
         self.iter()
-            .map(|v| v.min())
-            .try_fold(f64::INFINITY, |acc, x| Ok(acc.min(x?)))
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| anyhow!("Empty slice has no minimum"))
     }
 }
-impl Min for Vec<Vec<Vec<f64>>> {
-    fn min(&self) -> anyhow::Result<f64> {
-        self.as_slice().min()
+impl<T> Min<T> for Interp0D<T>
+where
+    T: PartialOrd,
+{
+    fn min(&self) -> anyhow::Result<&T> {
+        Ok(&self.0)
     }
 }
-impl Min for Interpolator {
-    fn min(&self) -> anyhow::Result<f64> {
+impl<D, S> Min<D::Elem> for Interp1D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy1D<D> + Clone,
+{
+    fn min(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.min()
+    }
+}
+impl<D, S> Min<D::Elem> for Interp2D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy2D<D> + Clone,
+{
+    fn min(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.min()
+    }
+}
+impl<D, S> Min<D::Elem> for Interp3D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy3D<D> + Clone,
+{
+    fn min(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.min()
+    }
+}
+impl<D, S> Min<D::Elem> for InterpND<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::StrategyND<D> + Clone,
+{
+    fn min(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.min()
+    }
+}
+impl<S> Min<S::Elem> for InterpolatorEnum<S>
+where
+    S: ndarray::Data + ndarray::RawDataClone + Clone,
+    S::Elem: Num + PartialOrd + Copy + std::fmt::Debug,
+{
+    fn min(&self) -> anyhow::Result<&S::Elem> {
         match self {
-            Interpolator::Interp0D(value) => Ok(*value),
-            Interpolator::Interp1D(..) => self.f_x()?.min(),
-            Interpolator::Interp2D(..) => self.f_xy()?.min(),
-            Interpolator::Interp3D(..) => self.f_xyz()?.min(),
-            Interpolator::InterpND(..) => Ok(self
-                .values()?
-                .iter()
-                .fold(f64::INFINITY, |acc, x| acc.min(*x))),
+            Self::Interp0D(interp) => interp.min(),
+            Self::Interp1D(interp) => interp.min(),
+            Self::Interp2D(interp) => interp.min(),
+            Self::Interp3D(interp) => interp.min(),
+            Self::InterpND(interp) => interp.min(),
         }
     }
 }
 
-pub trait Max {
-    fn max(&self) -> anyhow::Result<f64>;
+pub trait Max<T: PartialOrd> {
+    fn max(&self) -> anyhow::Result<&T>;
 }
-impl Max for &[f64] {
-    fn max(&self) -> anyhow::Result<f64> {
-        Ok(self
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
-    }
-}
-impl Max for Vec<f64> {
-    fn max(&self) -> anyhow::Result<f64> {
-        self.as_slice().max()
-    }
-}
-impl Max for &[&f64] {
-    fn max(&self) -> anyhow::Result<f64> {
-        Ok(self
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(**curr)))
-    }
-}
-impl Max for Vec<&f64> {
-    fn max(&self) -> anyhow::Result<f64> {
-        self.as_slice().max()
-    }
-}
-impl Max for &[Vec<f64>] {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<T: PartialOrd> Max<T> for [T] {
+    fn max(&self) -> anyhow::Result<&T> {
         self.iter()
-            .map(|v| v.max())
-            .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| anyhow!("Empty slice has no maximum"))
     }
 }
-impl Max for Vec<Vec<f64>> {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<T: PartialOrd> Max<T> for Vec<T> {
+    fn max(&self) -> anyhow::Result<&T> {
         self.as_slice().max()
     }
 }
-impl Max for &[Vec<Vec<f64>>] {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<S, D> Max<S::Elem> for ArrayBase<S, D>
+where
+    S: ndarray::Data,
+    S::Elem: PartialOrd,
+    D: ndarray::Dimension,
+{
+    fn max(&self) -> anyhow::Result<&S::Elem> {
         self.iter()
-            .map(|v| v.max())
-            .try_fold(f64::NEG_INFINITY, |acc, x| Ok(acc.max(x?)))
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| anyhow!("Empty slice has no maximum"))
     }
 }
-impl Max for Vec<Vec<Vec<f64>>> {
-    fn max(&self) -> anyhow::Result<f64> {
-        self.as_slice().max()
+impl<T> Max<T> for Interp0D<T>
+where
+    T: PartialOrd,
+{
+    fn max(&self) -> anyhow::Result<&T> {
+        Ok(&self.0)
     }
 }
-impl Max for Interpolator {
-    fn max(&self) -> anyhow::Result<f64> {
+impl<D, S> Max<D::Elem> for Interp1D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy1D<D> + Clone,
+{
+    fn max(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.max()
+    }
+}
+impl<D, S> Max<D::Elem> for Interp2D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy2D<D> + Clone,
+{
+    fn max(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.max()
+    }
+}
+impl<D, S> Max<D::Elem> for Interp3D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::Strategy3D<D> + Clone,
+{
+    fn max(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.max()
+    }
+}
+impl<D, S> Max<D::Elem> for InterpND<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + std::fmt::Debug,
+    S: strategy::traits::StrategyND<D> + Clone,
+{
+    fn max(&self) -> anyhow::Result<&D::Elem> {
+        self.data.values.max()
+    }
+}
+impl<S> Max<S::Elem> for InterpolatorEnum<S>
+where
+    S: ndarray::Data + ndarray::RawDataClone + Clone,
+    S::Elem: Num + PartialOrd + Copy + std::fmt::Debug,
+{
+    fn max(&self) -> anyhow::Result<&S::Elem> {
         match self {
-            Interpolator::Interp0D(value) => Ok(*value),
-            Interpolator::Interp1D(..) => self.f_x()?.max(),
-            Interpolator::Interp2D(..) => self.f_xy()?.max(),
-            Interpolator::Interp3D(..) => self.f_xyz()?.max(),
-            Interpolator::InterpND(..) => Ok(self
-                .values()?
-                .iter()
-                .fold(f64::NEG_INFINITY, |acc, x| acc.max(*x))),
+            Self::Interp0D(interp) => interp.max(),
+            Self::Interp1D(interp) => interp.max(),
+            Self::Interp2D(interp) => interp.max(),
+            Self::Interp3D(interp) => interp.max(),
+            Self::InterpND(interp) => interp.max(),
+        }
+    }
+}
+
+pub trait Range<T: PartialOrd + Sub<Output = T>>: Min<T> + Max<T> {
+    fn range(&self) -> anyhow::Result<T>;
+}
+impl<T> Range<T> for [T]
+where
+    Self: Min<T> + Max<T>,
+    T: PartialOrd + Sub<Output = T> + Copy,
+{
+    fn range(&self) -> anyhow::Result<T> {
+        Ok(*self.max()? - *self.min()?)
+    }
+}
+impl<T> Range<T> for Vec<T>
+where
+    Self: Min<T> + Max<T>,
+    T: PartialOrd + Sub<Output = T> + Copy,
+{
+    fn range(&self) -> anyhow::Result<T> {
+        self.as_slice().range()
+    }
+}
+impl<S, D> Range<S::Elem> for ArrayBase<S, D>
+where
+    S: ndarray::Data,
+    S::Elem: PartialOrd + Sub<Output = S::Elem> + Copy,
+    D: ndarray::Dimension,
+    Self: Min<S::Elem> + Max<S::Elem>,
+{
+    fn range(&self) -> anyhow::Result<S::Elem> {
+        Ok(*self.max()? - *self.min()?)
+    }
+}
+impl<T> Range<T> for Interp0D<T>
+where
+    T: Zero + PartialOrd + Sub<Output = T>,
+{
+    fn range(&self) -> anyhow::Result<T> {
+        Ok(T::zero())
+    }
+}
+impl<D, S> Range<D::Elem> for Interp1D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
+    S: strategy::traits::Strategy1D<D> + Clone,
+{
+    fn range(&self) -> anyhow::Result<D::Elem> {
+        self.data.values.range()
+    }
+}
+impl<D, S> Range<D::Elem> for Interp2D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
+    S: strategy::traits::Strategy2D<D> + Clone,
+{
+    fn range(&self) -> anyhow::Result<D::Elem> {
+        self.data.values.range()
+    }
+}
+impl<D, S> Range<D::Elem> for Interp3D<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
+    S: strategy::traits::Strategy3D<D> + Clone,
+{
+    fn range(&self) -> anyhow::Result<D::Elem> {
+        self.data.values.range()
+    }
+}
+impl<D, S> Range<D::Elem> for InterpND<D, S>
+where
+    D: ndarray::Data + ndarray::RawDataClone + Clone,
+    D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
+    S: strategy::traits::StrategyND<D> + Clone,
+{
+    fn range(&self) -> anyhow::Result<D::Elem> {
+        self.data.values.range()
+    }
+}
+impl<S> Range<S::Elem> for InterpolatorEnum<S>
+where
+    S: ndarray::Data + ndarray::RawDataClone + Clone,
+    S::Elem: Num + PartialOrd + Copy + std::fmt::Debug,
+    ArrayBase<S, Ix1>: Range<S::Elem>,
+{
+    fn range(&self) -> anyhow::Result<S::Elem> {
+        match self {
+            Self::Interp0D(interp) => interp.range(),
+            Self::Interp1D(interp) => interp.range(),
+            Self::Interp2D(interp) => interp.range(),
+            Self::Interp3D(interp) => interp.range(),
+            Self::InterpND(interp) => interp.range(),
         }
     }
 }
@@ -243,11 +396,11 @@ mod tests {
 
     #[test]
     fn test_max_for_vec_f64() {
-        assert_eq!(Vec::linspace(-10., 12., 5).max().unwrap(), 12.);
+        assert_eq!(Vec::linspace(-10., 12., 5).max().unwrap(), &12.);
     }
     #[test]
     fn test_min_for_vec_f64() {
-        assert_eq!(Vec::linspace(-10., 12., 5).min().unwrap(), -10.);
+        assert_eq!(Vec::linspace(-10., 12., 5).min().unwrap(), &-10.);
     }
 
     #[test]

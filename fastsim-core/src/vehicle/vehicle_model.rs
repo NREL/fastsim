@@ -264,10 +264,14 @@ const BEV: &str = "BEV";
 
 impl SetCumulative for Vehicle {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
-        self.pt_type.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
-        self.cabin.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
-        self.hvac.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+        self.state
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+        self.pt_type
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+        self.cabin
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+        self.hvac
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
         // this does not get handled by the `SetCumulative` derive macro
         self.state.dist.increment(
             *self.state.speed_ach.get_fresh(|| format_dbg!())? * dt,
@@ -822,12 +826,45 @@ pub(crate) mod tests {
 
     #[test]
     fn test_resources() {
+        let mut time_to_panic = false;
+
         let resource_list = StructWithResources::list_resources().unwrap();
         assert!(!resource_list.is_empty());
 
         // verify that resources can all load
         for resource in resource_list {
-            StructWithResources::from_resource(resource, false).unwrap();
+            if let Err(e) = StructWithResources::from_resource(resource.clone(), false) {
+                time_to_panic = true;
+                eprintln!("Error loading {resource:?}: {e}\n");
+            }
+        }
+
+        let paths: Vec<_> = std::fs::read_dir("../cal_and_val/f3-vehicles")
+            .unwrap()
+            .collect();
+        assert!(!paths.is_empty());
+        for path in paths {
+            let p = path.unwrap().path();
+            if let Err(e) = StructWithResources::from_file(p.clone(), false) {
+                time_to_panic = true;
+                eprintln!("Error loading {p:?}: {e}\n");
+            }
+        }
+
+        let paths: Vec<_> = std::fs::read_dir("../cal_and_val/thermal/f3-vehicles")
+            .unwrap()
+            .collect();
+        assert!(!paths.is_empty());
+        for path in paths {
+            let p = path.unwrap().path();
+            if let Err(e) = StructWithResources::from_file(p.clone(), false) {
+                time_to_panic = true;
+                eprintln!("Error loading {p:?}: {e}\n");
+            }
+        }
+
+        if time_to_panic {
+            panic!()
         }
     }
 }

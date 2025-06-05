@@ -26,6 +26,7 @@ pub(crate) use fastsim_proc_macros::{
 };
 pub(crate) use lazy_static::lazy_static;
 pub(crate) use ndarray::prelude::*;
+pub(crate) use ndarray::{IxDynImpl, OwnedRepr};
 pub(crate) use ninterp::prelude::*;
 pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use std::cmp::{self, Ordering};
