@@ -1,3 +1,4 @@
+"""BEV thermal demo with warm start and cold ambient conditions."""
 # %%
 import os
 import time

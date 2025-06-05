@@ -1,3 +1,4 @@
+"""BEV demo showcasing FASTSim-3 vehicle simulation and plotting capabilities."""
 # %%
 
 import os
@@ -11,10 +12,14 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 import fastsim as fsim
+from fastsim.demos.plot_utils import (
+    BASE_LINE_STYLES,
+    figsize_3_stacked,
+    get_paired_cycler,
+    get_uni_cycler,
+)
 
 sns.set_theme()
-
-from fastsim.demos.plot_utils import *
 
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
@@ -72,11 +77,13 @@ t1 = time.perf_counter()
 t_fsim2 = t1 - t0
 print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
 print(
-    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:",
+    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) "
+    "for `save_interval` of 1:",
 )
 print(f"{t_fsim2 / t_fsim3_si1:.3g}x")
 print(
-    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of `None`:",
+    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) "
+    "for `save_interval` of `None`:",
 )
 print(f"{t_fsim2 / t_fsim3_si_none:.3g}x")
 
@@ -84,6 +91,7 @@ print(f"{t_fsim2 / t_fsim3_si_none:.3g}x")
 
 
 def plot_res_pwr() -> tuple[Figure, Axes]:
+    """Plot reversible energy storage powers"""
     fig, ax = plt.subplots(4, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Reversible Energy Storage Power")
 
@@ -154,6 +162,7 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
 
 
 def plot_res_energy() -> tuple[Figure, Axes]:
+    """Plot reversible energy storage energies"""
     fig, ax = plt.subplots(4, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Reversible Energy Storage Energy")
 
@@ -248,6 +257,7 @@ def plot_res_energy() -> tuple[Figure, Axes]:
 
 
 def plot_road_loads_comparison() -> tuple[Figure, Axes]:
+    """Plot comparison of fastsim-3 v. fastsim-2 road loads"""
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Road Loads")
 
