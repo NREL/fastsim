@@ -28,7 +28,7 @@ impl Transmission {
         let state = &mut self.state;
 
         let eff_pt: &[f64] = match self.eff_interp {
-            InterpolatorEnum::Interp0D(Interp0D(_)) => &[],
+            InterpolatorEnum::Interp0D(_) => &[],
             _ => unimplemented!("Only Interp0D is currently implemented"),
         };
         state.eff.update(
