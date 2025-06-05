@@ -358,8 +358,8 @@ impl SimDrive {
         let vs = &mut self.veh.state;
         // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
         let interp_pt_dist: &[f64] = match self.cyc.grade_interp {
-            Some(Interpolator::Interp0D(..)) => &[],
-            Some(Interpolator::Interp1D(..)) => {
+            Some(InterpolatorEnum::Interp0D(_)) => &[],
+            Some(InterpolatorEnum::Interp1D(_)) => {
                 &[vs.dist.get_fresh(|| format_dbg!())?.get::<si::meter>()]
             }
             _ => unreachable!(),
