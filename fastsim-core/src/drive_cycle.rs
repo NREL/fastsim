@@ -1133,13 +1133,14 @@ impl Cycle {
                             }
                             result
                         };
-                        let interp = Interpolator::new_1d(
-                            trapz_distances_m,
-                            trapz_elevations_m,
-                            Strategy::Linear,
-                            Extrapolate::Clamp,
-                        )
-                        .unwrap();
+                        let interp: InterpolatorEnum<ndarray::OwnedRepr<f64>> =
+                            InterpolatorEnum::new_1d(
+                                trapz_distances_m.clone().into(),
+                                trapz_elevations_m.clone().into(),
+                                strategy::Linear,
+                                Extrapolate::Clamp,
+                            )
+                            .unwrap();
                         let e0_m = interp.interpolate(&[dist0_m]).unwrap();
                         let e1_m = interp.interpolate(&[dist1_m]).unwrap();
                         ((e1_m - e0_m) / dd_m).asin().tan() * uc::R
@@ -1404,71 +1405,74 @@ impl Cycle {
             return self.clone();
         }
         let mut t = si::Time::ZERO;
-        let speed_interp = Interpolator::new_1d(
+        let speed_interp: InterpolatorEnum<OwnedRepr<f64>> = InterpolatorEnum::new_1d(
             self.time.iter().map(|x| x.get::<si::second>()).collect(),
             self.speed
                 .iter()
                 .map(|y| y.get::<si::meter_per_second>())
                 .collect(),
-            Strategy::Linear,
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
-        let grade_interp = Interpolator::new_1d(
+        let grade_interp: InterpolatorEnum<OwnedRepr<f64>> = InterpolatorEnum::new_1d(
             self.time.iter().map(|x| x.get::<si::second>()).collect(),
             self.grade.iter().map(|y| y.get::<si::ratio>()).collect(),
-            Strategy::RightNearest,
+            strategy::RightNearest,
             Extrapolate::Clamp,
         )
         .unwrap();
-        let temp_interp = if self.temp_amb_air.len() == self.time.len() {
-            Some(
-                Interpolator::new_1d(
-                    self.time.iter().map(|t| t.get::<si::second>()).collect(),
-                    self.temp_amb_air
-                        .iter()
-                        .map(|temp| temp.get::<si::kelvin_abs>())
-                        .collect(),
-                    Strategy::Linear,
-                    Extrapolate::Clamp,
+        let temp_interp: Option<InterpolatorEnum<OwnedRepr<f64>>> =
+            if self.temp_amb_air.len() == self.time.len() {
+                Some(
+                    InterpolatorEnum::new_1d(
+                        self.time.iter().map(|t| t.get::<si::second>()).collect(),
+                        self.temp_amb_air
+                            .iter()
+                            .map(|temp| temp.get::<si::kelvin_abs>())
+                            .collect(),
+                        strategy::Linear,
+                        Extrapolate::Clamp,
+                    )
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        } else {
-            None
-        };
-        let solar_interp = if self.pwr_solar_load.len() == self.time.len() {
-            Some(
-                Interpolator::new_1d(
-                    self.time.iter().map(|t| t.get::<si::second>()).collect(),
-                    self.pwr_solar_load
-                        .iter()
-                        .map(|p| p.get::<si::kilowatt>())
-                        .collect(),
-                    Strategy::Linear,
-                    Extrapolate::Clamp,
+            } else {
+                None
+            };
+        let solar_interp: Option<InterpolatorEnum<OwnedRepr<f64>>> =
+            if self.pwr_solar_load.len() == self.time.len() {
+                Some(
+                    InterpolatorEnum::new_1d(
+                        self.time.iter().map(|t| t.get::<si::second>()).collect(),
+                        self.pwr_solar_load
+                            .iter()
+                            .map(|p| p.get::<si::kilowatt>())
+                            .collect(),
+                        strategy::Linear,
+                        Extrapolate::Clamp,
+                    )
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        } else {
-            None
-        };
-        let chg_pwr_interp = if self.pwr_max_chrg.len() == self.time.len() {
-            Some(
-                Interpolator::new_1d(
-                    self.time.iter().map(|t| t.get::<si::second>()).collect(),
-                    self.pwr_max_chrg
-                        .iter()
-                        .map(|p| p.get::<si::kilowatt>())
-                        .collect(),
-                    Strategy::Linear,
-                    Extrapolate::Clamp,
+            } else {
+                None
+            };
+        let chg_pwr_interp: Option<InterpolatorEnum<OwnedRepr<f64>>> =
+            if self.pwr_max_chrg.len() == self.time.len() {
+                Some(
+                    InterpolatorEnum::new_1d(
+                        self.time.iter().map(|t| t.get::<si::second>()).collect(),
+                        self.pwr_max_chrg
+                            .iter()
+                            .map(|p| p.get::<si::kilowatt>())
+                            .collect(),
+                        strategy::Linear,
+                        Extrapolate::Clamp,
+                    )
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        } else {
-            None
-        };
+            } else {
+                None
+            };
         let mut ts = vec![];
         let mut vs = vec![];
         let mut gs = vec![];

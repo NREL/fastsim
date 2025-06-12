@@ -143,7 +143,7 @@ impl ConstantJerkTrajectory {
     /// Calculate and return the maximum acceleration over the trajectory in m/s2.
     pub fn maximum_acceleration(&self) -> f64 {
         let accels = self.all_accelerations();
-        accels.max().unwrap_or(0.0)
+        *accels.max().unwrap_or(&0.0)
     }
 }
 
@@ -484,9 +484,9 @@ pub struct CycleCache {
     /// grades where g[i] applies from distance [i, i+1)
     grades: Vec<f64>,
     /// interpolator for index by distance
-    interp_index_by_dist: Interpolator,
+    interp_index_by_dist: InterpolatorEnumOwned<f64>,
     /// interpolator for elevation by distance
-    interp_elev_by_dist: Interpolator,
+    interp_elev_by_dist: InterpolatorEnumOwned<f64>,
 }
 
 impl Default for CycleCache {
@@ -501,8 +501,8 @@ impl Default for CycleCache {
             interp_is: Default::default(),
             interp_hs: Default::default(),
             grades: Default::default(),
-            interp_index_by_dist: Interpolator::Interp0D(0.0),
-            interp_elev_by_dist: Interpolator::Interp0D(0.0),
+            interp_index_by_dist: InterpolatorEnum::new_0d(0.0),
+            interp_elev_by_dist: InterpolatorEnum::new_0d(0.0),
         }
     }
 }
@@ -574,17 +574,17 @@ impl CycleCache {
         }
         let grades: Vec<f64> = cyc.grade.iter().map(|g| g.get::<si::ratio>()).collect();
         debug_assert!(grades.len() == num_items);
-        let interp_index_by_dist = Interpolator::new_1d(
-            interp_ds.clone(),
-            interp_is.clone(),
-            Strategy::RightNearest,
+        let interp_index_by_dist = InterpolatorEnum::new_1d(
+            interp_ds.clone().into(),
+            interp_is.clone().into(),
+            strategy::RightNearest,
             Extrapolate::Clamp,
         )
         .unwrap();
-        let interp_elev_by_dist = Interpolator::new_1d(
-            interp_ds.clone(),
-            interp_hs.clone(),
-            Strategy::Linear,
+        let interp_elev_by_dist = InterpolatorEnum::new_1d(
+            interp_ds.clone().into(),
+            interp_hs.clone().into(),
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
@@ -972,10 +972,10 @@ mod tests {
 
     #[test]
     fn test_making_interp() {
-        let interp = ninterp::Interpolator::new_1d(
-            vec![0.0, 2.0, 4.0],
-            vec![0.0, 4.0, 8.0],
-            Strategy::Linear,
+        let interp = InterpolatorEnum::new_1d(
+            array![0.0, 2.0, 4.0],
+            array![0.0, 4.0, 8.0],
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .unwrap();
