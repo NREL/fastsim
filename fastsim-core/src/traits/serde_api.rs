@@ -48,6 +48,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     /// List the available resources in the resources directory
     ///
     /// RETURNS: a vector of strings for resources that can be loaded
+    #[cfg(feature = "resources")]
     fn list_resources() -> Result<Vec<PathBuf>, Error> {
         // Recursive function to walk the directory
         fn collect_paths(dir: &Dir, paths: &mut Vec<PathBuf>) {

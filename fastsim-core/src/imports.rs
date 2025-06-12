@@ -22,11 +22,11 @@ pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
 pub(crate) use eng_fmt::FormatEng;
 pub(crate) use fastsim_proc_macros::{
-    named_struct_pyo3_api, serde_api, tuple_struct_pyo3_api, HistoryVec, SetCumulative,
-    StateMethods,
+    pyo3_api, serde_api, HistoryVec, SetCumulative, StateMethods,
 };
 pub(crate) use lazy_static::lazy_static;
 pub(crate) use ndarray::prelude::*;
+pub(crate) use ndarray::{IxDynImpl, OwnedRepr};
 pub(crate) use ninterp::prelude::*;
 pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use std::cmp::{self, Ordering};

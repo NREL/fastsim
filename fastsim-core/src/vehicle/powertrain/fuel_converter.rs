@@ -1,5 +1,7 @@
+use super::utils::ScalingMethods;
 use super::*;
 use crate::prelude::*;
+use crate::utils::interp::InterpolatorMutMethods;
 use std::f64::consts::PI;
 
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
@@ -29,7 +31,7 @@ pub struct FuelConverter {
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
     /// interpolator for calculating [Self] efficiency as a function of output power
-    pub eff_interp_from_pwr_out: Interpolator,
+    pub eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
     /// power at which peak efficiency occurs
     #[serde(skip)]
     pub(crate) pwr_for_peak_eff: si::Power,
@@ -48,30 +50,28 @@ pub struct FuelConverter {
     pub history: FuelConverterStateHistoryVec,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverter {
     // optional, custom, struct-specific pymethods
     #[getter("eff_max")]
     fn get_eff_max_py(&self) -> PyResult<f64> {
-        Ok(self.get_eff_max()?)
+        Ok(*self.get_eff_max()?)
     }
 
     #[setter("__eff_max")]
     fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
-        self.set_eff_max(eff_max)?;
-        Ok(())
+        Ok(self.set_eff_max(eff_max, None)?)
     }
 
     #[getter("eff_min")]
     fn get_eff_min_py(&self) -> PyResult<f64> {
-        Ok(self.get_eff_min()?)
+        Ok(*self.get_eff_min()?)
     }
 
-    // #[getter("eff_range")]
-    // fn get_eff_range_py(&self) -> PyResult<f64> {
-    //     self.get_eff_range()?;
-    //     Ok(())
-    // }
+    #[setter("__eff_min")]
+    fn set_eff_min_py(&mut self, eff_min: f64) -> PyResult<()> {
+        Ok(self.set_eff_min(eff_min, None)?)
+    }
 
     #[setter("__eff_range")]
     fn set_eff_range_py(&mut self, eff_range: f64) -> PyResult<()> {
@@ -109,22 +109,25 @@ impl Init for FuelConverter {
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         let eff_max = self
-            .eff_max()
+            .get_eff_max()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        self.pwr_for_peak_eff = *self
-            .eff_interp_from_pwr_out
-            .x()
-            .map_err(|err| Error::InitError(format_dbg!(err)))?
-            .get(
-                self.eff_interp_from_pwr_out
-                    .f_x()
-                    .unwrap()
-                    .iter()
-                    .position(|&eff| eff * uc::R == eff_max)
-                    .ok_or_else(|| Error::InitError(format_dbg!()))?,
-            )
-            .ok_or_else(|| Error::InitError(format_dbg!()))?
-            * self.pwr_out_max;
+        self.pwr_for_peak_eff = match &self.eff_interp_from_pwr_out {
+            InterpolatorEnum::Interp1D(interp) => *interp.data.grid[0]
+                .get(
+                    interp
+                        .data
+                        .values
+                        .iter()
+                        .position(|eff| eff == eff_max)
+                        .ok_or_else(|| Error::InitError(format_dbg!()))?,
+                )
+                .ok_or_else(|| Error::InitError(format_dbg!()))?,
+            _ => {
+                return Err(Error::InitError(format_dbg!(
+                    "Only 1-D interpolators are supported"
+                )))
+            }
+        } * self.pwr_out_max;
         Ok(())
     }
 }
@@ -366,16 +369,6 @@ impl FuelConverter {
             .with_context(|| format_dbg!())
     }
 
-    pub fn eff_max(&self) -> anyhow::Result<si::Ratio> {
-        Ok(self
-            .eff_interp_from_pwr_out
-            .f_x()
-            .with_context(|| format_dbg!())?
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, &curr| acc.max(curr))
-            * uc::R)
-    }
-
     /// If thermal model is appropriately configured, returns current lumped [Self] temperature
     pub fn temperature(&self) -> Option<&TrackedState<si::Temperature>> {
         match &self.thrml {
@@ -385,36 +378,24 @@ impl FuelConverter {
     }
 
     /// Returns max value of [Self::eff_interp_from_pwr_out]
-    pub fn get_eff_max(&self) -> anyhow::Result<f64> {
-        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
-        Ok(self
-            .eff_interp_from_pwr_out
-            .f_x()?
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
+    pub fn get_eff_max(&self) -> anyhow::Result<&f64> {
+        self.eff_interp_from_pwr_out.max()
     }
 
     /// Returns min value of [Self::eff_interp_from_pwr_out]
-    pub fn get_eff_min(&self) -> anyhow::Result<f64> {
-        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
-        Ok(self
-            .eff_interp_from_pwr_out
-            .f_x()?
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, curr| acc.min(*curr)))
+    pub fn get_eff_min(&self) -> anyhow::Result<&f64> {
+        self.eff_interp_from_pwr_out.min()
     }
 
-    /// Scales eff_interp_fwd and eff_interp_bwd by ratio of new `eff_max` per current calculated max
-    pub fn set_eff_max(&mut self, eff_max: f64) -> anyhow::Result<()> {
+    /// Scales eff_interp_fwd and eff_interp_bwd by ratio of new `eff_max` per
+    /// current calculated max (Note: this may change eff_min)
+    pub fn set_eff_max(
+        &mut self,
+        eff_max: f64,
+        scaling: Option<ScalingMethods>,
+    ) -> anyhow::Result<()> {
         if (0.0..=1.0).contains(&eff_max) {
-            let old_max = self.get_eff_max()?;
-            let f_x = self.eff_interp_from_pwr_out.f_x()?.to_owned();
-            match &mut self.eff_interp_from_pwr_out {
-                interp @ Interpolator::Interp1D(..) => {
-                    interp.set_f_x(f_x.iter().map(|x| x * eff_max / old_max).collect())?;
-                }
-                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
-            }
+            self.eff_interp_from_pwr_out.set_max(eff_max, scaling)?;
         } else {
             return Err(anyhow!(
                 "`eff_max` ({:.3}) must be between 0.0 and 1.0",
@@ -422,72 +403,32 @@ impl FuelConverter {
             ));
         }
         // to update any dependent fields
-        self.init()
-            .map_err(|err| anyhow!("{}\n{err}", format_dbg!()))?;
+        self.init().map_err(|err| anyhow!("{:?}", err))?;
         Ok(())
     }
 
-    /// Scales values of `eff_interp_fwd.f_x` and `eff_interp_bwd.f_x` without changing max such that max - min
-    /// is equal to new range.  Will change max if needed to ensure no values are
-    /// less than zero.
+    /// Scales eff_interp_fwd and eff_interp_bwd by ratio of new `eff_min` per
+    /// current calculated min (Note: this may change eff_max)
+    pub fn set_eff_min(
+        &mut self,
+        eff_min: f64,
+        scaling: Option<ScalingMethods>,
+    ) -> anyhow::Result<()> {
+        self.eff_interp_from_pwr_out.set_min(eff_min, scaling)
+    }
+
+    /// Scales values of `eff_interp_fwd.f_x` and `eff_interp_bwd.f_x` without
+    /// changing max such that max - min is equal to new range.  Will change max
+    /// if needed to ensure no values are less than zero.
     pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        let eff_max = self.get_eff_max()?;
-        if eff_range == 0.0 {
-            let f_x = vec![
-                eff_max;
-                self.eff_interp_from_pwr_out
-                    .f_x()
-                    .with_context(|| "eff_interp_fwd does not have f_x field")?
-                    .len()
-            ];
-            self.eff_interp_from_pwr_out.set_f_x(f_x)?;
-        } else if (0.0..=1.0).contains(&eff_range) {
-            let old_min = self.get_eff_min()?;
-            let old_range = self.get_eff_max()? - old_min;
-            if old_range == 0.0 {
-                return Err(anyhow!(
-                    "`eff_range` is already zero so it cannot be modified."
-                ));
-            }
-            let f_x_fwd = self.eff_interp_from_pwr_out.f_x()?.to_owned();
-            match &mut self.eff_interp_from_pwr_out {
-                interp @ Interpolator::Interp1D(..) => {
-                    interp.set_f_x(
-                        f_x_fwd
-                            .iter()
-                            .map(|x| eff_max + (x - eff_max) * eff_range / old_range)
-                            .collect(),
-                    )?;
-                }
-                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
-            }
-            if self.get_eff_min()? < 0.0 {
-                let x_neg = self.get_eff_min()?;
-                let f_x_fwd = self.eff_interp_from_pwr_out.f_x()?.to_owned();
-                match &mut self.eff_interp_from_pwr_out {
-                    interp @ Interpolator::Interp1D(..) => {
-                        interp.set_f_x(f_x_fwd.iter().map(|x| x - x_neg).collect())?;
-                    }
-                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
-                }
-            }
-            if self.get_eff_max()? > 1.0 {
-                return Err(anyhow!(format!(
-                    "`eff_max` ({:.3}) must be no greater than 1.0",
-                    self.get_eff_max()?
-                )));
-            }
+        if eff_range <= 1.0 && eff_range >= 0. {
+            self.eff_interp_from_pwr_out.set_range(eff_range)
         } else {
-            return Err(anyhow!(format!(
+            Err(anyhow!(format!(
                 "`eff_range` ({:.3}) must be between 0.0 and 1.0",
                 eff_range,
-            )));
+            )))
         }
-        // to update any dependent fields
-        self.init()
-            .map_err(|err| anyhow!("{}\n{err}", format_dbg!()))?;
-
-        Ok(())
     }
 
     pub fn fc_thrml_state_mut(&mut self) -> Option<&mut FuelConverterThermalState> {
@@ -545,7 +486,7 @@ pub struct FuelConverterState {
     pub time_on: TrackedState<si::Time>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverterState {}
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
@@ -561,6 +502,8 @@ pub enum FuelConverterThermalOption {
     #[default]
     None,
 }
+
+impl StateMethods for FuelConverterThermalOption {}
 
 impl SaveState for FuelConverterThermalOption {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
@@ -601,9 +544,11 @@ impl Init for FuelConverterThermalOption {
 }
 impl SerdeAPI for FuelConverterThermalOption {}
 impl SetCumulative for FuelConverterThermalOption {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::FuelConverterThermal(fct) => fct.set_cumulative(dt)?,
+            Self::FuelConverterThermal(fct) => {
+                fct.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::None => {}
         }
         Ok(())
@@ -703,7 +648,7 @@ pub struct FuelConverterThermal {
     /// temperature delta over which thermostat is partially open
     pub tstat_te_delta: Option<si::TemperatureInterval>,
     #[serde(default = "tstat_interp_default")]
-    pub tstat_interp: Interpolator,
+    pub tstat_interp: Interp1DOwned<f64, strategy::Linear>,
     /// Radiator effectiveness -- ratio of active heat rejection from
     /// radiator to passive heat rejection, always greater than 1
     pub radiator_effectiveness: si::Ratio,
@@ -721,7 +666,7 @@ pub struct FuelConverterThermal {
     pub save_interval: Option<usize>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverterThermal {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -744,11 +689,11 @@ impl HistoryMethods for FuelConverterThermal {
 }
 
 /// Dummy interpolator that will be overridden in [FuelConverterThermal::init]
-fn tstat_interp_default() -> Interpolator {
-    Interpolator::new_1d(
-        vec![85.0, 90.0],
-        vec![0.0, 1.0],
-        Strategy::Linear,
+fn tstat_interp_default() -> Interp1DOwned<f64, strategy::Linear> {
+    Interp1D::new(
+        array![85.0, 90.0],
+        array![0.0, 1.0],
+        strategy::Linear,
         Extrapolate::Clamp,
     )
     .unwrap()
@@ -957,8 +902,9 @@ impl FuelConverterThermal {
 }
 impl SerdeAPI for FuelConverterThermal {}
 impl SetCumulative for FuelConverterThermal {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt)
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+        self.state
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
     }
 }
 impl Init for FuelConverterThermal {
@@ -967,14 +913,14 @@ impl Init for FuelConverterThermal {
             .tstat_te_sto
             .or(Some((85. + uc::CELSIUS_TO_KELVIN) * uc::KELVIN));
         self.tstat_te_delta = self.tstat_te_delta.or(Some(5. * uc::KELVIN_INT));
-        self.tstat_interp = Interpolator::new_1d(
-            vec![
+        self.tstat_interp = Interp1D::new(
+            array![
                 self.tstat_te_sto.unwrap().get::<si::degree_celsius>(),
                 self.tstat_te_sto.unwrap().get::<si::degree_celsius>()
                     + self.tstat_te_delta.unwrap().get::<si::kelvin>(),
             ],
-            vec![0.0, 1.0],
-            Strategy::Linear,
+            array![0.0, 1.0],
+            strategy::Linear,
             Extrapolate::Clamp,
         )
         .map_err(|err| {
@@ -1048,7 +994,7 @@ pub struct FuelConverterThermalState {
     /// Cumulative thermal energy flowing from combustion to [FuelConverter] thermal mass
     pub energy_thrml_to_tm: TrackedState<si::Energy>,
 }
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl FuelConverterThermalState {}
 
 impl Init for FuelConverterThermalState {}

@@ -1,4 +1,5 @@
-use super::*;
+use super::{utils::ScalingMethods, *};
+use crate::utils::interp::InterpolatorMutMethods;
 
 #[allow(unused_imports)]
 #[cfg(feature = "pyo3")]
@@ -29,10 +30,7 @@ pub struct ReversibleEnergyStorage {
     pub energy_capacity: si::Energy,
 
     /// interpolator for calculating [Self] efficiency
-    pub eff_interp: Interpolator,
-
-    /// what state variables to use in calculating efficiency
-    pub eff_interp_inputs: RESEffInterpInputs,
+    pub eff_interp: EffInterp,
 
     /// Hard limit on minimum SOC, e.g. 0.05
     pub min_soc: si::Ratio,
@@ -52,7 +50,7 @@ pub struct ReversibleEnergyStorage {
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl ReversibleEnergyStorage {
     // #[getter("eff_max")]
     // fn get_eff_max_py(&self) -> f64 {
@@ -69,10 +67,10 @@ impl ReversibleEnergyStorage {
     //     self.get_eff_min()
     // }
 
-    #[getter("eff_range")]
-    fn get_eff_range_py(&self) -> f64 {
-        self.get_eff_range()
-    }
+    // #[getter("eff_range")]
+    // fn get_eff_range_py(&self) -> f64 {
+    //     self.get_eff_range()
+    // }
 
     // #[setter("__eff_range")]
     // fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
@@ -236,14 +234,14 @@ impl ReversibleEnergyStorage {
                 )
             );
         }
-        let interp_pt: &[f64] = match (&self.eff_interp, &self.eff_interp_inputs) {
-            (Interpolator::Interp0D(..), RESEffInterpInputs::Constant) => &[],
-            (Interpolator::Interp1D(..), RESEffInterpInputs::CRate) => &[state
+        let interp_pt: &[f64] = match &self.eff_interp {
+            EffInterp::Constant(_) => &[],
+            EffInterp::CRate(_) => &[state
                 .pwr_out_electrical
                 .get_fresh(|| format_dbg!())?
                 .get::<si::watt>()
                 / self.energy_capacity.get::<si::watt_hour>()],
-            (Interpolator::Interp2D(..), RESEffInterpInputs::CRateSOC) => &[
+            EffInterp::CRateSOC(_) => &[
                 state
                     .pwr_out_electrical
                     .get_fresh(|| format_dbg!())?
@@ -251,7 +249,7 @@ impl ReversibleEnergyStorage {
                     / self.energy_capacity.get::<si::watt_hour>(),
                 state.soc.get_stale(|| format_dbg!())?.get::<si::ratio>(),
             ],
-            (Interpolator::Interp2D(..), RESEffInterpInputs::CRateTemperature) => &[
+            EffInterp::CRateTemperature(_) => &[
                 state
                     .pwr_out_electrical
                     .get_fresh(|| format_dbg!())?
@@ -261,7 +259,7 @@ impl ReversibleEnergyStorage {
                     .with_context(|| format_dbg!("Expected thermal model to be configured"))?
                     .get::<si::degree_celsius>(),
             ],
-            (Interpolator::Interp3D(..), RESEffInterpInputs::CRateSOCTemperature) => &[
+            EffInterp::CRateSOCTemperature(_) => &[
                 state
                     .pwr_out_electrical
                     .get_fresh(|| format_dbg!())?
@@ -272,11 +270,6 @@ impl ReversibleEnergyStorage {
                     .with_context(|| format_dbg!("Expected thermal model to be configured"))?
                     .get::<si::degree_celsius>(),
             ],
-            _ => bail!(
-                "
-Invalid or not yet enabled interpolator config.
-See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::eff_interp_inputs`"
-            ),
         };
         state.eff.update(
             self.eff_interp.interpolate(interp_pt)? * uc::R,
@@ -553,29 +546,46 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
         Ok(())
     }
 
-    pub fn get_eff_max(&self) -> f64 {
-        todo!("adapt from ALTRIOS");
+    /// Returns max value of [Self::eff_interp]
+    pub fn get_eff_max(&self) -> anyhow::Result<f64> {
+        Ok(*self.eff_interp.max()?)
     }
 
     /// Scales eff_interp by ratio of new `eff_max` per current calculated
-    /// max linearly, such that `eff_min` is untouched
-    pub fn set_eff_max(&mut self, _eff_max: f64) -> Result<(), String> {
-        todo!("adapt from ALTRIOS");
+    /// max linearly (Note: this may change eff_min)
+    pub fn set_eff_max(
+        &mut self,
+        eff_max: f64,
+        scaling: Option<ScalingMethods>,
+    ) -> anyhow::Result<()> {
+        self.eff_interp.set_max(eff_max, scaling)
     }
 
-    pub fn get_eff_min(&self) -> f64 {
-        todo!("adapt from ALTRIOS");
+    /// Returns min value of [Self::eff_interp]
+    pub fn get_eff_min(&self) -> anyhow::Result<&f64> {
+        Ok(self.eff_interp.min()?)
+    }
+
+    /// Scales eff_interp by ratio of new `eff_min` per current calculated
+    /// min linearly (Note: this may change eff_max)
+    pub fn set_eff_min(
+        &mut self,
+        eff_min: f64,
+        scaling: Option<ScalingMethods>,
+    ) -> anyhow::Result<()> {
+        self.eff_interp.set_min(eff_min, scaling)
     }
 
     /// Max value of `eff_interp` minus min value of `eff_interp`.
-    pub fn get_eff_range(&self) -> f64 {
-        self.get_eff_max() - self.get_eff_min()
+    pub fn get_eff_range(&self) -> anyhow::Result<f64> {
+        self.eff_interp.range()
     }
 
     /// Scales values of `eff_interp` without changing max such that max - min
-    /// is equal to new range
-    pub fn set_eff_range(&mut self, _eff_range: f64) -> anyhow::Result<()> {
-        todo!("adapt from ALTRIOS");
+    /// is equal to new range.  Will change max if needed to ensure no values are
+    /// less than zero.
+    pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
+        self.eff_interp.set_range(eff_range)
     }
 
     /// Usable energy capacity, accounting for SOC limits
@@ -592,8 +602,13 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     ///    °C corresponds to `eta_interp_values[0][5]` in ALTRIOS
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_interp(&mut self) -> anyhow::Result<()> {
-        self.eff_interp_inputs = RESEffInterpInputs::CRate;
-        self.eff_interp = ninterp::Interpolator::from_resource("res/default_pwr.yaml", false)?;
+        if let InterpolatorEnum::Interp1D(interp1d) =
+            InterpolatorEnum::from_resource("res/default_pwr.yaml", false)?
+        {
+            self.eff_interp = EffInterp::CRate(interp1d);
+        } else {
+            bail!("Invalid interpolator format. Expected `Interp1D`")
+        }
         Ok(())
     }
 
@@ -610,9 +625,13 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     ///    ALTRIOS, the outermost layer is SOC and innermost is power)
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_and_soc_interp(&mut self) -> anyhow::Result<()> {
-        self.eff_interp_inputs = RESEffInterpInputs::CRateSOC;
-        self.eff_interp =
-            ninterp::Interpolator::from_resource("res/default_pwr_and_soc.yaml", false)?;
+        if let InterpolatorEnum::Interp2D(interp2d) =
+            InterpolatorEnum::from_resource("res/default_pwr_and_soc.yaml", false)?
+        {
+            self.eff_interp = EffInterp::CRateSOC(interp2d);
+        } else {
+            bail!("Invalid interpolator format. Expected `Interp2D`")
+        }
         Ok(())
     }
 
@@ -620,9 +639,13 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     ///    constant 50% SOC
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_and_temp_interp(&mut self) -> anyhow::Result<()> {
-        self.eff_interp_inputs = RESEffInterpInputs::CRateTemperature;
-        self.eff_interp =
-            ninterp::Interpolator::from_resource("res/default_pwr_and_temp.yaml", false)?;
+        if let InterpolatorEnum::Interp2D(interp2d) =
+            InterpolatorEnum::from_resource("res/default_pwr_and_temp.yaml", false)?
+        {
+            self.eff_interp = EffInterp::CRateTemperature(interp2d);
+        } else {
+            bail!("Invalid interpolator format. Expected `Interp2D`")
+        }
         Ok(())
     }
 
@@ -641,9 +664,13 @@ See docs for `ReversibleEnergyStorage::eff_interp` an `ReversibleEnergyStorage::
     ///    ALTRIOS, the outermost layer is temperature and innermost is power)
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_soc_and_temp_interp(&mut self) -> anyhow::Result<()> {
-        self.eff_interp_inputs = RESEffInterpInputs::CRateSOCTemperature;
-        self.eff_interp =
-            ninterp::Interpolator::from_resource("res/default_pwr_soc_and_temp.yaml", false)?;
+        if let InterpolatorEnum::Interp3D(interp3d) =
+            InterpolatorEnum::from_resource("res/default_pwr_soc_and_temp.yaml", false)?
+        {
+            self.eff_interp = EffInterp::CRateSOCTemperature(interp3d);
+        } else {
+            bail!("Invalid interpolator format. Expected `Interp2D`")
+        }
         Ok(())
     }
 
@@ -848,7 +875,7 @@ pub struct ReversibleEnergyStorageState {
     pub energy_out_chemical: TrackedState<si::Energy>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl ReversibleEnergyStorageState {}
 
 impl Default for ReversibleEnergyStorageState {
@@ -891,14 +918,19 @@ pub enum RESThermalOption {
     None,
 }
 impl SetCumulative for RESThermalOption {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::RESLumpedThermal(rlt) => rlt.set_cumulative(dt)?,
+            Self::RESLumpedThermal(rlt) => {
+                rlt.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::None => {}
         }
         Ok(())
     }
 }
+
+impl StateMethods for RESThermalOption {}
+
 impl SaveState for RESThermalOption {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
@@ -1019,7 +1051,7 @@ pub struct RESLumpedThermal {
     pub save_interval: Option<usize>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl RESLumpedThermal {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -1139,7 +1171,7 @@ pub struct RESLumpedThermalState {
     pub energy_thrml_loss: TrackedState<si::Energy>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl RESLumpedThermalState {
     #[pyo3(name = "default")]
     #[staticmethod]
@@ -1168,20 +1200,131 @@ impl Default for RESLumpedThermalState {
     }
 }
 
-#[derive(
-    Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, derive_more::From, TryInto,
-)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, TryInto)]
 /// Determines what [ReversibleEnergyStorage] state variables to use in calculating efficiency
-pub enum RESEffInterpInputs {
+pub enum EffInterp {
     /// Efficiency is constant
-    Constant,
+    Constant(Interp0D<f64>),
     /// Efficiency = f(C-rate)
-    CRate,
+    CRate(Interp1DOwned<f64, strategy::enums::Strategy1DEnum>),
     /// Efficiency = f(C-rate, soc, temperature)
-    CRateSOCTemperature,
+    CRateSOCTemperature(Interp3DOwned<f64, strategy::enums::Strategy3DEnum>),
     /// Efficiency = f(C-rate, temperature)
-    CRateTemperature,
+    CRateTemperature(Interp2DOwned<f64, strategy::enums::Strategy2DEnum>),
     /// Efficiency = f(C-rate, soc)
-    CRateSOC,
+    CRateSOC(Interp2DOwned<f64, strategy::enums::Strategy2DEnum>),
     // TODO: finish adding possible variants
+}
+
+impl Interpolator<f64> for EffInterp {
+    fn ndim(&self) -> usize {
+        match self {
+            EffInterp::Constant(interp) => interp.ndim(),
+            EffInterp::CRate(interp) => interp.ndim(),
+            EffInterp::CRateSOC(interp) => interp.ndim(),
+            EffInterp::CRateTemperature(interp) => interp.ndim(),
+            EffInterp::CRateSOCTemperature(interp) => interp.ndim(),
+        }
+    }
+
+    fn validate(&mut self) -> Result<(), ninterp::error::ValidateError> {
+        match self {
+            EffInterp::Constant(interp) => interp.validate(),
+            EffInterp::CRate(interp) => interp.validate(),
+            EffInterp::CRateSOC(interp) => interp.validate(),
+            EffInterp::CRateTemperature(interp) => interp.validate(),
+            EffInterp::CRateSOCTemperature(interp) => interp.validate(),
+        }
+    }
+
+    fn interpolate(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError> {
+        match self {
+            EffInterp::Constant(interp) => interp.interpolate(point),
+            EffInterp::CRate(interp) => interp.interpolate(point),
+            EffInterp::CRateSOC(interp) => interp.interpolate(point),
+            EffInterp::CRateTemperature(interp) => interp.interpolate(point),
+            EffInterp::CRateSOCTemperature(interp) => interp.interpolate(point),
+        }
+    }
+
+    fn set_extrapolate(
+        &mut self,
+        extrapolate: Extrapolate<f64>,
+    ) -> Result<(), ninterp::error::ValidateError> {
+        match self {
+            EffInterp::Constant(interp) => interp.set_extrapolate(extrapolate),
+            EffInterp::CRate(interp) => interp.set_extrapolate(extrapolate),
+            EffInterp::CRateSOC(interp) => interp.set_extrapolate(extrapolate),
+            EffInterp::CRateTemperature(interp) => interp.set_extrapolate(extrapolate),
+            EffInterp::CRateSOCTemperature(interp) => interp.set_extrapolate(extrapolate),
+        }
+    }
+}
+
+impl Min<f64> for EffInterp {
+    fn min(&self) -> anyhow::Result<&f64> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.min(),
+            EffInterp::CRate(interp1d) => interp1d.min(),
+            EffInterp::CRateSOC(interp2d) => interp2d.min(),
+            EffInterp::CRateTemperature(interp2d) => interp2d.min(),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.min(),
+        }
+    }
+}
+
+impl Max<f64> for EffInterp {
+    fn max(&self) -> anyhow::Result<&f64> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.max(),
+            EffInterp::CRate(interp1d) => interp1d.max(),
+            EffInterp::CRateSOC(interp2d) => interp2d.max(),
+            EffInterp::CRateTemperature(interp2d) => interp2d.max(),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.max(),
+        }
+    }
+}
+
+impl Range<f64> for EffInterp {
+    fn range(&self) -> anyhow::Result<f64> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.range(),
+            EffInterp::CRate(interp1d) => interp1d.range(),
+            EffInterp::CRateSOC(interp2d) => interp2d.range(),
+            EffInterp::CRateTemperature(interp2d) => interp2d.range(),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.range(),
+        }
+    }
+}
+
+impl InterpolatorMutMethods for EffInterp {
+    fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.set_min(min, scaling),
+            EffInterp::CRate(interp1d) => interp1d.set_min(min, scaling),
+            EffInterp::CRateSOC(interp2d) => interp2d.set_min(min, scaling),
+            EffInterp::CRateTemperature(interp2d) => interp2d.set_min(min, scaling),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.set_min(min, scaling),
+        }
+    }
+
+    fn set_max(&mut self, max: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.set_max(max, scaling),
+            EffInterp::CRate(interp1d) => interp1d.set_max(max, scaling),
+            EffInterp::CRateSOC(interp2d) => interp2d.set_max(max, scaling),
+            EffInterp::CRateTemperature(interp2d) => interp2d.set_max(max, scaling),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.set_max(max, scaling),
+        }
+    }
+
+    fn set_range(&mut self, range: f64) -> anyhow::Result<()> {
+        match self {
+            EffInterp::Constant(interp0d) => interp0d.set_range(range),
+            EffInterp::CRate(interp1d) => interp1d.set_range(range),
+            EffInterp::CRateSOC(interp2d) => interp2d.set_range(range),
+            EffInterp::CRateTemperature(interp2d) => interp2d.set_range(range),
+            EffInterp::CRateSOCTemperature(interp3d) => interp3d.set_range(range),
+        }
+    }
 }

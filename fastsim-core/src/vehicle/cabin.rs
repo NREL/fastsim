@@ -15,6 +15,9 @@ pub enum CabinOption {
     #[default]
     None,
 }
+
+impl StateMethods for CabinOption {}
+
 impl SaveState for CabinOption {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
@@ -89,9 +92,11 @@ impl HistoryMethods for CabinOption {
     }
 }
 impl SetCumulative for CabinOption {
-    fn set_cumulative(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::LumpedCabin(lc) => lc.set_cumulative(dt)?,
+            Self::LumpedCabin(lc) => {
+                lc.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::LumpedCabinWithShell => todo!(),
             Self::None => {}
         }
@@ -126,7 +131,7 @@ pub struct LumpedCabin {
     pub save_interval: Option<usize>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl LumpedCabin {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -307,7 +312,7 @@ pub struct LumpedCabinState {
     pub reynolds_for_plate: TrackedState<si::Ratio>,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl LumpedCabinState {
     #[pyo3(name = "default")]
     #[staticmethod]

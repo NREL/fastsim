@@ -9,7 +9,7 @@ use crate::imports::*;
 use crate::prelude::*;
 
 #[serde_api]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
@@ -44,7 +44,7 @@ pub struct SimParams {
     pub f2_const_air_density: bool,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl SimParams {
     #[staticmethod]
     #[pyo3(name = "default")]
@@ -106,7 +106,7 @@ pub struct SimDrive {
     pub sim_params: SimParams,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl SimDrive {
     #[new]
     #[pyo3(signature = (veh, cyc, sim_params=None))]
@@ -396,7 +396,7 @@ impl SimDrive {
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.veh.set_cumulative(dt)?;
+        self.set_cumulative(dt, || format_dbg!())?;
         Ok(())
     }
 
@@ -417,8 +417,8 @@ impl SimDrive {
         //     - if we get back on trace or nearly back on trace, revert to just using the index
         //     - we can also shorten the x and y values by removing stuff that's already happened
         let interp_pt_dist: &[f64] = match self.cyc.grade_interp {
-            Some(Interpolator::Interp0D(..)) => &[],
-            Some(Interpolator::Interp1D(..)) => {
+            Some(InterpolatorEnum::Interp0D(_)) => &[],
+            Some(InterpolatorEnum::Interp1D(_)) => {
                 &[vs.dist.get_fresh(|| format_dbg!())?.get::<si::meter>()]
             }
             _ => unreachable!(),
@@ -729,7 +729,15 @@ pwr deficit: {} kW
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
+impl SetCumulative for SimDrive {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+        self.veh
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 // NOTE: consider embedding this in TraceMissOptions::AllowChecked
