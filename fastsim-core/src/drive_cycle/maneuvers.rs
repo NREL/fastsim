@@ -139,7 +139,7 @@ pub struct Maneuver {
     pub cyc0_cache: CycleCache,
 }
 
-#[named_struct_pyo3_api]
+#[pyo3_api]
 impl Maneuver {
     #[pyo3(name = "create_from")]
     #[staticmethod]
