@@ -122,11 +122,18 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
                 /// Implementation for structs with `save_interval`
                 fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     if let Some(interval) = self.save_interval {
-                        if *self.state.i.get_fresh(|| format_dbg!())? % interval == (0 as usize)
-                            || *self.state.i.get_fresh(|| format_dbg!())? == (1 as usize)
+                        if *self.state.i.get_fresh(|| format!("{}\n`{}.state.i` has not been updated", format_dbg!(), stringify!(#ident)))? % interval == (0 as usize)
+                            || *self.state.i.get_fresh(|| format!("{}\n`{}.state.i` has not been updated", format_dbg!(), stringify!(#ident)))? == (1 as usize)
                         {
                             #self_save_state
-                            #(self.#fields_with_state.save_state(|| format!("{}\n{}", loc(), format_dbg!()))?;)*
+                            #(self.#fields_with_state.save_state(
+                                || format!(
+                                    "{}\n{}\n{} has not been updated",
+                                    loc(),
+                                    format_dbg!(),
+                                    stringify!(#fields_with_state)
+                                )
+                            )?;)*
                         }
                     }
                     Ok(())
@@ -140,7 +147,14 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
                 /// Implementation for objects without `save_interval`
                 fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     #self_save_state
-                    #(self.#fields_with_state.save_state(|| format!("{}\n{}", loc(), format_dbg!()))?;)*
+                    #(self.#fields_with_state.save_state(
+                        || format!(
+                            "{}\n{}\n{} has not been updated",
+                            loc(),
+                            format_dbg!(),
+                            stringify!(#fields_with_state)
+                        )
+                    )?;)*
                     Ok(())
                 }
             }
