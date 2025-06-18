@@ -26,7 +26,7 @@ hvac:
     te_deadband_kelvin: 0.5
     p_watts_per_kelvin: 887.0001189496927 
     i: 34.27459539130039
-    pwr_i_max_cabin_watts: 15000.0
+    pwr_i_max_watts: 15000.0
     d: 10.0
     pwr_thrml_max_watts: 15000.0
     frac_of_ideal_cop: 0.1672948274768393
