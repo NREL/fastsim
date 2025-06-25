@@ -5,16 +5,16 @@ hvac:
   LumpedCabinAndRES:
     te_set_cab_kelvin: 295.15
     te_deadband_cab_kelvin: 0.5
-    p_cabin_watts_per_kelvin: 
-    i_cabin: 
+    p_cabin_watts_per_kelvin: 949.8751296735766
+    i_cabin: 36.704150367388294
     pwr_i_max_cabin_watts: 15000.0
-    d_cabin: 10.0
+    d_cabin: 10.77405298103656
     te_set_res_kelvin: 295.15
     te_deadband_res_kelvin: 15.0
-    p_res_watts_per_kelvin: 
-    i_res: 
+    p_res_watts_per_kelvin: 8.37859134449772
+    i_res: 1.0931806036967113
     pwr_i_max_res_watts: 15000.0
-    d_res: 10.0
+    d_res: 10.77405298103656
     pwr_thrml_max_watts: 15000.0
     frac_of_ideal_cop: 0.1672948274768393
     cabin_heat_source: HeatPump
@@ -27,27 +27,27 @@ cabin:
   LumpedCabin:
     # scaled relative to vehicle wheelbase times witdth of
     # cal_and_val/thermal/f3-vehicles/2020 Chevrolet Bolt EV.yaml 
-    cab_shell_htc_to_amb_watts_per_square_meter_kelvin: 
+    cab_shell_htc_to_amb_watts_per_square_meter_kelvin: 17.40594588729652
     # scaled relative to vehicle wheelbase times witdth of
     # cal_and_val/thermal/f3-vehicles/2020 Chevrolet Bolt EV.yaml 
-    cab_htc_to_amb_stop_watts_per_square_meter_kelvin: 
+    cab_htc_to_amb_stop_watts_per_square_meter_kelvin: 271.93316068664683
     # scaled relative to vehicle mass of
     # cal_and_val/thermal/f3-vehicles/2020 Chevrolet Bolt EV.yaml 
-    heat_capacitance_joules_per_kelvin: 
+    heat_capacitance_joules_per_kelvin: 80122.89559295388
     # scaled relative to vehicle wheelbase times witdth of
     # cal_and_val/thermal/f3-vehicles/2020 Chevrolet Bolt EV.yaml 
-    length_meters: 
+    length_meters: 6.605402324062461
     # https://www.kbb.com/nissan/leaf/2016/
-    width_meters: 
+    width_meters: 1.84912
     save_interval: 1
 pt_type:
   BatteryElectricVehicle:
     res:
       thrml:
         RESLumpedThermal:
-          heat_capacitance_joules_per_kelvin:
-          conductance_to_amb_watts_per_kelvin:
-          conductance_to_cab_watts_per_kelvin:
+          heat_capacitance_joules_per_kelvin: 158336.26498645396
+          conductance_to_amb_watts_per_kelvin: 47.68760165881292
+          conductance_to_cab_watts_per_kelvin: 0.9883223255792184
           save_interval: 1
       mass_kilograms: ~
       specific_energy_joules_per_kilogram: ~
