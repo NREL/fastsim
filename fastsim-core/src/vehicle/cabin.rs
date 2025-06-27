@@ -30,12 +30,23 @@ impl SaveState for CabinOption {
         Ok(())
     }
 }
-impl CheckAndResetState for CabinOption {
+impl TrackedStateMethods for CabinOption {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::LumpedCabin(lc) => {
                 lc.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
+            Self::LumpedCabinWithShell => {
+                todo!()
+            }
+            Self::None => {}
+        }
+        Ok(())
+    }
+
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => lc.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?,
             Self::LumpedCabinWithShell => {
                 todo!()
             }

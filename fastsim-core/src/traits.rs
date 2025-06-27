@@ -336,7 +336,7 @@ impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
 }
 
 /// Super trait to ensure that related traits are implemented together
-pub trait StateMethods: SetCumulative + SaveState + Step + CheckAndResetState {}
+pub trait StateMethods: SetCumulative + SaveState + Step + TrackedStateMethods {}
 
 /// Trait for setting cumulative values based on rate values
 pub trait SetCumulative {

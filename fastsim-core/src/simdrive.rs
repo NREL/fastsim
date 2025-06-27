@@ -42,6 +42,8 @@ pub struct SimParams {
     /// whether to use FASTSim-2 style air density
     #[serde(default = "SimParams::def_f2_const_air_density")]
     pub f2_const_air_density: bool,
+    /// if true, vehicle is totally inactive except for thermal models
+    pub ambient_thermal_soak: bool,
 }
 
 #[pyo3_api]
@@ -90,6 +92,7 @@ impl Default for SimParams {
             trace_miss_opts: Default::default(),
             trace_miss_correct_max_steps: 6,
             f2_const_air_density: true,
+            ambient_thermal_soak: false,
         }
     }
 }
@@ -252,6 +255,7 @@ impl SimDrive {
                             .with_context(|| format_dbg!())?
                             .sim_params
                             .balance_soc
+                        || self.sim_params.ambient_thermal_soak
                     {
                         break;
                     } else {
@@ -351,11 +355,12 @@ impl SimDrive {
     /// Solves current time step
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
+        let time_prev = *self.veh.state.time.get_stale(|| format_dbg!())?;
         self.veh
             .state
             .time
             .update(self.cyc.time[i], || format_dbg!())?;
-        let dt = self.cyc.dt_at_i(i)?;
+        let dt = *self.veh.state.time.get_fresh(|| format_dbg!())? - time_prev;
         // maybe make controls like:
         // ```
         // pub enum HVACAuxPriority {
@@ -370,32 +375,39 @@ impl SimDrive {
         self.veh
             .solve_thermal(self.cyc.temp_amb_air[i], dt)
             .with_context(|| format_dbg!())?;
-        self.veh
-            .set_curr_pwr_out_max(dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
-        self.set_pwr_prop_for_speed(
-            self.cyc.speed[i],
-            *self.veh.state.speed_ach.get_stale(|| format_dbg!())?,
-            dt,
-        )
-        .with_context(|| anyhow!(format_dbg!()))?;
-        self.veh.state.pwr_tractive_for_cyc.update(
-            *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
-            || format_dbg!(),
-        )?;
-        self.set_ach_speed(self.cyc.speed[i], dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
-        if self.sim_params.trace_miss_opts.is_allow_checked() {
-            self.sim_params.trace_miss_tol.check_trace_miss(
-                self.cyc.speed[i],
-                *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
-                self.cyc.dist[i],
-                *self.veh.state.dist.get_fresh(|| format_dbg!())?,
-            )?;
+        match self.sim_params.ambient_thermal_soak {
+            false => {
+                self.veh
+                    .set_curr_pwr_out_max(dt)
+                    .with_context(|| anyhow!(format_dbg!()))?;
+                self.set_pwr_prop_for_speed(
+                    self.cyc.speed[i],
+                    *self.veh.state.speed_ach.get_stale(|| format_dbg!())?,
+                    dt,
+                )
+                .with_context(|| anyhow!(format_dbg!()))?;
+                self.veh.state.pwr_tractive_for_cyc.update(
+                    *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
+                    || format_dbg!(),
+                )?;
+                self.set_ach_speed(self.cyc.speed[i], dt)
+                    .with_context(|| anyhow!(format_dbg!()))?;
+                if self.sim_params.trace_miss_opts.is_allow_checked() {
+                    self.sim_params.trace_miss_tol.check_trace_miss(
+                        self.cyc.speed[i],
+                        *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
+                        self.cyc.dist[i],
+                        *self.veh.state.dist.get_fresh(|| format_dbg!())?,
+                    )?;
+                }
+                self.veh
+                    .solve_powertrain(dt)
+                    .with_context(|| anyhow!(format_dbg!()))?;
+            }
+            true => {
+                self.veh.mark_non_thermal_fresh()?;
+            }
         }
-        self.veh
-            .solve_powertrain(dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
         self.set_cumulative(dt, || format_dbg!())?;
         Ok(())
     }
@@ -1004,6 +1016,110 @@ mod tests {
                     .get_fresh(String::new)
                     .unwrap()
                     != si::Energy::ZERO
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "resources")]
+    fn test_sim_drive_hev_thrml_soak() {
+        let _veh = Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue.yaml", false).unwrap();
+        let mut cyc = Cycle::from_resource("udds.csv", false).unwrap();
+        // zero out speed
+        cyc.speed.iter_mut().for_each(|v| *v = si::Velocity::ZERO);
+
+        let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        let te_batt_and_cab_init: Vec<si::Temperature> = [-6.7, 22.0, 45.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        let te_fc_init: Vec<si::Temperature> = [-6.7, 70.0, 90.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        for ((te_amb, te_init), te_fc_init) in
+            te_amb.iter().zip(te_batt_and_cab_init).zip(te_fc_init)
+        {
+            let mut veh = _veh.clone();
+
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .update(te_init, || format_dbg!())
+                .unwrap();
+
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .update(te_init, || format_dbg!())
+                .unwrap();
+            if let CabinOption::LumpedCabin(lc) = &mut veh.cabin {
+                lc.state.temperature.mark_stale();
+                lc.state
+                    .temperature
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+                lc.state.temp_prev.mark_stale();
+                lc.state
+                    .temp_prev
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+            }
+
+            veh.fc_mut()
+                .unwrap()
+                .fc_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .mark_stale();
+            veh.fc_mut()
+                .unwrap()
+                .fc_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .update(te_fc_init, || format_dbg!())
+                .unwrap();
+            let mut cyc = cyc.clone();
+            cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
+            let mut sd = SimDrive::new(
+                veh,
+                cyc,
+                Some(SimParams {
+                    ambient_thermal_soak: true,
+                    ..Default::default()
+                }),
+            );
+            sd.walk()
+                .with_context(|| {
+                    format!(
+                        "ambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert!(
+                *sd.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd.cyc.len_checked().unwrap() - 1
             );
         }
     }

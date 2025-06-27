@@ -105,7 +105,7 @@ impl SaveState for HVACOption {
         Ok(())
     }
 }
-impl CheckAndResetState for HVACOption {
+impl TrackedStateMethods for HVACOption {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::LumpedCabin(lc) => {
@@ -113,6 +113,21 @@ impl CheckAndResetState for HVACOption {
             }
             Self::LumpedCabinAndRES(lcr) => {
                 lcr.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::LumpedCabinWithShell => {
+                todo!()
+            }
+            Self::ReversibleEnergyStorageOnly => todo!(),
+            Self::None => {}
+        }
+        Ok(())
+    }
+
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => lc.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?,
+            Self::LumpedCabinAndRES(lcr) => {
+                lcr.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
             Self::LumpedCabinWithShell => {
                 todo!()

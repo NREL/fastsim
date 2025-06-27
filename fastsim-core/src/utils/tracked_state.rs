@@ -1,19 +1,35 @@
 use super::*;
 
-pub trait CheckAndResetState {
+/// Methods for manipulating states that need to be implemented up the hierarchy
+pub trait TrackedStateMethods {
+    /// Mark states as [State::Fresh]
+    /// # Arguments
+    /// - `loc`: closure that returns file and line number where called
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
+
     /// Ensure [State::Fresh] and reset to [State::Stale]
     /// # Arguments
     /// - `loc`: closure that returns file and line number where called
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
 }
 
-impl<T> CheckAndResetState for TrackedState<T>
+impl<T> TrackedStateMethods for TrackedState<T>
 where
     T: std::fmt::Debug + Clone + PartialEq + Default,
 {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         self.ensure_fresh(loc)?;
         self.mark_stale();
+        Ok(())
+    }
+
+    /// Verify that state is [State::Stale] and mark state as [State::Fresh]
+    /// without updating
+    /// # Arguments
+    /// - `loc`: closure that returns file and line number where called
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        self.ensure_stale(loc)?;
+        self.1 = StateStatus::Fresh;
         Ok(())
     }
 }
@@ -97,16 +113,6 @@ where
     pub fn update<F: Fn() -> String>(&mut self, value: T, loc: F) -> anyhow::Result<()> {
         self.ensure_stale(loc)?;
         self.0 = value;
-        self.1 = StateStatus::Fresh;
-        Ok(())
-    }
-
-    /// Verify that state is [State::Stale] and mark state as [State::Fresh]
-    /// without updating
-    /// # Arguments
-    /// - `loc`: closure that returns file and line number where called
-    pub fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
-        self.ensure_stale(loc)?;
         self.1 = StateStatus::Fresh;
         Ok(())
     }

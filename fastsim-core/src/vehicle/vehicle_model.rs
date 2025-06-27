@@ -373,6 +373,18 @@ impl Vehicle {
         self.pt_type.set_em(em)
     }
 
+    pub fn trans(&self) -> Option<&Transmission> {
+        self.pt_type.trans()
+    }
+
+    pub fn trans_mut(&mut self) -> Option<&mut Transmission> {
+        self.pt_type.trans_mut()
+    }
+
+    pub fn set_trans(&mut self, trans: Transmission) -> anyhow::Result<()> {
+        self.pt_type.set_trans(trans)
+    }
+
     /// Calculate wheel radius from tire code, if applicable
     fn calculate_wheel_radius(&mut self) -> anyhow::Result<()> {
         ensure!(
@@ -601,6 +613,79 @@ impl Vehicle {
         let f2veh = fastsim_2::vehicle::RustVehicle::from_file(file, false)
             .with_context(|| format_dbg!())?;
         Self::try_from(f2veh)
+    }
+
+    pub(crate) fn mark_non_thermal_fresh(&mut self) -> Result<(), anyhow::Error> {
+        self.state.i.mark_stale();
+        self.state.time.mark_stale();
+        self.state.pwr_aux.mark_stale();
+        self.state.mass.mark_stale();
+        self.state.mark_fresh(|| format_dbg!())?;
+        self.state.energy_tractive.mark_stale();
+        self.state.energy_aux.mark_stale();
+        self.state.energy_drag.mark_stale();
+        self.state.energy_accel.mark_stale();
+        self.state.energy_ascent.mark_stale();
+        self.state.energy_rr.mark_stale();
+        self.state.energy_whl_inertia.mark_stale();
+        self.state.energy_brake.mark_stale();
+        self.state.dist.mark_stale();
+        match self.fc_mut() {
+            Some(fc) => {
+                fc.state.i.mark_stale();
+                fc.state.mark_fresh(|| format_dbg!())?;
+                fc.state.energy_prop.mark_stale();
+                fc.state.energy_aux.mark_stale();
+                fc.state.energy_fuel.mark_stale();
+                fc.state.energy_loss.mark_stale();
+            }
+            None => {}
+        }
+        match self.res_mut() {
+            Some(res) => {
+                res.state.i.mark_stale();
+                res.state.soh.mark_stale();
+                res.state.mark_fresh(|| format_dbg!())?;
+                res.state.energy_out_electrical.mark_stale();
+                res.state.energy_out_prop.mark_stale();
+                res.state.energy_aux.mark_stale();
+                res.state.energy_loss.mark_stale();
+                res.state.energy_out_chemical.mark_stale();
+            }
+            None => {}
+        }
+        match self.em_mut() {
+            Some(em) => {
+                em.state.i.mark_stale();
+                em.state.mark_fresh(|| format_dbg!())?;
+                em.state.energy_out_req.mark_stale();
+                em.state.energy_elec_prop_in.mark_stale();
+                em.state.energy_mech_prop_out.mark_stale();
+                em.state.energy_mech_dyn_brake.mark_stale();
+                em.state.energy_elec_dyn_brake.mark_stale();
+                em.state.energy_loss.mark_stale();
+            }
+            None => {}
+        }
+        match self.trans_mut() {
+            Some(trans) => {
+                trans.state.i.mark_stale();
+                trans.state.mark_fresh(|| format_dbg!())?;
+                trans.state.energy_out.mark_stale();
+                trans.state.energy_loss.mark_stale();
+            }
+            None => {}
+        }
+        match &mut self.pt_type {
+            PowertrainType::HybridElectricVehicle(hev) => {
+                match &mut hev.pt_cntrl {
+                    HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
+                }
+                hev.pt_cntrl.mark_fresh(|| format_dbg!())?
+            }
+            _ => {}
+        }
+        Ok(())
     }
 }
 

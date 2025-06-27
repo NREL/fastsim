@@ -452,7 +452,6 @@ impl Vehicle {
                         .with_context(|| format_dbg!("Expected `Some`."))?
                         * (hev.fc.pwr_out_max + hev.res.pwr_out_max.min(hev.em.pwr_out_max)))
                     .get::<si::kilowatt>(),
-                    _ => todo!("{}", format_dbg!()),
                 },
                 _ => 0.0,
             },
@@ -537,9 +536,6 @@ impl Vehicle {
                         .speed_fc_forced_on
                         .with_context(|| format_dbg!("Expected Some"))?
                         .get::<si::mile_per_hour>(),
-                    _ => {
-                        todo!("{}", format_dbg!())
-                    }
                 },
                 _ => 0.0,
             },

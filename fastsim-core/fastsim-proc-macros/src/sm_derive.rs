@@ -75,10 +75,17 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
     if struct_is_state {
         impl_block.extend::<TokenStream2>(quote! {
             #[automatically_derived]
-            impl CheckAndResetState for #ident {
+            impl TrackedStateMethods for #ident {
                 fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     #(
                         self.#all_fields.check_and_reset(|| format!("{}\n    `{}` has not been updated", loc(), stringify!(#all_fields)))?;
+                    )*
+                    Ok(())
+                }
+
+                fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+                    #(
+                        self.#all_fields.mark_fresh(|| format!("{}\n    `{}` has already been updated", loc(), stringify!(#all_fields)))?;
                     )*
                     Ok(())
                 }
@@ -87,11 +94,19 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
     } else if struct_has_state {
         impl_block.extend::<TokenStream2>(quote! {
             #[automatically_derived]
-            impl CheckAndResetState for #ident {
+            impl TrackedStateMethods for #ident {
                 fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     self.state.check_and_reset(|| format!("{}", loc()))?;
                     #(
-                        self.#fields_with_state.check_and_reset(|| format!("{}\n    `{}`", loc(), stringify!(#fields_with_state)))?;
+                        self.#fields_with_state.check_and_reset(|| format!("{}\n    field in `{}` has not been updated", loc(), stringify!(#fields_with_state)))?;
+                    )*
+                    Ok(())
+                }
+
+                fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+                    self.state.mark_fresh(|| format!("{}", loc()))?;
+                    #(
+                        self.#fields_with_state.mark_fresh(|| format!("{}\n    field in `{}` has already been updated", loc(), stringify!(#fields_with_state)))?;
                     )*
                     Ok(())
                 }
@@ -100,10 +115,17 @@ pub(crate) fn state_methods_derive(input: TokenStream) -> TokenStream {
     } else {
         impl_block.extend::<TokenStream2>(quote! {
             #[automatically_derived]
-            impl CheckAndResetState for #ident {
+            impl TrackedStateMethods for #ident {
                 fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     #(
-                        self.#fields_with_state.check_and_reset(|| format!("{}\n    `{}`", loc(), stringify!(#fields_with_state)))?;
+                        self.#fields_with_state.check_and_reset(|| format!("{}\n    field in `{}` has not been updated", loc(), stringify!(#fields_with_state)))?;
+                    )*
+                    Ok(())
+                }
+
+                fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+                    #(
+                        self.#fields_with_state.mark_fresh(|| format!("{}\n    field in `{}` has already been updated", loc(), stringify!(#fields_with_state)))?;
                     )*
                     Ok(())
                 }
