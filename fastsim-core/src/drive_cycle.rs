@@ -608,6 +608,7 @@ impl Cycle {
         Ok(csv_de)
     }
 
+    #[cfg(feature = "pyo3")]
     pub fn to_fastsim2(&self) -> anyhow::Result<Cycle2> {
         let cyc2 = Cycle2 {
             name: self.name.clone(),
