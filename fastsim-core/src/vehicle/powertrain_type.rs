@@ -415,6 +415,20 @@ impl Step for PowertrainType {
             }
         }
     }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => {
+                conv.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::HybridElectricVehicle(hev) => {
+                hev.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::BatteryElectricVehicle(bev) => {
+                bev.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+        }
+    }
 }
 
 #[allow(clippy::to_string_trait_impl)]

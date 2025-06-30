@@ -542,6 +542,15 @@ impl Step for FuelConverterThermalOption {
             Self::None => Ok(()),
         }
     }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::FuelConverterThermal(fct) => {
+                fct.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::None => Ok(()),
+        }
+    }
 }
 impl Init for FuelConverterThermalOption {
     fn init(&mut self) -> Result<(), Error> {

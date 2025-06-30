@@ -1235,6 +1235,10 @@ mod tests {
                     .unwrap()
                     != si::Energy::ZERO
             );
+            sd.veh.reset_step(|| format_dbg!()).unwrap();
+            assert!(*sd.veh.state.i.get_fresh(|| format_dbg!()).unwrap() == 0);
+            sd.walk_once().unwrap();
+            assert_eq!(*sd.veh.state.i.get_fresh(|| format_dbg!()).unwrap(), 1372);
         }
     }
 }

@@ -131,6 +131,11 @@ impl Vehicle {
     fn clear_py(&mut self) {
         self.clear()
     }
+
+    #[pyo3(name = "reset_step")]
+    fn reset_step_py(&mut self) -> anyhow::Result<()> {
+        self.reset_step(|| format_dbg!())
+    }
 }
 
 impl Mass for Vehicle {
@@ -468,11 +473,8 @@ impl Vehicle {
             None => si::Power::ZERO,
         };
 
-        let res_thrml_state: Option<RESLumpedThermalState> =
-            self.res().and_then(|res| res.res_thrml_state().cloned());
-
         let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab) =
-            self.solve_hvac_cab_res(te_amb_air, dt, te_fc, res_thrml_state, pwr_thrml_cab_to_res)?;
+            self.solve_hvac_cab_res(te_amb_air, dt, te_fc, pwr_thrml_cab_to_res)?;
 
         self.pt_type
             .solve_thermal(
@@ -492,25 +494,25 @@ impl Vehicle {
         te_amb_air: si::Temperature,
         dt: si::Time,
         te_fc: Option<si::Temperature>,
-        res_thrml_state: Option<RESLumpedThermalState>,
         pwr_thrml_cab_to_res: si::Power,
     ) -> anyhow::Result<(
         Option<si::Power>,
         Option<si::Power>,
         Option<si::Temperature>,
     )> {
+        let res_and_then_thrml = self.res_mut().and_then(|res| res.res_thrml_state_mut());
         let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab): (
             Option<si::Power>,
             Option<si::Power>,
             Option<si::Temperature>,
-        ) = match (&mut self.cabin, &mut self.hvac) {
-            (CabinOption::None, HVACOption::None) => {
+        ) = match (&mut self.cabin, &mut self.hvac, res_and_then_thrml) {
+            (CabinOption::None, HVACOption::None, None) => {
                 self.state
                     .pwr_aux
                     .update(self.pwr_aux_base, || format_dbg!())?;
                 (None, None, None)
             }
-            (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabin(hvac)) => {
+            (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabin(hvac), None) => {
                 let (pwr_thrml_hvac_to_cabin, pwr_thrml_fc_to_cab) = hvac
                     .solve(te_amb_air, te_fc, &cab.state, cab.heat_capacitance, dt)
                     .with_context(|| format_dbg!())?;
@@ -533,17 +535,18 @@ impl Vehicle {
                 )?;
                 (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
             }
-            (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabinAndRES(hvac)) => {
+            (
+                CabinOption::LumpedCabin(cab),
+                HVACOption::LumpedCabinAndRES(hvac),
+                Some(res_thrml_state),
+            ) => {
                 let (pwr_thrml_hvac_to_cabin, pwr_thrml_fc_to_cab, pwr_thrml_hvac_to_res) = hvac
                     .solve(
                         te_amb_air,
                         te_fc,
                         &cab.state,
                         cab.heat_capacitance,
-                        res_thrml_state
-                        .with_context(
-                            || "{}\n[HVACOption::LumpedCabinAndRES] requires [ReversibleEnergyStorage::thrml] to be `Some`"
-                        )?,
+                        res_thrml_state,
                         dt,
                     )
                     .with_context(|| format_dbg!())?;
@@ -583,27 +586,12 @@ impl Vehicle {
                     Some(te_cab),
                 )
             }
-            (CabinOption::LumpedCabinWithShell, HVACOption::LumpedCabinWithShell) => {
-                bail!("{}\nNot yet implemented.", format_dbg!())
-            }
-            (CabinOption::None, HVACOption::ReversibleEnergyStorageOnly) => {
-                bail!("{}\nNot yet implemented.", format_dbg!())
-            }
-            (CabinOption::None, _) => {
+            (_, _, _) => {
                 bail!(
-                    "{}\n`CabinOption::is_none` must be true if `HVACOption::is_none` is true.",
+                    "{}\nCabin, HVAC, and RESThermal configuration is either invalid or not yet implemented.",
                     format_dbg!()
                 )
             }
-            (_, HVACOption::None) => {
-                bail!(
-                    "{}\n`CabinOption::is_none` must be true if `HVACOption::is_none` is true.",
-                    format_dbg!()
-                )
-            }
-            _ => todo!(
-                "This match needs more match arms to be fully correct in validating model config."
-            ),
         };
         Ok((pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab))
     }

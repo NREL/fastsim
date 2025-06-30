@@ -65,6 +65,16 @@ impl Step for CabinOption {
             Self::None => Ok(()),
         }
     }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => lc.reset_step(|| format!("{}\n{}", loc(), format_dbg!())),
+            Self::LumpedCabinWithShell => {
+                todo!()
+            }
+            Self::None => Ok(()),
+        }
+    }
 }
 impl Init for CabinOption {
     fn init(&mut self) -> Result<(), Error> {

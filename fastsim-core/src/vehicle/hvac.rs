@@ -150,4 +150,18 @@ impl Step for HVACOption {
             Self::None => Ok(()),
         }
     }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => lc.reset_step(|| format!("{}\n{}", loc(), format_dbg!())),
+            Self::LumpedCabinAndRES(lcr) => {
+                lcr.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::LumpedCabinWithShell => {
+                todo!()
+            }
+            Self::ReversibleEnergyStorageOnly => todo!(),
+            Self::None => Ok(()),
+        }
+    }
 }

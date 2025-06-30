@@ -501,6 +501,13 @@ impl Step for HEVPowertrainControls {
         }
         Ok(())
     }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.reset_step(loc)?,
+        }
+        Ok(())
+    }
 }
 
 impl StateMethods for HEVPowertrainControls {}

@@ -117,6 +117,20 @@ where
         Ok(())
     }
 
+    // Note that `anyhow::Error` is fine here because this should result only in
+    // logic errors and not runtime errors for end users
+    // TODO: try to get rid of all uses of this method!
+    /// Update the value of the tracked state without verifying that it has not
+    /// already been updated -- to be used sparingly!
+    /// # Arguments
+    /// - `value`: new value
+    /// - `loc`: closure that returns file and line number where called
+    pub fn update_unchecked<F: Fn() -> String>(&mut self, value: T, _loc: F) -> anyhow::Result<()> {
+        self.0 = value;
+        self.1 = StateStatus::Fresh;
+        Ok(())
+    }
+
     /// Check that value has been updated and then return as a result
     /// # Arguments
     /// - `loc`: call site location filename and line number
