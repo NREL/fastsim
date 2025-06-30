@@ -500,12 +500,12 @@ impl Vehicle {
         Option<si::Power>,
         Option<si::Temperature>,
     )> {
-        let res_and_then_thrml = self.res_mut().and_then(|res| res.res_thrml_state_mut());
+        let res_thrml_state = self.pt_type.res_mut().and_then(|rm| rm.res_thrml_state());
         let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab): (
             Option<si::Power>,
             Option<si::Power>,
             Option<si::Temperature>,
-        ) = match (&mut self.cabin, &mut self.hvac, res_and_then_thrml) {
+        ) = match (&mut self.cabin, &mut self.hvac, res_thrml_state) {
             (CabinOption::None, HVACOption::None, None) => {
                 self.state
                     .pwr_aux
@@ -586,10 +586,39 @@ impl Vehicle {
                     Some(te_cab),
                 )
             }
+            (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabin(hvac), Some(_)) => {
+                let (pwr_thrml_hvac_to_cabin, pwr_thrml_fc_to_cab) = hvac
+                    .solve(te_amb_air, te_fc, &cab.state, cab.heat_capacitance, dt)
+                    .with_context(|| format_dbg!())?;
+                let te_cab = cab
+                    .solve(
+                        te_amb_air,
+                        &self.state,
+                        pwr_thrml_hvac_to_cabin,
+                        Default::default(),
+                        dt,
+                    )
+                    .with_context(|| format_dbg!())?;
+                self.state.pwr_aux.update(
+                    self.pwr_aux_base
+                        + *hvac
+                            .state
+                            .pwr_aux_for_hvac
+                            .get_fresh(|| format_dbg!("hvac.state.pwr_aux_for_hvac"))?,
+                    || format_dbg!(),
+                )?;
+                (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
+            }
             (_, _, _) => {
                 bail!(
-                    "{}\nCabin, HVAC, and RESThermal configuration is either invalid or not yet implemented.",
-                    format_dbg!()
+                    "{}\nCabin, HVAC, and RESThermal configuration is either invalid or not yet implemented.\n{} - {} - {}",
+                    format_dbg!(),
+                    format!("{}", self.hvac),
+                    format!("{}", self.cabin),
+                    format!(
+                        "`res.res_thrml_state().is_some()`: {}",
+                        self.pt_type.res().and_then(|res| res.res_thrml_state()).is_some()
+                    ),
                 )
             }
         };

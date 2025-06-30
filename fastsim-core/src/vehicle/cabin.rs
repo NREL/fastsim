@@ -3,16 +3,28 @@ use super::*;
 
 /// Options for handling cabin thermal model
 #[derive(
-    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+    Clone,
+    Default,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    IsVariant,
+    derive_more::From,
+    TryInto,
+    derive_more::Display,
 )]
 pub enum CabinOption {
     /// Basic single thermal capacitance cabin thermal model, including HVAC
     /// system and controls
+    #[display("LumpedCabin")]
     LumpedCabin(Box<LumpedCabin>),
     /// Cabin with interior and shell capacitances
+    #[display("LumpedCabinWithShell")]
     LumpedCabinWithShell,
     /// no cabin thermal model
     #[default]
+    #[display("None")]
     None,
 }
 
