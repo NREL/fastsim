@@ -6,7 +6,6 @@ use crate::drive_cycle::manipulation_utils::{
 };
 use crate::imports::*;
 use crate::prelude::*;
-#[cfg(feature = "pyo3")]
 use fastsim_2::cycle::RustCycle as Cycle2;
 use std::cmp;
 
@@ -608,7 +607,6 @@ impl Cycle {
         Ok(csv_de)
     }
 
-    #[cfg(feature = "pyo3")]
     pub fn to_fastsim2(&self) -> anyhow::Result<Cycle2> {
         let cyc2 = Cycle2 {
             name: self.name.clone(),
