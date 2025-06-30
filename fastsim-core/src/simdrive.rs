@@ -1207,10 +1207,20 @@ mod tests {
                     .temp_prev
                     .update(te_init, || format_dbg!())
                     .unwrap();
+            } else {
+                panic!("cabin should have been configured");
             }
             let mut cyc = _cyc.clone();
             cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
             let mut sd = SimDrive::new(veh, cyc, Default::default());
+            if let CabinOption::LumpedCabin(lc) = sd.veh.cabin.clone() {
+                assert_eq!(
+                    *lc.state.temperature.get_fresh(|| format_dbg!()).unwrap(),
+                    te_init
+                );
+            } else {
+                panic!();
+            };
             sd.walk()
                 .with_context(|| {
                     format!(
@@ -1236,9 +1246,23 @@ mod tests {
                     != si::Energy::ZERO
             );
             sd.veh.reset_step(|| format_dbg!()).unwrap();
+            sd.veh.state.time.mark_stale();
+            sd.veh
+                .state
+                .time
+                .update(si::Time::ZERO, || format_dbg!())
+                .unwrap();
             assert!(*sd.veh.state.i.get_fresh(|| format_dbg!()).unwrap() == 0);
-            sd.walk_once().unwrap();
-            assert_eq!(*sd.veh.state.i.get_fresh(|| format_dbg!()).unwrap(), 1372);
+            sd.walk()
+                .with_context(|| {
+                    format!(
+                        "ambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert_eq!(*sd.veh.state.i.get_fresh(|| format_dbg!()).unwrap(), 1369);
         }
     }
 }

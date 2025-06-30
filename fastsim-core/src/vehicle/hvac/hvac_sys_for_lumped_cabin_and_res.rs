@@ -145,13 +145,6 @@ impl HVACSystemForLumpedCabinAndRES {
         res_thrml_state: &RESLumpedThermalState,
         dt: si::Time,
     ) -> anyhow::Result<(si::Power, si::Power, si::Power)> {
-        let (res_temp, res_temp_prev): (si::Temperature, si::Temperature) = (
-            *res_thrml_state.temperature.get_stale(|| format_dbg!())?,
-            *res_thrml_state.temp_prev.get_stale(|| format_dbg!())?,
-        );
-        ensure!(!res_temp.is_nan(), format_dbg!(res_temp));
-        ensure!(!res_temp_prev.is_nan(), format_dbg!(res_temp_prev));
-
         let (te_cab_delta_vs_set, te_cab_delta_vs_amb, te_res_delta_vs_set, te_res_delta_vs_amb) =
             self.get_te_deltas(te_amb_air, cab_state, &res_thrml_state)?;
 
@@ -486,8 +479,44 @@ impl HVACSystemForLumpedCabinAndRES {
                                 .pwr_thrml_to_cab_req
                                 .get_fresh(|| format_dbg!())?
                                 > si::Power::ZERO,
-                            "{}\nHVAC should be heating cabin",
-                            format_dbg!(self.state.pwr_thrml_to_cab_req)
+                            "{}\nHVAC should be heating cabin\n{}\n{}\n{}\n{}",
+                            format_dbg!(self.state.pwr_thrml_to_cab_req),
+                            format!(
+                                "{}: {} W",
+                                stringify!(self.state.pwr_p_cab),
+                                self.state
+                                    .pwr_p_cab
+                                    .get_fresh(|| format_dbg!())?
+                                    .get::<si::watt>()
+                                    .format_eng(None)
+                            ),
+                            format!(
+                                "{}: {} W",
+                                stringify!(self.state.pwr_i_cab),
+                                self.state
+                                    .pwr_i_cab
+                                    .get_fresh(|| format_dbg!())?
+                                    .get::<si::watt>()
+                                    .format_eng(None)
+                            ),
+                            format!(
+                                "{}: {} W",
+                                stringify!(self.state.pwr_d_cab),
+                                self.state
+                                    .pwr_d_cab
+                                    .get_fresh(|| format_dbg!())?
+                                    .get::<si::watt>()
+                                    .format_eng(None)
+                            ),
+                            format!(
+                                "{}: {}*C",
+                                stringify!(cab_state.temperature),
+                                cab_state
+                                    .temperature
+                                    .get_stale(|| format_dbg!())?
+                                    .get::<si::degree_celsius>()
+                                    .format_eng(None)
+                            )
                         );
 
                         ensure!(
@@ -665,43 +694,6 @@ impl HVACSystemForLumpedCabinAndRES {
                     .update(si::Power::ZERO, || format_dbg!())?;
             }
         }
-        // The following ensures are not likely to occur for users, only for developers
-        ensure!(
-            !self.state.pwr_i_cab.get_fresh(|| format_dbg!())?.is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self.state.pwr_p_cab.get_fresh(|| format_dbg!())?.is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self.state.pwr_d_cab.get_fresh(|| format_dbg!())?.is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self
-                .state
-                .pwr_aux_for_cab_hvac_req
-                .get_fresh(|| format_dbg!())?
-                .is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self
-                .state
-                .pwr_aux_for_cab_hvac
-                .get_fresh(|| format_dbg!())?
-                .is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self
-                .state
-                .pwr_thrml_hvac_to_cabin
-                .get_fresh(|| format_dbg!())?
-                .is_nan(),
-            format_dbg!()
-        );
         Ok(())
     }
 
@@ -723,6 +715,7 @@ impl HVACSystemForLumpedCabinAndRES {
             .pwr_p_cab
             .update(-self.p_cabin * te_delta_vs_set_cab, || format_dbg!())?;
         let pwr_i_cab_prev = *self.state.pwr_i_cab.get_stale(|| format_dbg!())?;
+
         if (pwr_i_cab_prev > si::Power::ZERO && hvac_mode.is_cooling())
             || (pwr_i_cab_prev < si::Power::ZERO && hvac_mode.is_heating())
         {
@@ -736,12 +729,13 @@ impl HVACSystemForLumpedCabinAndRES {
             // pwr_i_cab is cooling and mode is cooling
             // or
             // pwr_i_cab is heating and mode is heating
-            self.state.pwr_i_cab.increment(
-                (-self.i_cabin * uc::W / uc::KELVIN / uc::S * te_delta_vs_set_cab * dt)
-                    .max(-self.pwr_i_max_cabin)
-                    .min(self.pwr_i_max_cabin),
-                || format_dbg!(),
-            )?;
+            let pwr_i_cab_new = (pwr_i_cab_prev
+                + -self.i_cabin * uc::W / uc::KELVIN / uc::S * te_delta_vs_set_cab * dt)
+                .max(-self.pwr_i_max_cabin)
+                .min(self.pwr_i_max_cabin);
+            self.state
+                .pwr_i_cab
+                .update(pwr_i_cab_new, || format_dbg!())?;
         }
 
         self.state.pwr_d_cab.update(

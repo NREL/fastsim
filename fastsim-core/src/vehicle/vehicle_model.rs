@@ -473,8 +473,9 @@ impl Vehicle {
             None => si::Power::ZERO,
         };
 
-        let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab) =
-            self.solve_hvac_cab_res(te_amb_air, dt, te_fc, pwr_thrml_cab_to_res)?;
+        let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab) = self
+            .solve_hvac_cab_res(te_amb_air, dt, te_fc, pwr_thrml_cab_to_res)
+            .with_context(|| format_dbg!())?;
 
         self.pt_type
             .solve_thermal(
