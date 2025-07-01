@@ -80,4 +80,5 @@ toml = ["dep:toml"]
 yaml = ["dep:serde_yaml"]
 ## Enables message pack serialization and deserialization via `rmp-serde`
 msgpack = ["dep:rmp-serde"]
-
+## Activates `timer` macros
+timer = []

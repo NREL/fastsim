@@ -77,3 +77,19 @@ macro_rules! init_opt_default {
         $obj.$fieldname = $obj.$fieldname.or(Some($def_val));
     };
 }
+
+#[macro_export]
+/// Times the duration whatever gets passed in
+macro_rules! timer {
+    ($code_block:expr) => {
+        #[cfg(feature = "timer")]
+        let now_and_then = Instant::now();
+        $code_block;
+        #[cfg(feature = "timer")]
+        println!(
+            "{}\nElapsed time: {} μs",
+            format_dbg!(),
+            now_and_then.elapsed().as_micros()
+        );
+    };
+}
