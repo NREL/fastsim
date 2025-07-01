@@ -336,7 +336,7 @@ impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
 }
 
 /// Super trait to ensure that related traits are implemented together
-pub trait StateMethods: SetCumulative + SaveState + Step + CheckAndResetState {}
+pub trait StateMethods: SetCumulative + SaveState + Step + TrackedStateMethods {}
 
 /// Trait for setting cumulative values based on rate values
 pub trait SetCumulative {
@@ -360,6 +360,11 @@ pub trait Step {
     /// # Arguments
     /// - `loc`: closure that returns file and line number where called
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
+
+    /// Resets `i` field of this and all contained structs, recursively
+    /// # Arguments
+    /// - `loc`: closure that returns file and line number where called
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
 }
 
 /// Provides methods for getting and setting the save interval

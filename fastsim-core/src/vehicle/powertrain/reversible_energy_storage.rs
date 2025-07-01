@@ -940,11 +940,21 @@ impl SaveState for RESThermalOption {
         Ok(())
     }
 }
-impl CheckAndResetState for RESThermalOption {
+impl TrackedStateMethods for RESThermalOption {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::RESLumpedThermal(rlt) => {
                 rlt.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::None => {}
+        }
+        Ok(())
+    }
+
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::RESLumpedThermal(rlt) => {
+                rlt.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
             Self::None => {}
         }
@@ -955,6 +965,15 @@ impl Step for RESThermalOption {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::RESLumpedThermal(rlt) => rlt.step(|| format!("{}\n{}", loc(), format_dbg!())),
+            Self::None => Ok(()),
+        }
+    }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::RESLumpedThermal(rlt) => {
+                rlt.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
             Self::None => Ok(()),
         }
     }

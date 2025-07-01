@@ -514,11 +514,21 @@ impl SaveState for FuelConverterThermalOption {
         Ok(())
     }
 }
-impl CheckAndResetState for FuelConverterThermalOption {
+impl TrackedStateMethods for FuelConverterThermalOption {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::FuelConverterThermal(fct) => {
                 fct.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::None => {}
+        }
+        Ok(())
+    }
+
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::FuelConverterThermal(fct) => {
+                fct.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
             Self::None => {}
         }
@@ -529,6 +539,15 @@ impl Step for FuelConverterThermalOption {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::FuelConverterThermal(fct) => fct.step(|| format!("{}\n{}", loc(), format_dbg!())),
+            Self::None => Ok(()),
+        }
+    }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::FuelConverterThermal(fct) => {
+                fct.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
             Self::None => Ok(()),
         }
     }

@@ -73,7 +73,7 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
                         .#energy_fields
                         .increment(
                             *self.#pwr_fields.get_fresh(|| format_dbg!())? * dt,
-                            || format_dbg!()
+                            || format!("{}\n{}\n{} -> {}", loc(), format_dbg!(), stringify!(#pwr_fields), stringify!(#energy_fields))
                         )?;
                     )*
                     Ok(())

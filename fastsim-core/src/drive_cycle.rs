@@ -6,7 +6,6 @@ use crate::drive_cycle::manipulation_utils::{
 };
 use crate::imports::*;
 use crate::prelude::*;
-#[cfg(feature = "pyo3")]
 use fastsim_2::cycle::RustCycle as Cycle2;
 use std::cmp;
 
