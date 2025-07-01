@@ -628,6 +628,7 @@ impl Vehicle {
         Ok((pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab))
     }
 
+    #[allow(dead_code)]
     fn from_f2_file(file: PathBuf) -> anyhow::Result<Self> {
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_file(file, false)

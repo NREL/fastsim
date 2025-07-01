@@ -222,6 +222,132 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                 hev.init()?;
                 Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
             }
+            PHEV => {
+                let pt_cntrl =
+                    HEVPowertrainControls::RGWDB(Box::new(hev::RESGreedyWithDynamicBuffers {
+                        speed_soc_fc_on_buffer: None,
+                        speed_soc_fc_on_buffer_coeff: None,
+                        speed_soc_disch_buffer: None,
+                        speed_soc_disch_buffer_coeff: None,
+                        speed_soc_regen_buffer: None,
+                        speed_soc_regen_buffer_coeff: None,
+                        // note that this exists in `fastsim-2` but has no apparent effect!
+                        fc_min_time_on: None,
+                        speed_fc_forced_on: Some(f2veh.mph_fc_on * uc::MPH),
+                        frac_pwr_demand_fc_forced_on: Some(
+                            f2veh.kw_demand_fc_on
+                                / (f2veh.fc_max_kw + f2veh.ess_max_kw.min(f2veh.mc_max_kw))
+                                * uc::R,
+                        ),
+                        frac_of_most_eff_pwr_to_run_fc: None,
+                        temp_fc_forced_on: None,
+                        temp_fc_allowed_off: None,
+                        save_interval: Some(1),
+                        state: Default::default(),
+                        history: Default::default(),
+                    }));
+                let mut phev = HybridElectricVehicle {
+                    fs: {
+                        let mut fs = FuelStorage {
+                            pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                            pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                            energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
+                            specific_energy: None,
+                            mass: None,
+                        };
+                        fs.set_mass(None, MassSideEffect::None)
+                            .with_context(|| anyhow!(format_dbg!()))?;
+                        fs
+                    },
+                    fc: {
+                        let mut fc = FuelConverter {
+                            state: Default::default(),
+                            thrml: Default::default(),
+                            mass: None,
+                            specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
+                            pwr_out_max: f2veh.fc_max_kw * uc::KW,
+                            // assumes 1 s time step
+                            pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
+                            pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
+                            eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
+                                f2veh.fc_perc_out_array.clone().into(),
+                                f2veh.fc_eff_array.clone().into(),
+                                strategy::LeftNearest,
+                                Extrapolate::Error,
+                            )
+                            .with_context(|| format_dbg!())?,
+                            pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
+                            // this means that aux power must include idle fuel
+                            pwr_idle_fuel: si::Power::ZERO,
+                            save_interval: Some(1),
+                            history: Default::default(),
+                        };
+                        fc.init()?;
+                        fc.set_mass(None, MassSideEffect::None)
+                            .with_context(|| anyhow!(format_dbg!()))?;
+                        fc
+                    },
+                    res: ReversibleEnergyStorage {
+                        thrml: Default::default(),
+                        state: Default::default(),
+                        mass: None,
+                        specific_energy: None,
+                        pwr_out_max: f2veh.ess_max_kw * uc::KW,
+                        energy_capacity: f2veh.ess_max_kwh * uc::KWH,
+                        eff_interp: ResEffInterp::Constant(Interp0D::new(
+                            f2veh.ess_round_trip_eff.sqrt(),
+                        )),
+                        min_soc: f2veh.min_soc * uc::R,
+                        max_soc: f2veh.max_soc * uc::R,
+                        save_interval: Some(1),
+                        history: Default::default(),
+                    },
+                    em: ElectricMachine {
+                        state: Default::default(),
+                        eff_interp_achieved: InterpolatorEnum::new_1d(
+                            f2veh.mc_perc_out_array.clone().into(),
+                            {
+                                let mut mc_full_eff =
+                                    Array1::from_vec(f2veh.mc_full_eff_array.clone());
+                                ensure!(mc_full_eff.len() > 1);
+                                mc_full_eff[0] = mc_full_eff[1];
+                                mc_full_eff
+                            },
+                            strategy::LeftNearest,
+                            Extrapolate::Error,
+                        )
+                        .with_context(|| {
+                            format!(
+                                "{}\n{}",
+                                format_dbg!(f2veh.mc_full_eff_array.len()),
+                                format_dbg!(f2veh.mc_perc_out_array.len())
+                            )
+                        })?,
+                        eff_interp_at_max_input: None,
+                        // pwr_in_frac_interp: Default::default(),
+                        pwr_out_max: f2veh.mc_max_kw * uc::KW,
+                        specific_pwr: None,
+                        mass: None,
+                        save_interval: Some(1),
+                        history: Default::default(),
+                    },
+                    transmission: Transmission {
+                        mass: None,
+                        eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
+                        save_interval: Some(1),
+                        state: Default::default(),
+                        history: Default::default(),
+                    },
+                    pt_cntrl,
+                    mass: None,
+                    sim_params: Default::default(),
+                    aux_cntrl: Default::default(),
+                    soc_bal_iter_history: Default::default(),
+                    soc_bal_iters: Default::default(),
+                };
+                phev.init()?;
+                Ok(PowertrainType::HybridElectricVehicle(Box::new(phev)))
+            }
             BEV => {
                 let bev = BatteryElectricVehicle {
                     res: ReversibleEnergyStorage {
