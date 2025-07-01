@@ -941,7 +941,8 @@ mod tests {
     #[test]
     #[cfg(feature = "resources")]
     fn test_sim_drive_hev_thrml() {
-        let _veh = Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue.yaml", false).unwrap();
+        let _veh =
+            Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
 
         let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
@@ -1056,7 +1057,8 @@ mod tests {
     #[test]
     #[cfg(feature = "resources")]
     fn test_sim_drive_hev_thrml_soak() {
-        let _veh = Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue.yaml", false).unwrap();
+        let _veh =
+            Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml", false).unwrap();
         let mut cyc = Cycle::from_resource("udds.csv", false).unwrap();
         // zero out speed
         cyc.speed.iter_mut().for_each(|v| *v = si::Velocity::ZERO);
