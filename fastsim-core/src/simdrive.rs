@@ -697,7 +697,7 @@ pwr deficit: {} kW
             self.sim_params.ach_speed_solver_gain,
         );
         let speed_ach_floored = {
-            // NOTE: what we are doing here is "flooring" the speed to the nearest tength of a m/s.
+            // NOTE: what we are doing here is "flooring" the speed to the nearest tenth of a m/s.
             // The purpose is to slightly reduce the target speed below the max power threshold
             // to prevent float precision issues from sending us right back into trace miss.
             let v = ((speed_ach.get::<si::meter_per_second>() * 10.0).floor() / 10.0) * uc::MPS;
