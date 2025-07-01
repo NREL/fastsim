@@ -278,6 +278,19 @@ impl FuelConverter {
                 format_dbg!(pwr_out_req >= si::Power::ZERO),
             )
         );
+        ensure!(
+            pwr_out_req <= *self.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+            format!(
+                "{}\n`pwr_out_req` ({} W) must be < `self.state.pwr_prop_max` ({} W)",
+                format_dbg!(),
+                pwr_out_req.get::<si::watt>().format_eng(Some(5)),
+                self.state
+                    .pwr_prop_max
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::watt>()
+                    .format_eng(Some(5))
+            )
+        );
         // if the engine is not on, `pwr_out_req` should be 0.0
         ensure!(
             fc_on || (pwr_out_req == si::Power::ZERO && *self.state.pwr_aux.get_fresh(|| format_dbg!())? == si::Power::ZERO),
