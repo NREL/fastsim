@@ -29,7 +29,7 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 # `fastsim3` -- load vehicle and cycle, build simulation, and run
 # %%
 
-# load 2012 Ford Fusion from file
+# load 2022_Renault_Zoe_ZE50_R135 from file
 veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
 veh_no_save = veh.copy()
 veh_no_save.set_save_interval(None)
