@@ -39,8 +39,13 @@ pub fn get_net_accel(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     // Check if vehicle reaches 60 mph
     if speed_mph.iter().any(|&x| x >= 60.0) {
         // Create interpolator from speed to time
-        let interp = Interpolator::new_1d(speed_mph, time_s, Strategy::Linear, Extrapolate::Clamp)
-            .with_context(|| format_dbg!())?;
+        let interp: InterpolatorEnumOwned<f64> = InterpolatorEnum::new_1d(
+            speed_mph.clone().into(),
+            time_s.clone().into(),
+            strategy::Linear,
+            Extrapolate::Clamp,
+        )
+        .with_context(|| format_dbg!())?;
 
         // Interpolate time at 60 mph
         let accel_time = interp.interpolate(&[60.0])?;
@@ -605,7 +610,7 @@ pub fn get_label_fe_phev(
         min_soc = phev.res.min_soc;
         phev_max_regen = 0.98 * uc::R;
         veh_mass = *veh.state.mass.get_fresh(|| format_dbg!())?;
-        em_peak_eff = phev
+        em_peak_eff = *phev
             .em
             .eff_interp_achieved
             .max()
@@ -994,15 +999,13 @@ pub fn get_label_fe_phev(
             soc_hist.push(soc.get_fresh(|| format_dbg!())?.get::<si::ratio>());
         }
 
-        phev_calc.adj_cd_miles = if max_soc
-            - label_fe_phev.regen_soc_buffer
-            - (soc_hist.min()? * uc::R)
-            < 0.01 * uc::R
-        {
-            1000.0
-        } else {
-            phev_calc.adj_iter_cd_miles.max()?
-        };
+        phev_calc.adj_cd_miles =
+            if max_soc - label_fe_phev.regen_soc_buffer - (*soc_hist.min()? * uc::R) < 0.01 * uc::R
+            {
+                1000.0
+            } else {
+                *phev_calc.adj_iter_cd_miles.max()?
+            };
 
         // utility factor calculation for last charge depletion iteration and transition iteration
         // ported from excel

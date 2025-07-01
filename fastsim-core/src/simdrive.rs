@@ -1,5 +1,10 @@
+pub mod roadload;
+
+use roadload::StepInfo;
+
 use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
+use crate::drive_cycle::manipulation_utils::calc_best_rendezvous;
 use crate::imports::*;
 use crate::prelude::*;
 
@@ -28,9 +33,17 @@ pub struct SimParams {
     pub trace_miss_tol: TraceMissTolerance,
     #[serde(default = "SimParams::def_trace_miss_opts")]
     pub trace_miss_opts: TraceMissOptions,
+    #[serde(default = "SimParams::def_trace_miss_correct_max_steps")]
+    /// the maximum number of steps in which to re-rendezvous with reference
+    /// trace after a trace miss. Note: this field only applies when
+    /// trace_miss_opts is set to TraceMissOptions::Correct. Note: must
+    /// be 2 or greater. Defaults to 6.
+    pub trace_miss_correct_max_steps: u32,
     /// whether to use FASTSim-2 style air density
     #[serde(default = "SimParams::def_f2_const_air_density")]
     pub f2_const_air_density: bool,
+    /// if true, vehicle is totally inactive except for thermal models
+    pub ambient_thermal_soak: bool,
 }
 
 #[pyo3_api]
@@ -58,6 +71,9 @@ impl SimParams {
     fn def_trace_miss_opts() -> TraceMissOptions {
         Self::default().trace_miss_opts
     }
+    fn def_trace_miss_correct_max_steps() -> u32 {
+        Self::default().trace_miss_correct_max_steps
+    }
     fn def_f2_const_air_density() -> bool {
         Self::default().f2_const_air_density
     }
@@ -74,7 +90,9 @@ impl Default for SimParams {
             ach_speed_solver_gain: 0.9,
             trace_miss_tol: Default::default(),
             trace_miss_opts: Default::default(),
+            trace_miss_correct_max_steps: 6,
             f2_const_air_density: true,
+            ambient_thermal_soak: false,
         }
     }
 }
@@ -253,6 +271,7 @@ impl SimDrive {
                             .with_context(|| format_dbg!())?
                             .sim_params
                             .balance_soc
+                        || self.sim_params.ambient_thermal_soak
                     {
                         break;
                     } else {
@@ -325,14 +344,57 @@ impl SimDrive {
         Ok(())
     }
 
+    /// Calculates the derivative dv/dd (change in speed by change in distance)
+    /// - speed_m_per_s: the speed at which to evaluate dv/dd (m/s)
+    /// - grade: the road grade as a decimal fraction
+    ///
+    /// RETURN: number, the dv/dd for these conditions
+    pub fn calc_dvdd(&self, speed_m_per_s: f64, grade: f64) -> anyhow::Result<f64> {
+        let v = speed_m_per_s;
+        if v <= 0.0 {
+            Ok(0.0)
+        } else {
+            let (atan_grade_sin, atan_grade_cos) = if grade == 0.0 {
+                (0.0, 1.0)
+            } else {
+                let atan_grade = grade.atan();
+                (atan_grade.sin(), atan_grade.cos())
+            };
+            let g = uc::ACC_GRAV.get::<si::meter_per_second_squared>();
+            let m = self
+                .veh
+                .mass
+                .with_context(|| {
+                    format!(
+                        "{}\nVehicle mass should have been set already.",
+                        format_dbg!()
+                    )
+                })?
+                .get::<si::kilogram>();
+            let rho_cdfa = self
+                .veh
+                .state
+                .air_density
+                .get_stale(|| format_dbg!())?
+                .get::<si::kilogram_per_cubic_meter>()
+                * self.veh.chassis.drag_coef.get::<si::ratio>()
+                * self.veh.chassis.frontal_area.get::<si::square_meter>();
+            let rrc = self.veh.chassis.wheel_rr_coef.get::<si::ratio>();
+            Ok(-1.0
+                * ((g / v) * (atan_grade_sin + rrc * atan_grade_cos)
+                    + (0.5 * rho_cdfa * (1.0 / m) * v)))
+        }
+    }
+
     /// Solves current time step
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
+        let time_prev = *self.veh.state.time.get_stale(|| format_dbg!())?;
         self.veh
             .state
             .time
             .update(self.cyc.time[i], || format_dbg!())?;
-        let dt = self.cyc.dt_at_i(i)?;
+        let dt = *self.veh.state.time.get_fresh(|| format_dbg!())? - time_prev;
         // maybe make controls like:
         // ```
         // pub enum HVACAuxPriority {
@@ -347,33 +409,39 @@ impl SimDrive {
         self.veh
             .solve_thermal(self.cyc.temp_amb_air[i], dt)
             .with_context(|| format_dbg!())?;
-        self.veh
-            // TODO: feed in something different for first arg when CAVs stuff is active @MOK
-            .set_curr_pwr_out_max(dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
-        self.set_pwr_prop_for_speed(
-            self.cyc.speed[i],
-            *self.veh.state.speed_ach.get_stale(|| format_dbg!())?,
-            dt,
-        )
-        .with_context(|| anyhow!(format_dbg!()))?;
-        self.veh.state.pwr_tractive_for_cyc.update(
-            *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
-            || format_dbg!(),
-        )?;
-        self.set_ach_speed(self.cyc.speed[i], dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
-        if self.sim_params.trace_miss_opts.is_allow_checked() {
-            self.sim_params.trace_miss_tol.check_trace_miss(
-                self.cyc.speed[i],
-                *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
-                self.cyc.dist[i],
-                *self.veh.state.dist.get_fresh(|| format_dbg!())?,
-            )?;
+        match self.sim_params.ambient_thermal_soak {
+            false => {
+                self.veh
+                    .set_curr_pwr_out_max(dt)
+                    .with_context(|| anyhow!(format_dbg!()))?;
+                self.set_pwr_prop_for_speed(
+                    self.cyc.speed[i],
+                    *self.veh.state.speed_ach.get_stale(|| format_dbg!())?,
+                    dt,
+                )
+                .with_context(|| anyhow!(format_dbg!()))?;
+                self.veh.state.pwr_tractive_for_cyc.update(
+                    *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
+                    || format_dbg!(),
+                )?;
+                self.set_ach_speed(self.cyc.speed[i], dt)
+                    .with_context(|| anyhow!(format_dbg!()))?;
+                if self.sim_params.trace_miss_opts.is_allow_checked() {
+                    self.sim_params.trace_miss_tol.check_trace_miss(
+                        self.cyc.speed[i],
+                        *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
+                        self.cyc.dist[i],
+                        *self.veh.state.dist.get_fresh(|| format_dbg!())?,
+                    )?;
+                }
+                self.veh
+                    .solve_powertrain(dt)
+                    .with_context(|| anyhow!(format_dbg!()))?;
+            }
+            true => {
+                self.veh.mark_non_thermal_fresh()?;
+            }
         }
-        self.veh
-            .solve_powertrain(dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
         self.set_cumulative(dt, || format_dbg!())?;
         Ok(())
     }
@@ -391,9 +459,12 @@ impl SimDrive {
         let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
         let vs = &mut self.veh.state;
         // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
+        // TODO: memo-ize this
+        //     - if we get back on trace or nearly back on trace, revert to just using the index
+        //     - we can also shorten the x and y values by removing stuff that's already happened
         let interp_pt_dist: &[f64] = match self.cyc.grade_interp {
-            Some(Interpolator::Interp0D(..)) => &[],
-            Some(Interpolator::Interp1D(..)) => {
+            Some(InterpolatorEnum::Interp0D(_)) => &[],
+            Some(InterpolatorEnum::Interp1D(_)) => {
                 &[vs.dist.get_fresh(|| format_dbg!())?.get::<si::meter>()]
             }
             _ => unreachable!(),
@@ -464,8 +535,7 @@ impl SimDrive {
             )
         })?;
         vs.pwr_accel.update(
-            mass / (2.0 * dt)
-                * (speed.powi(P2::new()) - speed_prev.powi(P2::new())),
+            mass / (2.0 * dt) * (speed.powi(P2::new()) - speed_prev.powi(P2::new())),
             || format_dbg!(),
         )?;
         vs.pwr_ascent.update(
@@ -591,153 +661,102 @@ pwr deficit: {} kW
                     .get::<si::kilowatt>()
                     .format_eng(None)
                 ),
-                TraceMissOptions::Correct => todo!(),
+                TraceMissOptions::Correct => {
+                    // We will correct the deviation from trace by modifying the cycle to re-rendezvous with a later time/distance.
+                    // In so doing, we will use a less agressive roadload.
+                    // NOTE: actual correction occurs later but we need to calculate
+                    // the achieved speed first.
+                }
             }
         }
         let vs = &mut self.veh.state;
-        let mass = self
-            .veh
-            .mass
-            .with_context(|| format!("{}\nMass should have been set before now", format_dbg!()))?;
-
-        let drag3 = 1.0 / 16.0
-            * *vs.air_density.get_fresh(|| format_dbg!())?
-            * self.veh.chassis.drag_coef
-            * self.veh.chassis.frontal_area;
-        let accel2 = 0.5 * mass / dt;
-        let drag2 = 3.0 / 16.0
-            * *vs.air_density.get_fresh(|| format_dbg!())?
-            * self.veh.chassis.drag_coef
-            * self.veh.chassis.frontal_area
-            * speed_prev;
-        let wheel2 = 0.5 * self.veh.chassis.wheel_inertia * self.veh.chassis.num_wheels as f64
-            / (dt
-                * self
-                    .veh
-                    .chassis
-                    .wheel_radius
-                    .with_context(|| format_dbg!())?
-                    .powi(P2::new()));
-        let drag1 = 3.0 / 16.0
-            * *vs.air_density.get_fresh(|| format_dbg!())?
-            * self.veh.chassis.drag_coef
-            * self.veh.chassis.frontal_area
-            * vs.speed_ach
-                .get_fresh(|| format_dbg!())?
-                .powi(P2::new());
-        let roll1 = 0.5
-            * mass
-            * uc::ACC_GRAV
-            * self.veh.chassis.wheel_rr_coef
-            * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().cos();
-        let ascent1 =
-            0.5 * uc::ACC_GRAV * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().sin() * mass;
-        let accel0 = -0.5 * mass * speed_prev.powi(P2::new()) / dt;
-        let drag0 = 1.0 / 16.0
-            * *vs.air_density.get_fresh(|| format_dbg!())?
-            * self.veh.chassis.drag_coef
-            * self.veh.chassis.frontal_area
-            * speed_prev.powi(P3::new());
-        let roll0 = 0.5
-            * mass
-            * uc::ACC_GRAV
-            * self.veh.chassis.wheel_rr_coef
-            * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().cos()
-            * speed_prev;
-        let ascent0 = 0.5
-            * uc::ACC_GRAV
-            * vs.grade_curr.get_fresh(|| format_dbg!())?.atan().sin()
-            * mass
-            * speed_prev;
-        let wheel0 = -0.5
-            * self.veh.chassis.wheel_inertia
-            * self.veh.chassis.num_wheels as f64
-            * speed_prev.powi(P2::new())
-            / (dt
-                * self
-                    .veh
-                    .chassis
-                    .wheel_radius
-                    .with_context(|| format_dbg!())?
-                    .powi(P2::new()));
-
-        let t3 = drag3;
-        let t2 = accel2 + drag2 + wheel2;
-        let t1 = drag1 + roll1 + ascent1;
-        let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0)
-            - *vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?;
-
-        // initial guess
-        let speed_guess = (1e-3 * uc::MPS).max(cyc_speed);
-        // stop criteria
-        let max_iter = &self.sim_params.ach_speed_max_iter;
-        let xtol = &self.sim_params.ach_speed_tol;
-        // solver gain
-        let g = &self.sim_params.ach_speed_solver_gain;
-        let pwr_err_fn = |speed_guess: si::Velocity| -> si::Power {
-            t3 * speed_guess.powi(P3::new())
-                + t2 * speed_guess.powi(P2::new())
-                + t1 * speed_guess
-                + t0
-        };
-        let pwr_err_per_speed_guess_fn = |speed_guess: si::Velocity| {
-            3.0 * t3 * speed_guess.powi(P2::new()) + 2.0 * t2 * speed_guess + t1
-        };
-        let pwr_err = pwr_err_fn(speed_guess);
-        if almost_eq_uom(&pwr_err, &(0. * uc::W), Some(1e-6)) {
-            // TODO: maybe change to `updated_unchecked`
-            vs.speed_ach.update(cyc_speed, || format_dbg!())?;
-            return Ok(());
-        }
-        let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
-        let new_speed_guess = pwr_err - speed_guess * pwr_err_per_speed_guess;
-        let mut speed_guesses = vec![speed_guess];
-        let mut pwr_errs = vec![pwr_err];
-        let mut d_pwr_err_per_d_speed_guesses = vec![pwr_err_per_speed_guess];
-        let mut new_speed_guesses = vec![new_speed_guess];
-        // speed achieved iteration counter
-        let mut spd_ach_iter_counter = 1;
-        let mut converged = pwr_err <= si::Power::ZERO;
-        let mut speed_ach: si::Velocity = Default::default();
-        while &spd_ach_iter_counter < max_iter && !converged {
-            let speed_guess = *speed_guesses.iter().last().with_context(|| format_dbg!())?
-                * (1.0 - g)
-                - *g * *new_speed_guesses
-                    .iter()
-                    .last()
-                    .with_context(|| format_dbg!())?
-                    / d_pwr_err_per_d_speed_guesses[speed_guesses.len() - 1];
-            let pwr_err = pwr_err_fn(speed_guess);
-            let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
-            let new_speed_guess = pwr_err - speed_guess * pwr_err_per_speed_guess;
-            speed_guesses.push(speed_guess);
-            pwr_errs.push(pwr_err);
-            d_pwr_err_per_d_speed_guesses.push(pwr_err_per_speed_guess);
-            new_speed_guesses.push(new_speed_guess);
-            // is the fractional change between previous and current speed guess smaller than `xtol`
-            converged = &((*speed_guesses.iter().last().with_context(|| format_dbg!())?
-                - speed_guesses[speed_guesses.len() - 2])
-                / speed_guesses[speed_guesses.len() - 2])
-                .abs()
-                < xtol;
-            spd_ach_iter_counter += 1;
-
-            // TODO: verify that assuming `speed_guesses.iter().last()` is the correct solution
-            speed_ach = speed_guesses
-                .last()
-                .with_context(|| format_dbg!("should have had at least one element"))?
-                .max(0.0 * uc::MPS);
-        }
-
-        vs.speed_ach.update(speed_ach, || format_dbg!())?;
-
-        // Run it again to make sure it has been updated for achieved speed
-        self.set_pwr_prop_for_speed(
-            *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
-            speed_prev,
+        let step_info = StepInfo {
             dt,
-        )
-        .with_context(|| format_dbg!())?;
+            speed_prev,
+            cyc_speed,
+            grade_curr: *vs.grade_curr.get_fresh(|| format_dbg!())?,
+            air_density: *vs.air_density.get_fresh(|| format_dbg!())?,
+            mass: self.veh.mass.with_context(|| {
+                format!("{}\nMass should have been set before now", format_dbg!())
+            })?,
+            drag_coef: self.veh.chassis.drag_coef,
+            frontal_area: self.veh.chassis.frontal_area,
+            wheel_inertia: self.veh.chassis.wheel_inertia,
+            num_wheels: self.veh.chassis.num_wheels,
+            wheel_radius: self
+                .veh
+                .chassis
+                .wheel_radius
+                .with_context(|| format_dbg!())?,
+            wheel_rr_coef: self.veh.chassis.wheel_rr_coef,
+            pwr_prop_fwd_max: *vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?,
+        };
+        let speed_ach = step_info.solve_for_speed(
+            self.sim_params.ach_speed_max_iter * 10,
+            self.sim_params.ach_speed_tol,
+            self.sim_params.ach_speed_solver_gain,
+        );
+        let speed_ach_floored = {
+            // NOTE: what we are doing here is "flooring" the speed to the nearest tength of a m/s.
+            // The purpose is to slightly reduce the target speed below the max power threshold
+            // to prevent float precision issues from sending us right back into trace miss.
+            let v = ((speed_ach.get::<si::meter_per_second>() * 10.0).floor() / 10.0) * uc::MPS;
+            // NOTE: if after "flooring" we happen to exactly be the same as
+            // previous, we subtract off a tenth of a m/s but prevent going below 0 m/s.
+            if v == speed_ach {
+                (v - 0.1 * uc::MPS).max(si::Velocity::ZERO)
+            } else {
+                v
+            }
+        };
+
+        vs.speed_ach.update(speed_ach_floored, || format_dbg!())?;
+        // NOTE: need to reset tracked state to allow
+        // for calling set_pwr_prop_for_speed(.) again this step.
+        // set_pwr_prop_for_speed has already been called so the
+        // following variables have already been set fresh but need
+        // to be re-iterated.
+        vs.air_density.mark_stale();
+        vs.cyc_met.mark_stale();
+        vs.cyc_met_overall.mark_stale();
+        vs.elev_curr.mark_stale();
+        vs.grade_curr.mark_stale();
+        vs.pwr_accel.mark_stale();
+        vs.pwr_ascent.mark_stale();
+        vs.pwr_drag.mark_stale();
+        vs.pwr_rr.mark_stale();
+        vs.pwr_tractive.mark_stale();
+        vs.pwr_whl_inertia.mark_stale();
+        vs.speed_ach.mark_stale();
+
+        // Rerun again to ensure we have updated achieved speed and state
+        self.set_pwr_prop_for_speed(speed_ach_floored, speed_prev, dt)
+            .with_context(|| format_dbg!())?;
+        self.set_ach_speed(speed_ach, dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
+
+        if self.sim_params.trace_miss_opts == TraceMissOptions::Correct {
+            let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
+            let max_steps = self.sim_params.trace_miss_correct_max_steps.max(2) as usize;
+            let correction = calc_best_rendezvous(i, max_steps, &self.cyc, speed_ach_floored);
+            if correction.steps >= 2 {
+                // NOTE: in theory, grade could be slightly
+                // off with this deviation from trace. However, since we
+                // rendezvous in a small number of time steps, it should be
+                // close. The call again to init() should correct distance
+                // and elevation calculations.
+                self.cyc.speed[i] = speed_ach_floored;
+                self.cyc.modify_by_const_jerk_trajectory(
+                    i + 1,
+                    correction.steps,
+                    correction.jerk_m_per_s3 * uc::MPS3,
+                    correction.acceleration_m_per_s2 * uc::MPS2,
+                );
+                self.cyc.dist.clear();
+                self.cyc.elev.clear();
+                self.cyc.init().unwrap();
+            }
+        }
 
         Ok(())
     }
@@ -1036,6 +1055,110 @@ mod tests {
 
     #[test]
     #[cfg(feature = "resources")]
+    fn test_sim_drive_hev_thrml_soak() {
+        let _veh = Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue.yaml", false).unwrap();
+        let mut cyc = Cycle::from_resource("udds.csv", false).unwrap();
+        // zero out speed
+        cyc.speed.iter_mut().for_each(|v| *v = si::Velocity::ZERO);
+
+        let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        let te_batt_and_cab_init: Vec<si::Temperature> = [-6.7, 22.0, 45.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        let te_fc_init: Vec<si::Temperature> = [-6.7, 70.0, 90.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        for ((te_amb, te_init), te_fc_init) in
+            te_amb.iter().zip(te_batt_and_cab_init).zip(te_fc_init)
+        {
+            let mut veh = _veh.clone();
+
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .update(te_init, || format_dbg!())
+                .unwrap();
+
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .update(te_init, || format_dbg!())
+                .unwrap();
+            if let CabinOption::LumpedCabin(lc) = &mut veh.cabin {
+                lc.state.temperature.mark_stale();
+                lc.state
+                    .temperature
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+                lc.state.temp_prev.mark_stale();
+                lc.state
+                    .temp_prev
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+            }
+
+            veh.fc_mut()
+                .unwrap()
+                .fc_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .mark_stale();
+            veh.fc_mut()
+                .unwrap()
+                .fc_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .update(te_fc_init, || format_dbg!())
+                .unwrap();
+            let mut cyc = cyc.clone();
+            cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
+            let mut sd = SimDrive::new(
+                veh,
+                cyc,
+                Some(SimParams {
+                    ambient_thermal_soak: true,
+                    ..Default::default()
+                }),
+            );
+            sd.walk()
+                .with_context(|| {
+                    format!(
+                        "ambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert!(
+                *sd.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd.cyc.len_checked().unwrap() - 1
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "resources")]
     fn test_sim_drive_bev() {
         let _veh = mock_bev();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
@@ -1117,10 +1240,20 @@ mod tests {
                     .temp_prev
                     .update(te_init, || format_dbg!())
                     .unwrap();
+            } else {
+                panic!("cabin should have been configured");
             }
             let mut cyc = _cyc.clone();
             cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
             let mut sd = SimDrive::new(veh, cyc, Default::default());
+            if let CabinOption::LumpedCabin(lc) = sd.veh.cabin.clone() {
+                assert_eq!(
+                    *lc.state.temperature.get_fresh(|| format_dbg!()).unwrap(),
+                    te_init
+                );
+            } else {
+                panic!();
+            };
             sd.walk()
                 .with_context(|| {
                     format!(
@@ -1145,6 +1278,24 @@ mod tests {
                     .unwrap()
                     != si::Energy::ZERO
             );
+            sd.veh.reset_step(|| format_dbg!()).unwrap();
+            sd.veh.state.time.mark_stale();
+            sd.veh
+                .state
+                .time
+                .update(si::Time::ZERO, || format_dbg!())
+                .unwrap();
+            assert!(*sd.veh.state.i.get_fresh(|| format_dbg!()).unwrap() == 0);
+            sd.walk()
+                .with_context(|| {
+                    format!(
+                        "ambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert_eq!(*sd.veh.state.i.get_fresh(|| format_dbg!()).unwrap(), 1369);
         }
     }
 }

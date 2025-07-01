@@ -131,6 +131,11 @@ impl Vehicle {
     fn clear_py(&mut self) {
         self.clear()
     }
+
+    #[pyo3(name = "reset_step")]
+    fn reset_step_py(&mut self) -> anyhow::Result<()> {
+        self.reset_step(|| format_dbg!())
+    }
 }
 
 impl Mass for Vehicle {
@@ -266,10 +271,14 @@ const BEV: &str = "BEV";
 
 impl SetCumulative for Vehicle {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
-        self.state.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
-        self.pt_type.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
-        self.cabin.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
-        self.hvac.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+        self.state
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+        self.pt_type
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+        self.cabin
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+        self.hvac
+            .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
         // this does not get handled by the `SetCumulative` derive macro
         self.state.dist.increment(
             *self.state.speed_ach.get_fresh(|| format_dbg!())? * dt,
@@ -371,6 +380,18 @@ impl Vehicle {
         self.pt_type.set_em(em)
     }
 
+    pub fn trans(&self) -> Option<&Transmission> {
+        self.pt_type.trans()
+    }
+
+    pub fn trans_mut(&mut self) -> Option<&mut Transmission> {
+        self.pt_type.trans_mut()
+    }
+
+    pub fn set_trans(&mut self, trans: Transmission) -> anyhow::Result<()> {
+        self.pt_type.set_trans(trans)
+    }
+
     /// Calculate wheel radius from tire code, if applicable
     fn calculate_wheel_radius(&mut self) -> anyhow::Result<()> {
         ensure!(
@@ -454,11 +475,9 @@ impl Vehicle {
             None => si::Power::ZERO,
         };
 
-        let res_thrml_state: Option<RESLumpedThermalState> =
-            self.res().and_then(|res| res.res_thrml_state().cloned());
-
-        let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab) =
-            self.solve_hvac_cab_res(te_amb_air, dt, te_fc, res_thrml_state, pwr_thrml_cab_to_res)?;
+        let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab) = self
+            .solve_hvac_cab_res(te_amb_air, dt, te_fc, pwr_thrml_cab_to_res)
+            .with_context(|| format_dbg!())?;
 
         self.pt_type
             .solve_thermal(
@@ -478,25 +497,25 @@ impl Vehicle {
         te_amb_air: si::Temperature,
         dt: si::Time,
         te_fc: Option<si::Temperature>,
-        res_thrml_state: Option<RESLumpedThermalState>,
         pwr_thrml_cab_to_res: si::Power,
     ) -> anyhow::Result<(
         Option<si::Power>,
         Option<si::Power>,
         Option<si::Temperature>,
     )> {
+        let res_thrml_state = self.pt_type.res_mut().and_then(|rm| rm.res_thrml_state());
         let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab): (
             Option<si::Power>,
             Option<si::Power>,
             Option<si::Temperature>,
-        ) = match (&mut self.cabin, &mut self.hvac) {
-            (CabinOption::None, HVACOption::None) => {
+        ) = match (&mut self.cabin, &mut self.hvac, res_thrml_state) {
+            (CabinOption::None, HVACOption::None, None) => {
                 self.state
                     .pwr_aux
                     .update(self.pwr_aux_base, || format_dbg!())?;
                 (None, None, None)
             }
-            (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabin(hvac)) => {
+            (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabin(hvac), None) => {
                 let (pwr_thrml_hvac_to_cabin, pwr_thrml_fc_to_cab) = hvac
                     .solve(te_amb_air, te_fc, &cab.state, cab.heat_capacitance, dt)
                     .with_context(|| format_dbg!())?;
@@ -519,17 +538,18 @@ impl Vehicle {
                 )?;
                 (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
             }
-            (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabinAndRES(hvac)) => {
+            (
+                CabinOption::LumpedCabin(cab),
+                HVACOption::LumpedCabinAndRES(hvac),
+                Some(res_thrml_state),
+            ) => {
                 let (pwr_thrml_hvac_to_cabin, pwr_thrml_fc_to_cab, pwr_thrml_hvac_to_res) = hvac
                     .solve(
                         te_amb_air,
                         te_fc,
                         &cab.state,
                         cab.heat_capacitance,
-                        res_thrml_state
-                        .with_context(
-                            || "{}\n[HVACOption::LumpedCabinAndRES] requires [ReversibleEnergyStorage::thrml] to be `Some`"
-                        )?,
+                        res_thrml_state,
                         dt,
                     )
                     .with_context(|| format_dbg!())?;
@@ -569,27 +589,41 @@ impl Vehicle {
                     Some(te_cab),
                 )
             }
-            (CabinOption::LumpedCabinWithShell, HVACOption::LumpedCabinWithShell) => {
-                bail!("{}\nNot yet implemented.", format_dbg!())
+            (CabinOption::LumpedCabin(cab), HVACOption::LumpedCabin(hvac), Some(_)) => {
+                let (pwr_thrml_hvac_to_cabin, pwr_thrml_fc_to_cab) = hvac
+                    .solve(te_amb_air, te_fc, &cab.state, cab.heat_capacitance, dt)
+                    .with_context(|| format_dbg!())?;
+                let te_cab = cab
+                    .solve(
+                        te_amb_air,
+                        &self.state,
+                        pwr_thrml_hvac_to_cabin,
+                        Default::default(),
+                        dt,
+                    )
+                    .with_context(|| format_dbg!())?;
+                self.state.pwr_aux.update(
+                    self.pwr_aux_base
+                        + *hvac
+                            .state
+                            .pwr_aux_for_hvac
+                            .get_fresh(|| format_dbg!("hvac.state.pwr_aux_for_hvac"))?,
+                    || format_dbg!(),
+                )?;
+                (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
             }
-            (CabinOption::None, HVACOption::ReversibleEnergyStorageOnly) => {
-                bail!("{}\nNot yet implemented.", format_dbg!())
-            }
-            (CabinOption::None, _) => {
+            (_, _, _) => {
                 bail!(
-                    "{}\n`CabinOption::is_none` must be true if `HVACOption::is_none` is true.",
-                    format_dbg!()
+                    "{}\nCabin, HVAC, and RESThermal configuration is either invalid or not yet implemented.\n{} - {} - {}",
+                    format_dbg!(),
+                    format!("{}", self.hvac),
+                    format!("{}", self.cabin),
+                    format!(
+                        "`res.res_thrml_state().is_some()`: {}",
+                        self.pt_type.res().and_then(|res| res.res_thrml_state()).is_some()
+                    ),
                 )
             }
-            (_, HVACOption::None) => {
-                bail!(
-                    "{}\n`CabinOption::is_none` must be true if `HVACOption::is_none` is true.",
-                    format_dbg!()
-                )
-            }
-            _ => todo!(
-                "This match needs more match arms to be fully correct in validating model config."
-            ),
         };
         Ok((pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab))
     }
@@ -599,6 +633,79 @@ impl Vehicle {
         let f2veh = fastsim_2::vehicle::RustVehicle::from_file(file, false)
             .with_context(|| format_dbg!())?;
         Self::try_from(f2veh)
+    }
+
+    pub(crate) fn mark_non_thermal_fresh(&mut self) -> Result<(), anyhow::Error> {
+        self.state.i.mark_stale();
+        self.state.time.mark_stale();
+        self.state.pwr_aux.mark_stale();
+        self.state.mass.mark_stale();
+        self.state.mark_fresh(|| format_dbg!())?;
+        self.state.energy_tractive.mark_stale();
+        self.state.energy_aux.mark_stale();
+        self.state.energy_drag.mark_stale();
+        self.state.energy_accel.mark_stale();
+        self.state.energy_ascent.mark_stale();
+        self.state.energy_rr.mark_stale();
+        self.state.energy_whl_inertia.mark_stale();
+        self.state.energy_brake.mark_stale();
+        self.state.dist.mark_stale();
+        match self.fc_mut() {
+            Some(fc) => {
+                fc.state.i.mark_stale();
+                fc.state.mark_fresh(|| format_dbg!())?;
+                fc.state.energy_prop.mark_stale();
+                fc.state.energy_aux.mark_stale();
+                fc.state.energy_fuel.mark_stale();
+                fc.state.energy_loss.mark_stale();
+            }
+            None => {}
+        }
+        match self.res_mut() {
+            Some(res) => {
+                res.state.i.mark_stale();
+                res.state.soh.mark_stale();
+                res.state.mark_fresh(|| format_dbg!())?;
+                res.state.energy_out_electrical.mark_stale();
+                res.state.energy_out_prop.mark_stale();
+                res.state.energy_aux.mark_stale();
+                res.state.energy_loss.mark_stale();
+                res.state.energy_out_chemical.mark_stale();
+            }
+            None => {}
+        }
+        match self.em_mut() {
+            Some(em) => {
+                em.state.i.mark_stale();
+                em.state.mark_fresh(|| format_dbg!())?;
+                em.state.energy_out_req.mark_stale();
+                em.state.energy_elec_prop_in.mark_stale();
+                em.state.energy_mech_prop_out.mark_stale();
+                em.state.energy_mech_dyn_brake.mark_stale();
+                em.state.energy_elec_dyn_brake.mark_stale();
+                em.state.energy_loss.mark_stale();
+            }
+            None => {}
+        }
+        match self.trans_mut() {
+            Some(trans) => {
+                trans.state.i.mark_stale();
+                trans.state.mark_fresh(|| format_dbg!())?;
+                trans.state.energy_out.mark_stale();
+                trans.state.energy_loss.mark_stale();
+            }
+            None => {}
+        }
+        match &mut self.pt_type {
+            PowertrainType::HybridElectricVehicle(hev) => {
+                match &mut hev.pt_cntrl {
+                    HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
+                }
+                hev.pt_cntrl.mark_fresh(|| format_dbg!())?
+            }
+            _ => {}
+        }
+        Ok(())
     }
 }
 
@@ -824,12 +931,45 @@ pub(crate) mod tests {
 
     #[test]
     fn test_resources() {
+        let mut time_to_panic = false;
+
         let resource_list = StructWithResources::list_resources().unwrap();
         assert!(!resource_list.is_empty());
 
         // verify that resources can all load
         for resource in resource_list {
-            StructWithResources::from_resource(resource, false).unwrap();
+            if let Err(e) = StructWithResources::from_resource(resource.clone(), false) {
+                time_to_panic = true;
+                eprintln!("Error loading {resource:?}: {e}\n");
+            }
+        }
+
+        let paths: Vec<_> = std::fs::read_dir("../cal_and_val/f3-vehicles")
+            .unwrap()
+            .collect();
+        assert!(!paths.is_empty());
+        for path in paths {
+            let p = path.unwrap().path();
+            if let Err(e) = StructWithResources::from_file(p.clone(), false) {
+                time_to_panic = true;
+                eprintln!("Error loading {p:?}: {e}\n");
+            }
+        }
+
+        let paths: Vec<_> = std::fs::read_dir("../cal_and_val/thermal/f3-vehicles")
+            .unwrap()
+            .collect();
+        assert!(!paths.is_empty());
+        for path in paths {
+            let p = path.unwrap().path();
+            if let Err(e) = StructWithResources::from_file(p.clone(), false) {
+                time_to_panic = true;
+                eprintln!("Error loading {p:?}: {e}\n");
+            }
+        }
+
+        if time_to_panic {
+            panic!()
         }
     }
 }

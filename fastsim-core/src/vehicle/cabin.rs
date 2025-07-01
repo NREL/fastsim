@@ -3,16 +3,28 @@ use super::*;
 
 /// Options for handling cabin thermal model
 #[derive(
-    Clone, Default, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
+    Clone,
+    Default,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    IsVariant,
+    derive_more::From,
+    TryInto,
+    derive_more::Display,
 )]
 pub enum CabinOption {
     /// Basic single thermal capacitance cabin thermal model, including HVAC
     /// system and controls
+    #[display("LumpedCabin")]
     LumpedCabin(Box<LumpedCabin>),
     /// Cabin with interior and shell capacitances
+    #[display("LumpedCabinWithShell")]
     LumpedCabinWithShell,
     /// no cabin thermal model
     #[default]
+    #[display("None")]
     None,
 }
 
@@ -30,7 +42,7 @@ impl SaveState for CabinOption {
         Ok(())
     }
 }
-impl CheckAndResetState for CabinOption {
+impl TrackedStateMethods for CabinOption {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::LumpedCabin(lc) => {
@@ -43,11 +55,32 @@ impl CheckAndResetState for CabinOption {
         }
         Ok(())
     }
+
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => lc.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?,
+            Self::LumpedCabinWithShell => {
+                todo!()
+            }
+            Self::None => {}
+        }
+        Ok(())
+    }
 }
 impl Step for CabinOption {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::LumpedCabin(lc) => lc.step(|| format!("{}\n{}", loc(), format_dbg!())),
+            Self::LumpedCabinWithShell => {
+                todo!()
+            }
+            Self::None => Ok(()),
+        }
+    }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => lc.reset_step(|| format!("{}\n{}", loc(), format_dbg!())),
             Self::LumpedCabinWithShell => {
                 todo!()
             }

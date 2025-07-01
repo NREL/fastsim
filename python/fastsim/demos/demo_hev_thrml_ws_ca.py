@@ -1,17 +1,20 @@
-# %%
-from plot_utils import *
+"""HEV thermal demo with warm start and cold ambient conditions."""
 
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-import seaborn as sns
-from pathlib import Path
-import time
-import json
+# %%
 import os
-from typing import Tuple
+import time
+
+import seaborn as sns
+
 import fastsim as fsim
+from fastsim.demos.plot_utils import (
+    plot_hev_fc_energy,
+    plot_hev_fc_pwr,
+    plot_hev_res_energy,
+    plot_hev_res_pwr,
+    plot_hev_temperatures,
+    plot_road_loads,
+)
 
 sns.set_theme()
 
@@ -31,15 +34,15 @@ temp_init_eng = 70.0 + celsius_to_kelvin
 # load 2021 Hyundai Sonata HEV from file
 veh_dict = fsim.Vehicle.from_file(
     fsim.package_root()
-    / "../../cal_and_val/thermal/f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml"
+    / "../../cal_and_val/thermal/f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml",
 ).to_pydict()
 veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_init_bat_and_cab
-veh_dict["pt_type"]["HEV"]["res"]["thrml"]["RESLumpedThermal"]["state"][
-    "temperature_kelvin"
-] = temp_init_bat_and_cab
-veh_dict["pt_type"]["HEV"]["fc"]["thrml"]["FuelConverterThermal"]["state"][
-    "temperature_kelvin"
-] = temp_init_eng
+veh_dict["pt_type"]["HEV"]["res"]["thrml"]["RESLumpedThermal"]["state"]["temperature_kelvin"] = (
+    temp_init_bat_and_cab
+)
+veh_dict["pt_type"]["HEV"]["fc"]["thrml"]["FuelConverterThermal"]["state"]["temperature_kelvin"] = (
+    temp_init_eng
+)
 veh = fsim.Vehicle.from_pydict(veh_dict)
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
@@ -66,328 +69,18 @@ print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_
 df = sd.to_dataframe(allow_partial=True)
 sd_dict = sd.to_pydict(flatten=True)
 # # Visualize results
-
-
-def plot_temperatures() -> Tuple[Figure, Axes]:
-    fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
-    plt.suptitle("Component Temperatures")
-
-    ax[0].set_prop_cycle(get_uni_cycler())
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        df["cyc.temp_amb_air_kelvin"] - 273.15,
-        label="amb",
-    )
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        df["veh.cabin.LumpedCabin.history.temperature_kelvin"] - 273.15,
-        label="cabin",
-    )
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        df[
-            "veh.pt_type.HEV.res.thrml."
-            + "RESLumpedThermal.history.temperature_kelvin"
-        ]
-        - 273.15,
-        label="res",
-    )
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        df[
-            "veh.pt_type.HEV.fc.thrml."
-            + "FuelConverterThermal.history.temperature_kelvin"
-        ]
-        - 273.15,
-        label="fc",
-    )
-    ax[0].set_ylabel("Temperatures [°C]")
-    ax[0].legend()
-
-    ax[-1].set_prop_cycle(get_paired_cycler())
-    ax[-1].plot(
-        df["cyc.time_seconds"],
-        df["veh.history.speed_ach_meters_per_second"],
-        label="ach",
-    )
-    ax[-1].legend()
-    ax[-1].set_xlabel("Time [s]")
-    ax[-1].set_ylabel("Ach Speed [m/s]")
-    x_min, x_max = ax[-1].get_xlim()[0], ax[-1].get_xlim()[1]
-    x_max = (x_max - x_min) * 1.15
-    ax[-1].set_xlim([x_min, x_max])
-
-    plt.tight_layout()
-    if SAVE_FIGS:
-        plt.savefig(Path("./plots/temps.svg"))
-    if SHOW_PLOTS:
-        plt.show()
-
-    return fig, ax
-
-
-def plot_fc_pwr() -> Tuple[Figure, Axes]:
-    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
-    plt.suptitle("Fuel Converter Power")
-
-    ax[0].set_prop_cycle(get_paired_cycler())
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        (
-            df["veh.pt_type.HEV.fc.history.pwr_prop_watts"]
-            + df["veh.pt_type.HEV.fc.history.pwr_aux_watts"]
-        )
-        / 1e3,
-        label="shaft",
-    )
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.fc.history.pwr_fuel_watts"] / 1e3,
-        label="fuel",
-    )
-    ax[0].set_ylabel("FC Power [kW]")
-    ax[0].legend()
-
-    ax[1].set_prop_cycle(get_paired_cycler())
-    ax[1].plot(
-        df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.res.history.soc"],
-        label="soc",
-    )
-    ax[1].plot(
-        df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.res.history.soc_disch_buffer"],
-        label="accel buffer",
-        alpha=0.5,
-    )
-    # ax[1].plot(
-    #     df["cyc.time_seconds"],
-    #     df["veh.pt_type.HEV.res.history.soc_regen_buffer"],
-    #     label='regen buffer',
-    #     alpha=0.5,
-    # )
-    # ax[1].plot(
-    #     df["cyc.time_seconds"],
-    #     df['veh.pt_type.HEV.fc.history.eff'],
-    #     label='FC eff',
-    # )
-    ax[1].set_ylabel("[-]")
-    ax[1].legend(loc="center right")
-
-    ax[-1].set_prop_cycle(get_paired_cycler())
-    ax[-1].plot(
-        df["cyc.time_seconds"],
-        df["veh.history.speed_ach_meters_per_second"],
-        label="ach",
-    )
-    ax[-1].legend()
-    ax[-1].set_xlabel("Time [s]")
-    ax[-1].set_ylabel("Ach Speed [m/s]")
-    x_min, x_max = ax[-1].get_xlim()[0], ax[-1].get_xlim()[1]
-    x_max = (x_max - x_min) * 1.15
-    ax[-1].set_xlim([x_min, x_max])
-
-    plt.tight_layout()
-    if SAVE_FIGS:
-        plt.savefig(Path("./plots/fc_pwr.svg"))
-    if SHOW_PLOTS:
-        plt.show()
-
-    return fig, ax
-
-
-def plot_fc_energy() -> Tuple[Figure, Axes]:
-    fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
-    plt.suptitle("Fuel Converter Energy")
-
-    ax[0].set_prop_cycle(get_paired_cycler())
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        (
-            df["veh.pt_type.HEV.fc.history.energy_prop_joules"]
-            + df["veh.pt_type.HEV.fc.history.energy_aux_joules"]
-        )
-        / 1e6,
-        label="shaft",
-    )
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.fc.history.energy_fuel_joules"] / 1e6,
-        label="fuel",
-    )
-    ax[0].set_ylabel("FC Energy [MJ]")
-    ax[0].legend()
-
-    ax[-1].set_prop_cycle(get_paired_cycler())
-    ax[-1].plot(
-        df["cyc.time_seconds"],
-        df["veh.history.speed_ach_meters_per_second"],
-        label="ach",
-    )
-    ax[-1].legend()
-    ax[-1].set_xlabel("Time [s]")
-    ax[-1].set_ylabel("Ach Speed [m/s]")
-    x_min, x_max = ax[-1].get_xlim()[0], ax[-1].get_xlim()[1]
-    x_max = (x_max - x_min) * 1.15
-    ax[-1].set_xlim([x_min, x_max])
-
-    plt.tight_layout()
-    if SAVE_FIGS:
-        plt.savefig(Path(f"./plots/fc_energy.svg"))
-    if SHOW_PLOTS:
-        plt.show()
-
-    return fig, ax
-
-
-def plot_res_pwr() -> Tuple[Figure, Axes]:
-    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
-    plt.suptitle("Reversible Energy Storage Power")
-
-    ax[0].set_prop_cycle(get_paired_cycler())
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.res.history.pwr_out_electrical_watts"] / 1e3,
-        label="electrical out",
-    )
-    ax[0].set_ylabel("RES Power [kW]")
-    ax[0].legend()
-
-    ax[1].set_prop_cycle(get_paired_cycler())
-    ax[1].plot(
-        df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.res.history.soc"],
-        label="soc",
-    )
-    ax[1].set_ylabel("SOC")
-    ax[1].legend()
-
-    ax[-1].set_prop_cycle(get_paired_cycler())
-    ax[-1].plot(
-        df["cyc.time_seconds"],
-        df["veh.history.speed_ach_meters_per_second"],
-        label="ach",
-    )
-    ax[-1].plot(
-        df["cyc.time_seconds"],
-        df["cyc.speed_meters_per_second"],
-        label="cyc",
-    )
-    ax[-1].legend()
-    ax[-1].set_xlabel("Time [s]")
-    ax[-1].set_ylabel("Speed [m/s]")
-
-    plt.tight_layout()
-    if SAVE_FIGS:
-        plt.savefig(Path("./plots/res_pwr.svg"))
-    if SHOW_PLOTS:
-        plt.show()
-
-    return fig, ax
-
-
-def plot_res_energy() -> Tuple[Figure, Axes]:
-    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
-    plt.suptitle("Reversible Energy Storage Energy")
-
-    ax[0].set_prop_cycle(get_paired_cycler())
-    ax[0].plot(
-        df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.res.history.energy_out_electrical_joules"] / 1e3,
-        label="electrical out",
-    )
-    ax[0].set_ylabel("RES Energy [kW]")
-    ax[0].legend()
-
-    ax[1].set_prop_cycle(get_paired_cycler())
-    ax[1].plot(
-        df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.res.history.soc"],
-        label="soc",
-    )
-    ax[1].set_ylabel("SOC")
-    ax[1].legend()
-
-    ax[-1].set_prop_cycle(get_paired_cycler())
-    ax[-1].plot(
-        df["cyc.time_seconds"],
-        df["veh.history.speed_ach_meters_per_second"],
-        label="ach",
-    )
-    ax[-1].plot(
-        df["cyc.time_seconds"],
-        df["cyc.speed_meters_per_second"],
-        label="cyc",
-    )
-    ax[-1].legend()
-    ax[-1].set_xlabel("Time [s]")
-    ax[-1].set_ylabel("Speed [m/s]")
-
-    plt.tight_layout()
-    if SAVE_FIGS:
-        plt.savefig(Path("./plots/res_energy.svg"))
-    if SHOW_PLOTS:
-        plt.show()
-
-    return fig, ax
-
-
-def plot_road_loads() -> Tuple[Figure, Axes]:
-    fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
-    plt.suptitle("Road Loads")
-
-    ax[0].set_prop_cycle(get_uni_cycler())
-    ax[0].plot(
-        df["cyc.time_seconds"][:: veh.save_interval],
-        df["veh.history.pwr_drag_watts"] / 1e3,
-        label="drag",
-    )
-    ax[0].plot(
-        df["cyc.time_seconds"][:: veh.save_interval],
-        df["veh.history.pwr_rr_watts"] / 1e3,
-        label="rr",
-    )
-    ax[0].plot(
-        df["cyc.time_seconds"][:: veh.save_interval],
-        df["veh.history.pwr_tractive_watts"] / 1e3,
-        label="total",
-    )
-    ax[0].set_ylabel("Power [kW]")
-    ax[0].legend()
-
-    ax[-1].set_prop_cycle(get_paired_cycler())
-    ax[-1].plot(
-        df["cyc.time_seconds"][:: veh.save_interval],
-        df["veh.history.speed_ach_meters_per_second"],
-        label="ach",
-    )
-    ax[-1].legend()
-    ax[-1].set_xlabel("Time [s]")
-    ax[-1].set_ylabel("Ach. Speed [m/s]")
-
-    plt.tight_layout()
-    if SAVE_FIGS:
-        plt.savefig(Path("./plots/road_loads.svg"))
-    if SHOW_PLOTS:
-        plt.show()
-
-    return fig, ax
-
-
-fig_fc_pwr, ax_fc_pwr = plot_fc_pwr()
-fig_fc_energy, ax_fc_energy = plot_fc_energy()
-fig_res_pwr, ax_res_pwr = plot_res_pwr()
-fig_res_energy, ax_res_energy = plot_res_energy()
-fig_temps, ax_temps = plot_temperatures()
-fig, ax = plot_road_loads()
+fig_fc_pwr, ax_fc_pwr = plot_hev_fc_pwr(df, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
+fig_fc_energy, ax_fc_energy = plot_hev_fc_energy(df, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
+fig_res_pwr, ax_res_pwr = plot_hev_res_pwr(df, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
+fig_res_energy, ax_res_energy = plot_hev_res_energy(df, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
+fig_temps, ax_temps = plot_hev_temperatures(df, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
+fig, ax = plot_road_loads(df, veh, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
 
 # %%
 
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
-res = fsim.ReversibleEnergyStorage.from_pydict(
-    sd.to_pydict()["veh"]["pt_type"]["HEV"]["res"]
-)
+res = fsim.ReversibleEnergyStorage.from_pydict(sd.to_pydict()["veh"]["pt_type"]["HEV"]["res"])
 res.set_default_pwr_interp()
 
 # %%

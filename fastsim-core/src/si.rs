@@ -4,6 +4,7 @@
 
 use uom::si;
 
+pub use si::acceleration::meter_per_second_squared;
 pub use si::area::square_meter;
 pub use si::available_energy::{joule_per_kilogram, kilojoule_per_kilogram};
 pub use si::dynamic_viscosity::pascal_second;
@@ -11,13 +12,14 @@ pub use si::energy::{joule, kilowatt_hour, watt_hour};
 pub use si::f64::{
     Acceleration, Angle, Area, AvailableEnergy as SpecificEnergy, Curvature, DynamicViscosity,
     Energy, Force, Frequency, HeatCapacity, HeatTransfer as HeatTransferCoeff, InverseVelocity,
-    Length, Mass, MassDensity, MomentOfInertia, Power, PowerRate, Pressure, Ratio,
+    Jerk, Length, Mass, MassDensity, MomentOfInertia, Power, PowerRate, Pressure, Ratio,
     SpecificHeatCapacity, SpecificPower, TemperatureInterval, ThermalConductance,
     ThermalConductivity, ThermodynamicTemperature as Temperature, Time, Velocity, Volume,
 };
 pub use si::force::{newton, pound_force};
 pub use si::heat_capacity::{joule_per_degree_celsius, joule_per_kelvin};
 pub use si::heat_transfer::{watt_per_square_meter_degree_celsius, watt_per_square_meter_kelvin};
+pub use si::jerk::meter_per_second_cubed;
 pub use si::length::{foot, kilometer, meter, mile};
 pub use si::mass::{kilogram, megagram};
 pub use si::mass_density::kilogram_per_cubic_meter;

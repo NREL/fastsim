@@ -275,9 +275,9 @@ mod air_static_props {
     use super::*;
     lazy_static! {
         /// Array of temperatures at which properties are evaluated
-        static ref TEMPERATURE_DEG_C_VALUES: Vec<f64> = vec![
+        static ref TEMPERATURE_DEG_C_VALUES: Array1<f64> = array![
             -60.,
-             -57.03690616,
+            -57.03690616,
             -53.1958198,
             -48.21658352,
             -41.7619528,
@@ -302,20 +302,21 @@ mod air_static_props {
             3841.10336915,
             5000.
         ];
-        pub static ref TEMP_FROM_ENTHALPY: Interpolator = Interpolator::new_1d(
-            ENTHALPY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
-            TEMPERATURE_DEG_C_VALUES.clone(),
-            Strategy::Linear,
-            Extrapolate::Error
+        pub static ref TEMP_FROM_ENTHALPY: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+            ENTHALPY_VALUES.view(),
+            TEMPERATURE_DEG_C_VALUES.view(),
+            strategy::Linear,
+            Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
-        pub static ref TEMP_FROM_ENERGY: Interpolator = Interpolator::new_1d(
-            ENERGY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
-            TEMPERATURE_DEG_C_VALUES.clone(),
-            Strategy::Linear,
-            Extrapolate::Error
+        pub static ref TEMP_FROM_ENERGY: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+            ENERGY_VALUES.view(),
+            TEMPERATURE_DEG_C_VALUES.view(),
+            strategy::Linear,
+            Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         /// Thermal conductivity values of air corresponding to temperature values
-        static ref THERMAL_CONDUCTIVITY_VALUES: Vec<si::ThermalConductivity> = [
+        /// \[W/m-K\]
+        static ref THERMAL_CONDUCTIVITY_VALUES: Array1<f64> = array![
             0.019597,
             0.019841,
             0.020156,
@@ -340,19 +341,17 @@ mod air_static_props {
             0.13797,
             0.16828,
             0.20795,
-            0.26081
-        ]
-        .iter()
-        .map(|x| *x * uc::WATT_PER_METER_KELVIN)
-        .collect();
-        pub static ref THERMAL_CONDUCTIVITY_INTERP: Interpolator = Interpolator::new_1d(
-            TEMPERATURE_DEG_C_VALUES.clone(),
-            THERMAL_CONDUCTIVITY_VALUES.iter().map(|x| x.get::<si::watt_per_meter_degree_celsius>()).collect::<Vec<f64>>(),
-            Strategy::Linear,
-            Extrapolate::Error
+            0.26081,
+        ];
+        pub static ref THERMAL_CONDUCTIVITY_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+            TEMPERATURE_DEG_C_VALUES.view(),
+            THERMAL_CONDUCTIVITY_VALUES.view(),
+            strategy::Linear,
+            Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
         /// Specific heat values of air corresponding to temperature values
-        static ref C_P_VALUES: Vec<si::SpecificHeatCapacity> = [
+        /// \[J/kg-K\]
+        static ref C_P_VALUES: Array1<f64> = array![
             1006.2,
             1006.1,
             1006.,
@@ -377,18 +376,16 @@ mod air_static_props {
             1277.1,
             1301.7,
             1324.5,
-            1347.
-        ]
-        .iter()
-        .map(|x| *x * uc::J_PER_KG_K)
-        .collect();
-        pub static ref C_P_INTERP: Interpolator = Interpolator::new_1d(
-            TEMPERATURE_DEG_C_VALUES.clone(),
-            C_P_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram_kelvin>()).collect::<Vec<f64>>(),
-            Strategy::Linear,
-            Extrapolate::Error
+            1347.,
+        ];
+        pub static ref C_P_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+            TEMPERATURE_DEG_C_VALUES.view(),
+            C_P_VALUES.view(),
+            strategy::Linear,
+            Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
-        static ref ENTHALPY_VALUES: Vec<si::SpecificEnergy> = [
+        /// \[J/kg\]
+        static ref ENTHALPY_VALUES: Array1<f64> = array![
             338940.,
             341930.,
             345790.,
@@ -414,17 +411,15 @@ mod air_static_props {
             3939100.,
             5113600.,
             6662000.
-        ]
-        .iter()
-        .map(|x| *x * uc::J_PER_KG)
-        .collect();
-        pub static ref ENTHALPY_INTERP: Interpolator = Interpolator::new_1d(
-            TEMPERATURE_DEG_C_VALUES.clone(),
-            ENTHALPY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
-            Strategy::Linear,
-            Extrapolate::Error
+        ];
+        pub static ref ENTHALPY_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+            TEMPERATURE_DEG_C_VALUES.view(),
+            ENTHALPY_VALUES.view(),
+            strategy::Linear,
+            Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
-        pub static ref ENERGY_VALUES: Vec<si::SpecificEnergy> = [
+        /// \[J/kg\]
+        pub static ref ENERGY_VALUES: Array1<f64> = array![
             277880.,
             280000.,
             282760.,
@@ -449,18 +444,16 @@ mod air_static_props {
             2322900.,
             3014700.,
             3932500.,
-            5148300.
-        ]
-        .iter()
-        .map(|x| *x * uc::J_PER_KG)
-        .collect();
-        pub static ref ENERGY_INTERP: Interpolator = Interpolator::new_1d(
-            TEMPERATURE_DEG_C_VALUES.clone(),
-            ENERGY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
-            Strategy::Linear,
-            Extrapolate::Error
+            5148300.,
+        ];
+        pub static ref ENERGY_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+            TEMPERATURE_DEG_C_VALUES.view(),
+            ENERGY_VALUES.view(),
+            strategy::Linear,
+            Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
-        static ref DYN_VISCOSITY_VALUES: Vec<si::DynamicViscosity> = [
+        /// \[Pa-s\]
+        static ref DYN_VISCOSITY_VALUES: Array1<f64> = array![
             1.4067e-05,
             1.4230e-05,
             1.4440e-05,
@@ -486,27 +479,24 @@ mod air_static_props {
             9.4840e-05,
             1.1423e-04,
             1.4006e-04
-        ]
-        .iter()
-        .map(|x| *x * uc::PASCAL_SECOND)
-        .collect();
-        pub static ref DYN_VISC_INTERP: Interpolator = Interpolator::new_1d(
-            TEMPERATURE_DEG_C_VALUES.clone(),
-            DYN_VISCOSITY_VALUES.iter().map(|x| x.get::<si::pascal_second>()).collect::<Vec<f64>>(),
-            Strategy::Linear,
-            Extrapolate::Error
+        ];
+        pub static ref DYN_VISC_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+            TEMPERATURE_DEG_C_VALUES.view(),
+            DYN_VISCOSITY_VALUES.view(),
+            strategy::Linear,
+            Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
-        static ref PRANDTL_VALUES: Vec<si::Ratio> = DYN_VISCOSITY_VALUES
+        static ref PRANDTL_VALUES: Array1<f64> = DYN_VISCOSITY_VALUES
             .iter()
             .zip(C_P_VALUES.iter())
             .zip(THERMAL_CONDUCTIVITY_VALUES.iter())
-            .map(|((mu, c_p), k)| -> si::Ratio {*mu * *c_p / *k})
-            .collect::<Vec<si::Ratio>>();
-        pub static ref PRANDTL_INTERP: Interpolator = Interpolator::new_1d(
-            TEMPERATURE_DEG_C_VALUES.clone(),
-            PRANDTL_VALUES.iter().map(|x| x.get::<si::ratio>()).collect::<Vec<f64>>(),
-            Strategy::Linear,
-            Extrapolate::Error
+            .map(|((mu, c_p), k)| mu * c_p / k)
+            .collect();
+        pub static ref PRANDTL_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+            TEMPERATURE_DEG_C_VALUES.view(),
+            PRANDTL_VALUES.view(),
+            strategy::Linear,
+            Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
     }
 }
@@ -550,9 +540,9 @@ mod octane_static_props {
     use super::*;
     lazy_static! {
         /// Array of temperatures at which properties are evaluated
-        static ref TEMPERATURE_DEG_C_VALUES: Vec<f64> = vec![
+        static ref TEMPERATURE_DEG_C_VALUES: Array1<f64> = array![
             -4.00000000e+01,
-             -3.70369062e+01,
+            -3.70369062e+01,
             -3.31958198e+01,
             -2.82165835e+01,
             -2.17619528e+01,
@@ -577,13 +567,14 @@ mod octane_static_props {
             3.86110337e+03,
             5.02000000e+03
         ];
-        pub static ref TEMP_FROM_ENERGY: Interpolator = Interpolator::new_1d(
-           ENERGY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
-           TEMPERATURE_DEG_C_VALUES.clone(),
-           Strategy::Linear,
-           Extrapolate::Error
+        pub static ref TEMP_FROM_ENERGY: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+           ENERGY_VALUES.view(),
+           TEMPERATURE_DEG_C_VALUES.view(),
+           strategy::Linear,
+           Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
-        pub static ref ENERGY_VALUES: Vec<si::SpecificEnergy> = [
+        /// \[J/kg\]
+        pub static ref ENERGY_VALUES: Array1<f64> = array![
             -3.8247e+05,
             -3.7645e+05,
             -3.6862e+05,
@@ -608,16 +599,13 @@ mod octane_static_props {
             8.9500e+06,
             1.2272e+07,
             1.6654e+07,
-            2.2399e+07
-        ]
-        .iter()
-        .map(|x| *x * uc::J_PER_KG)
-        .collect();
-        pub static ref ENERGY_INTERP: Interpolator = Interpolator::new_1d(
-           TEMPERATURE_DEG_C_VALUES.clone(),
-           ENERGY_VALUES.iter().map(|x| x.get::<si::joule_per_kilogram>()).collect::<Vec<f64>>(),
-           Strategy::Linear,
-           Extrapolate::Error
+            2.2399e+07,
+        ];
+        pub static ref ENERGY_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+           TEMPERATURE_DEG_C_VALUES.view(),
+           ENERGY_VALUES.view(),
+           strategy::Linear,
+           Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
     }
 }

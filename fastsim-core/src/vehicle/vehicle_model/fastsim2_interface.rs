@@ -1,6 +1,5 @@
-use powertrain::reversible_energy_storage::RESEffInterpInputs;
-
 use super::*;
+use crate::vehicle::powertrain::reversible_energy_storage::EffInterp as ResEffInterp;
 
 impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
@@ -67,10 +66,10 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             // assumes 1 s time step
                             pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                             pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                            eff_interp_from_pwr_out: Interpolator::new_1d(
-                                f2veh.fc_perc_out_array.to_vec(),
-                                f2veh.fc_eff_array.to_vec(),
-                                Strategy::LeftNearest,
+                            eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
+                                f2veh.fc_perc_out_array.clone().into(),
+                                f2veh.fc_eff_array.clone().into(),
+                                strategy::LeftNearest,
                                 Extrapolate::Error,
                             )
                             .with_context(|| format_dbg!())?,
@@ -87,7 +86,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     },
                     transmission: Transmission {
                         mass: None,
-                        eff_interp: Interpolator::Interp0D(f2veh.trans_eff),
+                        eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
                         save_interval: Some(1),
                         state: Default::default(),
                         history: Default::default(),
@@ -144,10 +143,10 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             // assumes 1 s time step
                             pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                             pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                            eff_interp_from_pwr_out: Interpolator::new_1d(
-                                f2veh.fc_perc_out_array.to_vec(),
-                                f2veh.fc_eff_array.to_vec(),
-                                Strategy::LeftNearest,
+                            eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
+                                f2veh.fc_perc_out_array.clone().into(),
+                                f2veh.fc_eff_array.clone().into(),
+                                strategy::LeftNearest,
                                 Extrapolate::Error,
                             )
                             .with_context(|| format_dbg!())?,
@@ -169,8 +168,9 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         specific_energy: None,
                         pwr_out_max: f2veh.ess_max_kw * uc::KW,
                         energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-                        eff_interp: Interpolator::Interp0D(f2veh.ess_round_trip_eff.sqrt()),
-                        eff_interp_inputs: RESEffInterpInputs::Constant,
+                        eff_interp: ResEffInterp::Constant(Interp0D::new(
+                            f2veh.ess_round_trip_eff.sqrt(),
+                        )),
                         min_soc: f2veh.min_soc * uc::R,
                         max_soc: f2veh.max_soc * uc::R,
                         save_interval: Some(1),
@@ -178,15 +178,16 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     },
                     em: ElectricMachine {
                         state: Default::default(),
-                        eff_interp_achieved: Interpolator::new_1d(
-                            f2veh.mc_perc_out_array.to_vec(),
+                        eff_interp_achieved: InterpolatorEnum::new_1d(
+                            f2veh.mc_perc_out_array.clone().into(),
                             {
-                                let mut mc_full_eff_vec = f2veh.mc_full_eff_array.to_vec();
-                                ensure!(mc_full_eff_vec.len() > 1);
-                                mc_full_eff_vec[0] = mc_full_eff_vec[1];
-                                mc_full_eff_vec
+                                let mut mc_full_eff =
+                                    Array1::from_vec(f2veh.mc_full_eff_array.clone());
+                                ensure!(mc_full_eff.len() > 1);
+                                mc_full_eff[0] = mc_full_eff[1];
+                                mc_full_eff
                             },
-                            Strategy::LeftNearest,
+                            strategy::LeftNearest,
                             Extrapolate::Error,
                         )
                         .with_context(|| {
@@ -206,7 +207,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     },
                     transmission: Transmission {
                         mass: None,
-                        eff_interp: Interpolator::Interp0D(f2veh.trans_eff),
+                        eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
                         save_interval: Some(1),
                         state: Default::default(),
                         history: Default::default(),
@@ -230,8 +231,9 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         specific_energy: None,
                         pwr_out_max: f2veh.ess_max_kw * uc::KW,
                         energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-                        eff_interp: Interpolator::Interp0D(f2veh.ess_round_trip_eff.sqrt()),
-                        eff_interp_inputs: RESEffInterpInputs::Constant,
+                        eff_interp: ResEffInterp::Constant(Interp0D::new(
+                            f2veh.ess_round_trip_eff.sqrt(),
+                        )),
                         min_soc: f2veh.min_soc * uc::R,
                         max_soc: f2veh.max_soc * uc::R,
                         save_interval: Some(1),
@@ -239,30 +241,25 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     },
                     em: ElectricMachine {
                         state: Default::default(),
-                        eff_interp_achieved: Interpolator::new_1d(
-                            f2veh.mc_pwr_out_perc.to_vec(),
-                            f2veh.mc_eff_array.to_vec(),
-                            Strategy::LeftNearest,
+                        eff_interp_achieved: InterpolatorEnum::new_1d(
+                            f2veh.mc_pwr_out_perc.clone(),
+                            f2veh.mc_eff_array.clone(),
+                            strategy::LeftNearest,
                             Extrapolate::Error,
-                        )
-                        .with_context(|| format_dbg!())?,
-                        eff_interp_at_max_input: Some(
-                            Interpolator::new_1d(
-                                // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
-                                // be transferred over as done here, or does a new defualt need to be defined?
-                                f2veh
-                                    .mc_pwr_out_perc
-                                    .to_vec()
-                                    .iter()
-                                    .zip(f2veh.mc_eff_array.to_vec().iter())
-                                    .map(|(x, y)| x / y)
-                                    .collect(),
-                                f2veh.mc_eff_array.to_vec(),
-                                Strategy::LeftNearest,
-                                Extrapolate::Error,
-                            )
-                            .with_context(|| format_dbg!())?,
-                        ),
+                        )?,
+                        eff_interp_at_max_input: Some(InterpolatorEnum::new_1d(
+                            // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
+                            // be transferred over as done here, or does a new defualt need to be defined?
+                            f2veh
+                                .mc_pwr_out_perc
+                                .iter()
+                                .zip(f2veh.mc_eff_array.iter())
+                                .map(|(x, y)| x / y)
+                                .collect(),
+                            f2veh.mc_eff_array.clone(),
+                            strategy::LeftNearest,
+                            Extrapolate::Error,
+                        )?),
                         pwr_out_max: f2veh.mc_max_kw * uc::KW,
                         specific_pwr: None,
                         mass: None,
@@ -271,7 +268,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     },
                     transmission: Transmission {
                         mass: None,
-                        eff_interp: Interpolator::Interp0D(f2veh.trans_eff),
+                        eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
                         save_interval: Some(1),
                         state: Default::default(),
                         history: Default::default(),
@@ -349,7 +346,7 @@ impl Vehicle {
             ess_round_trip_eff: self
                 .res()
                 .map(|res| {
-                    if let Interpolator::Interp0D(eff) = res.eff_interp {
+                    if let ResEffInterp::Constant(Interp0D(eff)) = res.eff_interp {
                         Ok(eff.powi(2))
                     } else {
                         bail!("`to_fastsim2` is not implemented for non-0D `res.eff_interp`")
@@ -366,11 +363,10 @@ impl Vehicle {
             fc_eff_map: self
                 .fc()
                 .map(|fc| match &fc.eff_interp_from_pwr_out {
-                    interp @ Interpolator::Interp1D(..) => Ok(interp.f_x()?.to_vec().into()),
-                    _ => bail!(
-                        "{}\nOnly 1-D interpolators can be converted to FASTSim 2",
-                        format_dbg!()
-                    ),
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.values.clone()),
+                    _ => bail!(format_dbg!(
+                        "Only 1-D interpolators can be converted to FASTSim 2"
+                    )),
                 })
                 .transpose()?
                 .unwrap_or_else(|| array![0., 0.]),
@@ -399,11 +395,10 @@ impl Vehicle {
             fc_pwr_out_perc: self
                 .fc()
                 .map(|fc| match &fc.eff_interp_from_pwr_out {
-                    interp @ Interpolator::Interp1D(..) => Ok(interp.x()?.to_vec().into()),
-                    _ => bail!(
-                        "{}\nOnly 1-D interpolators can be converted to FASTSim 2",
-                        format_dbg!()
-                    ),
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.grid[0].clone()),
+                    _ => bail!(format_dbg!(
+                        "Only 1-D interpolators can be converted to FASTSim 2"
+                    )),
                 })
                 .transpose()?
                 .unwrap_or_else(|| array![0., 1.]),
@@ -458,7 +453,6 @@ impl Vehicle {
                         .with_context(|| format_dbg!("Expected `Some`."))?
                         * (hev.fc.pwr_out_max + hev.res.pwr_out_max.min(hev.em.pwr_out_max)))
                     .get::<si::kilowatt>(),
-                    _ => todo!("{}", format_dbg!()),
                 },
                 _ => 0.0,
             },
@@ -481,7 +475,12 @@ impl Vehicle {
             mc_eff_array: Default::default(), // calculated in `set_derived`
             mc_eff_map: self
                 .em()
-                .map(|em| em.eff_interp_achieved.f_x())
+                .map(|em| match &em.eff_interp_achieved {
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.values.clone()),
+                    _ => bail!(format_dbg!(
+                        "Only 1-D interpolators can be converted to FASTSim 2"
+                    )),
+                })
                 .transpose()?
                 .map(|f_x| f_x.to_vec())
                 .unwrap_or_else(|| vec![0., 1.])
@@ -509,7 +508,12 @@ impl Vehicle {
             // short array that can use xEV when implented.  TODO: fix this when implementing xEV
             mc_pwr_out_perc: self
                 .em()
-                .map(|em| em.eff_interp_achieved.x())
+                .map(|em| match &em.eff_interp_achieved {
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.grid[0].clone()),
+                    _ => bail!(format_dbg!(
+                        "Only 1-D interpolators can be converted to FASTSim 2"
+                    )),
+                })
                 .transpose()?
                 .map(|x| x.to_vec())
                 .unwrap_or_else(|| vec![0., 1.])
@@ -533,9 +537,6 @@ impl Vehicle {
                         .speed_fc_forced_on
                         .with_context(|| format_dbg!("Expected Some"))?
                         .get::<si::mile_per_hour>(),
-                    _ => {
-                        todo!("{}", format_dbg!())
-                    }
                 },
                 _ => 0.0,
             },

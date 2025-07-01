@@ -142,16 +142,9 @@ impl HVACSystemForLumpedCabinAndRES {
         te_fc: Option<si::Temperature>,
         cab_state: &LumpedCabinState,
         cab_heat_cap: si::HeatCapacity,
-        res_thrml_state: RESLumpedThermalState,
+        res_thrml_state: &RESLumpedThermalState,
         dt: si::Time,
     ) -> anyhow::Result<(si::Power, si::Power, si::Power)> {
-        let (res_temp, res_temp_prev): (si::Temperature, si::Temperature) = (
-            *res_thrml_state.temperature.get_stale(|| format_dbg!())?,
-            *res_thrml_state.temp_prev.get_stale(|| format_dbg!())?,
-        );
-        ensure!(!res_temp.is_nan(), format_dbg!(res_temp));
-        ensure!(!res_temp_prev.is_nan(), format_dbg!(res_temp_prev));
-
         let (te_cab_delta_vs_set, te_cab_delta_vs_amb, te_res_delta_vs_set, te_res_delta_vs_amb) =
             self.get_te_deltas(te_amb_air, cab_state, &res_thrml_state)?;
 
@@ -191,7 +184,7 @@ impl HVACSystemForLumpedCabinAndRES {
 
         self.solve_for_cabin(te_fc, cab_state, cab_heat_cap, dt)
             .with_context(|| format_dbg!())?;
-        self.solve_for_res(res_temp, res_temp_prev, dt)
+        self.solve_for_res(res_thrml_state, dt)
             .with_context(|| format_dbg!())?;
 
         Ok((
@@ -365,17 +358,9 @@ impl HVACSystemForLumpedCabinAndRES {
                             .update(si::Power::ZERO, || format_dbg!())?;
                     }
                     HvacMode::Cooling => {
-                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab)?;
+                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab, HvacMode::Cooling)?;
                         self.state.pwr_thrml_to_cab_req.update(
                             {
-                                if *self.state.pwr_i_cab.get_fresh(|| format_dbg!())?
-                                    > si::Power::ZERO
-                                {
-                                    // If `pwr_i` is greater than zero, reset to switch from heating to cooling
-                                    self.state
-                                        .pwr_i_cab
-                                        .update(si::Power::ZERO, || format_dbg!())?;
-                                }
                                 let pwr_thrml_hvac_to_cab_req: si::Power =
                                     (*self.state.pwr_p_cab.get_fresh(|| format_dbg!())?
                                         + *self.state.pwr_i_cab.get_fresh(|| format_dbg!())?
@@ -462,13 +447,7 @@ impl HVACSystemForLumpedCabinAndRES {
                             .update(si::Power::ZERO, || format_dbg!())?;
                     }
                     HvacMode::Heating => {
-                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab)?;
-                        if *self.state.pwr_i_cab.get_fresh(|| format_dbg!())? < si::Power::ZERO {
-                            // If `pwr_i` is less than zero reset to switch from cooling to heating
-                            self.state
-                                .pwr_i_cab
-                                .update(si::Power::ZERO, || format_dbg!())?;
-                        }
+                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab, HvacMode::Heating)?;
                         self.state.pwr_thrml_to_cab_req.update(
                             {
                                 let mut pwr_thrml_to_cab_req =
@@ -500,8 +479,44 @@ impl HVACSystemForLumpedCabinAndRES {
                                 .pwr_thrml_to_cab_req
                                 .get_fresh(|| format_dbg!())?
                                 > si::Power::ZERO,
-                            "{}\nHVAC should be heating cabin",
-                            format_dbg!(self.state.pwr_thrml_to_cab_req)
+                            "{}\nHVAC should be heating cabin\n{}\n{}\n{}\n{}",
+                            format_dbg!(self.state.pwr_thrml_to_cab_req),
+                            format!(
+                                "{}: {} W",
+                                stringify!(self.state.pwr_p_cab),
+                                self.state
+                                    .pwr_p_cab
+                                    .get_fresh(|| format_dbg!())?
+                                    .get::<si::watt>()
+                                    .format_eng(None)
+                            ),
+                            format!(
+                                "{}: {} W",
+                                stringify!(self.state.pwr_i_cab),
+                                self.state
+                                    .pwr_i_cab
+                                    .get_fresh(|| format_dbg!())?
+                                    .get::<si::watt>()
+                                    .format_eng(None)
+                            ),
+                            format!(
+                                "{}: {} W",
+                                stringify!(self.state.pwr_d_cab),
+                                self.state
+                                    .pwr_d_cab
+                                    .get_fresh(|| format_dbg!())?
+                                    .get::<si::watt>()
+                                    .format_eng(None)
+                            ),
+                            format!(
+                                "{}: {}*C",
+                                stringify!(cab_state.temperature),
+                                cab_state
+                                    .temperature
+                                    .get_stale(|| format_dbg!())?
+                                    .get::<si::degree_celsius>()
+                                    .format_eng(None)
+                            )
                         );
 
                         ensure!(
@@ -679,43 +694,6 @@ impl HVACSystemForLumpedCabinAndRES {
                     .update(si::Power::ZERO, || format_dbg!())?;
             }
         }
-        // The following ensures are not likely to occur for users, only for developers
-        ensure!(
-            !self.state.pwr_i_cab.get_fresh(|| format_dbg!())?.is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self.state.pwr_p_cab.get_fresh(|| format_dbg!())?.is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self.state.pwr_d_cab.get_fresh(|| format_dbg!())?.is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self
-                .state
-                .pwr_aux_for_cab_hvac_req
-                .get_fresh(|| format_dbg!())?
-                .is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self
-                .state
-                .pwr_aux_for_cab_hvac
-                .get_fresh(|| format_dbg!())?
-                .is_nan(),
-            format_dbg!()
-        );
-        ensure!(
-            !self
-                .state
-                .pwr_thrml_hvac_to_cabin
-                .get_fresh(|| format_dbg!())?
-                .is_nan(),
-            format_dbg!()
-        );
         Ok(())
     }
 
@@ -724,6 +702,7 @@ impl HVACSystemForLumpedCabinAndRES {
         cab_state: &LumpedCabinState,
         dt: si::Time,
         te_set_cab: si::Temperature,
+        hvac_mode: HvacMode,
     ) -> anyhow::Result<()> {
         let te_delta_vs_set_cab = (cab_state
             .temperature
@@ -735,12 +714,30 @@ impl HVACSystemForLumpedCabinAndRES {
         self.state
             .pwr_p_cab
             .update(-self.p_cabin * te_delta_vs_set_cab, || format_dbg!())?;
-        self.state.pwr_i_cab.increment(
-            (-self.i_cabin * uc::W / uc::KELVIN / uc::S * te_delta_vs_set_cab * dt)
+        let pwr_i_cab_prev = *self.state.pwr_i_cab.get_stale(|| format_dbg!())?;
+
+        if (pwr_i_cab_prev > si::Power::ZERO && hvac_mode.is_cooling())
+            || (pwr_i_cab_prev < si::Power::ZERO && hvac_mode.is_heating())
+        {
+            // pwr_i_cab is heating and mode is cooling
+            // or
+            // pwr_i_cab is cooling and mode is heating
+            self.state
+                .pwr_i_cab
+                .update(si::Power::ZERO, || format_dbg!())?;
+        } else {
+            // pwr_i_cab is cooling and mode is cooling
+            // or
+            // pwr_i_cab is heating and mode is heating
+            let pwr_i_cab_new = (pwr_i_cab_prev
+                + -self.i_cabin * uc::W / uc::KELVIN / uc::S * te_delta_vs_set_cab * dt)
                 .max(-self.pwr_i_max_cabin)
-                .min(self.pwr_i_max_cabin),
-            || format_dbg!(),
-        )?;
+                .min(self.pwr_i_max_cabin);
+            self.state
+                .pwr_i_cab
+                .update(pwr_i_cab_new, || format_dbg!())?;
+        }
+
         self.state.pwr_d_cab.update(
             -self.d_cabin * uc::J / uc::KELVIN
                 * ((cab_state
@@ -758,13 +755,65 @@ impl HVACSystemForLumpedCabinAndRES {
         Ok(())
     }
 
-    /// Solve for thermal power for [RESLumpedThermal]
+    fn set_res_cntrl_state(
+        &mut self,
+        res_thrml_state: &RESLumpedThermalState,
+        dt: si::Time,
+        te_set_res: si::Temperature,
+        hvac_mode: HvacMode,
+    ) -> anyhow::Result<()> {
+        let te_delta_vs_set_res = (res_thrml_state
+            .temperature
+            .get_stale(|| format_dbg!())?
+            .get::<si::degree_celsius>()
+            - te_set_res.get::<si::degree_celsius>())
+            * uc::KELVIN_INT;
+
+        self.state
+            .pwr_p_res
+            .update(-self.p_res * te_delta_vs_set_res, || format_dbg!())?;
+        let pwr_i_res_prev = *self.state.pwr_i_res.get_stale(|| format_dbg!())?;
+        if (pwr_i_res_prev > si::Power::ZERO && hvac_mode.is_cooling())
+            || (pwr_i_res_prev < si::Power::ZERO && hvac_mode.is_heating())
+        {
+            // pwr_i_res is heating and mode is cooling
+            // or
+            // pwr_i_res is cooling and mode is heating
+            self.state
+                .pwr_i_res
+                .update(si::Power::ZERO, || format_dbg!())?;
+        } else {
+            // pwr_i_res is cooling and mode is cooling
+            // or
+            // pwr_i_res is heating and mode is heating
+            self.state.pwr_i_res.increment(
+                (-self.i_res * uc::W / uc::KELVIN / uc::S * te_delta_vs_set_res * dt)
+                    .max(-self.pwr_i_max_res)
+                    .min(self.pwr_i_max_res),
+                || format_dbg!(),
+            )?;
+        }
+        self.state.pwr_d_res.update(
+            -self.d_res * uc::J / uc::KELVIN
+                * ((res_thrml_state
+                    .temperature
+                    .get_stale(|| format_dbg!())?
+                    .get::<si::degree_celsius>()
+                    - res_thrml_state
+                        .temp_prev
+                        .get_stale(|| format_dbg!())?
+                        .get::<si::degree_celsius>())
+                    * uc::KELVIN_INT
+                    / dt),
+            || format_dbg!(),
+        )?;
+        Ok(())
+    }
+
+    // Solve for thermal power for [RESLumpedThermal]
     fn solve_for_res(
         &mut self,
-        // reversible energy storage temp
-        res_temp: si::Temperature,
-        // reversible energy storage temp at previous time step
-        res_temp_prev: si::Temperature,
+        res_thrml_state: &RESLumpedThermalState,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         match self.te_set_res {
@@ -795,7 +844,12 @@ impl HVACSystemForLumpedCabinAndRES {
                             .update(si::Power::ZERO, || format_dbg!())?;
                     }
                     HvacMode::Cooling => {
-                        self.set_res_cntrl_state(res_temp, res_temp_prev, dt, te_set_res)?;
+                        self.set_res_cntrl_state(
+                            res_thrml_state,
+                            dt,
+                            te_set_res,
+                            HvacMode::Cooling,
+                        )?;
 
                         if *self.state.pwr_i_res.get_fresh(|| format_dbg!())? > si::Power::ZERO {
                             // If `pwr_i_res` is greater than zero, reset to switch from heating to cooling
@@ -912,7 +966,12 @@ impl HVACSystemForLumpedCabinAndRES {
                         };
                     }
                     HvacMode::Heating => {
-                        self.set_res_cntrl_state(res_temp, res_temp_prev, dt, te_set_res)?;
+                        self.set_res_cntrl_state(
+                            res_thrml_state,
+                            dt,
+                            te_set_res,
+                            HvacMode::Heating,
+                        )?;
 
                         self.state.pwr_thrml_to_res_req.update(
                             {
@@ -1082,36 +1141,6 @@ impl HVACSystemForLumpedCabinAndRES {
 
         Ok(())
     }
-
-    fn set_res_cntrl_state(
-        &mut self,
-        res_temp: si::Temperature,
-        res_temp_prev: si::Temperature,
-        dt: si::Time,
-        te_set_res: si::Temperature,
-    ) -> anyhow::Result<()> {
-        let te_delta_vs_set = (res_temp.get::<si::degree_celsius>()
-            - te_set_res.get::<si::degree_celsius>())
-            * uc::KELVIN_INT;
-        self.state
-            .pwr_p_res
-            .update(-self.p_res * te_delta_vs_set, || format_dbg!())?;
-        self.state.pwr_i_res.increment(
-            (-self.i_res * uc::W / uc::KELVIN / uc::S * te_delta_vs_set * dt)
-                .max(-self.pwr_i_max_res)
-                .min(self.pwr_i_max_res),
-            || format_dbg!(),
-        )?;
-        self.state.pwr_d_res.update(
-            -self.d_res * uc::J / uc::KELVIN
-                * ((res_temp.get::<si::degree_celsius>()
-                    - res_temp_prev.get::<si::degree_celsius>())
-                    * uc::KELVIN_INT
-                    / dt),
-            || format_dbg!(),
-        )?;
-        Ok(())
-    }
 }
 
 #[serde_api]
@@ -1235,7 +1264,7 @@ impl HVACSystemForLumpedCabinAndRESState {
     fn set_mode_and_get_te_for_cop(
         &mut self,
         cab_state: &LumpedCabinState,
-        res_thrml_state: RESLumpedThermalState,
+        res_thrml_state: &RESLumpedThermalState,
         te_deltas: (
             Option<si::TemperatureInterval>,
             si::TemperatureInterval,

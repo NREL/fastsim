@@ -132,9 +132,6 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
                 (disch_buffer, chrg_buffer)
             }
-            HEVPowertrainControls::Placeholder => {
-                todo!()
-            }
         };
         // set total max powers, including aux power
         self.fc
@@ -165,7 +162,6 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     .aux_power_demand
                     .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
             }
-            HEVPowertrainControls::Placeholder => todo!(),
         }
 
         // set max propulsion powers
@@ -480,8 +476,6 @@ pub enum HEVPowertrainControls {
     /// and discharge power inside of static min and max SOC range.  Also, includes
     /// buffer for forcing [FuelConverter] to be active/on.
     RGWDB(Box<RESGreedyWithDynamicBuffers>),
-    /// place holder for future variants
-    Placeholder,
 }
 
 impl Default for HEVPowertrainControls {
@@ -496,7 +490,6 @@ impl SetCumulative for HEVPowertrainControls {
             Self::RGWDB(rgwdb) => {
                 rgwdb.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
             }
-            Self::Placeholder => {}
         }
         Ok(())
     }
@@ -505,7 +498,13 @@ impl Step for HEVPowertrainControls {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.step(loc)?,
-            HEVPowertrainControls::Placeholder => todo!(),
+        }
+        Ok(())
+    }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.reset_step(loc)?,
         }
         Ok(())
     }
@@ -517,16 +516,21 @@ impl SaveState for HEVPowertrainControls {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_state(loc)?,
-            HEVPowertrainControls::Placeholder => todo!(),
         }
         Ok(())
     }
 }
-impl CheckAndResetState for HEVPowertrainControls {
+impl TrackedStateMethods for HEVPowertrainControls {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.check_and_reset(loc)?,
-            HEVPowertrainControls::Placeholder => todo!(),
+        }
+        Ok(())
+    }
+
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.mark_fresh(loc)?,
         }
         Ok(())
     }
@@ -535,20 +539,17 @@ impl HistoryMethods for HEVPowertrainControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => Ok(rgwdb.set_save_interval(save_interval)?),
-            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
         }
     }
 
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_interval(),
-            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
         }
     }
     fn clear(&mut self) {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.clear(),
-            HEVPowertrainControls::Placeholder => todo!("Placeholder"),
         }
     }
 }
@@ -557,9 +558,6 @@ impl Init for HEVPowertrainControls {
     fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::RGWDB(rgwb) => rgwb.init()?,
-            Self::Placeholder => {
-                todo!()
-            }
         }
         Ok(())
     }
@@ -621,14 +619,12 @@ impl HEVPowertrainControls {
 
         match self {
             Self::RGWDB(rgwdb) => rgwdb.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
-            Self::Placeholder => todo!(),
         }
     }
 
     pub fn engine_on(&self) -> anyhow::Result<bool> {
         match self {
             Self::RGWDB(rgwdb) => rgwdb.state.engine_on(),
-            Self::Placeholder => todo!(),
         }
     }
 }

@@ -366,6 +366,44 @@ impl PowertrainType {
             }
         }
     }
+
+    pub fn trans(&self) -> Option<&Transmission> {
+        match self {
+            PowertrainType::ConventionalVehicle(_conv) => None,
+            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.transmission),
+            PowertrainType::PlugInHybridElectricVehicle(phev) => Some(&phev.transmission),
+            PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.transmission),
+        }
+    }
+
+    pub fn trans_mut(&mut self) -> Option<&mut Transmission> {
+        match self {
+            PowertrainType::ConventionalVehicle(_conv) => None,
+            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.transmission),
+            PowertrainType::PlugInHybridElectricVehicle(phev) => Some(&mut phev.transmission),
+            PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.transmission),
+        }
+    }
+
+    pub fn set_trans(&mut self, trans: Transmission) -> anyhow::Result<()> {
+        match self {
+            PowertrainType::ConventionalVehicle(_conv) => {
+                Err(anyhow!("ConventionalVehicle has no `ElectricMachine`"))
+            }
+            PowertrainType::HybridElectricVehicle(hev) => {
+                hev.transmission = trans;
+                Ok(())
+            }
+            PowertrainType::PlugInHybridElectricVehicle(phev) => {
+                phev.transmission = trans;
+                Ok(())
+            }
+            PowertrainType::BatteryElectricVehicle(bev) => {
+                bev.transmission = trans;
+                Ok(())
+            }
+        }
+    }
 }
 
 impl StateMethods for PowertrainType {}
@@ -373,21 +411,55 @@ impl StateMethods for PowertrainType {}
 impl SaveState for PowertrainType {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => conv.save_state(loc)?,
-            Self::HybridElectricVehicle(hev) => hev.save_state(loc)?,
-            Self::PlugInHybridElectricVehicle(phev) => phev.save_state(loc)?,
-            Self::BatteryElectricVehicle(bev) => bev.save_state(loc)?,
+            Self::PlugInHybridElectricVehicle(phev) => {
+                phev.save_state(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::ConventionalVehicle(conv) => {
+                conv.save_state(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::HybridElectricVehicle(hev) => {
+                hev.save_state(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::BatteryElectricVehicle(bev) => {
+                bev.save_state(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
         }
         Ok(())
     }
 }
-impl CheckAndResetState for PowertrainType {
+impl TrackedStateMethods for PowertrainType {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => conv.check_and_reset(loc)?,
-            Self::HybridElectricVehicle(hev) => hev.check_and_reset(loc)?,
-            Self::PlugInHybridElectricVehicle(phev) => phev.check_and_reset(loc)?,
-            Self::BatteryElectricVehicle(bev) => bev.check_and_reset(loc)?,
+            Self::PlugInHybridElectricVehicle(phev) => {
+                phev.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::ConventionalVehicle(conv) => {
+                conv.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::HybridElectricVehicle(hev) => {
+                hev.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::BatteryElectricVehicle(bev) => {
+                bev.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+        }
+        Ok(())
+    }
+
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => {
+                conv.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::HybridElectricVehicle(hev) => {
+                hev.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::PlugInHybridElectricVehicle(phev) => {
+                phev.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::BatteryElectricVehicle(bev) => {
+                bev.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
         }
         Ok(())
     }
@@ -396,10 +468,35 @@ impl CheckAndResetState for PowertrainType {
 impl Step for PowertrainType {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(conv) => conv.step(loc),
-            Self::HybridElectricVehicle(hev) => hev.step(loc),
-            Self::PlugInHybridElectricVehicle(phev) => phev.step(loc),
-            Self::BatteryElectricVehicle(bev) => bev.step(loc),
+            Self::ConventionalVehicle(conv) => {
+                conv.step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::HybridElectricVehicle(hev) => {
+                hev.step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::PlugInHybridElectricVehicle(phev) => {
+                phev.step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::BatteryElectricVehicle(bev) => {
+                bev.step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+        }
+    }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => {
+                conv.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::HybridElectricVehicle(hev) => {
+                hev.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::PlugInHybridElectricVehicle(phev) => {
+                phev.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::BatteryElectricVehicle(bev) => {
+                bev.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
         }
     }
 }

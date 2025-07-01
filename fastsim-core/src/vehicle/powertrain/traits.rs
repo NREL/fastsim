@@ -10,6 +10,7 @@ pub trait Powertrain {
     /// # Arguments
     /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: simulation time step size
+    /// - `veh_state`: the vehicle state
     fn set_curr_pwr_prop_out_max(
         &mut self,
         pwr_aux: si::Power,

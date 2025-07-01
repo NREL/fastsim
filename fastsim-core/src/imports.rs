@@ -15,7 +15,7 @@ pub(crate) use crate::utils::{
     abs_checked_x_val, almost_eq, almost_eq_uom, almost_ge_uom, almost_le_uom,
     check_interp_frac_data, check_monotonicity, is_sorted, InterpRange, DIRECT_SET_ERR,
 };
-pub(crate) use crate::utils::{CheckAndResetState, TrackedState};
+pub(crate) use crate::utils::{TrackedState, TrackedStateMethods};
 pub(crate) use crate::vehicle::traits::Mass;
 pub(crate) use anyhow::{anyhow, bail, ensure, Context};
 pub(crate) use derive_more::{FromStr, IsVariant, TryInto};
@@ -27,6 +27,7 @@ pub(crate) use fastsim_proc_macros::{
 };
 pub(crate) use lazy_static::lazy_static;
 pub(crate) use ndarray::prelude::*;
+pub(crate) use ndarray::{IxDynImpl, OwnedRepr};
 pub(crate) use ninterp::prelude::*;
 pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use std::cmp::{self, Ordering};

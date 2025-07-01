@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fastsim"
-version = "3.0.1"
+version = "3.0.2"
 authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
@@ -37,11 +37,12 @@ Homepage = "https://www.nrel.gov/transportation/fastsim.html"
 
 [project.optional-dependencies]
 dev = [
+    "pylsp-mypy>=0.7.0",
+    "pylsp-rope>=0.1.17",
+    "ruff>=0.11.9",
     "pytest~=8.3",
     "maturin~=1.8",
     "python-lsp-server~=1.10",
-    "ruff~=0.9",
-    "pylsp-mypy~=0.7.0",
     "memory_profiler~=0.61.0",
     "pymoo~=0.6",
     "plotly~=6.0",
@@ -105,7 +106,7 @@ exclude = [
     "site-packages" # Ignore all errors in site-packages
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["fastsim"]
 section-order = ["standard-library", "third-party", "first-party", "local-folder"]
 

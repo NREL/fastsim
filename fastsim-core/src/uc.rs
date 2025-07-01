@@ -68,6 +68,7 @@ unit_const!(MPS, Velocity, 1.0);
 unit_const!(MPH, Velocity, 4.470_4_E-1);
 unit_const!(KPH, Velocity, 3.6);
 unit_const!(MPS2, Acceleration, 1.0);
+unit_const!(MPS3, Jerk, 1.0);
 unit_const!(SPM, InverseVelocity, 1.0);
 unit_const!(SPEED_DIFF_JOIN, Velocity, 4.470_4_E-2);
 

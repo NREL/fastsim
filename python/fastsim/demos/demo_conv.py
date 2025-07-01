@@ -1,17 +1,23 @@
+"""Conventional vehicle demo showcasing FASTSim-3 simulation capabilities."""
 # %%
 
-from plot_utils import *
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-import seaborn as sns
-from pathlib import Path
-import time
-import json
 import os
-from typing import Tuple
+import time
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+
 import fastsim as fsim
+from fastsim.demos.plot_utils import (
+    BASE_LINE_STYLES,
+    figsize_3_stacked,
+    get_paired_cycler,
+    get_uni_cycler,
+)
 
 sns.set_theme()
 
@@ -72,18 +78,19 @@ t1 = time.perf_counter()
 t_fsim2 = t1 - t0
 print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
 print(
-    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:"
+    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:",  # noqa: E501
 )
 print(f"{t_fsim2 / t_fsim3_si1:.3g}x")
 print(
-    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of `None`:"
+    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of `None`:",  # noqa: E501
 )
 print(f"{t_fsim2 / t_fsim3_si_none:.3g}x")
 
 # # Visualize results
 
 
-def plot_fc_pwr() -> Tuple[Figure, Axes]:
+def plot_fc_pwr() -> tuple[Figure, Axes]:
+    """Plot fuel converter powers"""
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Fuel Converter Power")
 
@@ -159,7 +166,8 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-def plot_fc_energy() -> Tuple[Figure, Axes]:
+def plot_fc_energy() -> tuple[Figure, Axes]:
+    """Plot fuel converter energies"""
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Fuel Converter Energy")
 
@@ -241,7 +249,8 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-def plot_road_loads() -> Tuple[Figure, Axes]:
+def plot_road_loads_comparison() -> tuple[Figure, Axes]:
+    """Plot comparison of fastsim-3 v. fastsim-2 road loads"""
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Road Loads")
 
@@ -311,7 +320,7 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
 
 fig, ax = plot_fc_pwr()
 fig, ax = plot_fc_energy()
-fig, ax = plot_road_loads()
+fig, ax = plot_road_loads_comparison()
 
 # # Benchmarking
 #
@@ -319,9 +328,12 @@ fig, ax = plot_road_loads()
 # See above for cpu benchmarking.
 #
 # ## Memory Profiling
-# Within [benchmarks](./../../../benchmarks/), here are the results of running the benchmarking tests.
+# Within [benchmarks](./../../../benchmarks/), here are the results of running the benchmarking tests.  # noqa: E501
 #
-# These benchmarks show that `fastsim-3` uses about 63% less memory than `fastsim-2`, which results in a substantially greater potential to leverage HPC and cloud computing via multiprocessing parallelization, enabling more capacity to use FASTSim for large scale simulations.
+# These benchmarks show that `fastsim-3` uses about 63% less memory than
+# `fastsim-2`, which results in a substantially greater potential to leverage HPC
+# and cloud computing via multiprocessing parallelization, enabling more capacity
+# to use FASTSim for large scale simulations.
 #
 # ### python -m memory_profiler f2.py
 #
@@ -332,9 +344,9 @@ fig, ax = plot_road_loads()
 # 10  163.438 MiB  163.438 MiB           1   @profile(precision=3)
 # 11                                         def build_and_run_sim_drive():
 # 12  164.234 MiB    0.797 MiB           2       veh = fsr.RustVehicle.from_file(
-# 13  163.438 MiB    0.000 MiB           1           str(fsim.package_root() / "resources/vehdb/2012_Ford_Fusion.yaml")
+# 13  163.438 MiB    0.000 MiB           1           str(fsim.package_root() / "resources/vehdb/2012_Ford_Fusion.yaml")  # noqa: E501
 # 14                                             )
-# 15  164.375 MiB    0.141 MiB           1       cyc = fsr.RustCycle.from_resource("cycles/udds.csv")
+# 15  164.375 MiB    0.141 MiB           1       cyc = fsr.RustCycle.from_resource("cycles/udds.csv")  # noqa: E501
 # 16  165.453 MiB    1.078 MiB           1       sd = fsr.RustSimDrive(cyc, veh)
 # 17  165.656 MiB    0.203 MiB           1       sd.sim_drive()
 # ```
@@ -349,10 +361,10 @@ fig, ax = plot_road_loads()
 #     6                                         def build_and_run_sim_drive():
 #     7   62.125 MiB    0.562 MiB           2       veh = fsim.Vehicle.from_file(
 #     8
-#     9   61.562 MiB    0.000 MiB           1           fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml"
+#     9   61.562 MiB    0.000 MiB           1           fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml"  # noqa: E501
 #     10                                             )
 #     11   62.125 MiB    0.000 MiB           1       veh.save_interval = 1
-#     12   62.312 MiB    0.188 MiB           1       cyc = fsim.Cycle.from_resource("cycles/udds.csv")
+#     12   62.312 MiB    0.188 MiB           1       cyc = fsim.Cycle.from_resource("cycles/udds.csv")  # noqa: E501
 #     13   62.406 MiB    0.094 MiB           1       sd = fsim.SimDrive(veh, cyc)
 #     14   62.953 MiB    0.547 MiB           1       sd.walk()
 # ```
@@ -367,10 +379,10 @@ fig, ax = plot_road_loads()
 #      6                                         def build_and_run_sim_drive():
 #      7   61.766 MiB    0.562 MiB           2       veh = fsim.Vehicle.from_file(
 #      8
-#      9   61.203 MiB    0.000 MiB           1           fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml"
+#      9   61.203 MiB    0.000 MiB           1           fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml"  # noqa: E501
 #     10                                             )
 #     11   61.766 MiB    0.000 MiB           1       veh.save_interval = None
-#     12   61.938 MiB    0.172 MiB           1       cyc = fsim.Cycle.from_resource("cycles/udds.csv")
+#     12   61.938 MiB    0.172 MiB           1       cyc = fsim.Cycle.from_resource("cycles/udds.csv")  # noqa: E501
 #     13   62.031 MiB    0.094 MiB           1       sd = fsim.SimDrive(veh, cyc)
 #     14   62.031 MiB    0.000 MiB           1       sd.walk()
 # ```

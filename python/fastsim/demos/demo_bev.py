@@ -1,20 +1,25 @@
+"""BEV demo showcasing FASTSim-3 vehicle simulation and plotting capabilities."""
 # %%
 
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-import seaborn as sns
-from pathlib import Path
-import time
-import json
 import os
-from typing import Tuple
+import time
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+
 import fastsim as fsim
+from fastsim.demos.plot_utils import (
+    BASE_LINE_STYLES,
+    figsize_3_stacked,
+    get_paired_cycler,
+    get_uni_cycler,
+)
 
 sns.set_theme()
-
-from plot_utils import *
 
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
@@ -72,18 +77,21 @@ t1 = time.perf_counter()
 t_fsim2 = t1 - t0
 print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
 print(
-    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:"
+    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) "
+    "for `save_interval` of 1:",
 )
 print(f"{t_fsim2 / t_fsim3_si1:.3g}x")
 print(
-    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of `None`:"
+    "`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) "
+    "for `save_interval` of `None`:",
 )
 print(f"{t_fsim2 / t_fsim3_si_none:.3g}x")
 
 # # Visualize results
 
 
-def plot_res_pwr() -> Tuple[Figure, Axes]:
+def plot_res_pwr() -> tuple[Figure, Axes]:
+    """Plot reversible energy storage powers"""
     fig, ax = plt.subplots(4, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Reversible Energy Storage Power")
 
@@ -115,10 +123,7 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     ax[2].plot(
         df["cyc.time_seconds"],
         df["veh.pt_type.BEV.res.history.soc"]
-        - (
-            df["veh.pt_type.BEV.res.history.soc"][0]
-            - np.array(sd2.soc.tolist())[0]
-        ),
+        - (df["veh.pt_type.BEV.res.history.soc"][0] - np.array(sd2.soc.tolist())[0]),
         label="f3 soc",
     )
     ax[2].plot(
@@ -153,7 +158,8 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-def plot_res_energy() -> Tuple[Figure, Axes]:
+def plot_res_energy() -> tuple[Figure, Axes]:
+    """Plot reversible energy storage energies"""
     fig, ax = plt.subplots(4, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Reversible Energy Storage Energy")
 
@@ -166,7 +172,7 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     ax[0].plot(
         np.array(sd2.cyc.time_s.tolist())[:: veh.save_interval],
         np.cumsum(
-            np.array(sd2.ess_kw_out_ach.tolist()) * np.diff(sd2.cyc.time_s.tolist(), prepend=0)
+            np.array(sd2.ess_kw_out_ach.tolist()) * np.diff(sd2.cyc.time_s.tolist(), prepend=0),
         ),
         label="f2 electrical out",
     )
@@ -178,27 +184,15 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
         df["cyc.time_seconds"],
         df["veh.pt_type.BEV.res.history.energy_out_electrical_joules"] / 1e3
         - np.cumsum(
-            np.array(sd2.ess_kw_out_ach.tolist()) * np.diff(sd2.cyc.time_s.tolist(), prepend=0)
+            np.array(sd2.ess_kw_out_ach.tolist()) * np.diff(sd2.cyc.time_s.tolist(), prepend=0),
         ),
         label="electrical out",
     )
     ax[1].set_ylim(
-        -np.max(
-            np.abs(
-                sd_dict[
-                    "veh.pt_type.BEV.res.history.energy_out_electrical_joules"
-                ]
-            )
-        )
+        -np.max(np.abs(sd_dict["veh.pt_type.BEV.res.history.energy_out_electrical_joules"]))
         * 1e-3
         * 0.1,
-        np.max(
-            np.abs(
-                sd_dict[
-                    "veh.pt_type.BEV.res.history.energy_out_electrical_joules"
-                ]
-            )
-        )
+        np.max(np.abs(sd_dict["veh.pt_type.BEV.res.history.energy_out_electrical_joules"]))
         * 1e-3
         * 0.1,
     )
@@ -209,10 +203,7 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     ax[2].plot(
         df["cyc.time_seconds"],
         df["veh.pt_type.BEV.res.history.soc"]
-        - (
-            df["veh.pt_type.BEV.res.history.soc"][0]
-            - np.array(sd2.soc.tolist())[0]
-        ),
+        - (df["veh.pt_type.BEV.res.history.soc"][0] - np.array(sd2.soc.tolist())[0]),
         label="f3 soc",
     )
     ax[2].plot(
@@ -247,7 +238,8 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-def plot_road_loads() -> Tuple[Figure, Axes]:
+def plot_road_loads_comparison() -> tuple[Figure, Axes]:
+    """Plot comparison of fastsim-3 v. fastsim-2 road loads"""
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Road Loads")
 
@@ -319,16 +311,14 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
 
 fig, ax = plot_res_pwr()
 fig, ax = plot_res_energy()
-fig, ax = plot_road_loads()
+fig, ax = plot_road_loads_comparison()
 
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
-res = fsim.ReversibleEnergyStorage.from_pydict(
-    sd.to_pydict()["veh"]["pt_type"]["BEV"]["res"]
-)
+res = fsim.ReversibleEnergyStorage.from_pydict(sd.to_pydict()["veh"]["pt_type"]["BEV"]["res"])
 res.set_default_pwr_interp()
 
 
 def test_this_file():
-    """to trigger automated testing"""
+    """To trigger automated testing"""
     pass
