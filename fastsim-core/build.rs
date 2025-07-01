@@ -5,7 +5,7 @@ fn main() {
         .join("../cal_and_val/thermal/f3-vehicles/2020 Chevrolet Bolt EV.yaml");
     assert!(bolt_source.exists());
     let bolt_target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("resources/vehicles/2020 Chevrolet Bolt EV.yaml");
+        .join("resources/vehicles/2020 Chevrolet Bolt EV thrml.yaml");
     assert!(bolt_target.exists());
     std::fs::copy(bolt_source, bolt_target).unwrap();
 
@@ -13,7 +13,7 @@ fn main() {
         .join("../cal_and_val/thermal/f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml");
     assert!(sonata_source.exists());
     let sonata_target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("resources/vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml");
+        .join("resources/vehicles/2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml");
     assert!(sonata_target.exists());
     std::fs::copy(sonata_source, sonata_target).unwrap();
 }
