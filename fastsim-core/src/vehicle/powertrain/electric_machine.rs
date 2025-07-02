@@ -97,7 +97,7 @@ impl ElectricMachine {
     }
 }
 
-impl ElectricMachine {
+impl Powertrain for ElectricMachine {
     /// Returns maximum possible positive and negative propulsion-related powers
     /// this component/system can produce, accounting for any aux-related power
     /// required.
@@ -110,21 +110,24 @@ impl ElectricMachine {
     ///     values indicate upstream components can absorb energy.
     /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: simulation time step size
-    pub fn set_curr_pwr_prop_out_max(
+    fn set_curr_pwr_prop_out_max(
         &mut self,
-        pwr_in_fwd_lim: si::Power,
-        pwr_in_bwd_lim: si::Power,
+        pwr_upstream: (si::Power, si::Power),
+        _pwr_aux: si::Power,
         _dt: si::Time,
+        _veh_state: &VehicleState,
     ) -> anyhow::Result<()> {
+        let pwr_in_fwd_lim = &pwr_upstream.0;
+        let pwr_in_bwd_lim = &pwr_upstream.1;
         ensure!(
-            pwr_in_fwd_lim >= si::Power::ZERO,
+            pwr_in_fwd_lim >= &si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
             stringify!(pwr_in_fwd_lim),
             pwr_in_fwd_lim.get::<si::watt>().format_eng(None),
             stringify!(ElectricMachine::get_curr_pwr_prop_out_max)
         );
         ensure!(
-            pwr_in_bwd_lim >= si::Power::ZERO,
+            pwr_in_bwd_lim >= &si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
             stringify!(pwr_in_bwd_lim),
             pwr_in_bwd_lim.get::<si::watt>().format_eng(None),
@@ -148,7 +151,7 @@ impl ElectricMachine {
                     .map(|interpolator| {
                         interpolator
                             .interpolate(&[abs_checked_x_val(
-                                (pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                (*pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
                                 match interpolator {
                                     InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
                                         .as_slice()
@@ -178,7 +181,7 @@ impl ElectricMachine {
                     .map(|interpolator| {
                         interpolator
                             .interpolate(&[abs_checked_x_val(
-                                (pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                (*pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
                                 match interpolator {
                                     InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
                                         .as_slice()
@@ -205,7 +208,7 @@ impl ElectricMachine {
         // power based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_fwd_out_max.update(
             self.pwr_out_max.min(
-                pwr_in_fwd_lim
+                *pwr_in_fwd_lim
                     * *self
                         .state
                         .eff_fwd_at_max_input
@@ -217,22 +220,32 @@ impl ElectricMachine {
         // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_regen_max.update(
             self.pwr_out_max
-                .min(pwr_in_bwd_lim / *self.state.eff_at_max_regen.get_fresh(|| format_dbg!())?),
+                .min(*pwr_in_bwd_lim / *self.state.eff_at_max_regen.get_fresh(|| format_dbg!())?),
             || format_dbg!(),
         )?;
         Ok(())
+    }
+
+    fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+        Ok((
+            *self
+                .state
+                .pwr_mech_fwd_out_max
+                .get_fresh(|| format_dbg!())?,
+            *self.state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?,
+        ))
     }
 
     /// Solves for this powertrain system/component efficiency and sets/returns power input required.
     /// # Arguments
     /// - `pwr_out_req`: propulsion-related power output required
     /// - `dt`: simulation time step size
-    pub fn get_pwr_in_req(
+    fn solve(
         &mut self,
         pwr_out_req: si::Power,
+        _enabled: bool,
         _dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
-        //TODO: update this function to use `pwr_mech_regen_out_max`
+    ) -> anyhow::Result<Option<si::Power>> {
         ensure!(
             pwr_out_req.abs() <= self.pwr_out_max,
             format!(
@@ -361,7 +374,17 @@ impl ElectricMachine {
             || format_dbg!(),
         )?;
 
-        Ok(*self.state.pwr_elec_prop_in.get_fresh(|| format_dbg!())?)
+        Ok(Some(
+            *self.state.pwr_elec_prop_in.get_fresh(|| format_dbg!())?,
+        ))
+    }
+
+    fn pwr_regen(&self) -> anyhow::Result<si::Power> {
+        Ok(-self
+            .state
+            .pwr_mech_dyn_brake
+            .get_fresh(|| format_dbg!())?
+            .max(si::Power::ZERO))
     }
 }
 

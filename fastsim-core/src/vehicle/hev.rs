@@ -91,6 +91,7 @@ impl SerdeAPI for HybridElectricVehicle {}
 impl Powertrain for Box<HybridElectricVehicle> {
     fn set_curr_pwr_prop_out_max(
         &mut self,
+        _pwr_upstream: (si::Power, si::Power),
         pwr_aux: si::Power,
         dt: si::Time,
         veh_state: &VehicleState,
@@ -175,29 +176,31 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .set_curr_pwr_prop_out_max(
                 // TODO: add means of controlling whether fc can provide power to em and also how much
                 // Try out a 'power out type' enum field on the fuel converter with variants for mechanical and electrical
-                *self.res.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
-                *self.res.state.pwr_regen_max.get_fresh(|| format_dbg!())?,
+                self.res
+                    .get_curr_pwr_prop_out_max()
+                    .with_context(|| format_dbg!())?,
+                pwr_aux,
                 dt,
+                veh_state,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
-        // TODO: add transmission here maybe?
+        self.transmission
+            .set_curr_pwr_prop_out_max(
+                self.em
+                    .get_curr_pwr_prop_out_max()
+                    .with_context(|| format_dbg!())?,
+                pwr_aux,
+                dt,
+                veh_state,
+            )
+            .with_context(|| format_dbg!())?;
         Ok(())
     }
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
-        Ok((
-            *self
-                .em
-                .state
-                .pwr_mech_fwd_out_max
-                .get_fresh(|| format_dbg!())?
-                + *self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
-            *self
-                .em
-                .state
-                .pwr_mech_regen_max
-                .get_fresh(|| format_dbg!())?,
-        ))
+        self.transmission
+            .get_curr_pwr_prop_out_max()
+            .with_context(|| format_dbg!())
     }
 
     fn solve(
@@ -205,15 +208,16 @@ impl Powertrain for Box<HybridElectricVehicle> {
         pwr_out_req: si::Power,
         _enabled: bool,
         dt: si::Time,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<si::Power>> {
         // TODO: address these concerns
         // - what happens when the fc is on and producing more power than the
         //   transmission requires? It seems like the excess goes straight to the battery,
         //   but it should probably go thourgh the em somehow.
         let pwr_in_transmission = self
             .transmission
-            .get_pwr_in_req(pwr_out_req)
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .solve(pwr_out_req, true, dt)
+            .with_context(|| format_dbg!())?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
 
         // TODO: use an enum with a match here to determine whether power is shared by
         // - fc and em (e.g. for ICE HEV)
@@ -231,13 +235,14 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .with_context(|| format_dbg!())?;
         let res_pwr_out_req = self
             .em
-            .get_pwr_in_req(em_pwr_out_req, dt)
-            .with_context(|| format_dbg!())?;
+            .solve(em_pwr_out_req, true, dt)
+            .with_context(|| format_dbg!())?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         // TODO: `res_pwr_out_req` probably does not include charging from the engine
         self.res
             .solve(res_pwr_out_req, dt)
             .with_context(|| format_dbg!())?;
-        Ok(())
+        Ok(None)
     }
 
     /// Regen braking power, positive means braking is happening
@@ -245,12 +250,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         // When `pwr_mech_prop_out` is negative, regen is happening.  First, clip it at 0, and then negate it.
         // see https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e8f7af5a6e436dd1163fa3c70931d18d
         // for example
-        Ok(-self
-            .em
-            .state
-            .pwr_mech_prop_out
-            .get_fresh(|| format_dbg!())?
-            .max(si::Power::ZERO))
+        self.transmission.pwr_regen().with_context(|| format_dbg!())
     }
 }
 

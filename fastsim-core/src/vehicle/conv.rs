@@ -55,6 +55,7 @@ impl HistoryMethods for ConventionalVehicle {
 impl Powertrain for Box<ConventionalVehicle> {
     fn set_curr_pwr_prop_out_max(
         &mut self,
+        _pwr_upstream: (si::Power, si::Power),
         pwr_aux: si::Power,
         dt: si::Time,
         _veh_state: &VehicleState,
@@ -66,14 +67,24 @@ impl Powertrain for Box<ConventionalVehicle> {
         self.fc
             .set_curr_pwr_prop_max(pwr_aux / self.alt_eff)
             .with_context(|| anyhow!(format_dbg!()))?;
+        self.transmission
+            .set_curr_pwr_prop_out_max(
+                (
+                    *self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+                    si::Power::ZERO,
+                ),
+                pwr_aux,
+                dt,
+                _veh_state,
+            )
+            .with_context(|| format_dbg!())?;
         Ok(())
     }
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
-        Ok((
-            *self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
-            si::Power::ZERO,
-        ))
+        self.transmission
+            .get_curr_pwr_prop_out_max()
+            .with_context(|| format_dbg!())
     }
 
     fn solve(
@@ -81,18 +92,36 @@ impl Powertrain for Box<ConventionalVehicle> {
         pwr_out_req: si::Power,
         _enabled: bool,
         dt: si::Time,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<si::Power>> {
         // only positive power can come from powertrain.  Revisit this if engine braking model is needed.
-        let pwr_out_req = pwr_out_req.max(si::Power::ZERO);
+
+        ensure!(pwr_out_req >= si::Power::ZERO, format_dbg!());
+        ensure!(almost_le_uom(
+            &pwr_out_req,
+            self.transmission
+                .state
+                .pwr_out_fwd_max
+                .get_fresh(|| format_dbg!())?,
+            None
+        ));
+        ensure!(almost_le_uom(
+            &pwr_out_req,
+            self.transmission
+                .state
+                .pwr_out_fwd_max
+                .get_fresh(|| format_dbg!())?,
+            None
+        ));
         let enabled = true; // TODO: replace with a stop/start model
         let pwr_in_transmission = self
             .transmission
-            .get_pwr_in_req(pwr_out_req)
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .solve(pwr_out_req, true, dt)
+            .with_context(|| format_dbg!())?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         self.fc
             .solve(pwr_in_transmission, enabled, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        Ok(())
+        Ok(None)
     }
 
     fn pwr_regen(&self) -> anyhow::Result<si::Power> {

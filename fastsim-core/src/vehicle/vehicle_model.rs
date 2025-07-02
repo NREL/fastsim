@@ -430,6 +430,7 @@ impl Vehicle {
         // TODO: account for traction limits here
         self.pt_type
             .set_curr_pwr_prop_out_max(
+                (si::Power::ZERO, si::Power::ZERO),
                 *self.state.pwr_aux.get_fresh(|| format_dbg!())?,
                 dt,
                 &self.state,

@@ -23,8 +23,48 @@ pub struct Transmission {
     pub history: TransmissionStateHistoryVec,
 }
 
-impl Transmission {
-    pub fn get_pwr_in_req(&mut self, pwr_out_req: si::Power) -> anyhow::Result<si::Power> {
+impl Powertrain for Transmission {
+    fn set_curr_pwr_prop_out_max(
+        &mut self,
+        pwr_upstream: (si::Power, si::Power),
+        _pwr_aux: si::Power,
+        _dt: si::Time,
+        _veh_state: &VehicleState,
+    ) -> anyhow::Result<()> {
+        self.state.pwr_out_fwd_max.update(
+            pwr_upstream.0
+                * (self
+                    .eff_interp
+                    .interpolate(&[])
+                    .with_context(|| format_dbg!())?
+                    * uc::R),
+            || format_dbg!(),
+        )?;
+        self.state.pwr_out_regen_max.update(
+            pwr_upstream.1
+                * (self
+                    .eff_interp
+                    .interpolate(&[])
+                    .with_context(|| format_dbg!())?
+                    * uc::R),
+            || format_dbg!(),
+        )?;
+        Ok(())
+    }
+
+    fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+        Ok((
+            *self.state.pwr_out_fwd_max.get_fresh(|| format_dbg!())?,
+            *self.state.pwr_out_regen_max.get_fresh(|| format_dbg!())?,
+        ))
+    }
+
+    fn solve(
+        &mut self,
+        pwr_out_req: si::Power,
+        _enabled: bool,
+        _dt: si::Time,
+    ) -> anyhow::Result<Option<si::Power>> {
         let state = &mut self.state;
 
         let eff_pt: &[f64] = match self.eff_interp {
@@ -66,9 +106,18 @@ impl Transmission {
             || format_dbg!(),
         )?;
 
-        Ok(*state.pwr_in.get_fresh(|| format_dbg!())?)
+        Ok(Some(*state.pwr_in.get_fresh(|| format_dbg!())?))
+    }
+
+    fn pwr_regen(&self) -> anyhow::Result<si::Power> {
+        Ok(-self
+            .state
+            .pwr_out
+            .get_fresh(|| format_dbg!())?
+            .max(si::Power::ZERO))
     }
 }
+
 impl HistoryMethods for Transmission {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
@@ -129,14 +178,26 @@ pub struct TransmissionState {
     /// time step index
     pub i: TrackedState<usize>,
 
+    /// max power output in the forward direction
+    pub pwr_out_fwd_max: TrackedState<si::Power>,
+
+    /// max power output in the backward/regen direction
+    pub pwr_out_regen_max: TrackedState<si::Power>,
+
+    /// efficiency at current time step
     pub eff: TrackedState<si::Ratio>,
 
+    /// Power at output side of transmission.  Positive indicates forward power
+    /// (e.g. acceleration, ascent, working against dissipative forces)
     pub pwr_out: TrackedState<si::Power>,
+    pub energy_out: TrackedState<si::Energy>,
+    /// Power at input side of transmission.  Positive indicates forward power
+    /// (e.g. acceleration, ascent, working against dissipative forces)
     pub pwr_in: TrackedState<si::Power>,
+    pub energy_in: TrackedState<si::Energy>,
+
     /// Power loss: [Self::pwr_in] - [Self::pwr_out]
     pub pwr_loss: TrackedState<si::Power>,
-
-    pub energy_out: TrackedState<si::Energy>,
     pub energy_loss: TrackedState<si::Energy>,
 }
 

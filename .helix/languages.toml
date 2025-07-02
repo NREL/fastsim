@@ -2,4 +2,4 @@
 name = "rust"
 
 [language-server.rust-analyzer]
-config = { cargo = { features = ["simdrivelabel", "pyo3"] } }
+config = { cargo = { features = ["simdrivelabel", "pyo3", "web"] } }

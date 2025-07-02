@@ -96,7 +96,7 @@ impl<T> Init for Extrapolate<T> {}
 pub fn abs_checked_x_val(x_val: f64, x_data: &[f64]) -> anyhow::Result<f64> {
     if *x_data
         .first()
-        .with_context(|| anyhow!("{}\nExpected `first` to return `Some`.", format_dbg!()))?
+        .with_context(|| format!("{}\nExpected `first` to return `Some`.", format_dbg!()))?
         == 0.
     {
         Ok(x_val.abs())

@@ -136,11 +136,14 @@ pt_type:
       save_interval: 1
       state:
         i: 0
+        pwr_out_fwd_max_watts: 0.0
+        pwr_out_regen_max_watts: 0.0
         eff: 0.0
         pwr_out_watts: 0.0
-        pwr_in_watts: 0.0
-        pwr_loss_watts: 0.0
         energy_out_joules: 0.0
+        pwr_in_watts: 0.0
+        energy_in_joules: 0.0
+        pwr_loss_watts: 0.0
         energy_loss_joules: 0.0
     mass_kilograms: ~
 chassis:

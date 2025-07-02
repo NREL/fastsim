@@ -356,6 +356,13 @@ impl ReversibleEnergyStorage {
         Ok(())
     }
 
+    pub fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+        Ok((
+            *self.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+            *self.state.pwr_regen_max.get_fresh(|| format_dbg!())?,
+        ))
+    }
+
     /// # Arguments
     /// - `dt`: simulation time step size
     /// - `buffer`: buffer below static maximum SOC above which charging is disabled

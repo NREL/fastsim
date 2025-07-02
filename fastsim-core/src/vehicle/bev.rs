@@ -139,38 +139,32 @@ impl Powertrain for BatteryElectricVehicle {
         pwr_out_req: si::Power,
         _enabled: bool,
         dt: si::Time,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<si::Power>> {
         let pwr_in_transmission = self
             .transmission
-            .get_pwr_in_req(pwr_out_req)
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .solve(pwr_out_req, true, dt)
+            .with_context(|| format_dbg!())?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         let pwr_in_em = self
             .em
-            .get_pwr_in_req(pwr_in_transmission, dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .solve(pwr_in_transmission, true, dt)
+            .with_context(|| format_dbg!())?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         self.res
             .solve(pwr_in_em, dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
-        Ok(())
+            .with_context(|| format_dbg!())?;
+        Ok(None)
     }
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
-        Ok((
-            *self
-                .em
-                .state
-                .pwr_mech_fwd_out_max
-                .get_fresh(|| format_dbg!())?,
-            *self
-                .em
-                .state
-                .pwr_mech_regen_max
-                .get_fresh(|| format_dbg!())?,
-        ))
+        self.transmission
+            .get_curr_pwr_prop_out_max()
+            .with_context(|| format_dbg!())
     }
 
     fn set_curr_pwr_prop_out_max(
         &mut self,
+        _pwr_upstream: (si::Power, si::Power),
         pwr_aux: si::Power,
         dt: si::Time,
         _veh_state: &VehicleState,
@@ -181,15 +175,27 @@ impl Powertrain for BatteryElectricVehicle {
         self.res
             .set_curr_pwr_out_max(dt, disch_buffer, chrg_buffer)
             .with_context(|| anyhow!(format_dbg!()))?;
-
         self.res
             .set_curr_pwr_prop_max(pwr_aux)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.em
             .set_curr_pwr_prop_out_max(
-                *self.res.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
-                *self.res.state.pwr_regen_max.get_fresh(|| format_dbg!())?,
+                self.res
+                    .get_curr_pwr_prop_out_max()
+                    .with_context(|| format_dbg!())?,
+                pwr_aux,
                 dt,
+                _veh_state,
+            )
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.transmission
+            .set_curr_pwr_prop_out_max(
+                self.res
+                    .get_curr_pwr_prop_out_max()
+                    .with_context(|| format_dbg!())?,
+                pwr_aux,
+                dt,
+                _veh_state,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
 
@@ -201,12 +207,7 @@ impl Powertrain for BatteryElectricVehicle {
         // When `pwr_mech_prop_out` is negative, regen is happening.  First, clip it at 0, and then negate it.
         // see https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e8f7af5a6e436dd1163fa3c70931d18d
         // for example
-        Ok(-self
-            .em
-            .state
-            .pwr_mech_prop_out
-            .get_fresh(|| format_dbg!())?
-            .max(si::Power::ZERO))
+        self.transmission.pwr_regen().with_context(|| format_dbg!())
     }
 }
 

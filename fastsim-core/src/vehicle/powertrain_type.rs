@@ -51,21 +51,45 @@ impl SetCumulative for PowertrainType {
 impl Powertrain for PowertrainType {
     fn set_curr_pwr_prop_out_max(
         &mut self,
+        _pwr_upstream: (si::Power, si::Power),
         pwr_aux: si::Power,
         dt: si::Time,
         veh_state: &VehicleState,
     ) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(v) => v.set_curr_pwr_prop_out_max(pwr_aux, dt, veh_state),
-            Self::HybridElectricVehicle(v) => v.set_curr_pwr_prop_out_max(pwr_aux, dt, veh_state),
-            Self::PlugInHybridElectricVehicle(v) => {
-                v.set_curr_pwr_prop_out_max(pwr_aux, dt, veh_state)
-            }
-            Self::BatteryElectricVehicle(v) => v.set_curr_pwr_prop_out_max(pwr_aux, dt, veh_state),
+            Self::ConventionalVehicle(v) => v.set_curr_pwr_prop_out_max(
+                (si::Power::ZERO, si::Power::ZERO),
+                pwr_aux,
+                dt,
+                veh_state,
+            ),
+            Self::HybridElectricVehicle(v) => v.set_curr_pwr_prop_out_max(
+                (si::Power::ZERO, si::Power::ZERO),
+                pwr_aux,
+                dt,
+                veh_state,
+            ),
+            Self::PlugInHybridElectricVehicle(v) => v.set_curr_pwr_prop_out_max(
+                (si::Power::ZERO, si::Power::ZERO),
+                pwr_aux,
+                dt,
+                veh_state,
+            ),
+            Self::BatteryElectricVehicle(v) => v.set_curr_pwr_prop_out_max(
+                (si::Power::ZERO, si::Power::ZERO),
+                pwr_aux,
+                dt,
+                veh_state,
+            ),
         }
     }
 
-    fn solve(&mut self, pwr_out_req: si::Power, enabled: bool, dt: si::Time) -> anyhow::Result<()> {
+    fn solve(
+        &mut self,
+        pwr_out_req: si::Power,
+        enabled: bool,
+        dt: si::Time,
+    ) -> anyhow::Result<Option<si::Power>> {
         match self {
             Self::ConventionalVehicle(v) => v.solve(pwr_out_req, enabled, dt),
             Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
