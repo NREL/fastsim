@@ -32,9 +32,8 @@ temp_init_eng = 70.0 + celsius_to_kelvin
 # %%
 
 # load 2021 Hyundai Sonata HEV from file
-veh_dict = fsim.Vehicle.from_file(
-    fsim.package_root()
-    / "../../cal_and_val/thermal/f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml",
+veh_dict = fsim.Vehicle.from_resource(
+    "2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml",
 ).to_pydict()
 veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_init_bat_and_cab
 veh_dict["pt_type"]["HEV"]["res"]["thrml"]["RESLumpedThermal"]["state"]["temperature_kelvin"] = (

@@ -93,8 +93,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<Option<si::Power>> {
-        // only positive power can come from powertrain.  Revisit this if engine braking model is needed.
-
+        // NOTE: think about the possibility of engine braking, not urgent
         ensure!(pwr_out_req >= si::Power::ZERO, format_dbg!());
         ensure!(almost_le_uom(
             &pwr_out_req,

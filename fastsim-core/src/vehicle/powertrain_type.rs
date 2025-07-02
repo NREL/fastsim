@@ -91,7 +91,7 @@ impl Powertrain for PowertrainType {
         dt: si::Time,
     ) -> anyhow::Result<Option<si::Power>> {
         match self {
-            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, enabled, dt),
+            Self::ConventionalVehicle(v) => v.solve(pwr_out_req.max(si::Power::ZERO), enabled, dt),
             Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
             Self::PlugInHybridElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
             Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),

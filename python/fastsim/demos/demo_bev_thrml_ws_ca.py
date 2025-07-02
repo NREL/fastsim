@@ -1,4 +1,5 @@
 """BEV thermal demo with warm start and cold ambient conditions."""
+
 # %%
 import os
 import time
@@ -29,13 +30,13 @@ temp_init_bat_and_cab = 22.0 + celsius_to_kelvin
 # %%
 
 # load 2020 Chevrolet Bolt BEV from file
-veh = fsim.Vehicle.from_resource("2020 Chevrolet Bolt EV.yaml")
+veh = fsim.Vehicle.from_resource("2020 Chevrolet Bolt EV thrml.yaml")
 
 veh_dict = veh.to_pydict()
 veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_init_bat_and_cab
-veh_dict["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["state"][
-    "temperature_kelvin"
-] = temp_init_bat_and_cab
+veh_dict["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["state"]["temperature_kelvin"] = (
+    temp_init_bat_and_cab
+)
 veh = fsim.Vehicle.from_pydict(veh_dict)
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
