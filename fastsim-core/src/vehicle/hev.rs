@@ -184,11 +184,14 @@ impl Powertrain for Box<HybridElectricVehicle> {
                 veh_state,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
+        let em_pwr_prop_out_maxes = self
+            .em
+            .get_curr_pwr_prop_out_max()
+            .with_context(|| format_dbg!())?;
+        let fc_max = self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?;
         self.transmission
             .set_curr_pwr_prop_out_max(
-                self.em
-                    .get_curr_pwr_prop_out_max()
-                    .with_context(|| format_dbg!())?,
+                (em_pwr_prop_out_maxes.0 + *fc_max, em_pwr_prop_out_maxes.1),
                 pwr_aux,
                 dt,
                 veh_state,

@@ -53,6 +53,9 @@ pub struct Vehicle {
     /// Baseline power required by auxilliary systems
     pub pwr_aux_base: si::Power,
 
+    /// Transmission efficiency
+    pub trans_eff: si::Ratio,
+
     /// time step interval at which `state` is saved into `history`
     save_interval: Option<usize>,
     /// current state of vehicle
@@ -688,6 +691,7 @@ impl Vehicle {
                 trans.state.i.mark_stale();
                 trans.state.mark_fresh(|| format_dbg!())?;
                 trans.state.energy_out.mark_stale();
+                trans.state.energy_in.mark_stale();
                 trans.state.energy_loss.mark_stale();
             }
             None => {}
