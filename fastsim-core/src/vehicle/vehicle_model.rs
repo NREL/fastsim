@@ -53,12 +53,6 @@ pub struct Vehicle {
     /// Baseline power required by auxilliary systems
     pub pwr_aux_base: si::Power,
 
-    /// transmission efficiency
-    // TODO: check if `trans_eff` is redundant (most likely) and fix
-    // TODO: make `transmission::{Transmission, TransmissionState}` and
-    // `Transmission` should have field `efficency: Efficiency`.
-    pub trans_eff: si::Ratio,
-
     /// time step interval at which `state` is saved into `history`
     save_interval: Option<usize>,
     /// current state of vehicle
