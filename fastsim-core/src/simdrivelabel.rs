@@ -1089,41 +1089,6 @@ pub fn get_label_fe_phev(
     Ok(label_fe_phev)
 }
 
-// #[cfg(feature = "pyo3")]
-// #[pyfunction(name = "get_label_fe_phev")]
-// /// pyo3 version of [get_label_fe_phev]
-// pub fn get_label_fe_phev_py(
-//     veh: &Vehicle,
-//     sd_dict: pyo3::Bound<'_, pyo3::types::PyDict>,
-//     adj_params: AdjCoef,
-//     long_params: PhevUtilizationParams,
-//     sim_params: &SimParams,
-// ) -> anyhow::Result<LabelFePHEV> {
-//     let mut sd_mut: HashMap<String, SimDrive> = HashMap::new();
-
-//     for (key, value) in sd_dict.iter() {
-//         let key_extracted = key
-//             .extract::<String>()
-//             .with_context(|| format!("{}\nFailed to extract key", format_dbg!()))?;
-//         let value_extracted = value
-//             .extract()
-//             .with_context(|| format!("{}\nFailed to extract value", format_dbg!()))?;
-//         sd_mut.insert(key_extracted, value_extracted);
-//     }
-
-//     // type conversion on keys to satisfy function arg below
-//     let mut sd_mut =
-//         HashMap::from_iter(sd_mut.iter().map(|item| (item.0.as_str(), item.1.clone())));
-
-//     get_label_fe_phev(
-//         veh,
-//         &phev_utilization_params,
-//         adj_params,
-//         max_epa_adj,
-//         &fuel_props,
-//     )
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1133,22 +1098,17 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_conv_vs_fastsim2() {
-        let mut veh = mock_conv_veh();
+        let file_contents = include_str!("vehicle/fastsim-2_2012_Ford_Fusion.yaml");
+        use fastsim_2::traits::SerdeAPI;
+        let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
+        let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
         let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
-        // Convert to FASTSim-2 and get label FE results
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false)
-            .with_context(|| format_dbg!())
-            .unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh.clone(), cyc, Default::default());
-        let sd2 = sd.to_fastsim2().with_context(|| format_dbg!()).unwrap();
-        let veh2 = sd2.veh;
-
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&veh2, None, None)
+        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -1213,22 +1173,17 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_bev_vs_fastsim2() {
-        let mut veh = mock_bev();
+        let file_contents = include_str!("vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
+        use fastsim_2::traits::SerdeAPI;
+        let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
+        let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
         let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
-        // Convert to FASTSim-2 and get label FE results
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false)
-            .with_context(|| format_dbg!())
-            .unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh.clone(), cyc, Default::default());
-        let sd2 = sd.to_fastsim2().with_context(|| format_dbg!()).unwrap();
-        let veh2 = sd2.veh;
-
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&veh2, None, None)
+        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -1276,22 +1231,17 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_hev_vs_fastsim2() {
-        let mut veh = mock_hev();
+        let file_contents = include_str!("vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
+        use fastsim_2::traits::SerdeAPI;
+        let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
+        let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
         let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
-        // Convert to FASTSim-2 and get label FE results
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false)
-            .with_context(|| format_dbg!())
-            .unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh.clone(), cyc, Default::default());
-        let sd2 = sd.to_fastsim2().with_context(|| format_dbg!()).unwrap();
-        let veh2 = sd2.veh;
-
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&veh2, None, None)
+        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh, None, None)
             .with_context(|| format_dbg!())
             .unwrap();
 
