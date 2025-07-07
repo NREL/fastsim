@@ -73,7 +73,7 @@ impl Powertrain for Box<ConventionalVehicle> {
                     *self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
                     si::Power::ZERO,
                 ),
-                pwr_aux,
+                f64::NAN * uc::W,
                 dt,
                 _veh_state,
             )

@@ -246,15 +246,18 @@ impl Powertrain for ElectricMachine {
         _enabled: bool,
         _dt: si::Time,
     ) -> anyhow::Result<Option<si::Power>> {
-        ensure!(
-            pwr_out_req.abs() <= self.pwr_out_max,
-            format!(
-                "{}\nedrv required power ({} kW) exceeds static max power ({} kW)",
-                format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
-                pwr_out_req.get::<si::kilowatt>().format_eng(Some(9)),
-                self.pwr_out_max.get::<si::kilowatt>().format_eng(Some(9))
-            ),
-        );
+        if pwr_out_req > si::Power::ZERO {
+            ensure!(
+                pwr_out_req <= self.pwr_out_max,
+                format!(
+                    "{}\nedrv required power ({} kW) exceeds static max power ({} kW)",
+                    format_dbg!(),
+                    pwr_out_req.get::<si::kilowatt>().format_eng(Some(9)),
+                    self.pwr_out_max.get::<si::kilowatt>().format_eng(Some(9))
+                ),
+            );
+        }
+        // not needed during negative traction because friction braking is still included
         ensure!(
             almost_le_uom(&pwr_out_req , self.state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?, None),
             format!(

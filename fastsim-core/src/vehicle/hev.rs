@@ -192,7 +192,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         self.transmission
             .set_curr_pwr_prop_out_max(
                 (em_pwr_prop_out_maxes.0 + *fc_max, em_pwr_prop_out_maxes.1),
-                pwr_aux,
+                f64::NAN * uc::W,
                 dt,
                 veh_state,
             )

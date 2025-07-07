@@ -66,6 +66,19 @@ impl Powertrain for Transmission {
         _dt: si::Time,
     ) -> anyhow::Result<Option<si::Power>> {
         let state = &mut self.state;
+        // positive traction
+        ensure!(
+            pwr_out_req <= *state.pwr_out_fwd_max.get_fresh(|| format_dbg!())?,
+            "{}\n`pwr_out_req` ({} kW) exceeds `state.pwr_out_fwd_max` ({})",
+            format_dbg!(),
+            pwr_out_req.get::<si::kilowatt>().format_eng(None),
+            state
+                .pwr_out_fwd_max
+                .get_fresh(|| format_dbg!())?
+                .get::<si::kilowatt>()
+                .format_eng(None)
+        );
+        // no need for negative traction because that still includes component from friction brakes
 
         let eff_pt: &[f64] = match self.eff_interp {
             InterpolatorEnum::Interp0D(_) => &[],

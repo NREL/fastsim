@@ -148,7 +148,20 @@ impl Powertrain for BatteryElectricVehicle {
         let pwr_in_em = self
             .em
             .solve(pwr_in_transmission, true, dt)
-            .with_context(|| format_dbg!())?
+            .with_context(|| {
+                format!(
+                    "{}\ntransmission `pwr_out_req`: {} kW\n`self.transmission.state.pwr_out_fwd_max`: {} kW",
+                    format_dbg!(),
+                    pwr_out_req.get::<si::kilowatt>().format_eng(None),
+                    self.transmission
+                        .state
+                        .pwr_out_fwd_max
+                        .get_fresh(|| format_dbg!())
+                        .unwrap()
+                        .get::<si::kilowatt>()
+                        .format_eng(None)
+                )
+            })?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         self.res
             .solve(pwr_in_em, dt)
@@ -183,17 +196,17 @@ impl Powertrain for BatteryElectricVehicle {
                 self.res
                     .get_curr_pwr_prop_out_max()
                     .with_context(|| format_dbg!())?,
-                pwr_aux,
+                f64::NAN * uc::W,
                 dt,
                 _veh_state,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
         self.transmission
             .set_curr_pwr_prop_out_max(
-                self.res
+                self.em
                     .get_curr_pwr_prop_out_max()
                     .with_context(|| format_dbg!())?,
-                pwr_aux,
+                f64::NAN * uc::W,
                 dt,
                 _veh_state,
             )

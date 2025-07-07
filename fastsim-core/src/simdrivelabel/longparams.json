@@ -1,5 +1,5 @@
 {
-    "rechgFreqMiles": [
+    "rechg_freq_miles": [
         0,
         1,
         3,
@@ -603,7 +603,7 @@
         1199,
         1201
     ],
-    "ufArray": [
+    "uf_array": [
         0.0,
         0.024550000000000002,
         0.07257,
@@ -1207,18 +1207,18 @@
         1.0,
         1.0
     ],
-    "LD_FE_Adj_Coef": {
+    "adj_coef_map": {
         "2008": {
-            "City Intercept": 0.003259,
-            "City Slope": 1.1805,
-            "Highway Intercept": 0.001376,
-            "Highway Slope": 1.3466
+            "city_intercept": 0.003259,
+            "city_slope": 1.1805,
+            "hwy_intercept": 0.001376,
+            "hwy_slope": 1.3466
         },
         "2017": {
-            "City Intercept": 0.004091,
-            "City Slope": 1.1601,
-            "Highway Intercept": 0.003191,
-            "Highway Slope": 1.2945
+            "city_intercept": 0.004091,
+            "city_slope": 1.1601,
+            "hwy_intercept": 0.003191,
+            "hwy_slope": 1.2945
         }
     }
 }
