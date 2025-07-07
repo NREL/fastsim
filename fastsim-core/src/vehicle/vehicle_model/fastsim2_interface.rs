@@ -346,7 +346,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     soc_bal_iters: Default::default(),
                 };
                 phev.init()?;
-                Ok(PowertrainType::HybridElectricVehicle(Box::new(phev)))
+                Ok(PowertrainType::PlugInHybridElectricVehicle(Box::new(phev)))
             }
             BEV => {
                 let bev = BatteryElectricVehicle {

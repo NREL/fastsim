@@ -390,10 +390,10 @@ impl SimDrive {
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
         let time_prev = *self.veh.state.time.get_stale(|| format_dbg!())?;
-        self.veh
-            .state
-            .time
-            .update(self.cyc.time[i], || format_dbg!())?;
+        self.veh.state.time.update(
+            *self.cyc.time.get(i).with_context(|| format_dbg!())?,
+            || format_dbg!(),
+        )?;
         let dt = *self.veh.state.time.get_fresh(|| format_dbg!())? - time_prev;
         // maybe make controls like:
         // ```

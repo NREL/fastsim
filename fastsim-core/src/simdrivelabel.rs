@@ -323,7 +323,7 @@ lazy_static! {
 /// Returns label fuel economy values as a struct and (optionally)
 /// simdrive::SimDrive objects.
 pub fn get_label_fe(
-    veh: &Vehicle,
+    veh: &mut Vehicle,
     max_epa_adj: Option<f64>,
     full_detail: bool,
     fuel_props: Option<FuelProperties>,
@@ -344,6 +344,12 @@ pub fn get_label_fe(
     cyc.insert("accel", CYC_ACCEL.clone());
     cyc.insert("udds", Cycle::from_resource("udds.csv", false)?);
     cyc.insert("hwy", Cycle::from_resource("hwfet.csv", false)?);
+
+    if veh.pt_type.is_plug_in_hybrid_electric_vehicle() {
+        let rm = veh.res_mut().unwrap();
+        rm.state.soc.check_and_reset(|| format_dbg!()).unwrap();
+        rm.state.soc.update(rm.max_soc, || format_dbg!()).unwrap();
+    }
 
     // run simdrive for non-phev powertrains
     sd.insert(
@@ -559,7 +565,7 @@ pub fn get_label_fe(
 )]
 /// pyo3 version of [get_label_fe]
 pub fn get_label_fe_py(
-    veh: &Vehicle,
+    veh: &mut Vehicle,
     max_epa_adj: Option<f64>,
     full_detail: Option<bool>,
     fuel_props: Option<FuelProperties>,
@@ -1127,10 +1133,10 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_conv_vs_fastsim2() {
-        let veh = mock_conv_veh();
+        let mut veh = mock_conv_veh();
 
         // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&veh, None, false, None, None, false)
+        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -1207,10 +1213,10 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_bev_vs_fastsim2() {
-        let veh = mock_bev();
+        let mut veh = mock_bev();
 
         // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&veh, None, false, None, None, false)
+        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -1270,10 +1276,10 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_hev_vs_fastsim2() {
-        let veh = mock_hev();
+        let mut veh = mock_hev();
 
         // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&veh, None, false, None, None, false)
+        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -1352,12 +1358,19 @@ mod tests {
             fastsim_2::traits::SerdeAPI::from_yaml(&veh_contents, false)
                 .with_context(|| format_dbg!())
                 .unwrap();
-        let veh = Vehicle::try_from(f2_veh.clone())
+        assert!(f2_veh.veh_pt_type == fastsim_2::vehicle::PHEV);
+        let mut veh = Vehicle::try_from(f2_veh.clone())
             .with_context(|| format_dbg!())
             .unwrap();
+        assert!(
+            veh.pt_type.is_plug_in_hybrid_electric_vehicle(),
+            "`veh.pt_type.variant_as_str()`: {}\n`f2_veh.veh_pt_type`: {}",
+            veh.pt_type.variant_as_str(),
+            f2_veh.veh_pt_type
+        );
 
         // Get FASTSim-3 label FE results (if PHEV functionality is implemented)
-        let result_f3 = get_label_fe(&veh, None, false, None, None, false);
+        let result_f3 = get_label_fe(&mut veh, None, false, None, None, false);
 
         // Get FASTSim-2 label FE results
         let result_f2 =

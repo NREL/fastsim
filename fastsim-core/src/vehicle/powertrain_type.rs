@@ -428,6 +428,15 @@ impl PowertrainType {
             }
         }
     }
+
+    pub fn variant_as_str(&self) -> String {
+        match self {
+            Self::ConventionalVehicle(_) => String::from("ConventionalVehicle"),
+            Self::PlugInHybridElectricVehicle(_) => String::from("PlugInHybridElectricVehicle"),
+            Self::HybridElectricVehicle(_) => String::from("HybridElectricVehicle"),
+            Self::BatteryElectricVehicle(_) => String::from("BatteryElectricVehicle"),
+        }
+    }
 }
 
 impl StateMethods for PowertrainType {}
