@@ -289,7 +289,7 @@ impl Default for AdjCoef {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct PhevUtilizationParams {
-    pub ld_fe_adj_coef: AdjCoefMap,
+    pub adj_coef_map: HashMap<String, AdjCoef>,
     /// Frequency of recharge events
     pub rechg_freq_miles: Vec<f64>,
     /// Array of utility factor
@@ -301,13 +301,13 @@ impl SerdeAPI for PhevUtilizationParams {}
 
 impl Default for PhevUtilizationParams {
     fn default() -> Self {
-        todo!()
+        Self::from_json(&*PHEV_UTIL_PARAMS, false).unwrap()
     }
 }
 
-#[derive(Default, Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub struct AdjCoefMap {
-    pub adj_coef_map: HashMap<String, AdjCoef>,
+lazy_static! {
+    static ref PHEV_UTIL_PARAMS: String =
+        include_str!("./simdrivelabel/longparams.json").to_string();
 }
 
 /// Generates label fuel economy (FE) values for a provided vehicle.
@@ -362,10 +362,10 @@ pub fn get_label_fe(
 
     // find year-based adjustment parameters
     let adj_params = if veh.year < 2017 {
-        &phev_utilization_params.ld_fe_adj_coef.adj_coef_map["2008"]
+        &phev_utilization_params.adj_coef_map["2008"]
     } else {
         // assume 2017 coefficients are valid
-        &phev_utilization_params.ld_fe_adj_coef.adj_coef_map["2017"]
+        &phev_utilization_params.adj_coef_map["2017"]
     };
     label_fe.adj_params = adj_params.clone();
 
