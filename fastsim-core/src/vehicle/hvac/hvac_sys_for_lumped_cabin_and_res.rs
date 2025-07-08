@@ -127,7 +127,7 @@ impl HVACSystemForLumpedCabinAndRES {
     /// - `pwr_thrml_hvac_to_cabin`: thermal power flowing from [Vehicle::hvac] system to cabin  
     /// - `pwr_thrml_fc_to_cabin`: thermal power flowing from [FuelConverter] to cabin  
     /// - `pwr_thrml_hvac_to_res`: thermal power flowing from [Vehicle::hvac] system to
-    ///     [ReversibleEnergyStorage] `thrml` system  
+    ///   [ReversibleEnergyStorage] `thrml` system  
     ///
     /// # Assumptions and Caveats
     /// - Cabin cooling never occurs concurrently with battery heating
@@ -146,7 +146,7 @@ impl HVACSystemForLumpedCabinAndRES {
         dt: si::Time,
     ) -> anyhow::Result<(si::Power, si::Power, si::Power)> {
         let (te_cab_delta_vs_set, te_cab_delta_vs_amb, te_res_delta_vs_set, te_res_delta_vs_amb) =
-            self.get_te_deltas(te_amb_air, cab_state, &res_thrml_state)?;
+            self.get_te_deltas(te_amb_air, cab_state, res_thrml_state)?;
 
         ensure!(
             te_res_delta_vs_set.is_none() || !(self.res_cooling_source.is_none() && self.res_heat_source.is_none()),
@@ -358,286 +358,10 @@ impl HVACSystemForLumpedCabinAndRES {
                             .update(si::Power::ZERO, || format_dbg!())?;
                     }
                     HvacMode::Cooling => {
-                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab, HvacMode::Cooling)?;
-                        self.state.pwr_thrml_to_cab_req.update(
-                            {
-                                let pwr_thrml_hvac_to_cab_req: si::Power =
-                                    (*self.state.pwr_p_cab.get_fresh(|| format_dbg!())?
-                                        + *self.state.pwr_i_cab.get_fresh(|| format_dbg!())?
-                                        + *self.state.pwr_d_cab.get_fresh(|| format_dbg!())?)
-                                    .max(-self.pwr_thrml_max);
-                                ensure!(
-                                    pwr_thrml_hvac_to_cab_req < si::Power::ZERO,
-                                    "{}\nHVAC should be cooling cabin",
-                                    format_dbg!(pwr_thrml_hvac_to_cab_req)
-                                );
-                                ensure!(
-                                    pwr_thrml_hvac_to_cab_req < si::Power::ZERO,
-                                    "HVAC should be cooling cabin\n{}\n{}\n{}",
-                                    format_dbg!(pwr_thrml_hvac_to_cab_req),
-                                    format_dbg!(*self
-                                        .state
-                                        .pwr_aux_for_cab_hvac
-                                        .get_fresh(|| format_dbg!())?),
-                                    format_dbg!(*self.state.cop.get_fresh(|| format_dbg!())?)
-                                );
-                                pwr_thrml_hvac_to_cab_req
-                            },
-                            || format_dbg!(),
-                        )?;
-                        self.state.pwr_aux_for_cab_hvac_req.update(
-                            -*self
-                                .state
-                                .pwr_thrml_to_cab_req
-                                .get_fresh(|| format_dbg!())?
-                                / self.state.cop.get_fresh(|| format_dbg!())?.with_context(
-                                    || {
-                                        format!(
-                                            "{}\nExpected `self.state.cop` to be Some.",
-                                            format_dbg!(self.state.cop)
-                                        )
-                                    },
-                                )?,
-                            || format_dbg!(),
-                        )?;
-
-                        // Correct aux power components to account for any limit violations
-                        if *self
-                            .state
-                            .pwr_aux_for_cab_hvac_req
-                            .get_fresh(|| format_dbg!())?
-                            > self.pwr_aux_for_hvac_cab_max
-                        {
-                            self.state
-                                .pwr_aux_for_cab_hvac
-                                .update(self.pwr_aux_for_hvac_cab_max, || format_dbg!())?;
-                            self.state.pwr_thrml_hvac_to_cabin.update(
-                                -*self
-                                    .state
-                                    .pwr_aux_for_cab_hvac
-                                    .get_fresh(|| format_dbg!())?
-                                    * self.state.cop.get_fresh(|| format_dbg!())?.with_context(
-                                        || {
-                                            format!(
-                                                "{}\nExpected `self.state.cop` to be Some.",
-                                                format_dbg!(self.state.cop)
-                                            )
-                                        },
-                                    )?,
-                                || format_dbg!(),
-                            )?;
-                        } else {
-                            self.state.pwr_aux_for_cab_hvac.update(
-                                *self
-                                    .state
-                                    .pwr_aux_for_cab_hvac_req
-                                    .get_fresh(|| format_dbg!())?,
-                                || format_dbg!(),
-                            )?;
-                            self.state.pwr_thrml_hvac_to_cabin.update(
-                                *self
-                                    .state
-                                    .pwr_thrml_to_cab_req
-                                    .get_fresh(|| format_dbg!())?,
-                                || format_dbg!(),
-                            )?;
-                        }
-                        self.state
-                            .pwr_thrml_fc_to_cabin
-                            .update(si::Power::ZERO, || format_dbg!())?;
+                        self.solve_cab_cooling(cab_state, dt, te_set_cab)?;
                     }
                     HvacMode::Heating => {
-                        self.set_cab_cntrl_state(cab_state, dt, te_set_cab, HvacMode::Heating)?;
-                        self.state.pwr_thrml_to_cab_req.update(
-                            {
-                                let mut pwr_thrml_to_cab_req =
-                                    (*self.state.pwr_p_cab.get_fresh(|| format_dbg!())?
-                                        + *self.state.pwr_i_cab.get_fresh(|| format_dbg!())?
-                                        + *self.state.pwr_d_cab.get_fresh(|| format_dbg!())?)
-                                    .min(self.pwr_thrml_max);
-                                if self.cabin_heat_source.is_fuel_converter() {
-                                    // limit heat transfer to be substantially less than what is physically possible
-                                    // i.e. the engine can't drop below cabin temperature to heat the cabin
-                                    pwr_thrml_to_cab_req = pwr_thrml_to_cab_req
-                                        .min(
-                                            cab_heat_cap *
-                                        (te_fc.unwrap().get::<si::degree_celsius>()
-                                            - cab_state.temperature.get_stale(|| format_dbg!())?
-                                                .get::<si::degree_celsius>()) * uc::KELVIN_INT
-                                                * 0.1 // so that it's substantially less
-                                                / dt,
-                                        )
-                                        .max(si::Power::ZERO);
-                                }
-                                pwr_thrml_to_cab_req
-                            },
-                            || format_dbg!(),
-                        )?;
-                        ensure!(
-                            *self
-                                .state
-                                .pwr_thrml_to_cab_req
-                                .get_fresh(|| format_dbg!())?
-                                > si::Power::ZERO,
-                            "{}\nHVAC should be heating cabin\n{}\n{}\n{}\n{}",
-                            format_dbg!(self.state.pwr_thrml_to_cab_req),
-                            format!(
-                                "{}: {} W",
-                                stringify!(self.state.pwr_p_cab),
-                                self.state
-                                    .pwr_p_cab
-                                    .get_fresh(|| format_dbg!())?
-                                    .get::<si::watt>()
-                                    .format_eng(None)
-                            ),
-                            format!(
-                                "{}: {} W",
-                                stringify!(self.state.pwr_i_cab),
-                                self.state
-                                    .pwr_i_cab
-                                    .get_fresh(|| format_dbg!())?
-                                    .get::<si::watt>()
-                                    .format_eng(None)
-                            ),
-                            format!(
-                                "{}: {} W",
-                                stringify!(self.state.pwr_d_cab),
-                                self.state
-                                    .pwr_d_cab
-                                    .get_fresh(|| format_dbg!())?
-                                    .get::<si::watt>()
-                                    .format_eng(None)
-                            ),
-                            format!(
-                                "{}: {}*C",
-                                stringify!(cab_state.temperature),
-                                cab_state
-                                    .temperature
-                                    .get_stale(|| format_dbg!())?
-                                    .get::<si::degree_celsius>()
-                                    .format_eng(None)
-                            )
-                        );
-
-                        ensure!(
-                            *self
-                                .state
-                                .pwr_thrml_to_cab_req
-                                .get_fresh(|| format_dbg!())?
-                                >= si::Power::ZERO,
-                            "{}\nHVAC should be heating cabin",
-                            format_dbg!(self.state.pwr_thrml_to_cab_req)
-                        );
-
-                        // Heating
-                        match self.cabin_heat_source {
-                            CabinHeatSource::FuelConverter => {
-                                // NOTE: should make this scale with power demand because it does require blower
-                                ensure!(
-                                        te_fc.is_some(),
-                                        "{}\nExpected vehicle with [FuelConverter] with thermal plant model.",
-                                        format_dbg!()
-                                    );
-                                self.state
-                                    .pwr_aux_for_cab_hvac_req
-                                    .update(si::Power::ZERO, || format_dbg!())?;
-                            }
-                            CabinHeatSource::ResistanceHeater => {
-                                self.state.pwr_aux_for_cab_hvac_req.update(
-                                    *self
-                                        .state
-                                        .pwr_thrml_to_cab_req
-                                        .get_fresh(|| format_dbg!())?,
-                                    || format_dbg!(),
-                                )?;
-                            }
-                            CabinHeatSource::HeatPump => {
-                                self.state.pwr_aux_for_cab_hvac_req.update(
-                                    *self
-                                        .state
-                                        .pwr_thrml_to_cab_req
-                                        .get_fresh(|| format_dbg!())?
-                                        / self
-                                            .state
-                                            .cop
-                                            .get_fresh(|| format_dbg!())?
-                                            .with_context(|| {
-                                                format!(
-                                                    "{}\nExpected `self.state.cop` to be Some.",
-                                                    format_dbg!(self.state.cop)
-                                                )
-                                            })?,
-                                    || format_dbg!(),
-                                )?
-                            }
-                        }
-                        // Correct aux power components to account for any limit violations
-                        if *self
-                            .state
-                            .pwr_aux_for_cab_hvac_req
-                            .get_fresh(|| format_dbg!())?
-                            > self.pwr_aux_for_hvac_cab_max
-                        {
-                            self.state
-                                .pwr_aux_for_cab_hvac
-                                .update(self.pwr_aux_for_hvac_cab_max, || format_dbg!())?;
-                            self.state.pwr_thrml_hvac_to_cabin.update(
-                                match self.cabin_heat_source {
-                                    CabinHeatSource::FuelConverter => {
-                                        bail!("{}\nThis should be unreachable", format_dbg!());
-                                    }
-                                    CabinHeatSource::ResistanceHeater => *self
-                                        .state
-                                        .pwr_aux_for_cab_hvac
-                                        .get_fresh(|| format_dbg!())?,
-                                    CabinHeatSource::HeatPump => {
-                                        *self
-                                            .state
-                                            .pwr_aux_for_cab_hvac
-                                            .get_fresh(|| format_dbg!())?
-                                            * self
-                                                .state
-                                                .cop
-                                                .get_fresh(|| format_dbg!())?
-                                                .with_context(|| {
-                                                    format!(
-                                                        "{}\nExpected `self.state.cop` to be Some.",
-                                                        format_dbg!(self.state.cop)
-                                                    )
-                                                })?
-                                    }
-                                },
-                                || format_dbg!(),
-                            )?;
-                        } else {
-                            self.state.pwr_aux_for_cab_hvac.update(
-                                *self
-                                    .state
-                                    .pwr_aux_for_cab_hvac_req
-                                    .get_fresh(|| format_dbg!())?,
-                                || format_dbg!(),
-                            )?;
-                            self.state.pwr_thrml_hvac_to_cabin.update(
-                                *self
-                                    .state
-                                    .pwr_thrml_to_cab_req
-                                    .get_fresh(|| format_dbg!())?,
-                                || format_dbg!(),
-                            )?;
-                        }
-                        if self.cabin_heat_source.is_fuel_converter() {
-                            self.state.pwr_thrml_fc_to_cabin.update(
-                                *self
-                                    .state
-                                    .pwr_thrml_hvac_to_cabin
-                                    .get_fresh(|| format_dbg!())?,
-                                || format_dbg!(),
-                            )?;
-                        } else {
-                            self.state
-                                .pwr_thrml_fc_to_cabin
-                                .update(si::Power::ZERO, || format_dbg!())?;
-                        }
+                        self.solve_cab_heating(te_fc, cab_state, cab_heat_cap, dt, te_set_cab)?;
                     }
                     HvacMode::Inactive => {
                         self.state
@@ -694,6 +418,286 @@ impl HVACSystemForLumpedCabinAndRES {
                     .update(si::Power::ZERO, || format_dbg!())?;
             }
         }
+        Ok(())
+    }
+
+    fn solve_cab_cooling(
+        &mut self,
+        cab_state: &LumpedCabinState,
+        dt: si::Time,
+        te_set_cab: si::Temperature,
+    ) -> Result<(), anyhow::Error> {
+        self.set_cab_cntrl_state(cab_state, dt, te_set_cab, HvacMode::Cooling)?;
+        self.state.pwr_thrml_to_cab_req.update(
+            {
+                let pwr_thrml_hvac_to_cab_req: si::Power =
+                    (*self.state.pwr_p_cab.get_fresh(|| format_dbg!())?
+                        + *self.state.pwr_i_cab.get_fresh(|| format_dbg!())?
+                        + *self.state.pwr_d_cab.get_fresh(|| format_dbg!())?)
+                    .max(-self.pwr_thrml_max);
+                ensure!(
+                    pwr_thrml_hvac_to_cab_req <= si::Power::ZERO,
+                    "HVAC should be cooling cabin\n{}\n{}\n{}",
+                    format_dbg!(pwr_thrml_hvac_to_cab_req),
+                    format_dbg!(*self
+                        .state
+                        .pwr_aux_for_cab_hvac
+                        .get_fresh(|| format_dbg!())?),
+                    format_dbg!(*self.state.cop.get_fresh(|| format_dbg!())?)
+                );
+                pwr_thrml_hvac_to_cab_req
+            },
+            || format_dbg!(),
+        )?;
+        self.state.pwr_aux_for_cab_hvac_req.update(
+            -*self
+                .state
+                .pwr_thrml_to_cab_req
+                .get_fresh(|| format_dbg!())?
+                / self
+                    .state
+                    .cop
+                    .get_fresh(|| format_dbg!())?
+                    .with_context(|| {
+                        format!(
+                            "{}\nExpected `self.state.cop` to be Some.",
+                            format_dbg!(self.state.cop)
+                        )
+                    })?,
+            || format_dbg!(),
+        )?;
+        if *self
+            .state
+            .pwr_aux_for_cab_hvac_req
+            .get_fresh(|| format_dbg!())?
+            > self.pwr_aux_for_hvac_cab_max
+        {
+            self.state
+                .pwr_aux_for_cab_hvac
+                .update(self.pwr_aux_for_hvac_cab_max, || format_dbg!())?;
+            self.state.pwr_thrml_hvac_to_cabin.update(
+                -*self
+                    .state
+                    .pwr_aux_for_cab_hvac
+                    .get_fresh(|| format_dbg!())?
+                    * self
+                        .state
+                        .cop
+                        .get_fresh(|| format_dbg!())?
+                        .with_context(|| {
+                            format!(
+                                "{}\nExpected `self.state.cop` to be Some.",
+                                format_dbg!(self.state.cop)
+                            )
+                        })?,
+                || format_dbg!(),
+            )?;
+        } else {
+            self.state.pwr_aux_for_cab_hvac.update(
+                *self
+                    .state
+                    .pwr_aux_for_cab_hvac_req
+                    .get_fresh(|| format_dbg!())?,
+                || format_dbg!(),
+            )?;
+            self.state.pwr_thrml_hvac_to_cabin.update(
+                *self
+                    .state
+                    .pwr_thrml_to_cab_req
+                    .get_fresh(|| format_dbg!())?,
+                || format_dbg!(),
+            )?;
+        }
+        self.state
+            .pwr_thrml_fc_to_cabin
+            .update(si::Power::ZERO, || format_dbg!())?;
+        Ok(())
+    }
+
+    fn solve_cab_heating(
+        &mut self,
+        te_fc: Option<si::Temperature>,
+        cab_state: &LumpedCabinState,
+        cab_heat_cap: si::HeatCapacity,
+        dt: si::Time,
+        te_set_cab: si::Temperature,
+    ) -> Result<(), anyhow::Error> {
+        self.set_cab_cntrl_state(cab_state, dt, te_set_cab, HvacMode::Heating)?;
+        self.state.pwr_thrml_to_cab_req.update(
+            {
+                let mut pwr_thrml_to_cab_req =
+                    (*self.state.pwr_p_cab.get_fresh(|| format_dbg!())?
+                        + *self.state.pwr_i_cab.get_fresh(|| format_dbg!())?
+                        + *self.state.pwr_d_cab.get_fresh(|| format_dbg!())?)
+                    .min(self.pwr_thrml_max);
+                if self.cabin_heat_source.is_fuel_converter() {
+                    // limit heat transfer to be substantially less than what is physically possible
+                    // i.e. the engine can't drop below cabin temperature to heat the cabin
+                    pwr_thrml_to_cab_req = pwr_thrml_to_cab_req
+                        .min(
+                            cab_heat_cap *
+                        (te_fc.unwrap().get::<si::degree_celsius>()
+                            - cab_state.temperature.get_stale(|| format_dbg!())?
+                                .get::<si::degree_celsius>()) * uc::KELVIN_INT
+                                * 0.1 // so that it's substantially less
+                                / dt,
+                        )
+                        .max(si::Power::ZERO);
+                }
+                pwr_thrml_to_cab_req
+            },
+            || format_dbg!(),
+        )?;
+        ensure!(
+            *self
+                .state
+                .pwr_thrml_to_cab_req
+                .get_fresh(|| format_dbg!())?
+                >= si::Power::ZERO,
+            "{}\nHVAC should be heating cabin\n{}\n{}\n{}\n{}",
+            format_dbg!(self.state.pwr_thrml_to_cab_req),
+            format!(
+                "{}: {} W",
+                stringify!(self.state.pwr_p_cab),
+                self.state
+                    .pwr_p_cab
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::watt>()
+                    .format_eng(None)
+            ),
+            format!(
+                "{}: {} W",
+                stringify!(self.state.pwr_i_cab),
+                self.state
+                    .pwr_i_cab
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::watt>()
+                    .format_eng(None)
+            ),
+            format!(
+                "{}: {} W",
+                stringify!(self.state.pwr_d_cab),
+                self.state
+                    .pwr_d_cab
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::watt>()
+                    .format_eng(None)
+            ),
+            format!(
+                "{}: {}*C",
+                stringify!(cab_state.temperature),
+                cab_state
+                    .temperature
+                    .get_stale(|| format_dbg!())?
+                    .get::<si::degree_celsius>()
+                    .format_eng(None)
+            )
+        );
+        match self.cabin_heat_source {
+            CabinHeatSource::FuelConverter => {
+                // NOTE: should make this scale with power demand because it does require blower
+                ensure!(
+                    te_fc.is_some(),
+                    "{}\nExpected vehicle with [FuelConverter] with thermal plant model.",
+                    format_dbg!()
+                );
+                self.state
+                    .pwr_aux_for_cab_hvac_req
+                    .update(si::Power::ZERO, || format_dbg!())?;
+            }
+            CabinHeatSource::ResistanceHeater => {
+                self.state.pwr_aux_for_cab_hvac_req.update(
+                    *self
+                        .state
+                        .pwr_thrml_to_cab_req
+                        .get_fresh(|| format_dbg!())?,
+                    || format_dbg!(),
+                )?;
+            }
+            CabinHeatSource::HeatPump => self.state.pwr_aux_for_cab_hvac_req.update(
+                *self
+                    .state
+                    .pwr_thrml_to_cab_req
+                    .get_fresh(|| format_dbg!())?
+                    / self
+                        .state
+                        .cop
+                        .get_fresh(|| format_dbg!())?
+                        .with_context(|| {
+                            format!(
+                                "{}\nExpected `self.state.cop` to be Some.",
+                                format_dbg!(self.state.cop)
+                            )
+                        })?,
+                || format_dbg!(),
+            )?,
+        }
+        if *self
+            .state
+            .pwr_aux_for_cab_hvac_req
+            .get_fresh(|| format_dbg!())?
+            > self.pwr_aux_for_hvac_cab_max
+        {
+            self.state
+                .pwr_aux_for_cab_hvac
+                .update(self.pwr_aux_for_hvac_cab_max, || format_dbg!())?;
+            self.state.pwr_thrml_hvac_to_cabin.update(
+                match self.cabin_heat_source {
+                    CabinHeatSource::FuelConverter => {
+                        bail!("{}\nThis should be unreachable", format_dbg!());
+                    }
+                    CabinHeatSource::ResistanceHeater => *self
+                        .state
+                        .pwr_aux_for_cab_hvac
+                        .get_fresh(|| format_dbg!())?,
+                    CabinHeatSource::HeatPump => {
+                        *self
+                            .state
+                            .pwr_aux_for_cab_hvac
+                            .get_fresh(|| format_dbg!())?
+                            * self
+                                .state
+                                .cop
+                                .get_fresh(|| format_dbg!())?
+                                .with_context(|| {
+                                    format!(
+                                        "{}\nExpected `self.state.cop` to be Some.",
+                                        format_dbg!(self.state.cop)
+                                    )
+                                })?
+                    }
+                },
+                || format_dbg!(),
+            )?;
+        } else {
+            self.state.pwr_aux_for_cab_hvac.update(
+                *self
+                    .state
+                    .pwr_aux_for_cab_hvac_req
+                    .get_fresh(|| format_dbg!())?,
+                || format_dbg!(),
+            )?;
+            self.state.pwr_thrml_hvac_to_cabin.update(
+                *self
+                    .state
+                    .pwr_thrml_to_cab_req
+                    .get_fresh(|| format_dbg!())?,
+                || format_dbg!(),
+            )?;
+        }
+        if self.cabin_heat_source.is_fuel_converter() {
+            self.state.pwr_thrml_fc_to_cabin.update(
+                *self
+                    .state
+                    .pwr_thrml_hvac_to_cabin
+                    .get_fresh(|| format_dbg!())?,
+                || format_dbg!(),
+            )?;
+        } else {
+            self.state
+                .pwr_thrml_fc_to_cabin
+                .update(si::Power::ZERO, || format_dbg!())?;
+        };
         Ok(())
     }
 
