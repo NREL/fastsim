@@ -945,13 +945,20 @@ mod tests {
             Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
 
-        let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
+        let te_amb_and_cab_and_batt_init_deg_c: Vec<(f64, f64)> = vec![
+            (-6.7, -6.7),
+            (5.0, 18.0),
+            (22.0, 22.0),
+            (25.0, 35.0),
+            (45.0, 45.0),
+        ];
+        let te_amb: Vec<si::Temperature> = te_amb_and_cab_and_batt_init_deg_c
             .iter()
-            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .map(|t| (t.0 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
             .collect();
-        let te_batt_and_cab_init: Vec<si::Temperature> = [-6.7, 22.0, 45.0]
+        let te_batt_and_cab_init: Vec<si::Temperature> = te_amb_and_cab_and_batt_init_deg_c
             .iter()
-            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .map(|t| (t.1 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
             .collect();
         let te_fc_init: Vec<si::Temperature> = [-6.7, 70.0, 90.0]
             .iter()
@@ -1192,13 +1199,20 @@ mod tests {
         let _veh = Vehicle::from_resource("2020 Chevrolet Bolt EV thrml.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
 
-        let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
+        let te_amb_and_cab_and_batt_init_deg_c: Vec<(f64, f64)> = vec![
+            (-6.7, -6.7),
+            (5.0, 18.0),
+            (22.0, 22.0),
+            (25.0, 35.0),
+            (45.0, 45.0),
+        ];
+        let te_amb: Vec<si::Temperature> = te_amb_and_cab_and_batt_init_deg_c
             .iter()
-            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .map(|t| (t.0 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
             .collect();
-        let te_batt_and_cab_init: Vec<si::Temperature> = [-6.7, 22.0, 45.0]
+        let te_batt_and_cab_init: Vec<si::Temperature> = te_amb_and_cab_and_batt_init_deg_c
             .iter()
-            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .map(|t| (t.1 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
             .collect();
         for (te_amb, te_init) in te_amb.iter().zip(te_batt_and_cab_init) {
             let mut veh = _veh.clone();
