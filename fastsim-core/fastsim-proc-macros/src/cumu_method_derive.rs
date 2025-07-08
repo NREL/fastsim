@@ -37,10 +37,10 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
                     let key = ENERGY_REGEX.captures(field_str).unwrap()[1].to_string();
                     if fields
                         .iter()
-                        .any(|x| *x.ident.as_ref().unwrap() == format!("pwr_{}", key))
+                        .any(|x| *x.ident.as_ref().unwrap() == format!("pwr_{key}"))
                     {
                         Some((
-                            format!("pwr_{}", key).parse().unwrap(),
+                            format!("pwr_{key}").parse().unwrap(),
                             field_str.clone().parse().unwrap(),
                         ))
                     } else {

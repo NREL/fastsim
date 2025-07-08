@@ -434,7 +434,7 @@ impl FuelConverter {
     /// changing max such that max - min is equal to new range.  Will change max
     /// if needed to ensure no values are less than zero.
     pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        if eff_range <= 1.0 && eff_range >= 0. {
+        if (0. ..=1.0).contains(&eff_range) {
             self.eff_interp_from_pwr_out.set_range(eff_range)
         } else {
             Err(anyhow!(format!(

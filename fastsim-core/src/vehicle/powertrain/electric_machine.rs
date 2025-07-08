@@ -103,11 +103,11 @@ impl Powertrain for ElectricMachine {
     /// required.
     /// # Arguments
     /// - `pwr_in_fwd_lim`: positive-propulsion-related power available to this
-    ///    component. Positive values indicate that the upstream component can supply
-    ///    positive tractive power.
+    ///   component. Positive values indicate that the upstream component can supply
+    ///   positive tractive power.
     /// - `pwr_in_bwd_lim`: negative-propulsion-related power available to this
-    ///     component. Zero means no power can be sent to upstream compnents and positive
-    ///     values indicate upstream components can absorb energy.
+    ///   component. Zero means no power can be sent to upstream compnents and positive
+    ///   values indicate upstream components can absorb energy.
     /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: simulation time step size
     fn set_curr_pwr_prop_out_max(
@@ -427,7 +427,7 @@ impl Init for ElectricMachine {
                     // as currently is done, or should they be set to be specific
                     // Extrapolate and Strategy types?
                     interp.strategy.clone(),
-                    interp.extrapolate.clone(),
+                    interp.extrapolate,
                 )
             }
             _ => unimplemented!(),
@@ -639,11 +639,9 @@ impl ElectricMachine {
                         interp.data.values = Array::from_vec(f_x_bwd);
                         Ok(())
                     }
-                    _ => {
-                        return Err(Error::InitError(format_dbg!(
-                            "Only 1-D interpolators are supported"
-                        )));
-                    }
+                    _ => Err(Error::InitError(format_dbg!(
+                        "Only 1-D interpolators are supported"
+                    ))),
                 })
                 .transpose()?;
             Ok(())

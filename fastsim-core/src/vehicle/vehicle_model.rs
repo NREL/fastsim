@@ -649,61 +649,47 @@ impl Vehicle {
         self.state.energy_whl_inertia.mark_stale();
         self.state.energy_brake.mark_stale();
         self.state.dist.mark_stale();
-        match self.fc_mut() {
-            Some(fc) => {
-                fc.state.i.mark_stale();
-                fc.state.mark_fresh(|| format_dbg!())?;
-                fc.state.energy_prop.mark_stale();
-                fc.state.energy_aux.mark_stale();
-                fc.state.energy_fuel.mark_stale();
-                fc.state.energy_loss.mark_stale();
-            }
-            None => {}
+        if let Some(fc) = self.fc_mut() {
+            fc.state.i.mark_stale();
+            fc.state.mark_fresh(|| format_dbg!())?;
+            fc.state.energy_prop.mark_stale();
+            fc.state.energy_aux.mark_stale();
+            fc.state.energy_fuel.mark_stale();
+            fc.state.energy_loss.mark_stale();
         }
-        match self.res_mut() {
-            Some(res) => {
-                res.state.i.mark_stale();
-                res.state.soh.mark_stale();
-                res.state.mark_fresh(|| format_dbg!())?;
-                res.state.energy_out_electrical.mark_stale();
-                res.state.energy_out_prop.mark_stale();
-                res.state.energy_aux.mark_stale();
-                res.state.energy_loss.mark_stale();
-                res.state.energy_out_chemical.mark_stale();
-            }
-            None => {}
+        if let Some(res) = self.res_mut() {
+            res.state.i.mark_stale();
+            res.state.soh.mark_stale();
+            res.state.mark_fresh(|| format_dbg!())?;
+            res.state.energy_out_electrical.mark_stale();
+            res.state.energy_out_prop.mark_stale();
+            res.state.energy_aux.mark_stale();
+            res.state.energy_loss.mark_stale();
+            res.state.energy_out_chemical.mark_stale();
         }
-        match self.em_mut() {
-            Some(em) => {
-                em.state.i.mark_stale();
-                em.state.mark_fresh(|| format_dbg!())?;
-                em.state.energy_out_req.mark_stale();
-                em.state.energy_elec_prop_in.mark_stale();
-                em.state.energy_mech_prop_out.mark_stale();
-                em.state.energy_mech_dyn_brake.mark_stale();
-                em.state.energy_elec_dyn_brake.mark_stale();
-                em.state.energy_loss.mark_stale();
-            }
-            None => {}
+
+        if let Some(em) = self.em_mut() {
+            em.state.i.mark_stale();
+            em.state.mark_fresh(|| format_dbg!())?;
+            em.state.energy_out_req.mark_stale();
+            em.state.energy_elec_prop_in.mark_stale();
+            em.state.energy_mech_prop_out.mark_stale();
+            em.state.energy_mech_dyn_brake.mark_stale();
+            em.state.energy_elec_dyn_brake.mark_stale();
+            em.state.energy_loss.mark_stale();
         }
-        match self.trans_mut() {
-            Some(trans) => {
-                trans.state.i.mark_stale();
-                trans.state.mark_fresh(|| format_dbg!())?;
-                trans.state.energy_out.mark_stale();
-                trans.state.energy_in.mark_stale();
-                trans.state.energy_loss.mark_stale();
-            }
-            None => {}
+        if let Some(trans) = self.trans_mut() {
+            trans.state.i.mark_stale();
+            trans.state.mark_fresh(|| format_dbg!())?;
+            trans.state.energy_out.mark_stale();
+            trans.state.energy_in.mark_stale();
+            trans.state.energy_loss.mark_stale();
         }
-        match &mut self.pt_type {
-            PowertrainType::HybridElectricVehicle(hev) => {
-                match &mut hev.pt_cntrl {
-                    HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
-                }
-                hev.pt_cntrl.mark_fresh(|| format_dbg!())?
+        if let PowertrainType::HybridElectricVehicle(hev) = &mut self.pt_type {
+            match &mut hev.pt_cntrl {
+                HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
             }
-            _ => {}
+            hev.pt_cntrl.mark_fresh(|| format_dbg!())?
         }
         Ok(())
     }

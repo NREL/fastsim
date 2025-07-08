@@ -261,10 +261,10 @@ impl HybridElectricVehicle {
     /// # Arguments
     /// - `te_amb`: ambient temperature
     /// - `pwr_thrml_fc_to_cab`: thermal power flow from [FuelConverter::thrml]
-    ///     to [Vehicle::cabin], if cabin is equipped
+    ///   to [Vehicle::cabin], if cabin is equipped
     /// - `veh_state`: current [VehicleState]
     /// - `pwr_thrml_hvac_to_res`: thermal power flow from [Vehicle::hvac] --
-    ///     zero if `None` is passed
+    ///   zero if `None` is passed
     /// - `te_cab`: cabin temperature, required if [ReversibleEnergyStorage::thrml] is `Some`
     /// - `dt`: simulation time step size
     pub fn solve_thermal(

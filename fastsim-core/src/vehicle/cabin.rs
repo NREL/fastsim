@@ -196,7 +196,7 @@ impl LumpedCabin {
     /// - `dt`: simulation time step size
     /// # Returns
     /// - `te_cab`: current cabin temperature, after solving cabin for current
-    ///     simulation time step
+    ///   simulation time step
     pub fn solve(
         &mut self,
         te_amb_air: si::Temperature,

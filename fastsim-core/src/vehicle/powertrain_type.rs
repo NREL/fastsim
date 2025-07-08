@@ -151,8 +151,8 @@ impl PowertrainType {
     /// - `pwr_thrml_fc_to_cab`: thermal power flow from [FuelConverter::thrml] to [Vehicle::cabin], if both are equipped
     /// - `veh_state`: current state of vehicle
     /// - `pwr_thrml_hvac_to_res`: thermal power flow from [Vehicle::hvac]
-    ///    system, if equipped, to [ReversibleEnergyStorage::thrml] -- zero if `None` is
-    ///    passed
+    ///   system, if equipped, to [ReversibleEnergyStorage::thrml] -- zero if `None` is
+    ///   passed
     /// - `te_cab`: [Vehicle::cabin] temperature, if equipped
     /// - `dt`: simulation time step size
     pub fn solve_thermal(

@@ -1188,8 +1188,7 @@ impl Maneuver {
             * self.drag_coef.get::<si::ratio>()
             * self.frontal_area.get::<si::square_meter>();
         let rrc = self.wheel_rr_coef.get::<si::ratio>();
-        -1.0 * ((g / v) * (atan_grade_sin + rrc * atan_grade_cos)
-            + (0.5 * rho_cdfa * (1.0 / m) * v))
+        -((g / v) * (atan_grade_sin + rrc * atan_grade_cos) + (0.5 * rho_cdfa * (1.0 / m) * v))
     }
 
     /// Prevent collision between the vehicle in cyc and the one in cyc0.

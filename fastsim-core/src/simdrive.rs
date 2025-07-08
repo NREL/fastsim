@@ -380,9 +380,8 @@ impl SimDrive {
                 * self.veh.chassis.drag_coef.get::<si::ratio>()
                 * self.veh.chassis.frontal_area.get::<si::square_meter>();
             let rrc = self.veh.chassis.wheel_rr_coef.get::<si::ratio>();
-            Ok(-1.0
-                * ((g / v) * (atan_grade_sin + rrc * atan_grade_cos)
-                    + (0.5 * rho_cdfa * (1.0 / m) * v)))
+            Ok(-((g / v) * (atan_grade_sin + rrc * atan_grade_cos)
+                + (0.5 * rho_cdfa * (1.0 / m) * v)))
         }
     }
 
