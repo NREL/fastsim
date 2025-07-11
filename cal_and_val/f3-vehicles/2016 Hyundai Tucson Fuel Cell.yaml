@@ -713,7 +713,6 @@ chassis:
   wheel_base_meters: 2.69
 mass_kilograms: 2177.165764419529
 pwr_aux_base_watts: 280.0
-trans_eff: 0.98
 save_interval: 1
 state:
   i: 0

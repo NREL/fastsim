@@ -19,7 +19,6 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             cabin: Default::default(),
             hvac: Default::default(),
             pwr_aux_base: f2veh.aux_kw * uc::KW,
-            trans_eff: f2veh.trans_eff * uc::R,
             state: Default::default(),
             save_interval,
             history: Default::default(),
@@ -56,41 +55,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             .with_context(|| anyhow!(format_dbg!()))?;
                         fs
                     },
-                    fc: {
-                        let mut fc = FuelConverter {
-                            state: Default::default(),
-                            thrml: Default::default(),
-                            mass: None,
-                            specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
-                            pwr_out_max: f2veh.fc_max_kw * uc::KW,
-                            // assumes 1 s time step
-                            pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
-                            pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                            eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
-                                f2veh.fc_perc_out_array.clone().into(),
-                                f2veh.fc_eff_array.clone().into(),
-                                strategy::LeftNearest,
-                                Extrapolate::Error,
-                            )
-                            .with_context(|| format_dbg!())?,
-                            pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
-                            // this means that aux power must include idle fuel
-                            pwr_idle_fuel: si::Power::ZERO,
-                            save_interval: Some(1),
-                            history: Default::default(),
-                        };
-                        fc.init()?;
-                        fc.set_mass(None, MassSideEffect::None)
-                            .with_context(|| anyhow!(format_dbg!()))?;
-                        fc
-                    },
-                    transmission: Transmission {
-                        mass: None,
-                        eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
-                        save_interval: Some(1),
-                        state: Default::default(),
-                        history: Default::default(),
-                    },
+                    fc: FuelConverter::try_from(f2veh.clone())?,
+                    transmission: Transmission::try_from(f2veh.clone())?,
                     mass: None,
                     alt_eff: f2veh.alt_eff * uc::R,
                 };
@@ -133,85 +99,11 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             .with_context(|| anyhow!(format_dbg!()))?;
                         fs
                     },
-                    fc: {
-                        let mut fc = FuelConverter {
-                            state: Default::default(),
-                            thrml: Default::default(),
-                            mass: None,
-                            specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
-                            pwr_out_max: f2veh.fc_max_kw * uc::KW,
-                            // assumes 1 s time step
-                            pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
-                            pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                            eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
-                                f2veh.fc_perc_out_array.clone().into(),
-                                f2veh.fc_eff_array.clone().into(),
-                                strategy::LeftNearest,
-                                Extrapolate::Error,
-                            )
-                            .with_context(|| format_dbg!())?,
-                            pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
-                            // this means that aux power must include idle fuel
-                            pwr_idle_fuel: si::Power::ZERO,
-                            save_interval: Some(1),
-                            history: Default::default(),
-                        };
-                        fc.init()?;
-                        fc.set_mass(None, MassSideEffect::None)
-                            .with_context(|| anyhow!(format_dbg!()))?;
-                        fc
-                    },
-                    res: ReversibleEnergyStorage {
-                        thrml: Default::default(),
-                        state: Default::default(),
-                        mass: None,
-                        specific_energy: None,
-                        pwr_out_max: f2veh.ess_max_kw * uc::KW,
-                        energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-                        eff_interp: ResEffInterp::Constant(Interp0D::new(
-                            f2veh.ess_round_trip_eff.sqrt(),
-                        )),
-                        min_soc: f2veh.min_soc * uc::R,
-                        max_soc: f2veh.max_soc * uc::R,
-                        save_interval: Some(1),
-                        history: Default::default(),
-                    },
-                    em: ElectricMachine {
-                        state: Default::default(),
-                        eff_interp_achieved: InterpolatorEnum::new_1d(
-                            f2veh.mc_perc_out_array.clone().into(),
-                            {
-                                let mut mc_full_eff =
-                                    Array1::from_vec(f2veh.mc_full_eff_array.clone());
-                                ensure!(mc_full_eff.len() > 1);
-                                mc_full_eff[0] = mc_full_eff[1];
-                                mc_full_eff
-                            },
-                            strategy::LeftNearest,
-                            Extrapolate::Error,
-                        )
-                        .with_context(|| {
-                            format!(
-                                "{}\n{}",
-                                format_dbg!(f2veh.mc_full_eff_array.len()),
-                                format_dbg!(f2veh.mc_perc_out_array.len())
-                            )
-                        })?,
-                        eff_interp_at_max_input: None,
-                        // pwr_in_frac_interp: Default::default(),
-                        pwr_out_max: f2veh.mc_max_kw * uc::KW,
-                        specific_pwr: None,
-                        mass: None,
-                        save_interval: Some(1),
-                        history: Default::default(),
-                    },
-                    transmission: Transmission {
-                        mass: None,
-                        eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
-                        save_interval: Some(1),
-                        state: Default::default(),
-                        history: Default::default(),
-                    },
+                    fc: FuelConverter::try_from(f2veh.clone())?,
+                    res: ReversibleEnergyStorage::try_from(f2veh.clone())
+                        .with_context(|| format_dbg!())?,
+                    em: ElectricMachine::try_from(f2veh.clone())?,
+                    transmission: Transmission::try_from(f2veh.clone())?,
                     pt_cntrl,
                     mass: None,
                     sim_params: Default::default(),
@@ -259,85 +151,11 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             .with_context(|| anyhow!(format_dbg!()))?;
                         fs
                     },
-                    fc: {
-                        let mut fc = FuelConverter {
-                            state: Default::default(),
-                            thrml: Default::default(),
-                            mass: None,
-                            specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
-                            pwr_out_max: f2veh.fc_max_kw * uc::KW,
-                            // assumes 1 s time step
-                            pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
-                            pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                            eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
-                                f2veh.fc_perc_out_array.clone().into(),
-                                f2veh.fc_eff_array.clone().into(),
-                                strategy::LeftNearest,
-                                Extrapolate::Error,
-                            )
-                            .with_context(|| format_dbg!())?,
-                            pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
-                            // this means that aux power must include idle fuel
-                            pwr_idle_fuel: si::Power::ZERO,
-                            save_interval: Some(1),
-                            history: Default::default(),
-                        };
-                        fc.init()?;
-                        fc.set_mass(None, MassSideEffect::None)
-                            .with_context(|| anyhow!(format_dbg!()))?;
-                        fc
-                    },
-                    res: ReversibleEnergyStorage {
-                        thrml: Default::default(),
-                        state: Default::default(),
-                        mass: None,
-                        specific_energy: None,
-                        pwr_out_max: f2veh.ess_max_kw * uc::KW,
-                        energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-                        eff_interp: ResEffInterp::Constant(Interp0D::new(
-                            f2veh.ess_round_trip_eff.sqrt(),
-                        )),
-                        min_soc: f2veh.min_soc * uc::R,
-                        max_soc: f2veh.max_soc * uc::R,
-                        save_interval: Some(1),
-                        history: Default::default(),
-                    },
-                    em: ElectricMachine {
-                        state: Default::default(),
-                        eff_interp_achieved: InterpolatorEnum::new_1d(
-                            f2veh.mc_perc_out_array.clone().into(),
-                            {
-                                let mut mc_full_eff =
-                                    Array1::from_vec(f2veh.mc_full_eff_array.clone());
-                                ensure!(mc_full_eff.len() > 1);
-                                mc_full_eff[0] = mc_full_eff[1];
-                                mc_full_eff
-                            },
-                            strategy::LeftNearest,
-                            Extrapolate::Error,
-                        )
-                        .with_context(|| {
-                            format!(
-                                "{}\n{}",
-                                format_dbg!(f2veh.mc_full_eff_array.len()),
-                                format_dbg!(f2veh.mc_perc_out_array.len())
-                            )
-                        })?,
-                        eff_interp_at_max_input: None,
-                        // pwr_in_frac_interp: Default::default(),
-                        pwr_out_max: f2veh.mc_max_kw * uc::KW,
-                        specific_pwr: None,
-                        mass: None,
-                        save_interval: Some(1),
-                        history: Default::default(),
-                    },
-                    transmission: Transmission {
-                        mass: None,
-                        eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
-                        save_interval: Some(1),
-                        state: Default::default(),
-                        history: Default::default(),
-                    },
+                    fc: FuelConverter::try_from(f2veh.clone())?,
+                    res: ReversibleEnergyStorage::try_from(f2veh.clone())
+                        .with_context(|| format_dbg!())?,
+                    em: ElectricMachine::try_from(f2veh.clone())?,
+                    transmission: Transmission::try_from(f2veh.clone())?,
                     pt_cntrl,
                     mass: None,
                     sim_params: Default::default(),
@@ -350,27 +168,14 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
             }
             BEV => {
                 let bev = BatteryElectricVehicle {
-                    res: ReversibleEnergyStorage {
-                        thrml: Default::default(),
-                        state: Default::default(),
-                        mass: None,
-                        specific_energy: None,
-                        pwr_out_max: f2veh.ess_max_kw * uc::KW,
-                        energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-                        eff_interp: ResEffInterp::Constant(Interp0D::new(
-                            f2veh.ess_round_trip_eff.sqrt(),
-                        )),
-                        min_soc: f2veh.min_soc * uc::R,
-                        max_soc: f2veh.max_soc * uc::R,
-                        save_interval: Some(1),
-                        history: Default::default(),
-                    },
+                    res: ReversibleEnergyStorage::try_from(f2veh.clone())
+                        .with_context(|| format_dbg!())?,
                     em: ElectricMachine {
                         state: Default::default(),
                         eff_interp_achieved: InterpolatorEnum::new_1d(
                             f2veh.mc_pwr_out_perc.clone(),
                             f2veh.mc_eff_array.clone(),
-                            strategy::LeftNearest,
+                            strategy::Linear,
                             Extrapolate::Error,
                         )?,
                         eff_interp_at_max_input: Some(InterpolatorEnum::new_1d(
@@ -383,7 +188,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                                 .map(|(x, y)| x / y)
                                 .collect(),
                             f2veh.mc_eff_array.clone(),
-                            strategy::LeftNearest,
+                            strategy::Linear,
                             Extrapolate::Error,
                         )?),
                         pwr_out_max: f2veh.mc_max_kw * uc::KW,
@@ -392,13 +197,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         save_interval: Some(1),
                         history: Default::default(),
                     },
-                    transmission: Transmission {
-                        mass: None,
-                        eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
-                        save_interval: Some(1),
-                        state: Default::default(),
-                        history: Default::default(),
-                    },
+                    transmission: Transmission::try_from(f2veh.clone())?,
                     mass: None,
                 };
                 Ok(PowertrainType::BatteryElectricVehicle(Box::new(bev)))
@@ -682,7 +481,17 @@ impl Vehicle {
             small_motor_power_kw: 7.5,
             stop_start: false, // TODO: revisit when implemementing mild hybrids and stop/start vehicles
             stop_start_doc: None,
-            trans_eff: self.trans_eff.get::<si::ratio>(),
+            trans_eff: {
+                match self
+                    .trans()
+                    .cloned()
+                    .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?
+                    .eff_interp
+                {
+                    InterpolatorEnum::Interp0D(eff) => eff.0,
+                    _ => todo!(),
+                }
+            },
             trans_eff_doc: None,
             trans_kg: 114.0, // TODO: replace with actual transmission mass
             trans_kg_doc: None,

@@ -38,13 +38,13 @@ pub struct Vehicle {
     pub chassis: Chassis,
 
     /// Cabin thermal model
-    #[serde(default, skip_serializing_if = "CabinOption::is_none")]
     #[has_state]
+    #[serde(default)]
     pub cabin: CabinOption,
 
     /// HVAC model
-    #[serde(default, skip_serializing_if = "HVACOption::is_none")]
     #[has_state]
+    #[serde(default)]
     pub hvac: HVACOption,
 
     /// Total vehicle mass
@@ -53,16 +53,13 @@ pub struct Vehicle {
     /// Baseline power required by auxilliary systems
     pub pwr_aux_base: si::Power,
 
-    /// Transmission efficiency
-    pub trans_eff: si::Ratio,
-
     /// time step interval at which `state` is saved into `history`
     save_interval: Option<usize>,
     /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
     /// Vector-like history of [Self::state]
-    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
+    #[serde(default)]
     pub history: VehicleStateHistoryVec,
 }
 
@@ -132,6 +129,11 @@ impl Vehicle {
     #[pyo3(name = "reset_step")]
     fn reset_step_py(&mut self) -> anyhow::Result<()> {
         self.reset_step(|| format_dbg!())
+    }
+
+    #[pyo3(name = "to_fastsim2")]
+    fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
+        self.to_fastsim2()
     }
 }
 
@@ -823,6 +825,8 @@ pub(crate) mod tests {
     }
 
     #[cfg(feature = "yaml")]
+    /// Load representative conv from fastsim-2, convert to fastsim-3 format, and
+    /// save to file in the resources folder
     pub(crate) fn mock_conv_veh() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -839,6 +843,8 @@ pub(crate) mod tests {
     }
 
     #[cfg(feature = "yaml")]
+    /// Load representative HEV from fastsim-2, convert to fastsim-3 format, and
+    /// save to file in the resources folder
     pub(crate) fn mock_hev() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -855,6 +861,8 @@ pub(crate) mod tests {
     }
 
     #[cfg(feature = "yaml")]
+    /// Load representative BEV from fastsim-2, convert to fastsim-3 format, and
+    /// save to file in the resources folder
     pub(crate) fn mock_bev() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -929,7 +937,16 @@ pub(crate) mod tests {
                 eprintln!("Error loading {resource:?}: {e}\n");
             }
         }
+        if time_to_panic {
+            panic!()
+        }
+    }
 
+    #[test]
+    fn test_calibrated_vehicles() {
+        let mut time_to_panic = false;
+
+        // check that calibrated vehicles can load
         let paths: Vec<_> = std::fs::read_dir("../cal_and_val/f3-vehicles")
             .unwrap()
             .collect();
@@ -942,6 +959,7 @@ pub(crate) mod tests {
             }
         }
 
+        // check that calibrated thermal-equipped vehicles can load
         let paths: Vec<_> = std::fs::read_dir("../cal_and_val/thermal/f3-vehicles")
             .unwrap()
             .collect();

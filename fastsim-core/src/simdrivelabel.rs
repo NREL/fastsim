@@ -1101,6 +1101,14 @@ mod tests {
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
+        veh.fc_mut()
+            .map(|fc| match &mut fc.eff_interp_from_pwr_out {
+                Interp1D { data, .. } => {
+                    data.grid = f2veh.fc_perc_out_array.into();
+                    data.values = f2veh.fc_eff_array;
+                }
+            })
+            .unwrap();
 
         // Get FASTSim-3 label FE results
         let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)

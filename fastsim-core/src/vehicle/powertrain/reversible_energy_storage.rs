@@ -15,8 +15,8 @@ const TOL: f64 = 1e-3;
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
 pub struct ReversibleEnergyStorage {
     /// [Self] Thermal plant, including thermal management controls
-    #[serde(default, skip_serializing_if = "RESThermalOption::is_none")]
     #[has_state]
+    #[serde(default)]
     pub thrml: RESThermalOption,
     /// ReversibleEnergyStorage mass
     #[serde(default)]
@@ -43,10 +43,7 @@ pub struct ReversibleEnergyStorage {
     #[serde(default)]
     pub state: ReversibleEnergyStorageState,
     /// Custom vector of [Self::state]
-    #[serde(
-        default,
-        skip_serializing_if = "ReversibleEnergyStorageStateHistoryVec::is_empty"
-    )]
+    #[serde(default)]
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
@@ -809,6 +806,26 @@ impl HistoryMethods for ReversibleEnergyStorage {
     }
 }
 
+impl TryFrom<fastsim_2::vehicle::RustVehicle> for ReversibleEnergyStorage {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> anyhow::Result<ReversibleEnergyStorage> {
+        let f3_res = ReversibleEnergyStorage {
+            thrml: Default::default(),
+            state: Default::default(),
+            mass: None,
+            specific_energy: None,
+            pwr_out_max: f2veh.ess_max_kw * uc::KW,
+            energy_capacity: f2veh.ess_max_kwh * uc::KWH,
+            eff_interp: EffInterp::Constant(Interp0D::new(f2veh.ess_round_trip_eff.sqrt())),
+            min_soc: f2veh.min_soc * uc::R,
+            max_soc: f2veh.max_soc * uc::R,
+            save_interval: Some(1),
+            history: Default::default(),
+        };
+        Ok(f3_res)
+    }
+}
+
 #[derive(
     Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
 )]
@@ -1069,10 +1086,7 @@ pub struct RESLumpedThermal {
     #[serde(default)]
     pub state: RESLumpedThermalState,
     /// history of state
-    #[serde(
-        default,
-        skip_serializing_if = "RESLumpedThermalStateHistoryVec::is_empty"
-    )]
+    #[serde(default)]
     pub history: RESLumpedThermalStateHistoryVec,
     pub save_interval: Option<usize>,
 }

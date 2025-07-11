@@ -19,7 +19,7 @@ pub struct Transmission {
     #[serde(default)]
     pub state: TransmissionState,
     /// Custom vector of [Self::state]
-    #[serde(default, skip_serializing_if = "TransmissionStateHistoryVec::is_empty")]
+    #[serde(default)]
     pub history: TransmissionStateHistoryVec,
 }
 
@@ -172,6 +172,19 @@ impl Mass for Transmission {
     }
 }
 
+impl TryFrom<fastsim_2::vehicle::RustVehicle> for Transmission {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> anyhow::Result<Transmission> {
+        let transmission = Transmission {
+            mass: None,
+            eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
+            save_interval: Some(1),
+            state: Default::default(),
+            history: Default::default(),
+        };
+        Ok(transmission)
+    }
+}
 #[serde_api]
 #[derive(
     Clone,

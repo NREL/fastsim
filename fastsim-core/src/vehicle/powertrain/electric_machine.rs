@@ -39,10 +39,7 @@ pub struct ElectricMachine {
     #[serde(default)]
     pub state: ElectricMachineState,
     /// Custom vector of [Self::state]
-    #[serde(
-        default,
-        skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty"
-    )]
+    #[serde(default)]
     pub history: ElectricMachineStateHistoryVec,
 }
 
@@ -513,6 +510,25 @@ impl Mass for ElectricMachine {
     }
 }
 
+impl TryFrom<EMBuilder> for ElectricMachine {
+    type Error = anyhow::Error;
+    fn try_from(em_builder: EMBuilder) -> anyhow::Result<ElectricMachine> {
+        let mut em = ElectricMachine {
+            eff_interp_achieved: em_builder.eff_interp_achieved.clone(),
+            eff_interp_at_max_input: None,
+            pwr_out_max: em_builder.pwr_out_max,
+            specific_pwr: None,
+            mass: None,
+            save_interval: Some(1),
+            state: Default::default(),
+            history: Default::default(),
+        };
+        em.init()?;
+
+        Ok(em)
+    }
+}
+
 impl ElectricMachine {
     /// Returns max value of `eff_interp_fwd`
     pub fn get_eff_fwd_max(&self) -> anyhow::Result<&f64> {
@@ -729,6 +745,87 @@ impl ElectricMachine {
                 eff_range,
             )))
         }
+    }
+}
+
+impl TryFrom<fastsim_2::vehicle::RustVehicle> for ElectricMachine {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<ElectricMachine, anyhow::Error> {
+        Ok(EMBuilder {
+            eff_interp_achieved: {
+                // fastsim-2's hard-coded short vector of percent of peak power
+                let short_perc_out_vec =
+                    vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
+                // `InterpolatorEnum` for fastsim-3
+                InterpolatorEnum::new_1d(
+                    short_perc_out_vec.clone().into(),
+                    {
+                        // convert 101 element f2 array to shorter f2 array and use
+                        // linear rather than left-nearest interpolation
+                        let mc_full_eff = Array1::from_vec(f2veh.mc_full_eff_array.clone());
+                        ensure!(mc_full_eff.len() == 101);
+                        let shortener = Interp1D::new(
+                            fastsim_2::params::MC_PERC_OUT_ARRAY.to_vec().into(),
+                            mc_full_eff,
+                            strategy::Linear,
+                            Extrapolate::Error,
+                        )
+                        .with_context(|| format_dbg!())?;
+                        let mut short_eff: Vec<f64> = short_perc_out_vec
+                            .iter()
+                            .map(|x| shortener.interpolate(&[*x]).unwrap())
+                            .collect();
+                        short_eff[0] = short_eff[1];
+                        short_eff.into()
+                    },
+                    strategy::Linear,
+                    Extrapolate::Error,
+                )
+            }
+            .with_context(|| {
+                format!(
+                    "{}\n{}",
+                    format_dbg!(f2veh.mc_full_eff_array.len()),
+                    format_dbg!(f2veh.mc_perc_out_array.len())
+                )
+            })?,
+            pwr_out_max: f2veh.mc_max_kw * uc::KW,
+        }
+        .try_into()
+        .with_context(|| format_dbg!())?)
+    }
+}
+
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+/// Builder for [ElectricMachine].  Use this to instantiate EM with minimal parameterization
+pub struct EMBuilder {
+    /// Efficiency interpolator corresponding to achieved output power
+    ///
+    /// Note that the Extrapolate field of this variable is changed in [Self::get_pwr_in_req]
+    pub eff_interp_achieved: InterpolatorEnumOwned<f64>,
+    /// Electrical input power fraction array at which efficiencies are evaluated.
+    /// Calculated during runtime if not provided.
+    // /// this will disappear and instead be in eff_interp_bwd
+    // pub pwr_in_frac_interp: Vec<f64>,
+    /// ElectricMachine maximum output power \[W\]
+    pub pwr_out_max: si::Power,
+}
+
+#[allow(dead_code)]
+impl EMBuilder {
+    fn with_save_interval(&self, save_interval: Option<usize>) -> anyhow::Result<ElectricMachine> {
+        let mut em: ElectricMachine = self.clone().try_into()?;
+        em.save_interval = save_interval;
+        Ok(em)
+    }
+
+    fn with_state(&self, state: ElectricMachineState) -> anyhow::Result<ElectricMachine> {
+        let mut em: ElectricMachine = self.clone().try_into()?;
+        em.state = state;
+        Ok(em)
     }
 }
 

@@ -393,7 +393,7 @@ impl PowertrainType {
 
     pub fn trans(&self) -> Option<&Transmission> {
         match self {
-            PowertrainType::ConventionalVehicle(_conv) => None,
+            PowertrainType::ConventionalVehicle(conv) => Some(&conv.transmission),
             PowertrainType::HybridElectricVehicle(hev) => Some(&hev.transmission),
             PowertrainType::PlugInHybridElectricVehicle(phev) => Some(&phev.transmission),
             PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.transmission),
@@ -402,7 +402,7 @@ impl PowertrainType {
 
     pub fn trans_mut(&mut self) -> Option<&mut Transmission> {
         match self {
-            PowertrainType::ConventionalVehicle(_conv) => None,
+            PowertrainType::ConventionalVehicle(conv) => Some(&mut conv.transmission),
             PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.transmission),
             PowertrainType::PlugInHybridElectricVehicle(phev) => Some(&mut phev.transmission),
             PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.transmission),

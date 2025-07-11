@@ -1553,6 +1553,17 @@ pub struct CycleBuilder {
     pub speed: Vec<si::Velocity>,
 }
 
+impl CycleBuilder {
+    /// Return cycle with `grade`
+    pub fn with_grade(&self, grade: Vec<si::Ratio>) -> anyhow::Result<Cycle> {
+        let mut cyc: Cycle = self.clone().try_into().with_context(|| format_dbg!())?;
+        cyc.grade = grade;
+        Ok(cyc)
+    }
+
+    // TODO: add more of these builder helpers
+}
+
 #[serde_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[non_exhaustive]
@@ -1589,6 +1600,7 @@ impl CycleElement {}
 #[cfg(test)]
 mod tests {
     use super::{manipulation_utils::ConstantJerkTrajectory, *};
+    /// Build, initialize, and return 2-element cycle
     fn mock_cyc_len_2() -> Cycle {
         let mut cyc = Cycle {
             name: String::new(),

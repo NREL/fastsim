@@ -35,7 +35,6 @@ pub struct HVACSystemForLumpedCabin {
     pub state: HVACSystemForLumpedCabinState,
     #[serde(
         default,
-        skip_serializing_if = "HVACSystemForLumpedCabinStateHistoryVec::is_empty"
     )]
     pub history: HVACSystemForLumpedCabinStateHistoryVec,
     pub save_interval: Option<usize>,

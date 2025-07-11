@@ -31,7 +31,6 @@ pub struct HybridElectricVehicle {
     pub sim_params: HEVSimulationParams,
     /// vector of SOC balance iterations
     #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub soc_bal_iter_history: Vec<Self>,
     /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
     /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
@@ -684,7 +683,7 @@ pub struct RESGreedyWithDynamicBuffers {
     /// current state of control variables
     #[serde(default)]
     pub state: RGWDBState,
-    #[serde(default, skip_serializing_if = "RGWDBStateHistoryVec::is_empty")]
+    #[serde(default)]
     /// history of current state
     pub history: RGWDBStateHistoryVec,
 }
