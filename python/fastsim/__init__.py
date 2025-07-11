@@ -1,33 +1,29 @@
+"""Python API for fastsim"""
+
+import inspect
+import re
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, List, Union, Dict, Optional
-from typing_extensions import Self
-import re
+from typing import Any, Optional, Self, Union, cast
+
 import numpy as np
-import inspect
 import pandas as pd  # type: ignore[import-untyped]
 import polars as pl
 
 import fastsim
+
+from . import utils  # type: ignore[attr-defined]  # noqa: F401
 from .fastsim import *  # noqa: F403
 from .fastsim import Cycle  # type: ignore[attr-defined]
-from . import utils  # type: ignore[attr-defined]  # noqa: F401
-
-DEFAULT_LOGGING_CONFIG = dict(
-    format="%(asctime)s.%(msecs)03d | %(filename)s:%(lineno)s | %(levelname)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
 
 
 def package_root() -> Path:
-    """Returns the package root directory."""
+    """Return the package root directory."""
     return Path(__file__).parent
 
 
 def resources_root() -> Path:
-    """
-    Returns the resources root directory.
-    """
+    """Return the resources root directory."""
     path = package_root() / "resources"
     return path
 
@@ -51,7 +47,8 @@ ACCEPTED_RUST_STRUCTS = [
 ]
 
 
-def cyc_keys() -> List[str]:
+def cyc_keys() -> list[str]:
+    """Return cycle keys"""
     import json
 
     cyc = Cycle.from_resource("udds.csv")
@@ -74,9 +71,10 @@ data_formats = [
 ]
 
 
-def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> Dict:
+def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict:
     """
-    Returns self converted to pure python dictionary with no nested Rust objects
+    Return self converted to pure python dictionary with no nested Rust objects
+
     # Arguments
     - `flatten`: if True, returns dict without any hierarchy
     - `data_fmt`: data format for intermediate conversion step
@@ -102,7 +100,7 @@ def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> Dict:
             pydict = loads(self.to_json())
 
     if not flatten:
-        return pydict
+        return cast(dict[Any, Any], pydict)
     else:
         hist_len = get_hist_len(pydict)
         assert hist_len is not None, "Cannot be flattened"
@@ -110,24 +108,23 @@ def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> Dict:
         return flat_dict
 
 
-def get_hist_len(obj: Dict) -> Optional[int]:
-    """
-    Finds nested `history` and gets lenth of first element
-    """
-    # TODO: check if this is sufficiently recursive and if it's not, make it recursive all the way down
+def get_hist_len(obj: dict) -> int | None:
+    """Find nested `history` and get lenth of first element"""
+    # TODO: check if this is sufficiently recursive and if it's not,
+    # make it recursive all the way down
 
-    if "history" in obj.keys():
+    if "history" in obj:
         return len(next(iter(obj["history"].values())))
 
     elif (
-        next(iter(k for k in obj.keys() if re.search("(history\\.\\w+)$", k) is not None), None)
+        next(iter(k for k in obj if re.search("(history\\.\\w+)$", k) is not None), None)
         is not None
     ):
         return len(
-            next((v for (k, v) in obj.items() if re.search("(history\\.\\w+)$", k) is not None))
+            next(v for (k, v) in obj.items() if re.search("(history\\.\\w+)$", k) is not None),
         )
 
-    for k, v in obj.items():
+    for v in obj.values():
         if isinstance(v, dict):
             hist_len = get_hist_len(v)
             if hist_len is not None:
@@ -135,15 +132,16 @@ def get_hist_len(obj: Dict) -> Optional[int]:
     return None
 
 
-def get_flattened(obj: Dict | List, hist_len: int, prepend_str: str = "") -> Dict:
+def get_flattened(obj: dict | list, hist_len: int, prepend_str: str = "") -> dict:
     """
-    Flattens and returns dictionary, separating keys and indices with a `"."`
+    Flatten and return dictionary, separating keys and indices with a `"."`
+
     # Arguments
     # - `obj`: object to flatten
     # -  hist_len: length of any lists storing history data
     # - `prepend_str`: prepend this to all keys in the returned `flat` dict
     """
-    flat: Dict = {}
+    flat: dict = {}
     if isinstance(obj, dict):
         for k, v in obj.items():
             new_key = k if (prepend_str == "") else prepend_str + "." + k
@@ -165,9 +163,10 @@ def get_flattened(obj: Dict | List, hist_len: int, prepend_str: str = "") -> Dic
 
 
 @classmethod  # type: ignore[misc]
-def from_pydict(cls, pydict: Dict, data_fmt: str = "msg_pack", skip_init: bool = False) -> Self:  # type: ignore[misc]
+def from_pydict(cls, pydict: dict, data_fmt: str = "msg_pack", skip_init: bool = False) -> Self:  # type: ignore[misc]
     """
-    Instantiates Self from pure python dictionary
+    Instantiate Self from pure python dictionary
+
     # Arguments
     - `pydict`: dictionary to be converted to FASTSim object
     - `data_fmt`: data format for intermediate conversion step
@@ -194,30 +193,33 @@ def from_pydict(cls, pydict: Dict, data_fmt: str = "msg_pack", skip_init: bool =
 
 
 def to_dataframe(
-    self, pandas: bool = False, allow_partial: bool = False
-) -> Union[pd.DataFrame, pl.DataFrame]:
+    self,
+    pandas: bool = False,
+    allow_partial: bool = False,
+) -> pd.DataFrame | pl.DataFrame:
     """
-    Returns time series results from fastsim object as a Polars or Pandas dataframe.
+    Return time series results from fastsim object as a Polars or Pandas dataframe.
 
     # Arguments
     - `pandas`: returns pandas dataframe if True; otherwise, returns polars dataframe by default
-    - `allow_partial`: tries to return dataframe of length equal to solved time steps if simulation fails early
+    - `allow_partial`: tries to return dataframe of length equal to solved time
+        steps if simulation fails early
     """
     obj_dict = self.to_pydict(flatten=True)
     history_keys = ["history.", "cyc."]
     hist_len = get_hist_len(obj_dict)
     assert hist_len is not None
 
-    history_dict: Dict[str, Any] = {}
+    history_dict: dict[str, Any] = {}
     for k, v in obj_dict.items():
         hk_in_k = any(hk in k for hk in history_keys)
-        if hk_in_k and ("__len__" in dir(v)):
-            if (len(v) == hist_len) or allow_partial:
-                history_dict[k] = v
+        if (hk_in_k and ("__len__" in dir(v))) and ((len(v) == hist_len) or allow_partial):
+            history_dict[k] = v
 
     if allow_partial:
-        cutoff = min([len(val) for val in history_dict.values()])
+        cutoff = min(history_dict.values())
 
+        df: pl.DataFrame | pd.DataFrame
         if not pandas:
             try:
                 df = pl.DataFrame({col: val[:cutoff] for col, val in history_dict.items()})
@@ -235,14 +237,16 @@ def to_dataframe(
                 df = pl.DataFrame(history_dict)
             except Exception as err:
                 raise Exception(
-                    f"{err}\nTry passing `allow_partial=True` to `to_dataframe` or checking for consistent save intervals"
+                    f"{err}\nTry passing `allow_partial=True` to `to_dataframe` or checking for "
+                    + "consistent save intervals",
                 )
         else:
             try:
                 df = pd.DataFrame(history_dict)
             except Exception as err:
                 raise Exception(
-                    f"{err}\nTry passing `allow_partial=True` to `to_dataframe` or checking for consistent save intervals"
+                    f"{err}\nTry passing `allow_partial=True` to `to_dataframe` or checking for "
+                    + "consistent save intervals",
                 )
     return df
 

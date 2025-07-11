@@ -92,8 +92,7 @@ print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsi
 
 sd2 = sd0.to_fastsim2()
 t0 = time.perf_counter()
-with fsim.utils.without_logging():  # suppresses known warning
-    sd2.sim_drive()
+sd2.sim_drive()
 t1 = time.perf_counter()
 t_fsim2 = t1 - t0
 print(f"fastsim-2 `sim_drive()` elapsed time: {t_fsim2:.2e} s")

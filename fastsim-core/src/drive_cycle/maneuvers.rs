@@ -707,19 +707,9 @@ impl Maneuver {
                         }
                         adjusted_current_speed = true;
                     } else {
-                        // TODO: logging feature?
-                        //#[cfg(feature = "logging")]
                         println!("## WARNING ##");
                         println!("final_speed={:?} not close to coast_brake_start_speed={:?} for i={:?}; i_for_brake={:?}, traj_n={:?}",
                             final_speed, self.coast_brake_start_speed, i, i_for_brake, traj_n);
-                        //log::warn!(
-                        //    "final_speed={}i not close to coast_brake_start_speed={} for i={}; i_for_brake={}, traj_n={}",
-                        //    final_speed,
-                        //    self.coast_brake_start_speed,
-                        //    i,
-                        //    i_for_brake,
-                        //    traj_n
-                        //);
                     }
                 }
             }
