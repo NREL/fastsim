@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 fn main() {
+    // copy calibrated models to resources folder
     let bolt_source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../cal_and_val/thermal/f3-vehicles/2020 Chevrolet Bolt EV.yaml");
     assert!(bolt_source.exists());
