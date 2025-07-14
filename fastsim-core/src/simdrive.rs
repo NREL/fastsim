@@ -432,7 +432,11 @@ impl SimDrive {
 
         // `solve_thermal` must happen before the other methods because it impacts aux power demand
         self.veh
-            .solve_thermal(self.cyc.temp_amb_air[i], dt)
+            .solve_thermal(
+                self.cyc.temp_amb_air[i],
+                dt,
+                self.sim_params.ambient_thermal_soak,
+            )
             .with_context(|| format!("{}\n`self.veh.state.i`: {}", format_dbg!(), i))?;
         match self.sim_params.ambient_thermal_soak {
             false => {
@@ -1165,6 +1169,97 @@ mod tests {
                 .temperature
                 .update(te_fc_init, || format_dbg!())
                 .unwrap();
+            let mut cyc = cyc.clone();
+            cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
+            let mut sd = SimDrive::new(
+                veh,
+                cyc,
+                Some(SimParams {
+                    ambient_thermal_soak: true,
+                    ..Default::default()
+                }),
+            );
+            sd.walk()
+                .with_context(|| {
+                    format!(
+                        "ambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert!(
+                *sd.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd.cyc.len_checked().unwrap() - 1
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "resources")]
+    fn test_sim_drive_bev_thrml_soak() {
+        let _veh = Vehicle::from_resource("2020 Chevrolet Bolt EV thrml.yaml", false).unwrap();
+        let mut cyc = Cycle::from_resource("udds.csv", false).unwrap();
+        // zero out speed
+        cyc.speed.iter_mut().for_each(|v| *v = si::Velocity::ZERO);
+
+        let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        let te_batt_and_cab_init: Vec<si::Temperature> = [-6.7, 22.0, 45.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        let te_fc_init: Vec<si::Temperature> = [-6.7, 70.0, 90.0]
+            .iter()
+            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
+            .collect();
+        for ((te_amb, te_init), te_fc_init) in
+            te_amb.iter().zip(te_batt_and_cab_init).zip(te_fc_init)
+        {
+            let mut veh = _veh.clone();
+
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temperature
+                .update(te_init, || format_dbg!())
+                .unwrap();
+
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .mark_stale();
+            veh.res_mut()
+                .unwrap()
+                .res_thrml_state_mut()
+                .unwrap()
+                .temp_prev
+                .update(te_init, || format_dbg!())
+                .unwrap();
+            if let CabinOption::LumpedCabin(lc) = &mut veh.cabin {
+                lc.state.temperature.mark_stale();
+                lc.state
+                    .temperature
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+                lc.state.temp_prev.mark_stale();
+                lc.state
+                    .temp_prev
+                    .update(te_init, || format_dbg!())
+                    .unwrap();
+            }
+
             let mut cyc = cyc.clone();
             cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
             let mut sd = SimDrive::new(
