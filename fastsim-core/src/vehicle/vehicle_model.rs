@@ -984,8 +984,10 @@ pub fn f3veh_with_f2_eff(f2veh: &fastsim_2::vehicle::RustVehicle, veh: &mut Vehi
         match &mut fc.eff_interp_from_pwr_out {
             InterpolatorEnum::Interp1D(interp1d) => {
                 assert_eq!(f2veh.fc_perc_out_array.len(), 100);
+                assert_eq!(interp1d.data.grid[0].len(), 12);
                 interp1d.data.grid = [f2veh.fc_perc_out_array.clone().into()];
                 assert_eq!(f2veh.fc_eff_array.len(), 100);
+                assert_eq!(interp1d.data.values.len(), 12);
                 interp1d.data.values = f2veh.fc_eff_array.clone().into();
                 interp1d.strategy = Strategy1DEnum::LeftNearest(strategy::LeftNearest);
             }
@@ -997,8 +999,10 @@ pub fn f3veh_with_f2_eff(f2veh: &fastsim_2::vehicle::RustVehicle, veh: &mut Vehi
         match &mut em.eff_interp_achieved {
             InterpolatorEnum::Interp1D(interp1d) => {
                 assert_eq!(f2veh.mc_perc_out_array.len(), 101);
+                assert_eq!(interp1d.data.grid[0].len(), 11);
                 interp1d.data.grid = [f2veh.fc_perc_out_array.clone().into()];
                 assert_eq!(f2veh.mc_full_eff_array.len(), 101);
+                assert_eq!(interp1d.data.values.len(), 11);
                 interp1d.data.values = f2veh.fc_eff_array.clone().into();
                 interp1d.strategy = Strategy1DEnum::LeftNearest(strategy::LeftNearest);
             }
