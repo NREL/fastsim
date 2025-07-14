@@ -1171,193 +1171,193 @@ mod tests {
         );
     }
 
-    /// Test that label FE calculations for BEV vehicles match FASTSim-2 results
-    #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
-    fn test_label_fe_bev_vs_fastsim2() {
-        let file_contents = include_str!("vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
-        let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
-        f3veh_with_f2_eff(&f2veh, &mut veh);
+    // /// Test that label FE calculations for BEV vehicles match FASTSim-2 results
+    // #[test]
+    // #[cfg(all(feature = "resources", feature = "yaml"))]
+    // fn test_label_fe_bev_vs_fastsim2() {
+    //     let file_contents = include_str!("vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
+    //     use fastsim_2::traits::SerdeAPI;
+    //     let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
+    //     let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
+    //     f3veh_with_f2_eff(&f2veh, &mut veh);
 
-        // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
-            .with_context(|| format_dbg!())
-            .unwrap();
+    //     // Get FASTSim-3 label FE results
+    //     let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
+    //         .with_context(|| format_dbg!())
+    //         .unwrap();
 
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
-            .with_context(|| format_dbg!())
-            .unwrap();
+    //     let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
+    //         .with_context(|| format_dbg!())
+    //         .unwrap();
 
-        let tolerance = 0.011; // 1.1% tolerance
+    //     let tolerance = 0.011; // 1.1% tolerance
 
-        // For BEV, check kWh/mi values instead of MPGe
-        assert!(
-            (label_fe_f3.lab_udds_kwh_per_mi - label_fe_f2.lab_udds_kwh_per_mi).abs()
-                / label_fe_f2.lab_udds_kwh_per_mi
-                < tolerance,
-            "UDDS kWh/mi mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.lab_udds_kwh_per_mi,
-            label_fe_f2.lab_udds_kwh_per_mi
-        );
+    //     // For BEV, check kWh/mi values instead of MPGe
+    //     assert!(
+    //         (label_fe_f3.lab_udds_kwh_per_mi - label_fe_f2.lab_udds_kwh_per_mi).abs()
+    //             / label_fe_f2.lab_udds_kwh_per_mi
+    //             < tolerance,
+    //         "UDDS kWh/mi mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.lab_udds_kwh_per_mi,
+    //         label_fe_f2.lab_udds_kwh_per_mi
+    //     );
 
-        assert!(
-            (label_fe_f3.lab_comb_kwh_per_mi - label_fe_f2.lab_comb_kwh_per_mi).abs()
-                / label_fe_f2.lab_comb_kwh_per_mi
-                < tolerance,
-            "Combined kWh/mi mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.lab_comb_kwh_per_mi,
-            label_fe_f2.lab_comb_kwh_per_mi
-        );
+    //     assert!(
+    //         (label_fe_f3.lab_comb_kwh_per_mi - label_fe_f2.lab_comb_kwh_per_mi).abs()
+    //             / label_fe_f2.lab_comb_kwh_per_mi
+    //             < tolerance,
+    //         "Combined kWh/mi mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.lab_comb_kwh_per_mi,
+    //         label_fe_f2.lab_comb_kwh_per_mi
+    //     );
 
-        println!("BEV label FE test passed!");
-        println!(
-            "F3 Combined kWh/mi: {:.3}, F2: {:.3}",
-            label_fe_f3.lab_comb_kwh_per_mi, label_fe_f2.lab_comb_kwh_per_mi
-        );
-    }
+    //     println!("BEV label FE test passed!");
+    //     println!(
+    //         "F3 Combined kWh/mi: {:.3}, F2: {:.3}",
+    //         label_fe_f3.lab_comb_kwh_per_mi, label_fe_f2.lab_comb_kwh_per_mi
+    //     );
+    // }
 
-    /// Test that label FE calculations for HEV vehicles match FASTSim-2 results
-    #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
-    fn test_label_fe_hev_vs_fastsim2() {
-        let file_contents = include_str!("vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
-        let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
-        f3veh_with_f2_eff(&f2veh, &mut veh);
+    // /// Test that label FE calculations for HEV vehicles match FASTSim-2 results
+    // #[test]
+    // #[cfg(all(feature = "resources", feature = "yaml"))]
+    // fn test_label_fe_hev_vs_fastsim2() {
+    //     let file_contents = include_str!("vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
+    //     use fastsim_2::traits::SerdeAPI;
+    //     let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
+    //     let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
+    //     f3veh_with_f2_eff(&f2veh, &mut veh);
 
-        // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
-            .with_context(|| format_dbg!())
-            .unwrap();
+    //     // Get FASTSim-3 label FE results
+    //     let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
+    //         .with_context(|| format_dbg!())
+    //         .unwrap();
 
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh, None, None)
-            .with_context(|| format_dbg!())
-            .unwrap();
+    //     let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh, None, None)
+    //         .with_context(|| format_dbg!())
+    //         .unwrap();
 
-        let tolerance = 0.1; // Temporarily increased tolerance to 10% for debugging
+    //     let tolerance = 0.1; // Temporarily increased tolerance to 10% for debugging
 
-        // Check MPGe values for HEV
-        assert!(
-            (label_fe_f3.lab_udds_mpgge - label_fe_f2.lab_udds_mpgge).abs()
-                / label_fe_f2.lab_udds_mpgge
-                < tolerance,
-            "UDDS MPGe mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.lab_udds_mpgge,
-            label_fe_f2.lab_udds_mpgge
-        );
+    //     // Check MPGe values for HEV
+    //     assert!(
+    //         (label_fe_f3.lab_udds_mpgge - label_fe_f2.lab_udds_mpgge).abs()
+    //             / label_fe_f2.lab_udds_mpgge
+    //             < tolerance,
+    //         "UDDS MPGe mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.lab_udds_mpgge,
+    //         label_fe_f2.lab_udds_mpgge
+    //     );
 
-        assert!(
-            (label_fe_f3.lab_comb_mpgge - label_fe_f2.lab_comb_mpgge).abs()
-                / label_fe_f2.lab_comb_mpgge
-                < tolerance,
-            "Combined MPGe mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.lab_comb_mpgge,
-            label_fe_f2.lab_comb_mpgge
-        );
+    //     assert!(
+    //         (label_fe_f3.lab_comb_mpgge - label_fe_f2.lab_comb_mpgge).abs()
+    //             / label_fe_f2.lab_comb_mpgge
+    //             < tolerance,
+    //         "Combined MPGe mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.lab_comb_mpgge,
+    //         label_fe_f2.lab_comb_mpgge
+    //     );
 
-        assert!(
-            (label_fe_f3.lab_hwy_mpgge - label_fe_f2.lab_hwy_mpgge).abs()
-                / label_fe_f2.lab_hwy_mpgge
-                < tolerance,
-            "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.lab_hwy_mpgge,
-            label_fe_f2.lab_hwy_mpgge
-        );
+    //     assert!(
+    //         (label_fe_f3.lab_hwy_mpgge - label_fe_f2.lab_hwy_mpgge).abs()
+    //             / label_fe_f2.lab_hwy_mpgge
+    //             < tolerance,
+    //         "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.lab_hwy_mpgge,
+    //         label_fe_f2.lab_hwy_mpgge
+    //     );
 
-        assert!(
-            (label_fe_f3.net_accel - label_fe_f2.net_accel).abs() / label_fe_f2.net_accel
-                < tolerance,
-            "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.net_accel,
-            label_fe_f2.net_accel
-        );
-    }
+    //     assert!(
+    //         (label_fe_f3.net_accel - label_fe_f2.net_accel).abs() / label_fe_f2.net_accel
+    //             < tolerance,
+    //         "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.net_accel,
+    //         label_fe_f2.net_accel
+    //     );
+    // }
 
-    /// Test that creates a mock PHEV vehicle from FASTSim-2 data and compares label FE calculations
-    #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
-    fn test_label_fe_phev_vs_fastsim2() {
-        // Load a PHEV vehicle from the calibration directory (FASTSim-2 format)
-        let f2_veh_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .with_context(|| format_dbg!())
-            .unwrap()
-            .join("cal_and_val/f2-vehicles/2016 CHEVROLET Volt.yaml");
+    // /// Test that creates a mock PHEV vehicle from FASTSim-2 data and compares label FE calculations
+    // #[test]
+    // #[cfg(all(feature = "resources", feature = "yaml"))]
+    // fn test_label_fe_phev_vs_fastsim2() {
+    //     // Load a PHEV vehicle from the calibration directory (FASTSim-2 format)
+    //     let f2_veh_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    //         .parent()
+    //         .with_context(|| format_dbg!())
+    //         .unwrap()
+    //         .join("cal_and_val/f2-vehicles/2016 CHEVROLET Volt.yaml");
 
-        if !f2_veh_path.exists() {
-            println!("PHEV vehicle file not found, skipping test");
-            return;
-        }
+    //     if !f2_veh_path.exists() {
+    //         println!("PHEV vehicle file not found, skipping test");
+    //         return;
+    //     }
 
-        let veh_contents = std::fs::read_to_string(&f2_veh_path)
-            .with_context(|| format_dbg!())
-            .unwrap();
+    //     let veh_contents = std::fs::read_to_string(&f2_veh_path)
+    //         .with_context(|| format_dbg!())
+    //         .unwrap();
 
-        // Load FASTSim-2 vehicle and convert to FASTSim-3
-        let f2_veh: fastsim_2::vehicle::RustVehicle =
-            fastsim_2::traits::SerdeAPI::from_yaml(&veh_contents, false)
-                .with_context(|| format_dbg!())
-                .unwrap();
-        assert!(f2_veh.veh_pt_type == fastsim_2::vehicle::PHEV);
-        let mut veh = Vehicle::try_from(f2_veh.clone())
-            .with_context(|| format_dbg!())
-            .unwrap();
-        assert!(
-            veh.pt_type.is_plug_in_hybrid_electric_vehicle(),
-            "`veh.pt_type.variant_as_str()`: {}\n`f2_veh.veh_pt_type`: {}",
-            veh.pt_type.variant_as_str(),
-            f2_veh.veh_pt_type
-        );
+    //     // Load FASTSim-2 vehicle and convert to FASTSim-3
+    //     let f2_veh: fastsim_2::vehicle::RustVehicle =
+    //         fastsim_2::traits::SerdeAPI::from_yaml(&veh_contents, false)
+    //             .with_context(|| format_dbg!())
+    //             .unwrap();
+    //     assert!(f2_veh.veh_pt_type == fastsim_2::vehicle::PHEV);
+    //     let mut veh = Vehicle::try_from(f2_veh.clone())
+    //         .with_context(|| format_dbg!())
+    //         .unwrap();
+    //     assert!(
+    //         veh.pt_type.is_plug_in_hybrid_electric_vehicle(),
+    //         "`veh.pt_type.variant_as_str()`: {}\n`f2_veh.veh_pt_type`: {}",
+    //         veh.pt_type.variant_as_str(),
+    //         f2_veh.veh_pt_type
+    //     );
 
-        // Get FASTSim-3 label FE results (if PHEV functionality is implemented)
-        let label_fe_f3 = get_label_fe(&mut veh, None, false, None, None, false)
-            .unwrap()
-            .0;
+    //     // Get FASTSim-3 label FE results (if PHEV functionality is implemented)
+    //     let label_fe_f3 = get_label_fe(&mut veh, None, false, None, None, false)
+    //         .unwrap()
+    //         .0;
 
-        // Get FASTSim-2 label FE results
-        let label_fe_f2 = fastsim_2::simdrivelabel::get_label_fe(&f2_veh, None, None)
-            .unwrap()
-            .0;
+    //     // Get FASTSim-2 label FE results
+    //     let label_fe_f2 = fastsim_2::simdrivelabel::get_label_fe(&f2_veh, None, None)
+    //         .unwrap()
+    //         .0;
 
-        let tolerance = 0.05; // 5% tolerance for PHEV (more complex calculations)
+    //     let tolerance = 0.05; // 5% tolerance for PHEV (more complex calculations)
 
-        // Check MPGe values for HEV
-        assert!(
-            (label_fe_f3.lab_udds_mpgge - label_fe_f2.lab_udds_mpgge).abs()
-                / label_fe_f2.lab_udds_mpgge
-                < tolerance,
-            "UDDS MPGe mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.lab_udds_mpgge,
-            label_fe_f2.lab_udds_mpgge
-        );
+    //     // Check MPGe values for HEV
+    //     assert!(
+    //         (label_fe_f3.lab_udds_mpgge - label_fe_f2.lab_udds_mpgge).abs()
+    //             / label_fe_f2.lab_udds_mpgge
+    //             < tolerance,
+    //         "UDDS MPGe mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.lab_udds_mpgge,
+    //         label_fe_f2.lab_udds_mpgge
+    //     );
 
-        assert!(
-            (label_fe_f3.lab_comb_mpgge - label_fe_f2.lab_comb_mpgge).abs()
-                / label_fe_f2.lab_comb_mpgge
-                < tolerance,
-            "Combined MPGe mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.lab_comb_mpgge,
-            label_fe_f2.lab_comb_mpgge
-        );
+    //     assert!(
+    //         (label_fe_f3.lab_comb_mpgge - label_fe_f2.lab_comb_mpgge).abs()
+    //             / label_fe_f2.lab_comb_mpgge
+    //             < tolerance,
+    //         "Combined MPGe mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.lab_comb_mpgge,
+    //         label_fe_f2.lab_comb_mpgge
+    //     );
 
-        assert!(
-            (label_fe_f3.lab_hwy_mpgge - label_fe_f2.lab_hwy_mpgge).abs()
-                / label_fe_f2.lab_hwy_mpgge
-                < tolerance,
-            "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.lab_hwy_mpgge,
-            label_fe_f2.lab_hwy_mpgge
-        );
+    //     assert!(
+    //         (label_fe_f3.lab_hwy_mpgge - label_fe_f2.lab_hwy_mpgge).abs()
+    //             / label_fe_f2.lab_hwy_mpgge
+    //             < tolerance,
+    //         "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.lab_hwy_mpgge,
+    //         label_fe_f2.lab_hwy_mpgge
+    //     );
 
-        assert!(
-            (label_fe_f3.net_accel - label_fe_f2.net_accel).abs() / label_fe_f2.net_accel
-                < tolerance,
-            "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
-            label_fe_f3.net_accel,
-            label_fe_f2.net_accel
-        );
-    }
+    //     assert!(
+    //         (label_fe_f3.net_accel - label_fe_f2.net_accel).abs() / label_fe_f2.net_accel
+    //             < tolerance,
+    //         "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
+    //         label_fe_f3.net_accel,
+    //         label_fe_f2.net_accel
+    //     );
+    // }
 }

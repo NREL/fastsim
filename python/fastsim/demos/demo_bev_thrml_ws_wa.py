@@ -61,7 +61,7 @@ t_fsim3_si1 = t1 - t0
 print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
 
 # %%
-df = sd.to_dataframe(allow_partial=True)
+df = sd.to_dataframe()
 sd_dict = sd.to_pydict(flatten=True)
 # # Visualize results
 fig_res_pwr, ax_res_pwr = plot_bev_res_pwr(df, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)

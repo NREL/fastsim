@@ -453,6 +453,7 @@ impl Vehicle {
         &mut self,
         te_amb_air: si::Temperature,
         dt: si::Time,
+        ambient_thermal_soak: bool,
     ) -> anyhow::Result<()> {
         let te_fc: Option<si::Temperature> = self
             .fc()
@@ -476,7 +477,13 @@ impl Vehicle {
         };
 
         let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab) = self
-            .solve_hvac_cab_res(te_amb_air, dt, te_fc, pwr_thrml_cab_to_res)
+            .solve_hvac_cab_res(
+                te_amb_air,
+                dt,
+                te_fc,
+                pwr_thrml_cab_to_res,
+                ambient_thermal_soak,
+            )
             .with_context(|| format_dbg!())?;
 
         self.pt_type
@@ -498,6 +505,7 @@ impl Vehicle {
         dt: si::Time,
         te_fc: Option<si::Temperature>,
         pwr_thrml_cab_to_res: si::Power,
+        ambient_thermal_soak: bool,
     ) -> anyhow::Result<(
         Option<si::Power>,
         Option<si::Power>,
@@ -612,6 +620,21 @@ impl Vehicle {
                 )?;
                 (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
             }
+            (CabinOption::LumpedCabin(cab), HVACOption::None, Some(_)) => {
+                let te_cab = cab
+                    .solve(
+                        te_amb_air,
+                        &self.state,
+                        si::Power::ZERO,
+                        si::Power::ZERO,
+                        dt,
+                    )
+                    .with_context(|| format_dbg!())?;
+                self.state
+                    .pwr_aux
+                    .update(self.pwr_aux_base, || format_dbg!())?;
+                (None, None, Some(te_cab))
+            }
             (_, _, _) => {
                 bail!(
                     "{}\nCabin, HVAC, and RESThermal configuration is either invalid or not yet implemented.\n{} - {} - {}",
@@ -622,7 +645,7 @@ impl Vehicle {
                         "`res.res_thrml_state().is_some()`: {}",
                         self.pt_type.res().and_then(|res| res.res_thrml_state()).is_some()
                     ),
-                )
+                );
             }
         };
         Ok((pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab))
