@@ -1,6 +1,6 @@
-use crate::prelude::*;
-
 use super::{hev::HEVPowertrainControls, *};
+use crate::prelude::*;
+use ninterp::strategy::enums::Strategy1DEnum;
 pub mod fastsim2_interface;
 
 /// Possible aux load power sources
@@ -974,6 +974,35 @@ pub(crate) mod tests {
 
         if time_to_panic {
             panic!()
+        }
+    }
+}
+
+pub fn f3veh_with_f2_eff(f2veh: &fastsim_2::vehicle::RustVehicle, veh: &mut Vehicle) {
+    // tweak the efficiency interpolation to match fastsim-2
+    if let Some(fc) = veh.fc_mut() {
+        match &mut fc.eff_interp_from_pwr_out {
+            InterpolatorEnum::Interp1D(interp1d) => {
+                assert_eq!(f2veh.fc_perc_out_array.len(), 100);
+                interp1d.data.grid = [f2veh.fc_perc_out_array.clone().into()];
+                assert_eq!(f2veh.fc_eff_array.len(), 100);
+                interp1d.data.values = f2veh.fc_eff_array.clone().into();
+                interp1d.strategy = Strategy1DEnum::LeftNearest(strategy::LeftNearest);
+            }
+            _ => panic!("wrong interpolator variant"),
+        }
+    }
+
+    if let Some(em) = veh.em_mut() {
+        match &mut em.eff_interp_achieved {
+            InterpolatorEnum::Interp1D(interp1d) => {
+                assert_eq!(f2veh.mc_perc_out_array.len(), 101);
+                interp1d.data.grid = [f2veh.fc_perc_out_array.clone().into()];
+                assert_eq!(f2veh.mc_full_eff_array.len(), 101);
+                interp1d.data.values = f2veh.fc_eff_array.clone().into();
+                interp1d.strategy = Strategy1DEnum::LeftNearest(strategy::LeftNearest);
+            }
+            _ => panic!("wrong interpolator variant"),
         }
     }
 }

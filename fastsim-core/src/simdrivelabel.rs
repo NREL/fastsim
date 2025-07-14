@@ -1092,6 +1092,7 @@ pub fn get_label_fe_phev(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vehicle::vehicle_model::f3veh_with_f2_eff;
 
     /// Test that label FE calculations for conventional vehicles match FASTSim-2 results
     #[test]
@@ -1101,20 +1102,14 @@ mod tests {
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
-        veh.fc_mut()
-            .map(|fc| match &mut fc.eff_interp_from_pwr_out {
-                Interp1D { data, .. } => {
-                    data.grid = f2veh.fc_perc_out_array.into();
-                    data.values = f2veh.fc_eff_array;
-                }
-            })
-            .unwrap();
+        f3veh_with_f2_eff(&f2veh, &mut veh);
 
         // Get FASTSim-3 label FE results
         let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
+        // Get FASTSim-2 label FE results
         let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
             .with_context(|| format_dbg!())
             .unwrap();
@@ -1184,6 +1179,7 @@ mod tests {
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
+        f3veh_with_f2_eff(&f2veh, &mut veh);
 
         // Get FASTSim-3 label FE results
         let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
@@ -1230,6 +1226,7 @@ mod tests {
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
+        f3veh_with_f2_eff(&f2veh, &mut veh);
 
         // Get FASTSim-3 label FE results
         let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
