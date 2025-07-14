@@ -327,6 +327,26 @@ impl SimDrive {
             || format_dbg!(),
         )?;
 
+        let hvac: Option<HVACOption> = if self.sim_params.ambient_thermal_soak {
+            ensure!(
+                self.cyc.speed.iter().all(|s| *s == si::Velocity::ZERO),
+                format!(
+                    "{}\nDuring thermal soak, cycle speed should always be zero",
+                    format_dbg!()
+                )
+            );
+            if !self.veh.hvac.is_none() {
+                // turn off HVAC if vehicle is not active
+                let hvac_some = Some(self.veh.hvac.clone());
+                self.veh.hvac = HVACOption::None;
+                hvac_some
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         loop {
             self.check_and_reset(|| format_dbg!())?;
             self.veh.state.mass.mark_fresh(|| format_dbg!())?;
@@ -341,6 +361,12 @@ impl SimDrive {
                 break;
             }
         }
+
+        if let Some(hvac) = hvac {
+            // reset original hvac
+            self.veh.hvac = hvac;
+        }
+
         Ok(())
     }
 
