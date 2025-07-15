@@ -805,6 +805,12 @@ impl SetCumulative for SimDrive {
             .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        self.veh
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

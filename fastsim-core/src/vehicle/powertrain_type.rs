@@ -46,6 +46,23 @@ impl SetCumulative for PowertrainType {
             }
         }
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => {
+                conv.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::HybridElectricVehicle(hev) => {
+                hev.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::PlugInHybridElectricVehicle(phev) => {
+                phev.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::BatteryElectricVehicle(bev) => {
+                bev.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+        }
+    }
 }
 
 impl Powertrain for PowertrainType {

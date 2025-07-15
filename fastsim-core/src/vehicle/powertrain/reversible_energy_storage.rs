@@ -951,6 +951,16 @@ impl SetCumulative for RESThermalOption {
         }
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::RESLumpedThermal(rlt) => {
+                rlt.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::None => {}
+        }
+        Ok(())
+    }
 }
 
 impl StateMethods for RESThermalOption {}

@@ -135,6 +135,17 @@ impl SetCumulative for CabinOption {
         }
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => {
+                lc.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::LumpedCabinWithShell => todo!(),
+            Self::None => {}
+        }
+        Ok(())
+    }
 }
 
 #[serde_api]

@@ -285,6 +285,23 @@ impl SetCumulative for Vehicle {
         )?;
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        self.state
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+        self.pt_type
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+        self.cabin
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+        self.hvac
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+        // this does not get handled by the `SetCumulative` derive macro
+        self.state.dist.update(si::Length::ZERO, || format_dbg!())?;
+        self.state
+            .speed_ach
+            .update(si::Velocity::ZERO, || format_dbg!())?;
+        Ok(())
+    }
 }
 
 impl Vehicle {

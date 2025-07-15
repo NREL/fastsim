@@ -661,6 +661,16 @@ impl SetCumulative for FuelConverterThermalOption {
         }
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::FuelConverterThermal(fct) => {
+                fct.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::None => {}
+        }
+        Ok(())
+    }
 }
 impl HistoryMethods for FuelConverterThermalOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
@@ -1010,6 +1020,11 @@ impl SetCumulative for FuelConverterThermal {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         self.state
             .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
+    }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        self.state
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))
     }
 }
 impl Init for FuelConverterThermal {
