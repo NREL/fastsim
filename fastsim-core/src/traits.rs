@@ -342,6 +342,9 @@ pub trait StateMethods: SetCumulative + SaveState + Step + TrackedStateMethods {
 pub trait SetCumulative {
     /// Sets cumulative values based on rate values
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()>;
+
+    /// Resets cumulative and corresponding rate values to zero
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()>;
 }
 
 /// Provides method that saves `self.state` to `self.history` and propagates to any fields with
