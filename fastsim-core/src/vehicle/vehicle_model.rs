@@ -135,6 +135,11 @@ impl Vehicle {
     fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
         self.to_fastsim2()
     }
+
+    #[pyo3(name = "reset_cumulative")]
+    fn reset_cumulative_py(&mut self) -> anyhow::Result<()> {
+        self.reset_cumulative(|| format_dbg!())
+    }
 }
 
 impl Mass for Vehicle {
