@@ -453,7 +453,6 @@ impl Vehicle {
         &mut self,
         te_amb_air: si::Temperature,
         dt: si::Time,
-        ambient_thermal_soak: bool,
     ) -> anyhow::Result<()> {
         let te_fc: Option<si::Temperature> = self
             .fc()
@@ -477,13 +476,7 @@ impl Vehicle {
         };
 
         let (pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab) = self
-            .solve_hvac_cab_res(
-                te_amb_air,
-                dt,
-                te_fc,
-                pwr_thrml_cab_to_res,
-                ambient_thermal_soak,
-            )
+            .solve_hvac_cab_res(te_amb_air, dt, te_fc, pwr_thrml_cab_to_res)
             .with_context(|| format_dbg!())?;
 
         self.pt_type
@@ -505,7 +498,6 @@ impl Vehicle {
         dt: si::Time,
         te_fc: Option<si::Temperature>,
         pwr_thrml_cab_to_res: si::Power,
-        ambient_thermal_soak: bool,
     ) -> anyhow::Result<(
         Option<si::Power>,
         Option<si::Power>,

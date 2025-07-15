@@ -432,11 +432,7 @@ impl SimDrive {
 
         // `solve_thermal` must happen before the other methods because it impacts aux power demand
         self.veh
-            .solve_thermal(
-                self.cyc.temp_amb_air[i],
-                dt,
-                self.sim_params.ambient_thermal_soak,
-            )
+            .solve_thermal(self.cyc.temp_amb_air[i], dt)
             .with_context(|| format!("{}\n`self.veh.state.i`: {}", format_dbg!(), i))?;
         match self.sim_params.ambient_thermal_soak {
             false => {
@@ -1211,13 +1207,7 @@ mod tests {
             .iter()
             .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
             .collect();
-        let te_fc_init: Vec<si::Temperature> = [-6.7, 70.0, 90.0]
-            .iter()
-            .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
-            .collect();
-        for ((te_amb, te_init), te_fc_init) in
-            te_amb.iter().zip(te_batt_and_cab_init).zip(te_fc_init)
-        {
+        for (te_amb, te_init) in te_amb.iter().zip(te_batt_and_cab_init) {
             let mut veh = _veh.clone();
 
             veh.res_mut()
