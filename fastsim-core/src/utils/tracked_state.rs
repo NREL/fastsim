@@ -28,7 +28,7 @@ where
     /// # Arguments
     /// - `loc`: closure that returns file and line number where called
     fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
-        self.ensure_stale(loc)?;
+        self.ensure_stale(|| format!("{}\n{}", format_dbg!(), loc()))?;
         self.1 = StateStatus::Fresh;
         Ok(())
     }
