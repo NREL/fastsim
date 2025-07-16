@@ -82,13 +82,17 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
                 fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
                     #(self
                         .#energy_fields
+                        .mark_stale();
+                    )*
+                    #(self
+                        .#energy_fields
                         .update(
                             si::Energy::ZERO,
                             || format!("{}\n{}\n{} -> {}", loc(), format_dbg!(), stringify!(#pwr_fields), stringify!(#energy_fields))
                         )?;
                     )*
                     #(self
-                        .#energy_fields
+                        .#pwr_fields
                         .mark_stale();
                     )*
                     #(self
@@ -97,10 +101,6 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
                             si::Power::ZERO,
                             || format!("{}\n{}\n{} -> {}", loc(), format_dbg!(), stringify!(#pwr_fields), stringify!(#energy_fields))
                         )?;
-                    )*
-                    #(self
-                        .#pwr_fields
-                        .mark_stale();
                     )*
                     Ok(())
                 }
