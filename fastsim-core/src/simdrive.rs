@@ -1275,6 +1275,7 @@ mod tests {
                     )
                 })
                 .unwrap();
+            sd.reset_cumulative(|| format_dbg!()).unwrap();
             assert!(
                 *sd.veh.state.i.get_fresh(String::new).unwrap()
                     == sd.cyc.len_checked().unwrap() - 1
@@ -1427,6 +1428,7 @@ mod tests {
                     )
                 })
                 .unwrap();
+            sd.reset_cumulative(|| format_dbg!()).unwrap();
             assert_eq!(*sd.veh.state.i.get_fresh(|| format_dbg!()).unwrap(), 1369);
         }
     }
