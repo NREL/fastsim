@@ -88,11 +88,19 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
                         )?;
                     )*
                     #(self
+                        .#energy_fields
+                        .mark_stale();
+                    )*
+                    #(self
                         .#pwr_fields
                         .update(
                             si::Power::ZERO,
                             || format!("{}\n{}\n{} -> {}", loc(), format_dbg!(), stringify!(#pwr_fields), stringify!(#energy_fields))
                         )?;
+                    )*
+                    #(self
+                        .#pwr_fields
+                        .mark_stale();
                     )*
                     Ok(())
                 }
