@@ -303,6 +303,8 @@ impl SetCumulative for Vehicle {
         // this does not get handled by the `SetCumulative` derive macro
         self.state.dist.mark_stale();
         self.state.dist.update(si::Length::ZERO, || format_dbg!())?;
+        self.state.time.mark_stale();
+        self.state.time.update(si::Time::ZERO, || format_dbg!())?;
         self.state.speed_ach.mark_stale();
         self.state
             .speed_ach

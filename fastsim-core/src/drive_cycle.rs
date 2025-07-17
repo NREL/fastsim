@@ -1539,6 +1539,45 @@ impl TryFrom<CycleBuilder> for Cycle {
     }
 }
 
+/// Trait for CycleBuilder and Cycle to support builder pattern
+pub trait CBTrait {
+    /// Return cycle with `grade`
+    fn with_grade(&mut self, grade: Vec<si::Ratio>) -> anyhow::Result<Cycle>;
+
+    /// Return cycle with `temp_amb_air`
+    fn with_temp_amb_air(&mut self, temp_amb_air: Vec<si::Temperature>) -> anyhow::Result<Cycle>;
+
+    // TODO: add more of these builder helpers
+}
+
+impl CBTrait for Cycle {
+    fn with_grade(&mut self, grade: Vec<si::Ratio>) -> anyhow::Result<Cycle> {
+        ensure!(
+            self.len_checked().with_context(|| format_dbg!())? == grade.len(),
+            format!(
+                "{}\n`self.len()`: `{}\n`grade.len()`",
+                self.len_checked().with_context(|| format_dbg!())?,
+                grade.len()
+            )
+        );
+        self.grade = grade;
+        Ok(self.clone())
+    }
+
+    fn with_temp_amb_air(&mut self, temp_amb_air: Vec<si::Temperature>) -> anyhow::Result<Cycle> {
+        ensure!(
+            self.len_checked().with_context(|| format_dbg!())? == temp_amb_air.len(),
+            format!(
+                "{}\n`self.len()`: `{}\n`temp_amb_air.len()`",
+                self.len_checked().with_context(|| format_dbg!())?,
+                temp_amb_air.len()
+            )
+        );
+        self.temp_amb_air = temp_amb_air;
+        Ok(self.clone())
+    }
+}
+
 #[serde_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[non_exhaustive]
@@ -1553,15 +1592,18 @@ pub struct CycleBuilder {
     pub speed: Vec<si::Velocity>,
 }
 
-impl CycleBuilder {
-    /// Return cycle with `grade`
-    pub fn with_grade(&self, grade: Vec<si::Ratio>) -> anyhow::Result<Cycle> {
+impl CBTrait for CycleBuilder {
+    fn with_grade(&mut self, grade: Vec<si::Ratio>) -> anyhow::Result<Cycle> {
         let mut cyc: Cycle = self.clone().try_into().with_context(|| format_dbg!())?;
         cyc.grade = grade;
         Ok(cyc)
     }
 
-    // TODO: add more of these builder helpers
+    fn with_temp_amb_air(&mut self, temp_amb_air: Vec<si::Temperature>) -> anyhow::Result<Cycle> {
+        let mut cyc: Cycle = self.clone().try_into().with_context(|| format_dbg!())?;
+        cyc.temp_amb_air = temp_amb_air;
+        Ok(cyc)
+    }
 }
 
 #[serde_api]
