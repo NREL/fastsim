@@ -483,7 +483,8 @@ impl ReversibleEnergyStorage {
 
         ensure!(
             pwr_aux <= *state.pwr_disch_max.get_fresh(|| format_dbg!())?,
-            "{}\n`{}` ({} W) must always be less than or equal to {} ({} W)\nsoc:{}",
+            "{}\n`{}` ({} W) must always be less than or equal to {} ({} W)\n`state.soc`:{}
+`soc_disch_buffer`: {}",
             format_dbg!(),
             stringify!(pwr_aux),
             pwr_aux.get::<si::watt>().format_eng(None),
@@ -495,6 +496,11 @@ impl ReversibleEnergyStorage {
                 .format_eng(None),
             state
                 .soc
+                .get_stale(|| format_dbg!())?
+                .get::<si::ratio>()
+                .format_eng(None),
+            state
+                .soc_disch_buffer
                 .get_fresh(|| format_dbg!())?
                 .get::<si::ratio>()
                 .format_eng(None)

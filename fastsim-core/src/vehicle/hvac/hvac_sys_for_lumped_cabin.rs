@@ -33,9 +33,7 @@ pub struct HVACSystemForLumpedCabin {
     /// coefficient of performance of vapor compression cycle
     #[serde(default)]
     pub state: HVACSystemForLumpedCabinState,
-    #[serde(
-        default,
-    )]
+    #[serde(default)]
     pub history: HVACSystemForLumpedCabinStateHistoryVec,
     pub save_interval: Option<usize>,
 }
@@ -197,7 +195,9 @@ impl HVACSystemForLumpedCabin {
 
                     if *self.state.pwr_i.get_fresh(|| format_dbg!())? > si::Power::ZERO {
                         // If `pwr_i` is greater than zero, reset to switch from heating to cooling
-                        self.state.pwr_i.update(si::Power::ZERO, || format_dbg!())?;
+                        self.state
+                            .pwr_i
+                            .update_unchecked(si::Power::ZERO, || format_dbg!())?;
                     }
                     let mut pwr_thrml_hvac_to_cab =
                         (*self.state.pwr_p.get_fresh(|| format_dbg!())?
@@ -313,7 +313,9 @@ impl HVACSystemForLumpedCabin {
 
                     if *self.state.pwr_i.get_fresh(|| format_dbg!())? < si::Power::ZERO {
                         // If `pwr_i` is less than zero reset to switch from cooling to heating
-                        self.state.pwr_i.update(si::Power::ZERO, || format_dbg!())?;
+                        self.state
+                            .pwr_i
+                            .update_unchecked(si::Power::ZERO, || format_dbg!())?;
                     }
                     let mut pwr_thrml_hvac_to_cab =
                         (*self.state.pwr_p.get_fresh(|| format_dbg!())?

@@ -1098,8 +1098,12 @@ mod tests {
         let _veh =
             Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml", false).unwrap();
         let mut cyc = Cycle::from_resource("udds.csv", false).unwrap();
-        // zero out speed
-        cyc.speed.iter_mut().for_each(|v| *v = si::Velocity::ZERO);
+        // zero out speed in soak cyc
+        let mut soak_cyc_no_temp = cyc.clone();
+        soak_cyc_no_temp
+            .speed
+            .iter_mut()
+            .for_each(|v| *v = si::Velocity::ZERO);
 
         let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
             .iter()
@@ -1116,6 +1120,16 @@ mod tests {
         for ((te_amb, te_init), te_fc_init) in
             te_amb.iter().zip(te_batt_and_cab_init).zip(te_fc_init)
         {
+            let prep_cyc = cyc
+                .with_temp_amb_air(vec![*te_amb; cyc.len_checked().unwrap()])
+                .unwrap();
+            let soak_cyc = soak_cyc_no_temp
+                .with_temp_amb_air(vec![*te_amb; cyc.len_checked().unwrap()])
+                .unwrap();
+            let test_cyc = cyc
+                .with_temp_amb_air(vec![*te_amb; cyc.len_checked().unwrap()])
+                .unwrap();
+
             let mut veh = _veh.clone();
 
             veh.res_mut()
@@ -1171,39 +1185,91 @@ mod tests {
                 .temperature
                 .update(te_fc_init, || format_dbg!())
                 .unwrap();
-            let mut cyc = cyc.clone();
-            cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
-            let mut sd = SimDrive::new(
-                veh,
-                cyc,
-                Some(SimParams {
-                    ambient_thermal_soak: true,
-                    ..Default::default()
-                }),
-            );
-            sd.walk()
+
+            // simulate prep cycle
+            dbg!("Running `sd_prep`");
+            let mut sd_prep = SimDrive::new(veh, prep_cyc, None);
+            sd_prep
+                .walk()
                 .with_context(|| {
                     format!(
-                        "ambient temperature: {}*C\ninit temperature: {}",
+                        "\nprep cycle:\nambient temperature: {}*C\ninit temperature: {}",
                         te_amb.get::<si::degree_celsius>(),
                         te_init.get::<si::degree_celsius>()
                     )
                 })
                 .unwrap();
             assert!(
-                *sd.veh.state.i.get_fresh(String::new).unwrap()
-                    == sd.cyc.len_checked().unwrap() - 1
+                *sd_prep.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd_prep.cyc.len_checked().unwrap() - 1
             );
+            sd_prep.reset_step(|| format_dbg!()).unwrap();
+            sd_prep.veh.clear();
+            sd_prep.reset_cumulative(|| format_dbg!()).unwrap();
+
+            // simulate soak cycle
+            dbg!("Running `sd_soak`");
+            let mut sd_soak = SimDrive::new(
+                sd_prep.veh.clone(),
+                soak_cyc,
+                Some(SimParams {
+                    ambient_thermal_soak: true,
+                    ..Default::default()
+                }),
+            );
+            sd_soak
+                .walk()
+                .with_context(|| {
+                    format!(
+                        "\nsoak cycle:\nambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert!(
+                *sd_soak.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd_soak.cyc.len_checked().unwrap() - 1
+            );
+            sd_soak.reset_step(|| format_dbg!()).unwrap();
+            sd_soak.veh.clear();
+            sd_soak.reset_cumulative(|| format_dbg!()).unwrap();
+
+            // simulate test cycle
+            dbg!("Running `sd_test`");
+            let mut sd_test = SimDrive::new(sd_soak.veh.clone(), test_cyc, None);
+            sd_test
+                .walk()
+                .with_context(|| {
+                    format!(
+                        "\ntest cycle:\nambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert!(
+                *sd_test.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd_test.cyc.len_checked().unwrap() - 1
+            );
+            sd_test.reset_step(|| format_dbg!()).unwrap();
+            sd_test.veh.clear();
+            sd_test.reset_cumulative(|| format_dbg!()).unwrap();
         }
     }
 
     #[test]
     #[cfg(feature = "resources")]
+    /// Simulate prep cycle, soak cycle, and test cycle with thermal effects
     fn test_sim_drive_bev_thrml_soak() {
         let _veh = Vehicle::from_resource("2020 Chevrolet Bolt EV thrml.yaml", false).unwrap();
         let mut cyc = Cycle::from_resource("udds.csv", false).unwrap();
-        // zero out speed
-        cyc.speed.iter_mut().for_each(|v| *v = si::Velocity::ZERO);
+        // zero out speed in soak cyc
+        let mut soak_cyc_no_temp = cyc.clone();
+        soak_cyc_no_temp
+            .speed
+            .iter_mut()
+            .for_each(|v| *v = si::Velocity::ZERO);
 
         let te_amb: Vec<si::Temperature> = [-6.7, -6.7, 38.0]
             .iter()
@@ -1213,7 +1279,18 @@ mod tests {
             .iter()
             .map(|t| (*t + uc::CELSIUS_TO_KELVIN) * uc::KELVIN)
             .collect();
+
+        // sweep ambient and initial conditions
         for (te_amb, te_init) in te_amb.iter().zip(te_batt_and_cab_init) {
+            let prep_cyc = cyc
+                .with_temp_amb_air(vec![*te_amb; cyc.len_checked().unwrap()])
+                .unwrap();
+            let soak_cyc = soak_cyc_no_temp
+                .with_temp_amb_air(vec![*te_amb; cyc.len_checked().unwrap()])
+                .unwrap();
+            let test_cyc = cyc
+                .with_temp_amb_air(vec![*te_amb; cyc.len_checked().unwrap()])
+                .unwrap();
             let mut veh = _veh.clone();
 
             veh.res_mut()
@@ -1243,6 +1320,8 @@ mod tests {
                 .temp_prev
                 .update(te_init, || format_dbg!())
                 .unwrap();
+
+            // setup initial conditions
             if let CabinOption::LumpedCabin(lc) = &mut veh.cabin {
                 lc.state.temperature.mark_stale();
                 lc.state
@@ -1256,30 +1335,75 @@ mod tests {
                     .unwrap();
             }
 
-            let mut cyc = cyc.clone();
-            cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
-            let mut sd = SimDrive::new(
-                veh,
-                cyc,
-                Some(SimParams {
-                    ambient_thermal_soak: true,
-                    ..Default::default()
-                }),
-            );
-            sd.walk()
+            // simulate prep cycle
+            dbg!("Running `sd_prep`");
+            let mut sd_prep = SimDrive::new(veh, prep_cyc, None);
+            sd_prep
+                .walk()
                 .with_context(|| {
                     format!(
-                        "ambient temperature: {}*C\ninit temperature: {}",
+                        "\nprep cycle:\nambient temperature: {}*C\ninit temperature: {}",
                         te_amb.get::<si::degree_celsius>(),
                         te_init.get::<si::degree_celsius>()
                     )
                 })
                 .unwrap();
-            sd.reset_cumulative(|| format_dbg!()).unwrap();
             assert!(
-                *sd.veh.state.i.get_fresh(String::new).unwrap()
-                    == sd.cyc.len_checked().unwrap() - 1
+                *sd_prep.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd_prep.cyc.len_checked().unwrap() - 1
             );
+            sd_prep.reset_step(|| format_dbg!()).unwrap();
+            sd_prep.veh.clear();
+            sd_prep.reset_cumulative(|| format_dbg!()).unwrap();
+
+            // simulate soak cycle
+            dbg!("Running `sd_soak`");
+            let mut sd_soak = SimDrive::new(
+                sd_prep.veh.clone(),
+                soak_cyc,
+                Some(SimParams {
+                    ambient_thermal_soak: true,
+                    ..Default::default()
+                }),
+            );
+            sd_soak
+                .walk()
+                .with_context(|| {
+                    format!(
+                        "\nsoak cycle:\nambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert!(
+                *sd_soak.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd_soak.cyc.len_checked().unwrap() - 1
+            );
+            sd_soak.reset_step(|| format_dbg!()).unwrap();
+            sd_soak.veh.clear();
+            sd_soak.reset_cumulative(|| format_dbg!()).unwrap();
+
+            // simulate test cycle
+            dbg!("Running `sd_test`");
+            let mut sd_test = SimDrive::new(sd_soak.veh.clone(), test_cyc, None);
+            sd_test
+                .walk()
+                .with_context(|| {
+                    format!(
+                        "\ntest cycle:\nambient temperature: {}*C\ninit temperature: {}",
+                        te_amb.get::<si::degree_celsius>(),
+                        te_init.get::<si::degree_celsius>()
+                    )
+                })
+                .unwrap();
+            assert!(
+                *sd_test.veh.state.i.get_fresh(String::new).unwrap()
+                    == sd_test.cyc.len_checked().unwrap() - 1
+            );
+            sd_test.reset_step(|| format_dbg!()).unwrap();
+            sd_test.veh.clear();
+            sd_test.reset_cumulative(|| format_dbg!()).unwrap();
         }
     }
 
