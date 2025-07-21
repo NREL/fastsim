@@ -28,6 +28,8 @@ impl Init for AuxSource {}
 pub struct Vehicle {
     /// Vehicle name
     pub name: String,
+    /// Documentation (e.g. how this file was generated, calibration details)]
+    pub doc: Option<String>,
     /// Year manufactured
     pub year: u32,
     #[has_state]
@@ -267,7 +269,7 @@ impl HistoryMethods for Vehicle {
 }
 
 /// TODO: update this constant to match fastsim-2 for gasoline
-const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
+pub(super) const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
 const CONV: &str = "Conv";
 const HEV: &str = "HEV";
 const PHEV: &str = "PHEV";
