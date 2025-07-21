@@ -1094,6 +1094,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "resources")]
+    /// Simulate prep cycle, soak cycle, and test cycle with thermal effects
     fn test_sim_drive_hev_thrml_soak() {
         let _veh =
             Vehicle::from_resource("2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml", false).unwrap();

@@ -14,6 +14,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
         let mut f3veh = Self {
             name: f2veh.scenario_name.clone(),
             year: f2veh.veh_year,
+            doc: f2veh.doc.clone(),
             pt_type,
             chassis: Chassis::try_from(&f2veh).with_context(|| format_dbg!())?,
             cabin: Default::default(),

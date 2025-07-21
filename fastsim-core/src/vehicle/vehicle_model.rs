@@ -28,6 +28,8 @@ impl Init for AuxSource {}
 pub struct Vehicle {
     /// Vehicle name
     pub name: String,
+    /// Documentation (e.g. how this file was generated, calibration details)]
+    pub doc: Option<String>,
     /// Year manufactured
     pub year: u32,
     #[has_state]
