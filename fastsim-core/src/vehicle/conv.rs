@@ -141,6 +141,33 @@ impl ConventionalVehicle {
     }
 }
 
+impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<ConventionalVehicle> {
+        let conv = ConventionalVehicle {
+            fs: {
+                let mut fs = FuelStorage {
+                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                    energy_capacity: f2veh.fs_kwh * uc::KWH,
+                    specific_energy: Some(
+                        super::vehicle_model::FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG,
+                    ),
+                    mass: None,
+                };
+                fs.set_mass(None, MassSideEffect::None)
+                    .with_context(|| anyhow!(format_dbg!()))?;
+                fs
+            },
+            fc: FuelConverter::try_from(f2veh.clone())?,
+            transmission: Transmission::try_from(f2veh.clone())?,
+            mass: None,
+            alt_eff: f2veh.alt_eff * uc::R,
+        };
+        Ok(conv)
+    }
+}
+
 impl Mass for ConventionalVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self
