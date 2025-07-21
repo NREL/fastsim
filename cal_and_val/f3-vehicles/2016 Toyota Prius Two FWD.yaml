@@ -2,8 +2,9 @@
 name: 2016 Toyota Prius Two FWD
 year: 2016
 pt_type:
-  HybridElectricVehicle:
+  HEV:
     res:
+      thrml: None
       mass_kilograms: ~
       specific_energy_joules_per_kilogram: ~
       pwr_out_max_watts: 1000000.0
@@ -13,11 +14,56 @@ pt_type:
       min_soc: 0.25
       max_soc: 0.95
       save_interval: 1
+      state:
+        pwr_prop_max_watts: 0.0
+        pwr_regen_max_watts: 0.0
+        pwr_disch_max_watts: 0.0
+        pwr_charge_max_watts: 0.0
+        i: 0
+        soc: 0.5
+        soc_regen_buffer: 1.0
+        soc_disch_buffer: 0.0
+        eff: 0.0
+        soh: 0.0
+        pwr_out_electrical_watts: 0.0
+        pwr_out_prop_watts: 0.0
+        pwr_aux_watts: 0.0
+        pwr_loss_watts: 0.0
+        pwr_out_chemical_watts: 0.0
+        energy_out_electrical_joules: 0.0
+        energy_out_prop_joules: 0.0
+        energy_aux_joules: 0.0
+        energy_loss_joules: 0.0
+        energy_out_chemical_joules: 0.0
+      history:
+        pwr_prop_max_watts: []
+        pwr_regen_max_watts: []
+        pwr_disch_max_watts: []
+        pwr_charge_max_watts: []
+        i: []
+        soc: []
+        soc_regen_buffer: []
+        soc_disch_buffer: []
+        eff: []
+        soh: []
+        pwr_out_electrical_watts: []
+        pwr_out_prop_watts: []
+        pwr_aux_watts: []
+        pwr_loss_watts: []
+        pwr_out_chemical_watts: []
+        energy_out_electrical_joules: []
+        energy_out_prop_joules: []
+        energy_aux_joules: []
+        energy_loss_joules: []
+        energy_out_chemical_joules: []
     fs:
       pwr_out_max_watts: 2000000.0
       pwr_ramp_lag_seconds: 1.1
       energy_capacity_joules: 1392840000.0
+      specific_energy_joules_per_kilogram: ~
+      mass_kilograms: ~
     fc:
+      thrml: None
       mass_kilograms: ~
       specific_pwr_watts_per_kilogram: ~
       pwr_out_max_watts: 71000.0
@@ -28,663 +74,217 @@ pt_type:
           grid:
             - v: 1
               dim:
-                - 100
+                - 12
               data:
                 - 0.0
-                - 0.001
-                - 0.002
-                - 0.003
-                - 0.004
                 - 0.005
-                - 0.006
-                - 0.007
-                - 0.008
-                - 0.009
-                - 0.01
-                - 0.011
-                - 0.012
-                - 0.013
-                - 0.014
                 - 0.015
-                - 0.016
-                - 0.017
-                - 0.018
-                - 0.019
-                - 0.02
-                - 0.021
-                - 0.022
-                - 0.023
-                - 0.024
-                - 0.025
-                - 0.026
-                - 0.027
-                - 0.028
-                - 0.029
-                - 0.03
-                - 0.035
                 - 0.04
-                - 0.045
-                - 0.05
-                - 0.055
                 - 0.06
-                - 0.065
-                - 0.07
-                - 0.08
-                - 0.09
                 - 0.1
-                - 0.11
-                - 0.12
-                - 0.13
                 - 0.14
-                - 0.15
-                - 0.16
-                - 0.17
-                - 0.18
-                - 0.19
                 - 0.2
-                - 0.21
-                - 0.22
-                - 0.23
-                - 0.24
-                - 0.25
-                - 0.26
-                - 0.27
-                - 0.28
-                - 0.29
-                - 0.3
-                - 0.31
-                - 0.32
-                - 0.33
-                - 0.34
-                - 0.35
-                - 0.36
-                - 0.37
-                - 0.38
-                - 0.39
                 - 0.4
-                - 0.41
-                - 0.42
-                - 0.43
-                - 0.44
-                - 0.45
-                - 0.46
-                - 0.47
-                - 0.48
-                - 0.49
-                - 0.5
-                - 0.51
-                - 0.52
-                - 0.53
-                - 0.54
-                - 0.55
-                - 0.56
-                - 0.57
-                - 0.58
-                - 0.59
                 - 0.6
-                - 0.65
-                - 0.7
-                - 0.75
                 - 0.8
-                - 0.85
-                - 0.9
-                - 0.95
                 - 1.0
           values:
             v: 1
             dim:
-              - 100
+              - 12
             data:
               - 0.08
-              - 0.084
-              - 0.08800000000000001
-              - 0.092
-              - 0.096
               - 0.1
-              - 0.116
-              - 0.132
-              - 0.14800000000000002
-              - 0.164
-              - 0.18000000000000002
-              - 0.196
-              - 0.21200000000000002
-              - 0.22800000000000004
-              - 0.24400000000000005
               - 0.26
-              - 0.26280000000000003
-              - 0.2656
-              - 0.2684
-              - 0.2712
-              - 0.274
-              - 0.2768
-              - 0.2796
-              - 0.2824
-              - 0.2852
-              - 0.28800000000000003
-              - 0.2908
-              - 0.2936
-              - 0.2964
-              - 0.2992
-              - 0.302
-              - 0.316
               - 0.33
-              - 0.33625
-              - 0.3425
-              - 0.34875
               - 0.355
-              - 0.356875
-              - 0.35875
-              - 0.3625
-              - 0.36624999999999996
               - 0.37
-              - 0.3725
-              - 0.375
-              - 0.3775
               - 0.38
               - 0.38
-              - 0.38
-              - 0.38
-              - 0.38
-              - 0.38
-              - 0.38
-              - 0.3785
-              - 0.377
-              - 0.3755
-              - 0.374
-              - 0.3725
-              - 0.371
-              - 0.3695
-              - 0.368
-              - 0.3665
-              - 0.365
-              - 0.3635
-              - 0.362
-              - 0.3605
-              - 0.359
-              - 0.3575
-              - 0.356
-              - 0.3545
-              - 0.353
-              - 0.3515
               - 0.35
-              - 0.3495
-              - 0.349
-              - 0.3485
-              - 0.348
-              - 0.3475
-              - 0.347
-              - 0.3465
-              - 0.346
-              - 0.3455
-              - 0.345
-              - 0.34450000000000003
-              - 0.34400000000000003
-              - 0.3435
-              - 0.343
-              - 0.3425
-              - 0.342
-              - 0.3415
-              - 0.341
-              - 0.3405
               - 0.34
-              - 0.3375
-              - 0.335
-              - 0.3325
               - 0.33
-              - 0.3275
-              - 0.325
-              - 0.3225
               - 0.32
-        strategy: LeftNearest
+        strategy: Linear
         extrapolate: Error
       pwr_idle_fuel_watts: 0.0
       save_interval: 1
+      state:
+        i: 0
+        pwr_out_max_watts: 0.0
+        pwr_prop_max_watts: 0.0
+        eff: 0.0
+        pwr_prop_watts: 0.0
+        energy_prop_joules: 0.0
+        pwr_aux_watts: 0.0
+        energy_aux_joules: 0.0
+        pwr_fuel_watts: 0.0
+        energy_fuel_joules: 0.0
+        pwr_loss_watts: 0.0
+        energy_loss_joules: 0.0
+        fc_on: false
+        time_on_seconds: 0.0
+      history:
+        i: []
+        pwr_out_max_watts: []
+        pwr_prop_max_watts: []
+        eff: []
+        pwr_prop_watts: []
+        energy_prop_joules: []
+        pwr_aux_watts: []
+        energy_aux_joules: []
+        pwr_fuel_watts: []
+        energy_fuel_joules: []
+        pwr_loss_watts: []
+        energy_loss_joules: []
+        fc_on: []
+        time_on_seconds: []
     em:
       eff_interp_achieved:
         data:
           grid:
             - v: 1
               dim:
-                - 101
+                - 11
               data:
                 - 0.0
-                - 0.01
                 - 0.02
-                - 0.03
                 - 0.04
-                - 0.05
                 - 0.06
-                - 0.07
                 - 0.08
-                - 0.09
                 - 0.1
-                - 0.11
-                - 0.12
-                - 0.13
-                - 0.14
-                - 0.15
-                - 0.16
-                - 0.17
-                - 0.18
-                - 0.19
                 - 0.2
-                - 0.21
-                - 0.22
-                - 0.23
-                - 0.24
-                - 0.25
-                - 0.26
-                - 0.27
-                - 0.28
-                - 0.29
-                - 0.3
-                - 0.31
-                - 0.32
-                - 0.33
-                - 0.34
-                - 0.35
-                - 0.36
-                - 0.37
-                - 0.38
-                - 0.39
                 - 0.4
-                - 0.41
-                - 0.42
-                - 0.43
-                - 0.44
-                - 0.45
-                - 0.46
-                - 0.47
-                - 0.48
-                - 0.49
-                - 0.5
-                - 0.51
-                - 0.52
-                - 0.53
-                - 0.54
-                - 0.55
-                - 0.56
-                - 0.57
-                - 0.58
-                - 0.59
                 - 0.6
-                - 0.61
-                - 0.62
-                - 0.63
-                - 0.64
-                - 0.65
-                - 0.66
-                - 0.67
-                - 0.68
-                - 0.69
-                - 0.7
-                - 0.71
-                - 0.72
-                - 0.73
-                - 0.74
-                - 0.75
-                - 0.76
-                - 0.77
-                - 0.78
-                - 0.79
                 - 0.8
-                - 0.81
-                - 0.82
-                - 0.83
-                - 0.84
-                - 0.85
-                - 0.86
-                - 0.87
-                - 0.88
-                - 0.89
-                - 0.9
-                - 0.91
-                - 0.92
-                - 0.93
-                - 0.94
-                - 0.95
-                - 0.96
-                - 0.97
-                - 0.98
-                - 0.99
                 - 1.0
           values:
             v: 1
             dim:
-              - 101
+              - 11
             data:
-              - 0.84
-              - 0.84
               - 0.85
-              - 0.86
+              - 0.85
               - 0.87
-              - 0.88
               - 0.89
-              - 0.895
               - 0.9
-              - 0.905
               - 0.91
-              - 0.912
-              - 0.914
-              - 0.916
-              - 0.918
-              - 0.92
-              - 0.922
-              - 0.924
-              - 0.926
-              - 0.928
               - 0.93
-              - 0.9305
-              - 0.931
-              - 0.9315
-              - 0.932
-              - 0.9325
-              - 0.933
-              - 0.9335
-              - 0.934
-              - 0.9345
-              - 0.9349999999999999
-              - 0.9355
-              - 0.9359999999999999
-              - 0.9365
-              - 0.9369999999999999
-              - 0.9375
-              - 0.938
-              - 0.9385
-              - 0.939
-              - 0.9395
               - 0.94
               - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.9395
-              - 0.939
-              - 0.9385
-              - 0.938
-              - 0.9375
-              - 0.9369999999999999
-              - 0.9365
-              - 0.9359999999999999
-              - 0.9355
-              - 0.935
-              - 0.9345
-              - 0.934
-              - 0.9335
-              - 0.933
-              - 0.9325
-              - 0.932
-              - 0.9315
-              - 0.931
-              - 0.9305
               - 0.93
-              - 0.9295
-              - 0.929
-              - 0.9285000000000001
-              - 0.928
-              - 0.9275000000000001
-              - 0.927
-              - 0.9265000000000001
-              - 0.926
-              - 0.9255
-              - 0.925
-              - 0.9245
-              - 0.924
-              - 0.9235
-              - 0.923
-              - 0.9225000000000001
-              - 0.922
-              - 0.9215000000000001
-              - 0.921
-              - 0.9205000000000001
               - 0.92
-        strategy: LeftNearest
+        strategy: Linear
         extrapolate: Error
       eff_interp_at_max_input:
         data:
           grid:
             - v: 1
               dim:
-                - 101
+                - 11
               data:
                 - 0.0
-                - 0.011904761904761906
                 - 0.023529411764705882
-                - 0.03488372093023256
                 - 0.04597701149425287
-                - 0.05681818181818182
                 - 0.06741573033707865
-                - 0.0782122905027933
                 - 0.08888888888888889
-                - 0.09944751381215469
                 - 0.10989010989010989
-                - 0.1206140350877193
-                - 0.13129102844638948
-                - 0.14192139737991266
-                - 0.15250544662309368
-                - 0.16304347826086954
-                - 0.1735357917570499
-                - 0.183982683982684
-                - 0.19438444924406045
-                - 0.2047413793103448
                 - 0.21505376344086022
-                - 0.22568511552928533
-                - 0.2363050483351235
-                - 0.2469135802469136
-                - 0.2575107296137339
-                - 0.2680965147453083
-                - 0.27867095391211144
-                - 0.289234065345474
-                - 0.29978586723768735
-                - 0.3103263777421081
-                - 0.32085561497326204
-                - 0.33137359700694813
-                - 0.3418803418803419
-                - 0.35237586759209827
-                - 0.3628601921024547
-                - 0.3733333333333333
-                - 0.3837953091684435
-                - 0.39424613745338305
-                - 0.40468583599574015
-                - 0.41511442256519426
                 - 0.4255319148936171
-                - 0.43617021276595747
-                - 0.4468085106382979
-                - 0.4574468085106383
-                - 0.46808510638297873
-                - 0.4787234042553192
-                - 0.4893617021276596
-                - 0.5
-                - 0.5106382978723404
-                - 0.5212765957446809
-                - 0.5319148936170213
-                - 0.5425531914893618
-                - 0.5531914893617021
-                - 0.5638297872340426
-                - 0.574468085106383
-                - 0.5851063829787235
-                - 0.5957446808510639
-                - 0.6063829787234042
-                - 0.6170212765957447
-                - 0.6276595744680851
                 - 0.6382978723404256
-                - 0.6492815327301756
-                - 0.6602768903088392
-                - 0.6712839637719765
-                - 0.6823027718550108
-                - 0.6933333333333334
-                - 0.704375667022412
-                - 0.7154297917778965
-                - 0.7264957264957266
-                - 0.7375734901122394
-                - 0.748663101604278
-                - 0.759764579989299
-                - 0.7708779443254817
-                - 0.7820032137118371
-                - 0.7931404072883173
-                - 0.8042895442359249
-                - 0.815450643776824
-                - 0.8266237251744498
-                - 0.8378088077336198
-                - 0.8490059108006448
                 - 0.8602150537634409
-                - 0.8714362560516408
-                - 0.882669537136706
-                - 0.8939149165320408
-                - 0.9051724137931033
-                - 0.9164420485175201
-                - 0.9277238403451995
-                - 0.9390178089584457
-                - 0.9503239740820734
-                - 0.9616423554835224
-                - 0.9729729729729729
-                - 0.9843158464034614
-                - 0.9956709956709957
-                - 1.0070384407146724
-                - 1.0184182015167929
-                - 1.0298102981029809
-                - 1.0412147505422993
-                - 1.0526315789473684
-                - 1.0640608034744843
-                - 1.0755024443237369
                 - 1.0869565217391304
           values:
             v: 1
             dim:
-              - 101
+              - 11
             data:
-              - 0.84
-              - 0.84
               - 0.85
-              - 0.86
+              - 0.85
               - 0.87
-              - 0.88
               - 0.89
-              - 0.895
               - 0.9
-              - 0.905
               - 0.91
-              - 0.912
-              - 0.914
-              - 0.916
-              - 0.918
-              - 0.92
-              - 0.922
-              - 0.924
-              - 0.926
-              - 0.928
               - 0.93
-              - 0.9305
-              - 0.931
-              - 0.9315
-              - 0.932
-              - 0.9325
-              - 0.933
-              - 0.9335
-              - 0.934
-              - 0.9345
-              - 0.9349999999999999
-              - 0.9355
-              - 0.9359999999999999
-              - 0.9365
-              - 0.9369999999999999
-              - 0.9375
-              - 0.938
-              - 0.9385
-              - 0.939
-              - 0.9395
               - 0.94
               - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.94
-              - 0.9395
-              - 0.939
-              - 0.9385
-              - 0.938
-              - 0.9375
-              - 0.9369999999999999
-              - 0.9365
-              - 0.9359999999999999
-              - 0.9355
-              - 0.935
-              - 0.9345
-              - 0.934
-              - 0.9335
-              - 0.933
-              - 0.9325
-              - 0.932
-              - 0.9315
-              - 0.931
-              - 0.9305
               - 0.93
-              - 0.9295
-              - 0.929
-              - 0.9285000000000001
-              - 0.928
-              - 0.9275000000000001
-              - 0.927
-              - 0.9265000000000001
-              - 0.926
-              - 0.9255
-              - 0.925
-              - 0.9245
-              - 0.924
-              - 0.9235
-              - 0.923
-              - 0.9225000000000001
-              - 0.922
-              - 0.9215000000000001
-              - 0.921
-              - 0.9205000000000001
               - 0.92
-        strategy: LeftNearest
+        strategy: Linear
         extrapolate: Error
       pwr_out_max_watts: 53000.0
       specific_pwr_watts_per_kilogram: ~
       mass_kilograms: ~
       save_interval: 1
+      state:
+        i: 0
+        eff: 0.0
+        pwr_mech_fwd_out_max_watts: 0.0
+        eff_fwd_at_max_input: 0.0
+        pwr_mech_regen_max_watts: 0.0
+        eff_at_max_regen: 0.0
+        pwr_out_req_watts: 0.0
+        energy_out_req_joules: 0.0
+        pwr_elec_prop_in_watts: 0.0
+        energy_elec_prop_in_joules: 0.0
+        pwr_mech_prop_out_watts: 0.0
+        energy_mech_prop_out_joules: 0.0
+        pwr_mech_dyn_brake_watts: 0.0
+        energy_mech_dyn_brake_joules: 0.0
+        pwr_elec_dyn_brake_watts: 0.0
+        energy_elec_dyn_brake_joules: 0.0
+        pwr_loss_watts: 0.0
+        energy_loss_joules: 0.0
+      history:
+        i: []
+        eff: []
+        pwr_mech_fwd_out_max_watts: []
+        eff_fwd_at_max_input: []
+        pwr_mech_regen_max_watts: []
+        eff_at_max_regen: []
+        pwr_out_req_watts: []
+        energy_out_req_joules: []
+        pwr_elec_prop_in_watts: []
+        energy_elec_prop_in_joules: []
+        pwr_mech_prop_out_watts: []
+        energy_mech_prop_out_joules: []
+        pwr_mech_dyn_brake_watts: []
+        energy_mech_dyn_brake_joules: []
+        pwr_elec_dyn_brake_watts: []
+        energy_elec_dyn_brake_joules: []
+        pwr_loss_watts: []
+        energy_loss_joules: []
     transmission:
       mass_kilograms: ~
       eff_interp: 0.98
       save_interval: 1
+      state:
+        i: 0
+        pwr_out_fwd_max_watts: 0.0
+        pwr_out_regen_max_watts: 0.0
+        eff: 0.0
+        pwr_out_watts: 0.0
+        energy_out_joules: 0.0
+        pwr_in_watts: 0.0
+        energy_in_joules: 0.0
+        pwr_loss_watts: 0.0
+        energy_loss_joules: 0.0
+      history:
+        i: []
+        pwr_out_fwd_max_watts: []
+        pwr_out_regen_max_watts: []
+        eff: []
+        pwr_out_watts: []
+        energy_out_joules: []
+        pwr_in_watts: []
+        energy_in_joules: []
+        pwr_loss_watts: []
+        energy_loss_joules: []
     pt_cntrl:
       RGWDB:
-        speed_soc_disch_buffer_meters_per_second: 17.8816
+        speed_soc_disch_buffer_meters_per_second: 31.2928
         speed_soc_disch_buffer_coeff: 1.0
-        speed_soc_fc_on_buffer_meters_per_second: 19.66976
+        speed_soc_fc_on_buffer_meters_per_second: 46.9392
         speed_soc_fc_on_buffer_coeff: 1.0
         speed_soc_regen_buffer_meters_per_second: 13.4112
         speed_soc_regen_buffer_coeff: 1.0
@@ -692,6 +292,29 @@ pt_type:
         speed_fc_forced_on_meters_per_second: 37.9984
         frac_pwr_demand_fc_forced_on: 0.5645161290322581
         frac_of_most_eff_pwr_to_run_fc: 1.0
+        save_interval: 1
+        temp_fc_forced_on_kelvin: ~
+        temp_fc_allowed_off_kelvin: ~
+        state:
+          i: 0
+          fc_temperature_too_low: false
+          vehicle_speed_too_high: false
+          on_time_too_short: false
+          propulsion_power_demand: false
+          propulsion_power_demand_soft: false
+          aux_power_demand: false
+          charging_for_low_soc: false
+          soc_fc_on_buffer: 0.0
+        history:
+          i: []
+          fc_temperature_too_low: []
+          vehicle_speed_too_high: []
+          on_time_too_short: []
+          propulsion_power_demand: []
+          propulsion_power_demand_soft: []
+          aux_power_demand: []
+          charging_for_low_soc: []
+          soc_fc_on_buffer: []
     aux_cntrl: AuxOnResPriority
     mass_kilograms: ~
     sim_params:
@@ -699,6 +322,8 @@ pt_type:
       soc_balance_iter_err: 5
       balance_soc: true
       save_soc_bal_iters: false
+    soc_bal_iter_history: []
+    soc_bal_iters: 0
 chassis:
   drag_coef: 0.306
   frontal_area_square_meters: 2.22
@@ -706,16 +331,23 @@ chassis:
   wheel_inertia_kilogram_square_meters: 0.815
   num_wheels: 4
   wheel_radius_meters: 0.3175
+  tire_code: ~
   cg_height_meters: 0.53
   wheel_fric_coef: 0.7
   drive_type: FWD
   drive_axle_weight_frac: 0.59
   wheel_base_meters: 2.7
+  mass_kilograms: ~
+  glider_mass_kilograms: ~
+  cargo_mass_kilograms: ~
+cabin: None
+hvac: None
 mass_kilograms: 1635.0
 pwr_aux_base_watts: 1050.0
 save_interval: 1
 state:
   i: 0
+  time_seconds: 0.0
   pwr_prop_fwd_max_watts: 0.0
   pwr_prop_bwd_max_watts: 0.0
   pwr_tractive_watts: 0.0
@@ -740,6 +372,36 @@ state:
   speed_ach_meters_per_second: 0.0
   dist_meters: 0.0
   grade_curr: 0.0
-  elev_curr_meters: 180.0
-  air_density_kilograms_per_cubic_meter: 1.172
+  elev_curr_meters: 0.0
+  air_density_kilograms_per_cubic_meter: 0.0
   mass_kilograms: .nan
+history:
+  i: []
+  time_seconds: []
+  pwr_prop_fwd_max_watts: []
+  pwr_prop_bwd_max_watts: []
+  pwr_tractive_watts: []
+  pwr_tractive_for_cyc_watts: []
+  energy_tractive_joules: []
+  pwr_aux_watts: []
+  energy_aux_joules: []
+  pwr_drag_watts: []
+  energy_drag_joules: []
+  pwr_accel_watts: []
+  energy_accel_joules: []
+  pwr_ascent_watts: []
+  energy_ascent_joules: []
+  pwr_rr_watts: []
+  energy_rr_joules: []
+  pwr_whl_inertia_watts: []
+  energy_whl_inertia_joules: []
+  pwr_brake_watts: []
+  energy_brake_joules: []
+  cyc_met: []
+  cyc_met_overall: []
+  speed_ach_meters_per_second: []
+  dist_meters: []
+  grade_curr: []
+  elev_curr_meters: []
+  air_density_kilograms_per_cubic_meter: []
+  mass_kilograms: []

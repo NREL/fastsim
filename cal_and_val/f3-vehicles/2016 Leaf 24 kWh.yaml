@@ -2,8 +2,9 @@
 name: 2016 Leaf 24 kWh
 year: 2016
 pt_type:
-  BatteryElectricVehicle:
+  BEV:
     res:
+      thrml: None
       mass_kilograms: ~
       specific_energy_joules_per_kilogram: ~
       pwr_out_max_watts: 86000.0
@@ -13,6 +14,48 @@ pt_type:
       min_soc: 0.05
       max_soc: 0.95
       save_interval: 1
+      state:
+        pwr_prop_max_watts: 0.0
+        pwr_regen_max_watts: 0.0
+        pwr_disch_max_watts: 0.0
+        pwr_charge_max_watts: 0.0
+        i: 0
+        soc: 0.5
+        soc_regen_buffer: 1.0
+        soc_disch_buffer: 0.0
+        eff: 0.0
+        soh: 0.0
+        pwr_out_electrical_watts: 0.0
+        pwr_out_prop_watts: 0.0
+        pwr_aux_watts: 0.0
+        pwr_loss_watts: 0.0
+        pwr_out_chemical_watts: 0.0
+        energy_out_electrical_joules: 0.0
+        energy_out_prop_joules: 0.0
+        energy_aux_joules: 0.0
+        energy_loss_joules: 0.0
+        energy_out_chemical_joules: 0.0
+      history:
+        pwr_prop_max_watts: []
+        pwr_regen_max_watts: []
+        pwr_disch_max_watts: []
+        pwr_charge_max_watts: []
+        i: []
+        soc: []
+        soc_regen_buffer: []
+        soc_disch_buffer: []
+        eff: []
+        soh: []
+        pwr_out_electrical_watts: []
+        pwr_out_prop_watts: []
+        pwr_aux_watts: []
+        pwr_loss_watts: []
+        pwr_out_chemical_watts: []
+        energy_out_electrical_joules: []
+        energy_out_prop_joules: []
+        energy_aux_joules: []
+        energy_loss_joules: []
+        energy_out_chemical_joules: []
     em:
       eff_interp_achieved:
         data:
@@ -48,7 +91,7 @@ pt_type:
               - 0.95
               - 0.9400000000000001
               - 0.93
-        strategy: LeftNearest
+        strategy: Linear
         extrapolate: Error
       eff_interp_at_max_input:
         data:
@@ -84,16 +127,76 @@ pt_type:
               - 0.95
               - 0.9400000000000001
               - 0.93
-        strategy: LeftNearest
+        strategy: Linear
         extrapolate: Error
       pwr_out_max_watts: 80000.0
       specific_pwr_watts_per_kilogram: ~
       mass_kilograms: ~
       save_interval: 1
+      state:
+        i: 0
+        eff: 0.0
+        pwr_mech_fwd_out_max_watts: 0.0
+        eff_fwd_at_max_input: 0.0
+        pwr_mech_regen_max_watts: 0.0
+        eff_at_max_regen: 0.0
+        pwr_out_req_watts: 0.0
+        energy_out_req_joules: 0.0
+        pwr_elec_prop_in_watts: 0.0
+        energy_elec_prop_in_joules: 0.0
+        pwr_mech_prop_out_watts: 0.0
+        energy_mech_prop_out_joules: 0.0
+        pwr_mech_dyn_brake_watts: 0.0
+        energy_mech_dyn_brake_joules: 0.0
+        pwr_elec_dyn_brake_watts: 0.0
+        energy_elec_dyn_brake_joules: 0.0
+        pwr_loss_watts: 0.0
+        energy_loss_joules: 0.0
+      history:
+        i: []
+        eff: []
+        pwr_mech_fwd_out_max_watts: []
+        eff_fwd_at_max_input: []
+        pwr_mech_regen_max_watts: []
+        eff_at_max_regen: []
+        pwr_out_req_watts: []
+        energy_out_req_joules: []
+        pwr_elec_prop_in_watts: []
+        energy_elec_prop_in_joules: []
+        pwr_mech_prop_out_watts: []
+        energy_mech_prop_out_joules: []
+        pwr_mech_dyn_brake_watts: []
+        energy_mech_dyn_brake_joules: []
+        pwr_elec_dyn_brake_watts: []
+        energy_elec_dyn_brake_joules: []
+        pwr_loss_watts: []
+        energy_loss_joules: []
     transmission:
       mass_kilograms: ~
       eff_interp: 0.98
       save_interval: 1
+      state:
+        i: 0
+        pwr_out_fwd_max_watts: 0.0
+        pwr_out_regen_max_watts: 0.0
+        eff: 0.0
+        pwr_out_watts: 0.0
+        energy_out_joules: 0.0
+        pwr_in_watts: 0.0
+        energy_in_joules: 0.0
+        pwr_loss_watts: 0.0
+        energy_loss_joules: 0.0
+      history:
+        i: []
+        pwr_out_fwd_max_watts: []
+        pwr_out_regen_max_watts: []
+        eff: []
+        pwr_out_watts: []
+        energy_out_joules: []
+        pwr_in_watts: []
+        energy_in_joules: []
+        pwr_loss_watts: []
+        energy_loss_joules: []
     mass_kilograms: ~
 chassis:
   drag_coef: 0.315
@@ -102,16 +205,23 @@ chassis:
   wheel_inertia_kilogram_square_meters: 0.815
   num_wheels: 4
   wheel_radius_meters: 0.336
+  tire_code: ~
   cg_height_meters: 0.53
   wheel_fric_coef: 0.7
   drive_type: FWD
   drive_axle_weight_frac: 0.59
   wheel_base_meters: 2.6
+  mass_kilograms: ~
+  glider_mass_kilograms: ~
+  cargo_mass_kilograms: ~
+cabin: None
+hvac: None
 mass_kilograms: 1612.897
 pwr_aux_base_watts: 250.0
 save_interval: 1
 state:
   i: 0
+  time_seconds: 0.0
   pwr_prop_fwd_max_watts: 0.0
   pwr_prop_bwd_max_watts: 0.0
   pwr_tractive_watts: 0.0
@@ -136,6 +246,36 @@ state:
   speed_ach_meters_per_second: 0.0
   dist_meters: 0.0
   grade_curr: 0.0
-  elev_curr_meters: 180.0
-  air_density_kilograms_per_cubic_meter: 1.172
+  elev_curr_meters: 0.0
+  air_density_kilograms_per_cubic_meter: 0.0
   mass_kilograms: .nan
+history:
+  i: []
+  time_seconds: []
+  pwr_prop_fwd_max_watts: []
+  pwr_prop_bwd_max_watts: []
+  pwr_tractive_watts: []
+  pwr_tractive_for_cyc_watts: []
+  energy_tractive_joules: []
+  pwr_aux_watts: []
+  energy_aux_joules: []
+  pwr_drag_watts: []
+  energy_drag_joules: []
+  pwr_accel_watts: []
+  energy_accel_joules: []
+  pwr_ascent_watts: []
+  energy_ascent_joules: []
+  pwr_rr_watts: []
+  energy_rr_joules: []
+  pwr_whl_inertia_watts: []
+  energy_whl_inertia_joules: []
+  pwr_brake_watts: []
+  energy_brake_joules: []
+  cyc_met: []
+  cyc_met_overall: []
+  speed_ach_meters_per_second: []
+  dist_meters: []
+  grade_curr: []
+  elev_curr_meters: []
+  air_density_kilograms_per_cubic_meter: []
+  mass_kilograms: []
