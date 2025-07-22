@@ -123,6 +123,20 @@ impl Vehicle {
         Self::from_f2_file(file)
     }
 
+    #[pyo3(name = "to_fastsim2")]
+    fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
+        self.to_fastsim2()
+    }
+
+    #[pyo3(name = "reset_py")]
+    /// Compines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
+    fn reset_py(&mut self) -> anyhow::Result<()> {
+        self.reset_cumulative(|| format_dbg!())?;
+        self.reset_step(|| format_dbg!())?;
+        self.clear();
+        Ok(())
+    }
+
     #[pyo3(name = "clear")]
     fn clear_py(&mut self) {
         self.clear()
@@ -131,11 +145,6 @@ impl Vehicle {
     #[pyo3(name = "reset_step")]
     fn reset_step_py(&mut self) -> anyhow::Result<()> {
         self.reset_step(|| format_dbg!())
-    }
-
-    #[pyo3(name = "to_fastsim2")]
-    fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
-        self.to_fastsim2()
     }
 
     #[pyo3(name = "reset_cumulative")]
