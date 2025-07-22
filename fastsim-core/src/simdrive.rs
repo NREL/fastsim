@@ -135,6 +135,30 @@ impl SimDrive {
     fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
         self.to_fastsim2()
     }
+
+    #[pyo3(name = "reset_py")]
+    /// Compines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
+    fn reset_py(&mut self) -> anyhow::Result<()> {
+        self.reset_cumulative(|| format_dbg!())?;
+        self.reset_step(|| format_dbg!())?;
+        self.clear();
+        Ok(())
+    }
+
+    #[pyo3(name = "clear")]
+    fn clear_py(&mut self) {
+        self.clear()
+    }
+
+    #[pyo3(name = "reset_step")]
+    fn reset_step_py(&mut self) -> anyhow::Result<()> {
+        self.reset_step(|| format_dbg!())
+    }
+
+    #[pyo3(name = "reset_cumulative")]
+    fn reset_cumulative_py(&mut self) -> anyhow::Result<()> {
+        self.reset_cumulative(|| format_dbg!())
+    }
 }
 
 impl SerdeAPI for SimDrive {}
@@ -796,6 +820,10 @@ pwr deficit: {} kW
             .to_fastsim2()
             .with_context(|| anyhow!(format_dbg!()))?;
         Ok(fastsim_2::simdrive::RustSimDrive::new(cyc2, veh2))
+    }
+
+    pub fn clear(&mut self) {
+        self.veh.clear();
     }
 }
 
