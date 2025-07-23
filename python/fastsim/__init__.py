@@ -4,7 +4,7 @@ import inspect
 import re
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, Optional, Self, Union, cast
+from typing import Any, Dict, List, Optional, Self, Union, cast  # noqa: UP035
 
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
@@ -109,9 +109,9 @@ def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict:
 
 
 def get_hist_len(obj: dict) -> int | None:
-    """Find nested `history` and get lenth of first element"""
-    # TODO: check if this is sufficiently recursive and if it's not,
-    # make it recursive all the way down
+    """Find nested `history` and gets lenth of first element"""
+    # TODO: check if this is sufficiently recursive and if it's not, make it
+    # recursive all the way down
 
     if "history" in obj:
         return len(next(iter(obj["history"].values())))
