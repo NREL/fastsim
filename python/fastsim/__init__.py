@@ -10,19 +10,28 @@ from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
 import polars as pl
-from packaging.version import Version
-
-if Version(sys.version) < Version("3.11"):
-    from typing_extensions import Self  # noqa:UP035
-else:
-    # not available in older python versions
-    from typing import Self
 
 import fastsim
 
 from . import utils  # type: ignore[attr-defined]  # noqa: F401
 from .fastsim import *  # noqa: F403
 from .fastsim import Cycle  # type: ignore[attr-defined]
+
+
+def check_version_gte_311() -> bool:
+    """Return true if python version is greater than or equal to 3.11"""
+    v = sys.version
+    m = re.match("(\\d)\\.(\\d{2})", v)
+    m = cast(list[str], m)
+    assert m[1] == "3"
+    return int(m[2]) >= 11
+
+
+if check_version_gte_311():
+    from typing_extensions import Self  # noqa:UP035
+else:
+    # not available in older python versions
+    from typing import Self
 
 
 def package_root() -> Path:
