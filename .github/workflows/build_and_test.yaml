@@ -26,6 +26,7 @@ jobs:
         python-version:
           - "10"
           - "11"
+          - "12"
         include:
           - os:
               base: ubuntu
