@@ -72,6 +72,21 @@ impl SetCumulative for HVACOption {
         }
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            HVACOption::LumpedCabin(lc) => {
+                lc.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            HVACOption::LumpedCabinAndRES(lcr) => {
+                lcr.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            HVACOption::LumpedCabinWithShell => todo!(),
+            HVACOption::ReversibleEnergyStorageOnly => todo!(),
+            HVACOption::None => {}
+        }
+        Ok(())
+    }
 }
 impl HistoryMethods for HVACOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {

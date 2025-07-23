@@ -1,11 +1,10 @@
 //! Crate that wraps `fastsim-core` and enables the `pyo3` feature to
 //! expose most structs, methods, and functions to Python.
 
+use fastsim_2::simdrive::RustSimDrive as SimDriveF2;
+use fastsim_2::vehicle::RustVehicle as VehicleF2;
 use fastsim_core::prelude::*;
-pub use pyo3::exceptions::{
-    PyAttributeError, PyFileNotFoundError, PyIndexError, PyNotImplementedError, PyRuntimeError,
-};
-pub use pyo3::prelude::*;
+use pyo3::prelude::*;
 pub use pyo3::types::PyType;
 
 #[pymodule]
@@ -42,7 +41,8 @@ fn fastsim(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Vehicle>()?;
     m.add_class::<SimDrive>()?;
     m.add_class::<SimParams>()?;
-    m.add_class::<fastsim_2::simdrive::RustSimDrive>()?;
+    m.add_class::<SimDriveF2>()?;
+    m.add_class::<VehicleF2>()?;
 
     // List enabled features
     m.add_function(wrap_pyfunction!(fastsim_core::enabled_features, m)?)?;

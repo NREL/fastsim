@@ -88,14 +88,19 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     /// a raw github URL.
     #[cfg(feature = "web")]
     fn from_url<S: AsRef<str>>(url: S, skip_init: bool) -> Result<Self, Error> {
-        let url = url::Url::parse(url.as_ref())?;
+        let url =
+            url::Url::parse(url.as_ref()).map_err(|err| Error::SerdeError(format!("{err}")))?;
         let format = url
             .path_segments()
             .and_then(|segments| segments.last())
             .and_then(|filename| Path::new(filename).extension())
             .and_then(OsStr::to_str)
-            .with_context(|| "Could not parse file format from URL: {url:?}")?;
-        let mut response = ureq::get(url.as_ref()).call()?.into_reader();
+            .with_context(|| "Could not parse file format from URL: {url:?}")
+            .map_err(|err| Error::SerdeError(format!("{err}")))?;
+        let mut response = ureq::get(url.as_ref())
+            .call()
+            .map_err(|err| Error::SerdeError(format!("{err}")))?
+            .into_reader();
         Self::from_reader(&mut response, format, skip_init)
     }
 

@@ -55,6 +55,7 @@ impl HistoryMethods for ConventionalVehicle {
 impl Powertrain for Box<ConventionalVehicle> {
     fn set_curr_pwr_prop_out_max(
         &mut self,
+        _pwr_upstream: (si::Power, si::Power),
         pwr_aux: si::Power,
         dt: si::Time,
         _veh_state: &VehicleState,
@@ -66,14 +67,24 @@ impl Powertrain for Box<ConventionalVehicle> {
         self.fc
             .set_curr_pwr_prop_max(pwr_aux / self.alt_eff)
             .with_context(|| anyhow!(format_dbg!()))?;
+        self.transmission
+            .set_curr_pwr_prop_out_max(
+                (
+                    *self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+                    si::Power::ZERO,
+                ),
+                f64::NAN * uc::W,
+                dt,
+                _veh_state,
+            )
+            .with_context(|| format_dbg!())?;
         Ok(())
     }
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
-        Ok((
-            *self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
-            si::Power::ZERO,
-        ))
+        self.transmission
+            .get_curr_pwr_prop_out_max()
+            .with_context(|| format_dbg!())
     }
 
     fn solve(
@@ -81,18 +92,35 @@ impl Powertrain for Box<ConventionalVehicle> {
         pwr_out_req: si::Power,
         _enabled: bool,
         dt: si::Time,
-    ) -> anyhow::Result<()> {
-        // only positive power can come from powertrain.  Revisit this if engine braking model is needed.
-        let pwr_out_req = pwr_out_req.max(si::Power::ZERO);
+    ) -> anyhow::Result<Option<si::Power>> {
+        // NOTE: think about the possibility of engine braking, not urgent
+        ensure!(pwr_out_req >= si::Power::ZERO, format_dbg!());
+        ensure!(almost_le_uom(
+            &pwr_out_req,
+            self.transmission
+                .state
+                .pwr_out_fwd_max
+                .get_fresh(|| format_dbg!())?,
+            None
+        ));
+        ensure!(almost_le_uom(
+            &pwr_out_req,
+            self.transmission
+                .state
+                .pwr_out_fwd_max
+                .get_fresh(|| format_dbg!())?,
+            None
+        ));
         let enabled = true; // TODO: replace with a stop/start model
         let pwr_in_transmission = self
             .transmission
-            .get_pwr_in_req(pwr_out_req)
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .solve(pwr_out_req, true, dt)
+            .with_context(|| format_dbg!())?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         self.fc
             .solve(pwr_in_transmission, enabled, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        Ok(())
+        Ok(None)
     }
 
     fn pwr_regen(&self) -> anyhow::Result<si::Power> {
@@ -110,6 +138,33 @@ impl ConventionalVehicle {
     ) -> anyhow::Result<()> {
         self.fc
             .solve_thermal(te_amb, pwr_thrml_fc_to_cab, veh_state, dt)
+    }
+}
+
+impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<ConventionalVehicle> {
+        let conv = ConventionalVehicle {
+            fs: {
+                let mut fs = FuelStorage {
+                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                    energy_capacity: f2veh.fs_kwh * uc::KWH,
+                    specific_energy: Some(
+                        super::vehicle_model::FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG,
+                    ),
+                    mass: None,
+                };
+                fs.set_mass(None, MassSideEffect::None)
+                    .with_context(|| anyhow!(format_dbg!()))?;
+                fs
+            },
+            fc: FuelConverter::try_from(f2veh.clone())?,
+            transmission: Transmission::try_from(f2veh.clone())?,
+            mass: None,
+            alt_eff: f2veh.alt_eff * uc::R,
+        };
+        Ok(conv)
     }
 }
 

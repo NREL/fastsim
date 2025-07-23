@@ -202,5 +202,4 @@ hvac:
     save_interval: 1
 mass_kilograms: 1626.129
 pwr_aux_base_watts: 250.0
-trans_eff: 0.98
 save_interval: 1

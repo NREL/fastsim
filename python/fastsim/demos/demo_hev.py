@@ -92,8 +92,7 @@ print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsi
 
 sd2 = sd0.to_fastsim2()
 t0 = time.perf_counter()
-with fsim.utils.without_logging():  # suppresses known warning
-    sd2.sim_drive()
+sd2.sim_drive()
 t1 = time.perf_counter()
 t_fsim2 = t1 - t0
 print(f"fastsim-2 `sim_drive()` elapsed time: {t_fsim2:.2e} s")
@@ -191,8 +190,8 @@ def plot_fc_pwr() -> tuple[Figure, Axes]:
     ax[0].plot(
         df["cyc.time_seconds"],
         (
-            df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_prop_watts"]
-            + df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_aux_watts"]
+            df["veh.pt_type.HEV.fc.history.pwr_prop_watts"]
+            + df["veh.pt_type.HEV.fc.history.pwr_aux_watts"]
         )
         / 1e3,
         label="f3 shaft",
@@ -204,7 +203,7 @@ def plot_fc_pwr() -> tuple[Figure, Axes]:
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_fuel_watts"] / 1e3,
+        df["veh.pt_type.HEV.fc.history.pwr_fuel_watts"] / 1e3,
         label="f3 fuel",
     )
     ax[0].plot(
@@ -219,8 +218,8 @@ def plot_fc_pwr() -> tuple[Figure, Axes]:
     ax[1].plot(
         df["cyc.time_seconds"],
         (
-            df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_prop_watts"]
-            + df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_aux_watts"]
+            df["veh.pt_type.HEV.fc.history.pwr_prop_watts"]
+            + df["veh.pt_type.HEV.fc.history.pwr_aux_watts"]
         )
         / 1e3
         - np.array(sd2.fc_kw_out_ach.tolist())[plt_slice],
@@ -229,7 +228,7 @@ def plot_fc_pwr() -> tuple[Figure, Axes]:
     )
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_fuel_watts"] / 1e3
+        df["veh.pt_type.HEV.fc.history.pwr_fuel_watts"] / 1e3
         - np.array(sd2.fs_kw_out_ach.tolist())[plt_slice],
         label="fuel",
         linestyle=baselinestyles[1],
@@ -240,7 +239,7 @@ def plot_fc_pwr() -> tuple[Figure, Axes]:
     ax[2].set_prop_cycle(get_paired_cycler())
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
+        df["veh.pt_type.HEV.res.history.soc"],
         label="f3 soc",
     )
     ax[2].plot(
@@ -250,7 +249,7 @@ def plot_fc_pwr() -> tuple[Figure, Axes]:
     )
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc_disch_buffer"],
+        df["veh.pt_type.HEV.res.history.soc_disch_buffer"],
         label="f3 accel buffer",
         alpha=0.5,
     )
@@ -262,7 +261,7 @@ def plot_fc_pwr() -> tuple[Figure, Axes]:
     )
     # ax[2].plot(
     #     df["cyc.time_seconds"],
-    #     df["veh.pt_type.HybridElectricVehicle.res.history.soc_regen_buffer"],
+    #     df["veh.pt_type.HEV.res.history.soc_regen_buffer"],
     #     label='f3 regen buffer',
     #     alpha=0.5,
     # )
@@ -274,7 +273,7 @@ def plot_fc_pwr() -> tuple[Figure, Axes]:
     # )
     # ax[2].plot(
     #     df["cyc.time_seconds"],
-    #     df['veh.pt_type.HybridElectricVehicle.fc.history.eff'],
+    #     df['veh.pt_type.HEV.fc.history.eff'],
     #     label='f3 FC eff',
     # )
     # f2_fc_eff = (np.array(sd2.fc_kw_out_ach.tolist()) /
@@ -323,8 +322,8 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
     ax[0].plot(
         df["cyc.time_seconds"],
         (
-            df["veh.pt_type.HybridElectricVehicle.fc.history.energy_prop_joules"]
-            + df["veh.pt_type.HybridElectricVehicle.fc.history.energy_aux_joules"]
+            df["veh.pt_type.HEV.fc.history.energy_prop_joules"]
+            + df["veh.pt_type.HEV.fc.history.energy_aux_joules"]
         )
         / 1e6,
         label="f3 shaft",
@@ -336,7 +335,7 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.fc.history.energy_fuel_joules"] / 1e6,
+        df["veh.pt_type.HEV.fc.history.energy_fuel_joules"] / 1e6,
         label="f3 fuel",
     )
     ax[0].plot(
@@ -351,8 +350,8 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
     ax[1].plot(
         df["cyc.time_seconds"],
         (
-            df["veh.pt_type.HybridElectricVehicle.fc.history.energy_prop_joules"]
-            + df["veh.pt_type.HybridElectricVehicle.fc.history.energy_aux_joules"]
+            df["veh.pt_type.HEV.fc.history.energy_prop_joules"]
+            + df["veh.pt_type.HEV.fc.history.energy_aux_joules"]
         )
         / 1e6
         - np.array(sd2.fc_cumu_mj_out_ach.tolist())[plt_slice],
@@ -361,16 +360,16 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
     )
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.fc.history.energy_fuel_joules"] / 1e6
+        df["veh.pt_type.HEV.fc.history.energy_fuel_joules"] / 1e6
         - np.array(sd2.fs_cumu_mj_out_ach.tolist())[plt_slice],
         label="fuel",
         linestyle=baselinestyles[1],
     )
     ax[1].set_ylim(
         (
-            -sd_dict["veh.pt_type.HybridElectricVehicle.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
-            sd_dict["veh.pt_type.HybridElectricVehicle.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
-        ),
+            -sd_dict["veh.pt_type.HEV.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
+            sd_dict["veh.pt_type.HEV.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
+        )
     )
     ax[1].set_ylabel("FC Energy\nDelta (f3-f2) [MJ]\n+/- 10% Range")
     ax[1].legend()
@@ -378,7 +377,7 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
     ax[2].set_prop_cycle(get_paired_cycler())
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
+        df["veh.pt_type.HEV.res.history.soc"],
         label="f3 soc",
     )
     ax[2].plot(
@@ -388,7 +387,7 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
     )
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc_disch_buffer"],
+        df["veh.pt_type.HEV.res.history.soc_disch_buffer"],
         label="f3 accel buffer",
         alpha=0.5,
     )
@@ -400,7 +399,7 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
     )
     # ax[2].plot(
     #     df["cyc.time_seconds"],
-    #     df["veh.pt_type.HybridElectricVehicle.res.history.soc_regen_buffer"],
+    #     df["veh.pt_type.HEV.res.history.soc_regen_buffer"],
     #     label='f3 regen buffer',
     #     alpha=0.5,
     # )
@@ -412,7 +411,7 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
     # )
     # ax[2].plot(
     #     df["cyc.time_seconds"],
-    #     df['veh.pt_type.HybridElectricVehicle.fc.history.eff'],
+    #     df['veh.pt_type.HEV.fc.history.eff'],
     #     label='f3 FC eff',
     # )
     # f2_fc_eff = (np.array(sd2.fc_kw_out_ach.tolist()) /
@@ -460,7 +459,7 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.pwr_out_electrical_watts"] / 1e3,
+        df["veh.pt_type.HEV.res.history.pwr_out_electrical_watts"] / 1e3,
         label="f3 batt elec",
     )
     ax[0].plot(
@@ -470,7 +469,7 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.pwr_out_chemical_watts"] / 1e3,
+        df["veh.pt_type.HEV.res.history.pwr_out_chemical_watts"] / 1e3,
         label="f3 batt chem",
     )
     ax[0].set_ylabel("RES (battery) Power [kW]")
@@ -479,7 +478,7 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
     ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.pwr_out_electrical_watts"] / 1e3
+        df["veh.pt_type.HEV.res.history.pwr_out_electrical_watts"] / 1e3
         - np.array(sd2.ess_kw_out_ach.tolist())[plt_slice],
         label="batt elec",
         linestyle=baselinestyles[0],
@@ -490,7 +489,7 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
     ax[2].set_prop_cycle(get_paired_cycler())
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
+        df["veh.pt_type.HEV.res.history.soc"],
         label="f3 soc",
     )
     ax[2].plot(
@@ -500,7 +499,7 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
     )
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc_disch_buffer"],
+        df["veh.pt_type.HEV.res.history.soc_disch_buffer"],
         label="f3 accel buffer",
         alpha=0.5,
     )
@@ -512,7 +511,7 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
     )
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc_regen_buffer"],
+        df["veh.pt_type.HEV.res.history.soc_regen_buffer"],
         label="f3 regen buffer",
         alpha=0.5,
     )
@@ -560,7 +559,7 @@ def plot_res_energy() -> tuple[Figure, Axes]:
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.energy_out_electrical_joules"] / 1e6,
+        df["veh.pt_type.HEV.res.history.energy_out_electrical_joules"] / 1e6,
         label="f3 batt elec",
     )
     ax[0].plot(
@@ -576,7 +575,7 @@ def plot_res_energy() -> tuple[Figure, Axes]:
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.energy_out_chemical_joules"] / 1e6,
+        df["veh.pt_type.HEV.res.history.energy_out_chemical_joules"] / 1e6,
         label="f3 batt chem",
     )
     ax[0].set_ylabel("RES (battery) Energy [MJ]")
@@ -584,7 +583,7 @@ def plot_res_energy() -> tuple[Figure, Axes]:
 
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.energy_out_electrical_joules"] / 1e6
+        df["veh.pt_type.HEV.res.history.energy_out_electrical_joules"] / 1e6
         - np.array(sd2.ess_kw_out_ach.tolist())[plt_slice],
         label="batt elec",
         linestyle=baselinestyles[0],
@@ -595,7 +594,7 @@ def plot_res_energy() -> tuple[Figure, Axes]:
     ax[2].set_prop_cycle(get_paired_cycler())
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
+        df["veh.pt_type.HEV.res.history.soc"],
         label="f3 soc",
     )
     ax[2].plot(
@@ -605,7 +604,7 @@ def plot_res_energy() -> tuple[Figure, Axes]:
     )
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc_disch_buffer"],
+        df["veh.pt_type.HEV.res.history.soc_disch_buffer"],
         label="f3 accel buffer",
         alpha=0.5,
     )
@@ -617,7 +616,7 @@ def plot_res_energy() -> tuple[Figure, Axes]:
     )
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc_regen_buffer"],
+        df["veh.pt_type.HEV.res.history.soc_regen_buffer"],
         label="f3 regen buffer",
         alpha=0.5,
     )

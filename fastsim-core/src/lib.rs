@@ -18,6 +18,8 @@
 #[macro_use]
 pub mod macros;
 
+extern crate uom;
+
 pub mod drive_cycle;
 pub mod error;
 pub mod gas_properties;
@@ -27,6 +29,8 @@ pub mod prelude;
 pub mod pyo3;
 pub mod si;
 pub mod simdrive;
+#[cfg(feature = "simdrivelabel")]
+pub mod simdrivelabel;
 pub mod traits;
 pub mod uc;
 pub mod utils;

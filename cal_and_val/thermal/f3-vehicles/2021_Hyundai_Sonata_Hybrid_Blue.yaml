@@ -321,5 +321,4 @@ hvac:
     pwr_aux_for_hvac_max_watts: 8000.0
 mass_kilograms: 1508.195
 pwr_aux_base_watts: 500.0
-trans_eff: 0.98
 save_interval: 1

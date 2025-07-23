@@ -537,7 +537,7 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 name = "fastsim-cli"
 version = "1.0.0"
 dependencies = [
- "fastsim-core 1.0.2",
+ "fastsim-core 1.0.3",
 ]
 
 [[package]]
@@ -575,7 +575,7 @@ dependencies = [
 
 [[package]]
 name = "fastsim-core"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "anyhow",
  "approx",
@@ -586,14 +586,14 @@ dependencies = [
  "easy-ext",
  "eng_fmt",
  "fastsim-core 0.1.11",
- "fastsim-proc-macros 1.0.1",
+ "fastsim-proc-macros 1.0.3",
  "include_dir",
  "itertools 0.12.1",
  "lazy_static",
  "ndarray",
  "ninterp",
  "nohash-hasher",
- "numpy",
+ "num-traits",
  "paste",
  "pretty_assertions",
  "project-root",
@@ -608,6 +608,7 @@ dependencies = [
  "serde_yaml 0.8.26",
  "thiserror 2.0.12",
  "toml",
+ "typenum",
  "uom",
  "ureq",
  "url",
@@ -628,7 +629,7 @@ dependencies = [
 
 [[package]]
 name = "fastsim-proc-macros"
-version = "1.0.1"
+version = "1.0.3"
 dependencies = [
  "lazy_static",
  "proc-macro-error",
@@ -644,7 +645,7 @@ name = "fastsim-py"
 version = "1.0.0"
 dependencies = [
  "fastsim-core 0.1.11",
- "fastsim-core 1.0.2",
+ "fastsim-core 1.0.3",
  "ninterp",
  "pyo3",
 ]
@@ -1227,21 +1228,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "numpy"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b94caae805f998a07d33af06e6a3891e38556051b8045c615470a71590e13e78"
-dependencies = [
- "libc",
- "ndarray",
- "num-complex",
- "num-integer",
- "num-traits",
- "pyo3",
- "rustc-hash",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1681,12 +1667,6 @@ dependencies = [
  "rmp",
  "serde",
 ]
-
-[[package]]
-name = "rustc-hash"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
 
 [[package]]
 name = "rustix"

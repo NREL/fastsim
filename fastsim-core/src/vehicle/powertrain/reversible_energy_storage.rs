@@ -15,8 +15,8 @@ const TOL: f64 = 1e-3;
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
 pub struct ReversibleEnergyStorage {
     /// [Self] Thermal plant, including thermal management controls
-    #[serde(default, skip_serializing_if = "RESThermalOption::is_none")]
     #[has_state]
+    #[serde(default)]
     pub thrml: RESThermalOption,
     /// ReversibleEnergyStorage mass
     #[serde(default)]
@@ -43,10 +43,7 @@ pub struct ReversibleEnergyStorage {
     #[serde(default)]
     pub state: ReversibleEnergyStorageState,
     /// Custom vector of [Self::state]
-    #[serde(
-        default,
-        skip_serializing_if = "ReversibleEnergyStorageStateHistoryVec::is_empty"
-    )]
+    #[serde(default)]
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
@@ -325,7 +322,7 @@ impl ReversibleEnergyStorage {
     /// - `te_amb`: ambient temperature
     /// - `pwr_thrml_hvac_to_res`: thermal power flowing from [Vehicle::hvac] system to [Self::thrml]
     /// - `te_cab`: cabin temperature for heat transfer interaction with
-    ///    [Self], required if [Self::thrml] is `Some`
+    ///   [Self], required if [Self::thrml] is `Some`
     /// - `dt`: simulation time step size
     pub fn solve_thermal(
         &mut self,
@@ -354,6 +351,13 @@ impl ReversibleEnergyStorage {
         self.set_pwr_charge_max(dt, chrg_buffer)?;
 
         Ok(())
+    }
+
+    pub fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+        Ok((
+            *self.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+            *self.state.pwr_regen_max.get_fresh(|| format_dbg!())?,
+        ))
     }
 
     /// # Arguments
@@ -479,7 +483,8 @@ impl ReversibleEnergyStorage {
 
         ensure!(
             pwr_aux <= *state.pwr_disch_max.get_fresh(|| format_dbg!())?,
-            "{}\n`{}` ({} W) must always be less than or equal to {} ({} W)\nsoc:{}",
+            "{}\n`{}` ({} W) must always be less than or equal to {} ({} W)\n`state.soc`:{}
+`soc_disch_buffer`: {}",
             format_dbg!(),
             stringify!(pwr_aux),
             pwr_aux.get::<si::watt>().format_eng(None),
@@ -491,6 +496,11 @@ impl ReversibleEnergyStorage {
                 .format_eng(None),
             state
                 .soc
+                .get_stale(|| format_dbg!())?
+                .get::<si::ratio>()
+                .format_eng(None),
+            state
+                .soc_disch_buffer
                 .get_fresh(|| format_dbg!())?
                 .get::<si::ratio>()
                 .format_eng(None)
@@ -563,7 +573,7 @@ impl ReversibleEnergyStorage {
 
     /// Returns min value of [Self::eff_interp]
     pub fn get_eff_min(&self) -> anyhow::Result<&f64> {
-        Ok(self.eff_interp.min()?)
+        self.eff_interp.min()
     }
 
     /// Scales eff_interp by ratio of new `eff_min` per current calculated
@@ -597,9 +607,9 @@ impl ReversibleEnergyStorage {
     /// interpolator with the default x and f_x arrays  
     /// # Source of default efficiency values  
     /// - `x`: values in the third sub-array (corresponding to power) in ALTRIOS's
-    ///    eta_interp_grid  
+    ///   eta_interp_grid  
     /// - `f_x`: efficiency array as a function of power at constant 50% SOC and 23
-    ///    °C corresponds to `eta_interp_values[0][5]` in ALTRIOS
+    ///   °C corresponds to `eta_interp_values[0][5]` in ALTRIOS
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_interp(&mut self) -> anyhow::Result<()> {
         if let InterpolatorEnum::Interp1D(interp1d) =
@@ -616,13 +626,13 @@ impl ReversibleEnergyStorage {
     /// interpolator with the default x, y, and f_xy arrays  
     /// # Source of default efficiency values  
     /// - `x`: values in the third sub-array (corresponding to power) in ALTRIOS's
-    ///    eta_interp_grid  
+    ///   eta_interp_grid  
     /// - `y`: values in the second sub-array (corresponding to SOC) in
-    ///    ALTRIOS's eta_interp_grid  
+    ///   ALTRIOS's eta_interp_grid  
     /// - `f_xy`: efficiency array as a function of power and SOC at constant 23
-    ///    °C corresponds to `eta_interp_values[0]` in ALTRIOS, transposed so
-    ///    that the outermost layer is now power and the innermost layer SOC (in
-    ///    ALTRIOS, the outermost layer is SOC and innermost is power)
+    ///   °C corresponds to `eta_interp_values[0]` in ALTRIOS, transposed so
+    ///   that the outermost layer is now power and the innermost layer SOC (in
+    ///   ALTRIOS, the outermost layer is SOC and innermost is power)
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_and_soc_interp(&mut self) -> anyhow::Result<()> {
         if let InterpolatorEnum::Interp2D(interp2d) =
@@ -636,7 +646,7 @@ impl ReversibleEnergyStorage {
     }
 
     /// - `f_xy`: efficiency array as a function of power and temperature at
-    ///    constant 50% SOC
+    ///   constant 50% SOC
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_and_temp_interp(&mut self) -> anyhow::Result<()> {
         if let InterpolatorEnum::Interp2D(interp2d) =
@@ -653,15 +663,15 @@ impl ReversibleEnergyStorage {
     /// interpolator with the default x, y, z, and f_xyz arrays  
     /// # Source of default efficiency values  
     /// - `x`: values in the third sub-array (corresponding to power) in ALTRIOS's
-    ///    eta_interp_grid  
+    ///   eta_interp_grid  
     /// - `y`: values in the second sub-array (corresponding to SOC) in ALTRIOS's
-    ///    eta_interp_grid  
+    ///   eta_interp_grid  
     /// - `z`: values in the first sub-array (corresponding to temperature) in
-    ///    ALTRIOS's eta_interp_grid  
+    ///   ALTRIOS's eta_interp_grid  
     /// - `f_xyz`: efficiency array as a function of power, SOC, and temperature
-    ///    corresponds to eta_interp_values in ALTRIOS, transposed so that the
-    ///    outermost layer is now power, and the innermost layer temperature (in
-    ///    ALTRIOS, the outermost layer is temperature and innermost is power)
+    ///   corresponds to eta_interp_values in ALTRIOS, transposed so that the
+    ///   outermost layer is now power, and the innermost layer temperature (in
+    ///   ALTRIOS, the outermost layer is temperature and innermost is power)
     #[cfg(all(feature = "yaml", feature = "resources"))]
     pub fn set_default_pwr_soc_and_temp_interp(&mut self) -> anyhow::Result<()> {
         if let InterpolatorEnum::Interp3D(interp3d) =
@@ -802,6 +812,26 @@ impl HistoryMethods for ReversibleEnergyStorage {
     }
 }
 
+impl TryFrom<fastsim_2::vehicle::RustVehicle> for ReversibleEnergyStorage {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> anyhow::Result<ReversibleEnergyStorage> {
+        let f3_res = ReversibleEnergyStorage {
+            thrml: Default::default(),
+            state: Default::default(),
+            mass: None,
+            specific_energy: None,
+            pwr_out_max: f2veh.ess_max_kw * uc::KW,
+            energy_capacity: f2veh.ess_max_kwh * uc::KWH,
+            eff_interp: EffInterp::Constant(Interp0D::new(f2veh.ess_round_trip_eff.sqrt())),
+            min_soc: f2veh.min_soc * uc::R,
+            max_soc: f2veh.max_soc * uc::R,
+            save_interval: Some(1),
+            history: Default::default(),
+        };
+        Ok(f3_res)
+    }
+}
+
 #[derive(
     Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
 )]
@@ -927,6 +957,16 @@ impl SetCumulative for RESThermalOption {
         }
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::RESLumpedThermal(rlt) => {
+                rlt.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::None => {}
+        }
+        Ok(())
+    }
 }
 
 impl StateMethods for RESThermalOption {}
@@ -1014,7 +1054,7 @@ impl RESThermalOption {
     /// - `res_state`: [ReversibleEnergyStorage] state
     /// - `te_amb`: ambient temperature
     /// - `pwr_thrml_hvac_to_res`: thermal power flowing from [Vehicle::hvac]
-    ///    system to [Self], required if [Self::is_none] is false
+    ///   system to [Self], required if [Self::is_none] is false
     /// - `dt`: simulation time step size
     fn solve(
         &mut self,
@@ -1062,10 +1102,7 @@ pub struct RESLumpedThermal {
     #[serde(default)]
     pub state: RESLumpedThermalState,
     /// history of state
-    #[serde(
-        default,
-        skip_serializing_if = "RESLumpedThermalStateHistoryVec::is_empty"
-    )]
+    #[serde(default)]
     pub history: RESLumpedThermalStateHistoryVec,
     pub save_interval: Option<usize>,
 }

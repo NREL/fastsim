@@ -91,11 +91,7 @@ def plot_bev_temperatures(
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df[
-            "veh.pt_type.BatteryElectricVehicle.res.thrml."
-            + "RESLumpedThermal.history.temperature_kelvin"
-        ]
-        - 273.15,
+        df["veh.pt_type.BEV.res.thrml." + "RESLumpedThermal.history.temperature_kelvin"] - 273.15,
         label="res",
     )
     ax[0].plot(
@@ -187,7 +183,7 @@ def plot_bev_res_pwr(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tup
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.pwr_out_electrical_watts"] / 1e3,
+        df["veh.pt_type.BEV.res.history.pwr_out_electrical_watts"] / 1e3,
         label="electrical out",
     )
     ax[0].set_ylabel("RES Power [kW]")
@@ -196,7 +192,7 @@ def plot_bev_res_pwr(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tup
     ax[1].set_prop_cycle(get_paired_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.soc"],
+        df["veh.pt_type.BEV.res.history.soc"],
         label="soc",
     )
     ax[1].set_ylabel("SOC")
@@ -234,7 +230,7 @@ def plot_bev_res_energy(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.energy_out_electrical_joules"] / 1e3,
+        df["veh.pt_type.BEV.res.history.energy_out_electrical_joules"] / 1e3,
         label="electrical out",
     )
     ax[0].set_ylabel("RES Energy [kW]")
@@ -243,7 +239,7 @@ def plot_bev_res_energy(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> 
     ax[1].set_prop_cycle(get_paired_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.soc"],
+        df["veh.pt_type.BEV.res.history.soc"],
         label="soc",
     )
     ax[1].set_ylabel("SOC")
@@ -343,19 +339,12 @@ def plot_hev_temperatures(
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df[
-            "veh.pt_type.HybridElectricVehicle.res.thrml."
-            + "RESLumpedThermal.history.temperature_kelvin"
-        ]
-        - 273.15,
+        df["veh.pt_type.HEV.res.thrml." + "RESLumpedThermal.history.temperature_kelvin"] - 273.15,
         label="res",
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df[
-            "veh.pt_type.HybridElectricVehicle.fc.thrml."
-            + "FuelConverterThermal.history.temperature_kelvin"
-        ]
+        df["veh.pt_type.HEV.fc.thrml." + "FuelConverterThermal.history.temperature_kelvin"]
         - 273.15,
         label="fc",
     )
@@ -397,15 +386,15 @@ def plot_hev_fc_pwr(
     ax[0].plot(
         df["cyc.time_seconds"],
         (
-            df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_prop_watts"]
-            + df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_aux_watts"]
+            df["veh.pt_type.HEV.fc.history.pwr_prop_watts"]
+            + df["veh.pt_type.HEV.fc.history.pwr_aux_watts"]
         )
         / 1e3,
         label="shaft",
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_fuel_watts"] / 1e3,
+        df["veh.pt_type.HEV.fc.history.pwr_fuel_watts"] / 1e3,
         label="fuel",
     )
     ax[0].set_ylabel("FC Power [kW]")
@@ -414,24 +403,24 @@ def plot_hev_fc_pwr(
     ax[1].set_prop_cycle(get_paired_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
+        df["veh.pt_type.HEV.res.history.soc"],
         label="soc",
     )
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc_disch_buffer"],
+        df["veh.pt_type.HEV.res.history.soc_disch_buffer"],
         label="accel buffer",
         alpha=0.5,
     )
     # ax[1].plot(
     #     df["cyc.time_seconds"],
-    #     df["veh.pt_type.HybridElectricVehicle.res.history.soc_regen_buffer"],
+    #     df["veh.pt_type.HEV.res.history.soc_regen_buffer"],
     #     label='regen buffer',
     #     alpha=0.5,
     # )
     # ax[1].plot(
     #     df["cyc.time_seconds"],
-    #     df['veh.pt_type.HybridElectricVehicle.fc.history.eff'],
+    #     df['veh.pt_type.HEV.fc.history.eff'],
     #     label='FC eff',
     # )
     ax[1].set_ylabel("[-]")
@@ -472,15 +461,15 @@ def plot_hev_fc_energy(
     ax[0].plot(
         df["cyc.time_seconds"],
         (
-            df["veh.pt_type.HybridElectricVehicle.fc.history.energy_prop_joules"]
-            + df["veh.pt_type.HybridElectricVehicle.fc.history.energy_aux_joules"]
+            df["veh.pt_type.HEV.fc.history.energy_prop_joules"]
+            + df["veh.pt_type.HEV.fc.history.energy_aux_joules"]
         )
         / 1e6,
         label="shaft",
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.fc.history.energy_fuel_joules"] / 1e6,
+        df["veh.pt_type.HEV.fc.history.energy_fuel_joules"] / 1e6,
         label="fuel",
     )
     ax[0].set_ylabel("FC Energy [MJ]")
@@ -523,7 +512,7 @@ def plot_hev_res_pwr(
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.pwr_out_electrical_watts"] / 1e3,
+        df["veh.pt_type.HEV.res.history.pwr_out_electrical_watts"] / 1e3,
         label="electrical out",
     )
     ax[0].set_ylabel("RES Power [kW]")
@@ -532,7 +521,7 @@ def plot_hev_res_pwr(
     ax[1].set_prop_cycle(get_paired_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
+        df["veh.pt_type.HEV.res.history.soc"],
         label="soc",
     )
     ax[1].set_ylabel("SOC")
@@ -575,7 +564,7 @@ def plot_hev_res_energy(
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.energy_out_electrical_joules"] / 1e3,
+        df["veh.pt_type.HEV.res.history.energy_out_electrical_joules"] / 1e3,
         label="electrical out",
     )
     ax[0].set_ylabel("RES Energy [kW]")
@@ -584,7 +573,7 @@ def plot_hev_res_energy(
     ax[1].set_prop_cycle(get_paired_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
+        df["veh.pt_type.HEV.res.history.soc"],
         label="soc",
     )
     ax[1].set_ylabel("SOC")

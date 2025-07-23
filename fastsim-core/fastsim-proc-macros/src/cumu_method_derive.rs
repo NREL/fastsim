@@ -37,10 +37,10 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
                     let key = ENERGY_REGEX.captures(field_str).unwrap()[1].to_string();
                     if fields
                         .iter()
-                        .any(|x| *x.ident.as_ref().unwrap() == format!("pwr_{}", key))
+                        .any(|x| *x.ident.as_ref().unwrap() == format!("pwr_{key}"))
                     {
                         Some((
-                            format!("pwr_{}", key).parse().unwrap(),
+                            format!("pwr_{key}").parse().unwrap(),
                             field_str.clone().parse().unwrap(),
                         ))
                     } else {
@@ -78,6 +78,32 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
                     )*
                     Ok(())
                 }
+
+                fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+                    #(self
+                        .#energy_fields
+                        .mark_stale();
+                    )*
+                    #(self
+                        .#energy_fields
+                        .update(
+                            si::Energy::ZERO,
+                            || format!("{}\n{}\n{} -> {}", loc(), format_dbg!(), stringify!(#pwr_fields), stringify!(#energy_fields))
+                        )?;
+                    )*
+                    #(self
+                        .#pwr_fields
+                        .mark_stale();
+                    )*
+                    #(self
+                        .#pwr_fields
+                        .update(
+                            si::Power::ZERO,
+                            || format!("{}\n{}\n{} -> {}", loc(), format_dbg!(), stringify!(#pwr_fields), stringify!(#energy_fields))
+                        )?;
+                    )*
+                    Ok(())
+                }
             }
         });
     } else if struct_has_state {
@@ -90,6 +116,12 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
                     #(self.#fields_with_state.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;)*
                     Ok(())
                 }
+
+                fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+                    self.state.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+                    #(self.#fields_with_state.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;)*
+                    Ok(())
+                }
             }
         });
     } else {
@@ -99,6 +131,11 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
             impl SetCumulative for #ident {
                 fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
                     #(self.#fields_with_state.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;)*
+                    Ok(())
+                }
+
+                fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+                    #(self.#fields_with_state.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;)*
                     Ok(())
                 }
             }

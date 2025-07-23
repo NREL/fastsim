@@ -60,7 +60,7 @@ impl StepInfo {
         let t3 = drag3;
         let t2 = accel2 + drag2 + wheel2;
         let t1 = drag1 + roll1 + ascent1;
-        let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - self.pwr_prop_fwd_max;
+        let t0 = accel0 + drag0 + roll0 + ascent0 + wheel0;
 
         // initial guess
         let speed_guess = if self.speed_prev == si::Velocity::ZERO {
@@ -79,6 +79,7 @@ impl StepInfo {
                 + t2 * speed_guess.powi(typenum::P2::new())
                 + t1 * speed_guess
                 + t0
+                - self.pwr_prop_fwd_max
         };
         let pwr_err_per_speed_guess_fn = |speed_guess: si::Velocity| {
             3.0 * t3 * speed_guess.powi(typenum::P2::new()) + 2.0 * t2 * speed_guess + t1
@@ -113,7 +114,8 @@ impl StepInfo {
                 - speed_guesses[speed_guesses.len() - 2])
                 / speed_guesses[speed_guesses.len() - 2])
                 .abs()
-                < xtol;
+                < xtol
+                && almost_le_uom(&pwr_err, &si::Power::ZERO, None);
             spd_ach_iter_counter += 1;
 
             // TODO: verify that assuming `speed_guesses.iter().last()` is the correct solution

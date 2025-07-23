@@ -1,6 +1,6 @@
-use crate::prelude::*;
-
 use super::{hev::HEVPowertrainControls, *};
+use crate::prelude::*;
+use ninterp::strategy::enums::Strategy1DEnum;
 pub mod fastsim2_interface;
 
 /// Possible aux load power sources
@@ -28,6 +28,8 @@ impl Init for AuxSource {}
 pub struct Vehicle {
     /// Vehicle name
     pub name: String,
+    /// Documentation (e.g. how this file was generated, calibration details)]
+    pub doc: Option<String>,
     /// Year manufactured
     pub year: u32,
     #[has_state]
@@ -38,13 +40,13 @@ pub struct Vehicle {
     pub chassis: Chassis,
 
     /// Cabin thermal model
-    #[serde(default, skip_serializing_if = "CabinOption::is_none")]
     #[has_state]
+    #[serde(default)]
     pub cabin: CabinOption,
 
     /// HVAC model
-    #[serde(default, skip_serializing_if = "HVACOption::is_none")]
     #[has_state]
+    #[serde(default)]
     pub hvac: HVACOption,
 
     /// Total vehicle mass
@@ -53,19 +55,13 @@ pub struct Vehicle {
     /// Baseline power required by auxilliary systems
     pub pwr_aux_base: si::Power,
 
-    /// transmission efficiency
-    // TODO: check if `trans_eff` is redundant (most likely) and fix
-    // TODO: make `transmission::{Transmission, TransmissionState}` and
-    // `Transmission` should have field `efficency: Efficiency`.
-    pub trans_eff: si::Ratio,
-
     /// time step interval at which `state` is saved into `history`
     save_interval: Option<usize>,
     /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
     /// Vector-like history of [Self::state]
-    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
+    #[serde(default)]
     pub history: VehicleStateHistoryVec,
 }
 
@@ -127,6 +123,20 @@ impl Vehicle {
         Self::from_f2_file(file)
     }
 
+    #[pyo3(name = "to_fastsim2")]
+    fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
+        self.to_fastsim2()
+    }
+
+    #[pyo3(name = "reset_py")]
+    /// Compines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
+    fn reset_py(&mut self) -> anyhow::Result<()> {
+        self.reset_cumulative(|| format_dbg!())?;
+        self.reset_step(|| format_dbg!())?;
+        self.clear();
+        Ok(())
+    }
+
     #[pyo3(name = "clear")]
     fn clear_py(&mut self) {
         self.clear()
@@ -135,6 +145,11 @@ impl Vehicle {
     #[pyo3(name = "reset_step")]
     fn reset_step_py(&mut self) -> anyhow::Result<()> {
         self.reset_step(|| format_dbg!())
+    }
+
+    #[pyo3(name = "reset_cumulative")]
+    fn reset_cumulative_py(&mut self) -> anyhow::Result<()> {
+        self.reset_cumulative(|| format_dbg!())
     }
 }
 
@@ -204,6 +219,7 @@ impl Mass for Vehicle {
         let pt_mass = match &self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => conv.mass()?,
             PowertrainType::HybridElectricVehicle(hev) => hev.mass()?,
+            PowertrainType::PlugInHybridElectricVehicle(phev) => phev.mass()?,
             PowertrainType::BatteryElectricVehicle(bev) => bev.mass()?,
         };
         if let (Some(pt_mass), Some(chassis_mass)) = (pt_mass, chassis_mass) {
@@ -218,6 +234,7 @@ impl Mass for Vehicle {
         match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => conv.expunge_mass_fields(),
             PowertrainType::HybridElectricVehicle(hev) => hev.expunge_mass_fields(),
+            PowertrainType::PlugInHybridElectricVehicle(phev) => phev.expunge_mass_fields(),
             PowertrainType::BatteryElectricVehicle(bev) => bev.expunge_mass_fields(),
         };
     }
@@ -261,7 +278,7 @@ impl HistoryMethods for Vehicle {
 }
 
 /// TODO: update this constant to match fastsim-2 for gasoline
-const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
+pub(super) const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
 const CONV: &str = "Conv";
 const HEV: &str = "HEV";
 const PHEV: &str = "PHEV";
@@ -282,6 +299,27 @@ impl SetCumulative for Vehicle {
             *self.state.speed_ach.get_fresh(|| format_dbg!())? * dt,
             || format_dbg!(),
         )?;
+        Ok(())
+    }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        self.state
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+        self.pt_type
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+        self.cabin
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+        self.hvac
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+        // this does not get handled by the `SetCumulative` derive macro
+        self.state.dist.mark_stale();
+        self.state.dist.update(si::Length::ZERO, || format_dbg!())?;
+        self.state.time.mark_stale();
+        self.state.time.update(si::Time::ZERO, || format_dbg!())?;
+        self.state.speed_ach.mark_stale();
+        self.state
+            .speed_ach
+            .update(si::Velocity::ZERO, || format_dbg!())?;
         Ok(())
     }
 }
@@ -428,6 +466,7 @@ impl Vehicle {
         // TODO: account for traction limits here
         self.pt_type
             .set_curr_pwr_prop_out_max(
+                (si::Power::ZERO, si::Power::ZERO),
                 *self.state.pwr_aux.get_fresh(|| format_dbg!())?,
                 dt,
                 &self.state,
@@ -610,6 +649,21 @@ impl Vehicle {
                 )?;
                 (Some(pwr_thrml_fc_to_cab), None, Some(te_cab))
             }
+            (CabinOption::LumpedCabin(cab), HVACOption::None, Some(_)) => {
+                let te_cab = cab
+                    .solve(
+                        te_amb_air,
+                        &self.state,
+                        si::Power::ZERO,
+                        si::Power::ZERO,
+                        dt,
+                    )
+                    .with_context(|| format_dbg!())?;
+                self.state
+                    .pwr_aux
+                    .update(self.pwr_aux_base, || format_dbg!())?;
+                (None, None, Some(te_cab))
+            }
             (_, _, _) => {
                 bail!(
                     "{}\nCabin, HVAC, and RESThermal configuration is either invalid or not yet implemented.\n{} - {} - {}",
@@ -620,12 +674,13 @@ impl Vehicle {
                         "`res.res_thrml_state().is_some()`: {}",
                         self.pt_type.res().and_then(|res| res.res_thrml_state()).is_some()
                     ),
-                )
+                );
             }
         };
         Ok((pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab))
     }
 
+    #[allow(dead_code)]
     fn from_f2_file(file: PathBuf) -> anyhow::Result<Self> {
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_file(file, false)
@@ -648,60 +703,47 @@ impl Vehicle {
         self.state.energy_whl_inertia.mark_stale();
         self.state.energy_brake.mark_stale();
         self.state.dist.mark_stale();
-        match self.fc_mut() {
-            Some(fc) => {
-                fc.state.i.mark_stale();
-                fc.state.mark_fresh(|| format_dbg!())?;
-                fc.state.energy_prop.mark_stale();
-                fc.state.energy_aux.mark_stale();
-                fc.state.energy_fuel.mark_stale();
-                fc.state.energy_loss.mark_stale();
-            }
-            None => {}
+        if let Some(fc) = self.fc_mut() {
+            fc.state.i.mark_stale();
+            fc.state.mark_fresh(|| format_dbg!())?;
+            fc.state.energy_prop.mark_stale();
+            fc.state.energy_aux.mark_stale();
+            fc.state.energy_fuel.mark_stale();
+            fc.state.energy_loss.mark_stale();
         }
-        match self.res_mut() {
-            Some(res) => {
-                res.state.i.mark_stale();
-                res.state.soh.mark_stale();
-                res.state.mark_fresh(|| format_dbg!())?;
-                res.state.energy_out_electrical.mark_stale();
-                res.state.energy_out_prop.mark_stale();
-                res.state.energy_aux.mark_stale();
-                res.state.energy_loss.mark_stale();
-                res.state.energy_out_chemical.mark_stale();
-            }
-            None => {}
+        if let Some(res) = self.res_mut() {
+            res.state.i.mark_stale();
+            res.state.soh.mark_stale();
+            res.state.mark_fresh(|| format_dbg!())?;
+            res.state.energy_out_electrical.mark_stale();
+            res.state.energy_out_prop.mark_stale();
+            res.state.energy_aux.mark_stale();
+            res.state.energy_loss.mark_stale();
+            res.state.energy_out_chemical.mark_stale();
         }
-        match self.em_mut() {
-            Some(em) => {
-                em.state.i.mark_stale();
-                em.state.mark_fresh(|| format_dbg!())?;
-                em.state.energy_out_req.mark_stale();
-                em.state.energy_elec_prop_in.mark_stale();
-                em.state.energy_mech_prop_out.mark_stale();
-                em.state.energy_mech_dyn_brake.mark_stale();
-                em.state.energy_elec_dyn_brake.mark_stale();
-                em.state.energy_loss.mark_stale();
-            }
-            None => {}
+
+        if let Some(em) = self.em_mut() {
+            em.state.i.mark_stale();
+            em.state.mark_fresh(|| format_dbg!())?;
+            em.state.energy_out_req.mark_stale();
+            em.state.energy_elec_prop_in.mark_stale();
+            em.state.energy_mech_prop_out.mark_stale();
+            em.state.energy_mech_dyn_brake.mark_stale();
+            em.state.energy_elec_dyn_brake.mark_stale();
+            em.state.energy_loss.mark_stale();
         }
-        match self.trans_mut() {
-            Some(trans) => {
-                trans.state.i.mark_stale();
-                trans.state.mark_fresh(|| format_dbg!())?;
-                trans.state.energy_out.mark_stale();
-                trans.state.energy_loss.mark_stale();
-            }
-            None => {}
+        if let Some(trans) = self.trans_mut() {
+            trans.state.i.mark_stale();
+            trans.state.mark_fresh(|| format_dbg!())?;
+            trans.state.energy_out.mark_stale();
+            trans.state.energy_in.mark_stale();
+            trans.state.energy_loss.mark_stale();
         }
-        match &mut self.pt_type {
-            PowertrainType::HybridElectricVehicle(hev) => {
-                match &mut hev.pt_cntrl {
-                    HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
-                }
-                hev.pt_cntrl.mark_fresh(|| format_dbg!())?
+        if let PowertrainType::HybridElectricVehicle(hev) = &mut self.pt_type {
+            match &mut hev.pt_cntrl {
+                HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
             }
-            _ => {}
+            hev.pt_cntrl.mark_fresh(|| format_dbg!())?
         }
         Ok(())
     }
@@ -835,6 +877,8 @@ pub(crate) mod tests {
     }
 
     #[cfg(feature = "yaml")]
+    /// Load representative conv from fastsim-2, convert to fastsim-3 format, and
+    /// save to file in the resources folder
     pub(crate) fn mock_conv_veh() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -851,6 +895,8 @@ pub(crate) mod tests {
     }
 
     #[cfg(feature = "yaml")]
+    /// Load representative HEV from fastsim-2, convert to fastsim-3 format, and
+    /// save to file in the resources folder
     pub(crate) fn mock_hev() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -867,6 +913,8 @@ pub(crate) mod tests {
     }
 
     #[cfg(feature = "yaml")]
+    /// Load representative BEV from fastsim-2, convert to fastsim-3 format, and
+    /// save to file in the resources folder
     pub(crate) fn mock_bev() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -941,7 +989,16 @@ pub(crate) mod tests {
                 eprintln!("Error loading {resource:?}: {e}\n");
             }
         }
+        if time_to_panic {
+            panic!()
+        }
+    }
 
+    #[test]
+    fn test_calibrated_vehicles() {
+        let mut time_to_panic = false;
+
+        // check that calibrated vehicles can load
         let paths: Vec<_> = std::fs::read_dir("../cal_and_val/f3-vehicles")
             .unwrap()
             .collect();
@@ -954,6 +1011,7 @@ pub(crate) mod tests {
             }
         }
 
+        // check that calibrated thermal-equipped vehicles can load
         let paths: Vec<_> = std::fs::read_dir("../cal_and_val/thermal/f3-vehicles")
             .unwrap()
             .collect();
@@ -968,6 +1026,39 @@ pub(crate) mod tests {
 
         if time_to_panic {
             panic!()
+        }
+    }
+}
+
+pub fn f3veh_with_f2_eff(f2veh: &fastsim_2::vehicle::RustVehicle, veh: &mut Vehicle) {
+    // tweak the efficiency interpolation to match fastsim-2
+    if let Some(fc) = veh.fc_mut() {
+        match &mut fc.eff_interp_from_pwr_out {
+            InterpolatorEnum::Interp1D(interp1d) => {
+                assert_eq!(f2veh.fc_perc_out_array.len(), 100);
+                assert_eq!(interp1d.data.grid[0].len(), 12);
+                interp1d.data.grid = [f2veh.fc_perc_out_array.clone().into()];
+                assert_eq!(f2veh.fc_eff_array.len(), 100);
+                assert_eq!(interp1d.data.values.len(), 12);
+                interp1d.data.values = f2veh.fc_eff_array.clone().into();
+                interp1d.strategy = Strategy1DEnum::LeftNearest(strategy::LeftNearest);
+            }
+            _ => panic!("wrong interpolator variant"),
+        }
+    }
+
+    if let Some(em) = veh.em_mut() {
+        match &mut em.eff_interp_achieved {
+            InterpolatorEnum::Interp1D(interp1d) => {
+                assert_eq!(f2veh.mc_perc_out_array.len(), 101);
+                assert_eq!(interp1d.data.grid[0].len(), 11);
+                interp1d.data.grid = [f2veh.fc_perc_out_array.clone().into()];
+                assert_eq!(f2veh.mc_full_eff_array.len(), 101);
+                assert_eq!(interp1d.data.values.len(), 11);
+                interp1d.data.values = f2veh.fc_eff_array.clone().into();
+                interp1d.strategy = Strategy1DEnum::LeftNearest(strategy::LeftNearest);
+            }
+            _ => panic!("wrong interpolator variant"),
         }
     }
 }

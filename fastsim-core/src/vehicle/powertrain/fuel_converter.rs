@@ -14,7 +14,7 @@ use std::f64::consts::PI;
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 pub struct FuelConverter {
     /// [Self] Thermal plant, including thermal management controls
-    #[serde(default, skip_serializing_if = "FuelConverterThermalOption::is_none")]
+    #[serde(default)]
     #[has_state]
     pub thrml: FuelConverterThermalOption,
     /// [Self] mass
@@ -43,10 +43,7 @@ pub struct FuelConverter {
     #[serde(default)]
     pub state: FuelConverterState,
     /// Custom vector of [Self::state]
-    #[serde(
-        default,
-        skip_serializing_if = "FuelConverterStateHistoryVec::is_empty"
-    )]
+    #[serde(default)]
     pub history: FuelConverterStateHistoryVec,
 }
 
@@ -278,6 +275,19 @@ impl FuelConverter {
                 format_dbg!(pwr_out_req >= si::Power::ZERO),
             )
         );
+        ensure!(
+            pwr_out_req <= *self.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
+            format!(
+                "{}\n`pwr_out_req` ({} W) must be < `self.state.pwr_prop_max` ({} W)",
+                format_dbg!(),
+                pwr_out_req.get::<si::watt>().format_eng(Some(5)),
+                self.state
+                    .pwr_prop_max
+                    .get_fresh(|| format_dbg!())?
+                    .get::<si::watt>()
+                    .format_eng(Some(5))
+            )
+        );
         // if the engine is not on, `pwr_out_req` should be 0.0
         ensure!(
             fc_on || (pwr_out_req == si::Power::ZERO && *self.state.pwr_aux.get_fresh(|| format_dbg!())? == si::Power::ZERO),
@@ -421,7 +431,7 @@ impl FuelConverter {
     /// changing max such that max - min is equal to new range.  Will change max
     /// if needed to ensure no values are less than zero.
     pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        if eff_range <= 1.0 && eff_range >= 0. {
+        if (0. ..=1.0).contains(&eff_range) {
             self.eff_interp_from_pwr_out.set_range(eff_range)
         } else {
             Err(anyhow!(format!(
@@ -437,6 +447,85 @@ impl FuelConverter {
             FuelConverterThermalOption::None => None,
         }
     }
+}
+
+impl TryFrom<fastsim_2::vehicle::RustVehicle> for FuelConverter {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<FuelConverter, anyhow::Error> {
+        let mut fc: FuelConverter = FCBuilder {
+            pwr_out_max: f2veh.fc_max_kw * uc::KW,
+            pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
+            eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
+                // hard-coded vec from fastsim-2
+                vec![
+                    0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
+                ]
+                .into(),
+                f2veh.fc_eff_map.clone().into(),
+                strategy::Linear,
+                Extrapolate::Error,
+            )
+            .with_context(|| format_dbg!())?,
+            pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
+            // this means that aux power must include idle fuel
+            pwr_idle_fuel: si::Power::ZERO,
+            save_interval: Some(1),
+        }
+        .try_into()
+        .with_context(|| format_dbg!())?;
+        fc.init()?;
+        fc.set_mass(None, MassSideEffect::None)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        Ok(fc)
+    }
+}
+
+impl TryFrom<FCBuilder> for FuelConverter {
+    type Error = anyhow::Error;
+    fn try_from(fcbuilder: FCBuilder) -> Result<FuelConverter, anyhow::Error> {
+        let mut fc = FuelConverter {
+            state: Default::default(),
+            thrml: Default::default(),
+            mass: None,
+            specific_pwr: None,
+            pwr_out_max: fcbuilder.pwr_out_max,
+            // assumes 1 s time step
+            pwr_out_max_init: fcbuilder.pwr_out_max / fcbuilder.pwr_ramp_lag.get::<si::second>(),
+            pwr_ramp_lag: fcbuilder.pwr_ramp_lag,
+            eff_interp_from_pwr_out: fcbuilder.eff_interp_from_pwr_out,
+            pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
+            // TODO: make a function for setting this according with below line
+            // this means that aux power must include idle fuel
+            pwr_idle_fuel: si::Power::ZERO,
+            save_interval: Some(1),
+            history: Default::default(),
+        };
+        fc.init()?;
+        fc.set_mass(None, MassSideEffect::None)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        Ok(fc)
+    }
+}
+
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+/// Builder for [FuelConverter].  Use this to instantiate EM with minimal parameterization
+pub struct FCBuilder {
+    pub pwr_out_max: si::Power,
+    // TODO: consider a ramp down rate, which may be needed for fuel cells
+    /// lag time for ramp up
+    pub pwr_ramp_lag: si::Time,
+    /// interpolator for calculating [Self] efficiency as a function of output power
+    pub eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
+    /// power at which peak efficiency occurs
+    #[serde(skip)]
+    pub(crate) pwr_for_peak_eff: si::Power,
+    /// idle fuel power to overcome internal friction (not including aux load) \[W\]
+    pub pwr_idle_fuel: si::Power,
+    /// time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
 }
 
 #[serde_api]
@@ -572,6 +661,16 @@ impl SetCumulative for FuelConverterThermalOption {
         }
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::FuelConverterThermal(fct) => {
+                fct.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::None => {}
+        }
+        Ok(())
+    }
 }
 impl HistoryMethods for FuelConverterThermalOption {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
@@ -677,10 +776,7 @@ pub struct FuelConverterThermal {
     #[serde(default)]
     pub state: FuelConverterThermalState,
     /// Custom vector of [Self::state]
-    #[serde(
-        default,
-        skip_serializing_if = "FuelConverterThermalStateHistoryVec::is_empty"
-    )]
+    #[serde(default)]
     pub history: FuelConverterThermalStateHistoryVec,
     pub save_interval: Option<usize>,
 }
@@ -818,7 +914,7 @@ impl FuelConverterThermal {
         self.state.pwr_thrml_to_amb.update(
             *self.state.htc_to_amb.get_fresh(|| format_dbg!())?
                 * PI
-                * self.length_for_convection.powi(typenum::P2::new())
+                * self.length_for_convection.powi(P2::new())
                 / 4.0
                 * (self
                     .state
@@ -924,6 +1020,11 @@ impl SetCumulative for FuelConverterThermal {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         self.state
             .set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
+    }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        self.state
+            .reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))
     }
 }
 impl Init for FuelConverterThermal {

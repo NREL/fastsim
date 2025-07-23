@@ -39,10 +39,7 @@ pub struct ElectricMachine {
     #[serde(default)]
     pub state: ElectricMachineState,
     /// Custom vector of [Self::state]
-    #[serde(
-        default,
-        skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty"
-    )]
+    #[serde(default)]
     pub history: ElectricMachineStateHistoryVec,
 }
 
@@ -97,34 +94,37 @@ impl ElectricMachine {
     }
 }
 
-impl ElectricMachine {
+impl Powertrain for ElectricMachine {
     /// Returns maximum possible positive and negative propulsion-related powers
     /// this component/system can produce, accounting for any aux-related power
     /// required.
     /// # Arguments
     /// - `pwr_in_fwd_lim`: positive-propulsion-related power available to this
-    ///    component. Positive values indicate that the upstream component can supply
-    ///    positive tractive power.
+    ///   component. Positive values indicate that the upstream component can supply
+    ///   positive tractive power.
     /// - `pwr_in_bwd_lim`: negative-propulsion-related power available to this
-    ///     component. Zero means no power can be sent to upstream compnents and positive
-    ///     values indicate upstream components can absorb energy.
+    ///   component. Zero means no power can be sent to upstream compnents and positive
+    ///   values indicate upstream components can absorb energy.
     /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: simulation time step size
-    pub fn set_curr_pwr_prop_out_max(
+    fn set_curr_pwr_prop_out_max(
         &mut self,
-        pwr_in_fwd_lim: si::Power,
-        pwr_in_bwd_lim: si::Power,
+        pwr_upstream: (si::Power, si::Power),
+        _pwr_aux: si::Power,
         _dt: si::Time,
+        _veh_state: &VehicleState,
     ) -> anyhow::Result<()> {
+        let pwr_in_fwd_lim = &pwr_upstream.0;
+        let pwr_in_bwd_lim = &pwr_upstream.1;
         ensure!(
-            pwr_in_fwd_lim >= si::Power::ZERO,
+            pwr_in_fwd_lim >= &si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
             stringify!(pwr_in_fwd_lim),
             pwr_in_fwd_lim.get::<si::watt>().format_eng(None),
             stringify!(ElectricMachine::get_curr_pwr_prop_out_max)
         );
         ensure!(
-            pwr_in_bwd_lim >= si::Power::ZERO,
+            pwr_in_bwd_lim >= &si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
             stringify!(pwr_in_bwd_lim),
             pwr_in_bwd_lim.get::<si::watt>().format_eng(None),
@@ -148,7 +148,7 @@ impl ElectricMachine {
                     .map(|interpolator| {
                         interpolator
                             .interpolate(&[abs_checked_x_val(
-                                (pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                (*pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
                                 match interpolator {
                                     InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
                                         .as_slice()
@@ -178,7 +178,7 @@ impl ElectricMachine {
                     .map(|interpolator| {
                         interpolator
                             .interpolate(&[abs_checked_x_val(
-                                (pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                (*pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
                                 match interpolator {
                                     InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
                                         .as_slice()
@@ -205,7 +205,7 @@ impl ElectricMachine {
         // power based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_fwd_out_max.update(
             self.pwr_out_max.min(
-                pwr_in_fwd_lim
+                *pwr_in_fwd_lim
                     * *self
                         .state
                         .eff_fwd_at_max_input
@@ -217,31 +217,44 @@ impl ElectricMachine {
         // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_regen_max.update(
             self.pwr_out_max
-                .min(pwr_in_bwd_lim / *self.state.eff_at_max_regen.get_fresh(|| format_dbg!())?),
+                .min(*pwr_in_bwd_lim / *self.state.eff_at_max_regen.get_fresh(|| format_dbg!())?),
             || format_dbg!(),
         )?;
         Ok(())
+    }
+
+    fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+        Ok((
+            *self
+                .state
+                .pwr_mech_fwd_out_max
+                .get_fresh(|| format_dbg!())?,
+            *self.state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?,
+        ))
     }
 
     /// Solves for this powertrain system/component efficiency and sets/returns power input required.
     /// # Arguments
     /// - `pwr_out_req`: propulsion-related power output required
     /// - `dt`: simulation time step size
-    pub fn get_pwr_in_req(
+    fn solve(
         &mut self,
         pwr_out_req: si::Power,
+        _enabled: bool,
         _dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
-        //TODO: update this function to use `pwr_mech_regen_out_max`
-        ensure!(
-            pwr_out_req.abs() <= self.pwr_out_max,
-            format!(
-                "{}\nedrv required power ({} kW) exceeds static max power ({} kW)",
-                format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
-                pwr_out_req.get::<si::kilowatt>().format_eng(Some(9)),
-                self.pwr_out_max.get::<si::kilowatt>().format_eng(Some(9))
-            ),
-        );
+    ) -> anyhow::Result<Option<si::Power>> {
+        if pwr_out_req > si::Power::ZERO {
+            ensure!(
+                pwr_out_req <= self.pwr_out_max,
+                format!(
+                    "{}\nedrv required power ({} kW) exceeds static max power ({} kW)",
+                    format_dbg!(),
+                    pwr_out_req.get::<si::kilowatt>().format_eng(Some(9)),
+                    self.pwr_out_max.get::<si::kilowatt>().format_eng(Some(9))
+                ),
+            );
+        }
+        // not needed during negative traction because friction braking is still included
         ensure!(
             almost_le_uom(&pwr_out_req , self.state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?, None),
             format!(
@@ -361,7 +374,17 @@ impl ElectricMachine {
             || format_dbg!(),
         )?;
 
-        Ok(*self.state.pwr_elec_prop_in.get_fresh(|| format_dbg!())?)
+        Ok(Some(
+            *self.state.pwr_elec_prop_in.get_fresh(|| format_dbg!())?,
+        ))
+    }
+
+    fn pwr_regen(&self) -> anyhow::Result<si::Power> {
+        Ok(-self
+            .state
+            .pwr_mech_dyn_brake
+            .get_fresh(|| format_dbg!())?
+            .max(si::Power::ZERO))
     }
 }
 
@@ -401,7 +424,7 @@ impl Init for ElectricMachine {
                     // as currently is done, or should they be set to be specific
                     // Extrapolate and Strategy types?
                     interp.strategy.clone(),
-                    interp.extrapolate.clone(),
+                    interp.extrapolate,
                 )
             }
             _ => unimplemented!(),
@@ -484,6 +507,25 @@ impl Mass for ElectricMachine {
     fn expunge_mass_fields(&mut self) {
         self.specific_pwr = None;
         self.mass = None;
+    }
+}
+
+impl TryFrom<EMBuilder> for ElectricMachine {
+    type Error = anyhow::Error;
+    fn try_from(em_builder: EMBuilder) -> anyhow::Result<ElectricMachine> {
+        let mut em = ElectricMachine {
+            eff_interp_achieved: em_builder.eff_interp_achieved.clone(),
+            eff_interp_at_max_input: None,
+            pwr_out_max: em_builder.pwr_out_max,
+            specific_pwr: None,
+            mass: None,
+            save_interval: Some(1),
+            state: Default::default(),
+            history: Default::default(),
+        };
+        em.init()?;
+
+        Ok(em)
     }
 }
 
@@ -613,11 +655,9 @@ impl ElectricMachine {
                         interp.data.values = Array::from_vec(f_x_bwd);
                         Ok(())
                     }
-                    _ => {
-                        return Err(Error::InitError(format_dbg!(
-                            "Only 1-D interpolators are supported"
-                        )));
-                    }
+                    _ => Err(Error::InitError(format_dbg!(
+                        "Only 1-D interpolators are supported"
+                    ))),
                 })
                 .transpose()?;
             Ok(())
@@ -705,6 +745,87 @@ impl ElectricMachine {
                 eff_range,
             )))
         }
+    }
+}
+
+impl TryFrom<fastsim_2::vehicle::RustVehicle> for ElectricMachine {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<ElectricMachine, anyhow::Error> {
+        Ok(EMBuilder {
+            eff_interp_achieved: {
+                // fastsim-2's hard-coded short vector of percent of peak power
+                let short_perc_out_vec =
+                    vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
+                // `InterpolatorEnum` for fastsim-3
+                InterpolatorEnum::new_1d(
+                    short_perc_out_vec.clone().into(),
+                    {
+                        // convert 101 element f2 array to shorter f2 array and use
+                        // linear rather than left-nearest interpolation
+                        let mc_full_eff = Array1::from_vec(f2veh.mc_full_eff_array.clone());
+                        ensure!(mc_full_eff.len() == 101);
+                        let shortener = Interp1D::new(
+                            fastsim_2::params::MC_PERC_OUT_ARRAY.to_vec().into(),
+                            mc_full_eff,
+                            strategy::Linear,
+                            Extrapolate::Error,
+                        )
+                        .with_context(|| format_dbg!())?;
+                        let mut short_eff: Vec<f64> = short_perc_out_vec
+                            .iter()
+                            .map(|x| shortener.interpolate(&[*x]).unwrap())
+                            .collect();
+                        short_eff[0] = short_eff[1];
+                        short_eff.into()
+                    },
+                    strategy::Linear,
+                    Extrapolate::Error,
+                )
+            }
+            .with_context(|| {
+                format!(
+                    "{}\n{}",
+                    format_dbg!(f2veh.mc_full_eff_array.len()),
+                    format_dbg!(f2veh.mc_perc_out_array.len())
+                )
+            })?,
+            pwr_out_max: f2veh.mc_max_kw * uc::KW,
+        }
+        .try_into()
+        .with_context(|| format_dbg!())?)
+    }
+}
+
+#[serde_api]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+/// Builder for [ElectricMachine].  Use this to instantiate EM with minimal parameterization
+pub struct EMBuilder {
+    /// Efficiency interpolator corresponding to achieved output power
+    ///
+    /// Note that the Extrapolate field of this variable is changed in [Self::get_pwr_in_req]
+    pub eff_interp_achieved: InterpolatorEnumOwned<f64>,
+    /// Electrical input power fraction array at which efficiencies are evaluated.
+    /// Calculated during runtime if not provided.
+    // /// this will disappear and instead be in eff_interp_bwd
+    // pub pwr_in_frac_interp: Vec<f64>,
+    /// ElectricMachine maximum output power \[W\]
+    pub pwr_out_max: si::Power,
+}
+
+#[allow(dead_code)]
+impl EMBuilder {
+    fn with_save_interval(&self, save_interval: Option<usize>) -> anyhow::Result<ElectricMachine> {
+        let mut em: ElectricMachine = self.clone().try_into()?;
+        em.save_interval = save_interval;
+        Ok(em)
+    }
+
+    fn with_state(&self, state: ElectricMachineState) -> anyhow::Result<ElectricMachine> {
+        let mut em: ElectricMachine = self.clone().try_into()?;
+        em.state = state;
+        Ok(em)
     }
 }
 

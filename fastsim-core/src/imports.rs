@@ -7,6 +7,7 @@ pub(crate) use crate::pyo3::*;
 
 pub(crate) use crate::error::Error;
 pub(crate) use crate::si;
+pub(crate) use crate::simdrive::TraceMissOptions;
 pub(crate) use crate::traits::*;
 pub(crate) use crate::uc;
 pub(crate) use crate::utils;
@@ -38,5 +39,6 @@ pub(crate) use std::marker::PhantomData;
 pub(crate) use std::num::{NonZeroU16, NonZeroUsize};
 pub(crate) use std::ops::{Deref, DerefMut, IndexMut, Sub};
 pub(crate) use std::path::{Path, PathBuf};
+pub(crate) use typenum::{P1, P2, P3};
 pub(crate) use uom::typenum;
 pub(crate) use uom::ConstZero;

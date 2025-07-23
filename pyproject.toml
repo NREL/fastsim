@@ -4,12 +4,12 @@ build-backend = "maturin"
 
 [project]
 name = "fastsim"
-version = "3.0.3"
+version = "3.0.4"
 authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
 license = { file = "LICENSE.md" }
-requires-python = ">=3.10,<3.12"
+requires-python = ">=3.10,<3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: Other/Proprietary License",
@@ -143,6 +143,7 @@ select = [
 ignore = [
   "D400", # first-line-should-end-with-a-period
   "E266", # Too many leading `#`
+  "N807",
 ]
 
 [tool.ruff.lint.pydocstyle]

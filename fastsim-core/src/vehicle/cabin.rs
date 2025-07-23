@@ -135,6 +135,17 @@ impl SetCumulative for CabinOption {
         }
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::LumpedCabin(lc) => {
+                lc.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::LumpedCabinWithShell => todo!(),
+            Self::None => {}
+        }
+        Ok(())
+    }
 }
 
 #[serde_api]
@@ -158,7 +169,7 @@ pub struct LumpedCabin {
     pub width: si::Length,
     #[serde(default)]
     pub state: LumpedCabinState,
-    #[serde(default, skip_serializing_if = "LumpedCabinStateHistoryVec::is_empty")]
+    #[serde(default)]
     pub history: LumpedCabinStateHistoryVec,
     /// Time step interval at which history is saved
     pub save_interval: Option<usize>,
@@ -196,7 +207,7 @@ impl LumpedCabin {
     /// - `dt`: simulation time step size
     /// # Returns
     /// - `te_cab`: current cabin temperature, after solving cabin for current
-    ///     simulation time step
+    ///   simulation time step
     pub fn solve(
         &mut self,
         te_amb_air: si::Temperature,

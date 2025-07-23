@@ -19,8 +19,6 @@ pub struct Cycle {
     /// Name of cycle (can be left empty)
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub name: String,
-    // TODO: either write or automate generation of getter and setter for this
-    // TODO: put the above TODO in github issue for all fields with `Option<...>` type
     /// inital elevation
     pub init_elev: Option<si::Length>,
     /// simulation time
@@ -1519,6 +1517,95 @@ impl Cycle {
     }
 }
 
+impl TryFrom<CycleBuilder> for Cycle {
+    type Error = anyhow::Error;
+    fn try_from(value: CycleBuilder) -> anyhow::Result<Self, Self::Error> {
+        let mut cyc = Self {
+            name: value.name,
+            init_elev: None,
+            time: value.time,
+            speed: value.speed,
+            dist: Default::default(),
+            grade: Default::default(),
+            elev: Default::default(),
+            pwr_max_chrg: Default::default(),
+            temp_amb_air: Default::default(),
+            pwr_solar_load: Default::default(),
+            grade_interp: None,
+            elev_interp: Default::default(),
+        };
+        cyc.init()?;
+        Ok(cyc)
+    }
+}
+
+/// Trait for CycleBuilder and Cycle to support builder pattern
+pub trait CBTrait {
+    /// Return cycle with `grade`
+    fn with_grade(&mut self, grade: Vec<si::Ratio>) -> anyhow::Result<Cycle>;
+
+    /// Return cycle with `temp_amb_air`
+    fn with_temp_amb_air(&mut self, temp_amb_air: Vec<si::Temperature>) -> anyhow::Result<Cycle>;
+
+    // TODO: add more of these builder helpers
+}
+
+impl CBTrait for Cycle {
+    fn with_grade(&mut self, grade: Vec<si::Ratio>) -> anyhow::Result<Cycle> {
+        ensure!(
+            self.len_checked().with_context(|| format_dbg!())? == grade.len(),
+            format!(
+                "{}\n`self.len()`: `{}\n`grade.len()`",
+                self.len_checked().with_context(|| format_dbg!())?,
+                grade.len()
+            )
+        );
+        self.grade = grade;
+        Ok(self.clone())
+    }
+
+    fn with_temp_amb_air(&mut self, temp_amb_air: Vec<si::Temperature>) -> anyhow::Result<Cycle> {
+        ensure!(
+            self.len_checked().with_context(|| format_dbg!())? == temp_amb_air.len(),
+            format!(
+                "{}\n`self.len()`: `{}\n`temp_amb_air.len()`",
+                self.len_checked().with_context(|| format_dbg!())?,
+                temp_amb_air.len()
+            )
+        );
+        self.temp_amb_air = temp_amb_air;
+        Ok(self.clone())
+    }
+}
+
+#[serde_api]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[non_exhaustive]
+/// Simple cycle to be converted into [Cycle] with appropriate defaults
+pub struct CycleBuilder {
+    /// Name of cycle (can be left empty)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub name: String,
+    /// simulation time
+    pub time: Vec<si::Time>,
+    /// prescribed speed
+    pub speed: Vec<si::Velocity>,
+}
+
+impl CBTrait for CycleBuilder {
+    fn with_grade(&mut self, grade: Vec<si::Ratio>) -> anyhow::Result<Cycle> {
+        let mut cyc: Cycle = self.clone().try_into().with_context(|| format_dbg!())?;
+        cyc.grade = grade;
+        Ok(cyc)
+    }
+
+    fn with_temp_amb_air(&mut self, temp_amb_air: Vec<si::Temperature>) -> anyhow::Result<Cycle> {
+        let mut cyc: Cycle = self.clone().try_into().with_context(|| format_dbg!())?;
+        cyc.temp_amb_air = temp_amb_air;
+        Ok(cyc)
+    }
+}
+
 #[serde_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[non_exhaustive]
@@ -1533,7 +1620,6 @@ pub struct CycleElement {
     #[serde(alias = "speed_mps", alias = "cycMps")]
     pub speed: si::Velocity,
     // `dist` is not included here because it is derived in `Init::init`
-    // TODO: make `fastsim_api` handle Option or write custom getter/setter
     /// road grade
     #[serde(alias = "cycGrade")]
     pub grade: Option<si::Ratio>,
@@ -1556,6 +1642,7 @@ impl CycleElement {}
 #[cfg(test)]
 mod tests {
     use super::{manipulation_utils::ConstantJerkTrajectory, *};
+    /// Build, initialize, and return 2-element cycle
     fn mock_cyc_len_2() -> Cycle {
         let mut cyc = Cycle {
             name: String::new(),
@@ -2104,4 +2191,15 @@ mod tests {
         assert_eq!(cyc1.speed[20], 0.0 * uc::MPS);
         assert_eq!(cyc1.grade[20], -0.01 * uc::R);
     }
+}
+
+lazy_static! {
+    pub static ref CYC_ACCEL: Cycle = Cycle::try_from(CycleBuilder {
+        name: String::from("accel test"),
+        time: (0..300)
+            .map(|t| (t as f64) * uc::S)
+            .collect::<Vec<si::Time>>(),
+        speed: vec![90.0 * uc::MPH; 300],
+    })
+    .unwrap();
 }

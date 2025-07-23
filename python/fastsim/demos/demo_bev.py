@@ -29,7 +29,7 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 # `fastsim3` -- load vehicle and cycle, build simulation, and run
 # %%
 
-# load 2012 Ford Fusion from file
+# load 2022_Renault_Zoe_ZE50_R135 from file
 veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
 veh_no_save = veh.copy()
 veh_no_save.set_save_interval(None)
@@ -98,7 +98,7 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.pwr_out_electrical_watts"] / 1e3,
+        df["veh.pt_type.BEV.res.history.pwr_out_electrical_watts"] / 1e3,
         label="f3 electrical out",
     )
     ax[0].plot(
@@ -112,7 +112,7 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
     ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.pwr_out_electrical_watts"] / 1e3
+        df["veh.pt_type.BEV.res.history.pwr_out_electrical_watts"] / 1e3
         - np.array(sd2.ess_kw_out_ach.tolist()),
         label="f3 res kw out",
     )
@@ -122,11 +122,8 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
     ax[2].set_prop_cycle(get_paired_cycler())
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.soc"]
-        - (
-            df["veh.pt_type.BatteryElectricVehicle.res.history.soc"][0]
-            - np.array(sd2.soc.tolist())[0]
-        ),
+        df["veh.pt_type.BEV.res.history.soc"]
+        - (df["veh.pt_type.BEV.res.history.soc"][0] - np.array(sd2.soc.tolist())[0]),
         label="f3 soc",
     )
     ax[2].plot(
@@ -169,7 +166,7 @@ def plot_res_energy() -> tuple[Figure, Axes]:
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.energy_out_electrical_joules"] / 1e3,
+        df["veh.pt_type.BEV.res.history.energy_out_electrical_joules"] / 1e3,
         label="f3 electrical out",
     )
     ax[0].plot(
@@ -185,29 +182,17 @@ def plot_res_energy() -> tuple[Figure, Axes]:
     ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.energy_out_electrical_joules"] / 1e3
+        df["veh.pt_type.BEV.res.history.energy_out_electrical_joules"] / 1e3
         - np.cumsum(
             np.array(sd2.ess_kw_out_ach.tolist()) * np.diff(sd2.cyc.time_s.tolist(), prepend=0),
         ),
         label="electrical out",
     )
     ax[1].set_ylim(
-        -np.max(
-            np.abs(
-                sd_dict[
-                    "veh.pt_type.BatteryElectricVehicle.res.history.energy_out_electrical_joules"
-                ],
-            ),
-        )
+        -np.max(np.abs(sd_dict["veh.pt_type.BEV.res.history.energy_out_electrical_joules"]))
         * 1e-3
         * 0.1,
-        np.max(
-            np.abs(
-                sd_dict[
-                    "veh.pt_type.BatteryElectricVehicle.res.history.energy_out_electrical_joules"
-                ],
-            ),
-        )
+        np.max(np.abs(sd_dict["veh.pt_type.BEV.res.history.energy_out_electrical_joules"]))
         * 1e-3
         * 0.1,
     )
@@ -217,11 +202,8 @@ def plot_res_energy() -> tuple[Figure, Axes]:
     ax[2].set_prop_cycle(get_paired_cycler())
     ax[2].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BatteryElectricVehicle.res.history.soc"]
-        - (
-            df["veh.pt_type.BatteryElectricVehicle.res.history.soc"][0]
-            - np.array(sd2.soc.tolist())[0]
-        ),
+        df["veh.pt_type.BEV.res.history.soc"]
+        - (df["veh.pt_type.BEV.res.history.soc"][0] - np.array(sd2.soc.tolist())[0]),
         label="f3 soc",
     )
     ax[2].plot(
@@ -333,9 +315,7 @@ fig, ax = plot_road_loads_comparison()
 
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
-res = fsim.ReversibleEnergyStorage.from_pydict(
-    sd.to_pydict()["veh"]["pt_type"]["BatteryElectricVehicle"]["res"],
-)
+res = fsim.ReversibleEnergyStorage.from_pydict(sd.to_pydict()["veh"]["pt_type"]["BEV"]["res"])
 res.set_default_pwr_interp()
 
 

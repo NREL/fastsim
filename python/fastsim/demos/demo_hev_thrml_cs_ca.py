@@ -30,17 +30,16 @@ temp_amb_and_init = -6.7 + celsius_to_kelvin
 # %%
 
 # load 2021 Hyundai Sonata HEV from file
-veh_dict = fsim.Vehicle.from_file(
-    fsim.package_root()
-    / "../../cal_and_val/thermal/f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml",
+veh_dict = fsim.Vehicle.from_resource(
+    "2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml",
 ).to_pydict()
 veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_amb_and_init
-veh_dict["pt_type"]["HybridElectricVehicle"]["res"]["thrml"]["RESLumpedThermal"]["state"][
-    "temperature_kelvin"
-] = temp_amb_and_init
-veh_dict["pt_type"]["HybridElectricVehicle"]["fc"]["thrml"]["FuelConverterThermal"]["state"][
-    "temperature_kelvin"
-] = temp_amb_and_init
+veh_dict["pt_type"]["HEV"]["res"]["thrml"]["RESLumpedThermal"]["state"]["temperature_kelvin"] = (
+    temp_amb_and_init
+)
+veh_dict["pt_type"]["HEV"]["fc"]["thrml"]["FuelConverterThermal"]["state"]["temperature_kelvin"] = (
+    temp_amb_and_init
+)
 veh = fsim.Vehicle.from_pydict(veh_dict)
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
@@ -64,7 +63,7 @@ t_fsim3_si1 = t1 - t0
 print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
 
 # %%
-df = sd.to_dataframe(allow_partial=True)
+df = sd.to_dataframe()
 sd_dict = sd.to_pydict(flatten=True)
 # # Visualize results
 fig_fc_pwr, ax_fc_pwr = plot_hev_fc_pwr(df, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
@@ -78,9 +77,7 @@ fig, ax = plot_road_loads(df, veh, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
 
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
-res = fsim.ReversibleEnergyStorage.from_pydict(
-    sd.to_pydict()["veh"]["pt_type"]["HybridElectricVehicle"]["res"],
-)
+res = fsim.ReversibleEnergyStorage.from_pydict(sd.to_pydict()["veh"]["pt_type"]["HEV"]["res"])
 res.set_default_pwr_interp()
 
 # %%

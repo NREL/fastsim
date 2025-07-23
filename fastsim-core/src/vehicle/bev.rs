@@ -139,38 +139,45 @@ impl Powertrain for BatteryElectricVehicle {
         pwr_out_req: si::Power,
         _enabled: bool,
         dt: si::Time,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<si::Power>> {
         let pwr_in_transmission = self
             .transmission
-            .get_pwr_in_req(pwr_out_req)
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .solve(pwr_out_req, true, dt)
+            .with_context(|| format_dbg!())?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         let pwr_in_em = self
             .em
-            .get_pwr_in_req(pwr_in_transmission, dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .solve(pwr_in_transmission, true, dt)
+            .with_context(|| {
+                format!(
+                    "{}\ntransmission `pwr_out_req`: {} kW\n`self.transmission.state.pwr_out_fwd_max`: {} kW",
+                    format_dbg!(),
+                    pwr_out_req.get::<si::kilowatt>().format_eng(None),
+                    self.transmission
+                        .state
+                        .pwr_out_fwd_max
+                        .get_fresh(|| format_dbg!())
+                        .unwrap()
+                        .get::<si::kilowatt>()
+                        .format_eng(None)
+                )
+            })?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         self.res
             .solve(pwr_in_em, dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
-        Ok(())
+            .with_context(|| format_dbg!())?;
+        Ok(None)
     }
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
-        Ok((
-            *self
-                .em
-                .state
-                .pwr_mech_fwd_out_max
-                .get_fresh(|| format_dbg!())?,
-            *self
-                .em
-                .state
-                .pwr_mech_regen_max
-                .get_fresh(|| format_dbg!())?,
-        ))
+        self.transmission
+            .get_curr_pwr_prop_out_max()
+            .with_context(|| format_dbg!())
     }
 
     fn set_curr_pwr_prop_out_max(
         &mut self,
+        _pwr_upstream: (si::Power, si::Power),
         pwr_aux: si::Power,
         dt: si::Time,
         _veh_state: &VehicleState,
@@ -181,15 +188,27 @@ impl Powertrain for BatteryElectricVehicle {
         self.res
             .set_curr_pwr_out_max(dt, disch_buffer, chrg_buffer)
             .with_context(|| anyhow!(format_dbg!()))?;
-
         self.res
             .set_curr_pwr_prop_max(pwr_aux)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.em
             .set_curr_pwr_prop_out_max(
-                *self.res.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
-                *self.res.state.pwr_regen_max.get_fresh(|| format_dbg!())?,
+                self.res
+                    .get_curr_pwr_prop_out_max()
+                    .with_context(|| format_dbg!())?,
+                f64::NAN * uc::W,
                 dt,
+                _veh_state,
+            )
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.transmission
+            .set_curr_pwr_prop_out_max(
+                self.em
+                    .get_curr_pwr_prop_out_max()
+                    .with_context(|| format_dbg!())?,
+                f64::NAN * uc::W,
+                dt,
+                _veh_state,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
 
@@ -201,12 +220,7 @@ impl Powertrain for BatteryElectricVehicle {
         // When `pwr_mech_prop_out` is negative, regen is happening.  First, clip it at 0, and then negate it.
         // see https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e8f7af5a6e436dd1163fa3c70931d18d
         // for example
-        Ok(-self
-            .em
-            .state
-            .pwr_mech_prop_out
-            .get_fresh(|| format_dbg!())?
-            .max(si::Power::ZERO))
+        self.transmission.pwr_regen().with_context(|| format_dbg!())
     }
 }
 
@@ -228,5 +242,44 @@ impl BatteryElectricVehicle {
             .solve_thermal(te_amb, pwr_thrml_hvac_to_res, te_cab, dt)
             .with_context(|| format_dbg!())?;
         Ok(())
+    }
+}
+
+impl TryFrom<&fastsim_2::vehicle::RustVehicle> for BatteryElectricVehicle {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<BatteryElectricVehicle> {
+        let bev = BatteryElectricVehicle {
+            res: ReversibleEnergyStorage::try_from(f2veh.clone()).with_context(|| format_dbg!())?,
+            em: ElectricMachine {
+                state: Default::default(),
+                eff_interp_achieved: InterpolatorEnum::new_1d(
+                    f2veh.mc_pwr_out_perc.clone(),
+                    f2veh.mc_eff_array.clone(),
+                    strategy::Linear,
+                    Extrapolate::Error,
+                )?,
+                eff_interp_at_max_input: Some(InterpolatorEnum::new_1d(
+                    // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
+                    // be transferred over as done here, or does a new defualt need to be defined?
+                    f2veh
+                        .mc_pwr_out_perc
+                        .iter()
+                        .zip(f2veh.mc_eff_array.iter())
+                        .map(|(x, y)| x / y)
+                        .collect(),
+                    f2veh.mc_eff_array.clone(),
+                    strategy::Linear,
+                    Extrapolate::Error,
+                )?),
+                pwr_out_max: f2veh.mc_max_kw * uc::KW,
+                specific_pwr: None,
+                mass: None,
+                save_interval: Some(1),
+                history: Default::default(),
+            },
+            transmission: Transmission::try_from(f2veh.clone())?,
+            mass: None,
+        };
+        Ok(bev)
     }
 }

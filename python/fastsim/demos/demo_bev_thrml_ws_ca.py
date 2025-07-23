@@ -1,4 +1,5 @@
 """BEV thermal demo with warm start and cold ambient conditions."""
+
 # %%
 import os
 import time
@@ -29,13 +30,13 @@ temp_init_bat_and_cab = 22.0 + celsius_to_kelvin
 # %%
 
 # load 2020 Chevrolet Bolt BEV from file
-veh = fsim.Vehicle.from_resource("2020 Chevrolet Bolt EV.yaml")
+veh = fsim.Vehicle.from_resource("2020 Chevrolet Bolt EV thrml.yaml")
 
 veh_dict = veh.to_pydict()
 veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_init_bat_and_cab
-veh_dict["pt_type"]["BatteryElectricVehicle"]["res"]["thrml"]["RESLumpedThermal"]["state"][
-    "temperature_kelvin"
-] = temp_init_bat_and_cab
+veh_dict["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["state"]["temperature_kelvin"] = (
+    temp_init_bat_and_cab
+)
 veh = fsim.Vehicle.from_pydict(veh_dict)
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
@@ -59,7 +60,7 @@ t_fsim3_si1 = t1 - t0
 print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
 
 # %%
-df = sd.to_dataframe(allow_partial=True)
+df = sd.to_dataframe()
 sd_dict = sd.to_pydict(flatten=True)
 # # Visualize results
 fig_res_pwr, ax_res_pwr = plot_bev_res_pwr(df, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
@@ -73,7 +74,7 @@ fig, ax = plot_road_loads(df, veh, save_figs=SAVE_FIGS, show_plots=SHOW_PLOTS)
 # %%
 # example for how to use set_default_pwr_interp() method for veh.res
 res = fsim.ReversibleEnergyStorage.from_pydict(
-    sd.to_pydict()["veh"]["pt_type"]["BatteryElectricVehicle"]["res"],
+    sd.to_pydict()["veh"]["pt_type"]["BEV"]["res"],
 )
 res.set_default_pwr_interp()
 

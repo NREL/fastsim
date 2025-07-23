@@ -55,10 +55,7 @@ pub struct HVACSystemForLumpedCabinAndRES {
     /// coefficient of performance of vapor compression cycle
     #[serde(default)]
     pub state: HVACSystemForLumpedCabinAndRESState,
-    #[serde(
-        default,
-        skip_serializing_if = "HVACSystemForLumpedCabinAndRESStateHistoryVec::is_empty"
-    )]
+    #[serde(default)]
     pub history: HVACSystemForLumpedCabinAndRESStateHistoryVec,
     pub save_interval: Option<usize>,
 }
@@ -859,7 +856,7 @@ impl HVACSystemForLumpedCabinAndRES {
                             // If `pwr_i_res` is greater than zero, reset to switch from heating to cooling
                             self.state
                                 .pwr_i_res
-                                .update(si::Power::ZERO, || format_dbg!())?;
+                                .update_unchecked(si::Power::ZERO, || format_dbg!())?;
                         }
                         self.state.pwr_thrml_to_res_req.update(
                             (*self.state.pwr_p_res.get_fresh(|| format_dbg!())?
@@ -979,15 +976,13 @@ impl HVACSystemForLumpedCabinAndRES {
 
                         self.state.pwr_thrml_to_res_req.update(
                             {
-                                // HEATING MODE, format_dbg!())?; Reversible Energy Storage is colder than set point
-
                                 if *self.state.pwr_i_res.get_fresh(|| format_dbg!())?
                                     < si::Power::ZERO
                                 {
                                     // If `pwr_i_res` is less than zero reset to switch from cooling to heating
                                     self.state
                                         .pwr_i_res
-                                        .update(si::Power::ZERO, || format_dbg!())?;
+                                        .update_unchecked(si::Power::ZERO, || format_dbg!())?;
                                 }
                                 (*self.state.pwr_p_res.get_fresh(|| format_dbg!())?
                                     + *self.state.pwr_i_res.get_fresh(|| format_dbg!())?

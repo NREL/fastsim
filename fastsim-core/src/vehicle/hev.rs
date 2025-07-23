@@ -31,7 +31,6 @@ pub struct HybridElectricVehicle {
     pub sim_params: HEVSimulationParams,
     /// vector of SOC balance iterations
     #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub soc_bal_iter_history: Vec<Self>,
     /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
     /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
@@ -91,6 +90,7 @@ impl SerdeAPI for HybridElectricVehicle {}
 impl Powertrain for Box<HybridElectricVehicle> {
     fn set_curr_pwr_prop_out_max(
         &mut self,
+        _pwr_upstream: (si::Power, si::Power),
         pwr_aux: si::Power,
         dt: si::Time,
         veh_state: &VehicleState,
@@ -105,11 +105,11 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     * (rgwdb
                         .speed_soc_disch_buffer
                         .with_context(|| format_dbg!())?
-                        .powi(typenum::P2::new())
+                        .powi(P2::new())
                         - veh_state
                             .speed_ach
                             .get_stale(|| format_dbg!())?
-                            .powi(typenum::P2::new())))
+                            .powi(P2::new())))
                 .max(si::Energy::ZERO)
                     * rgwdb
                         .speed_soc_disch_buffer_coeff
@@ -120,11 +120,11 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     * (veh_state
                         .speed_ach
                         .get_stale(|| format_dbg!())?
-                        .powi(typenum::P2::new())
+                        .powi(P2::new())
                         - rgwdb
                             .speed_soc_regen_buffer
                             .with_context(|| format_dbg!())?
-                            .powi(typenum::P2::new())))
+                            .powi(P2::new())))
                 .max(si::Energy::ZERO)
                     * rgwdb
                         .speed_soc_regen_buffer_coeff
@@ -175,29 +175,34 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .set_curr_pwr_prop_out_max(
                 // TODO: add means of controlling whether fc can provide power to em and also how much
                 // Try out a 'power out type' enum field on the fuel converter with variants for mechanical and electrical
-                *self.res.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
-                *self.res.state.pwr_regen_max.get_fresh(|| format_dbg!())?,
+                self.res
+                    .get_curr_pwr_prop_out_max()
+                    .with_context(|| format_dbg!())?,
+                pwr_aux,
                 dt,
+                veh_state,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
-        // TODO: add transmission here maybe?
+        let em_pwr_prop_out_maxes = self
+            .em
+            .get_curr_pwr_prop_out_max()
+            .with_context(|| format_dbg!())?;
+        let fc_max = self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?;
+        self.transmission
+            .set_curr_pwr_prop_out_max(
+                (em_pwr_prop_out_maxes.0 + *fc_max, em_pwr_prop_out_maxes.1),
+                f64::NAN * uc::W,
+                dt,
+                veh_state,
+            )
+            .with_context(|| format_dbg!())?;
         Ok(())
     }
 
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
-        Ok((
-            *self
-                .em
-                .state
-                .pwr_mech_fwd_out_max
-                .get_fresh(|| format_dbg!())?
-                + *self.fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?,
-            *self
-                .em
-                .state
-                .pwr_mech_regen_max
-                .get_fresh(|| format_dbg!())?,
-        ))
+        self.transmission
+            .get_curr_pwr_prop_out_max()
+            .with_context(|| format_dbg!())
     }
 
     fn solve(
@@ -205,15 +210,16 @@ impl Powertrain for Box<HybridElectricVehicle> {
         pwr_out_req: si::Power,
         _enabled: bool,
         dt: si::Time,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<si::Power>> {
         // TODO: address these concerns
         // - what happens when the fc is on and producing more power than the
         //   transmission requires? It seems like the excess goes straight to the battery,
         //   but it should probably go thourgh the em somehow.
         let pwr_in_transmission = self
             .transmission
-            .get_pwr_in_req(pwr_out_req)
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .solve(pwr_out_req, true, dt)
+            .with_context(|| format_dbg!())?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
 
         // TODO: use an enum with a match here to determine whether power is shared by
         // - fc and em (e.g. for ICE HEV)
@@ -231,13 +237,14 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .with_context(|| format_dbg!())?;
         let res_pwr_out_req = self
             .em
-            .get_pwr_in_req(em_pwr_out_req, dt)
-            .with_context(|| format_dbg!())?;
+            .solve(em_pwr_out_req, true, dt)
+            .with_context(|| format_dbg!())?
+            .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         // TODO: `res_pwr_out_req` probably does not include charging from the engine
         self.res
             .solve(res_pwr_out_req, dt)
             .with_context(|| format_dbg!())?;
-        Ok(())
+        Ok(None)
     }
 
     /// Regen braking power, positive means braking is happening
@@ -245,12 +252,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         // When `pwr_mech_prop_out` is negative, regen is happening.  First, clip it at 0, and then negate it.
         // see https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e8f7af5a6e436dd1163fa3c70931d18d
         // for example
-        Ok(-self
-            .em
-            .state
-            .pwr_mech_prop_out
-            .get_fresh(|| format_dbg!())?
-            .max(si::Power::ZERO))
+        self.transmission.pwr_regen().with_context(|| format_dbg!())
     }
 }
 
@@ -258,10 +260,10 @@ impl HybridElectricVehicle {
     /// # Arguments
     /// - `te_amb`: ambient temperature
     /// - `pwr_thrml_fc_to_cab`: thermal power flow from [FuelConverter::thrml]
-    ///     to [Vehicle::cabin], if cabin is equipped
+    ///   to [Vehicle::cabin], if cabin is equipped
     /// - `veh_state`: current [VehicleState]
     /// - `pwr_thrml_hvac_to_res`: thermal power flow from [Vehicle::hvac] --
-    ///     zero if `None` is passed
+    ///   zero if `None` is passed
     /// - `te_cab`: cabin temperature, required if [ReversibleEnergyStorage::thrml] is `Some`
     /// - `dt`: simulation time step size
     pub fn solve_thermal(
@@ -288,6 +290,58 @@ impl HybridElectricVehicle {
     }
 }
 
+impl TryFrom<&fastsim_2::vehicle::RustVehicle> for HybridElectricVehicle {
+    type Error = anyhow::Error;
+    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<HybridElectricVehicle> {
+        let pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(hev::RESGreedyWithDynamicBuffers {
+            speed_soc_fc_on_buffer: None,
+            speed_soc_fc_on_buffer_coeff: None,
+            speed_soc_disch_buffer: None,
+            speed_soc_disch_buffer_coeff: None,
+            speed_soc_regen_buffer: None,
+            speed_soc_regen_buffer_coeff: None,
+            // note that this exists in `fastsim-2` but has no apparent effect!
+            fc_min_time_on: None,
+            speed_fc_forced_on: Some(f2veh.mph_fc_on * uc::MPH),
+            frac_pwr_demand_fc_forced_on: Some(
+                f2veh.kw_demand_fc_on / (f2veh.fc_max_kw + f2veh.ess_max_kw.min(f2veh.mc_max_kw))
+                    * uc::R,
+            ),
+            frac_of_most_eff_pwr_to_run_fc: None,
+            temp_fc_forced_on: None,
+            temp_fc_allowed_off: None,
+            save_interval: Some(1),
+            state: Default::default(),
+            history: Default::default(),
+        }));
+        let mut hev = HybridElectricVehicle {
+            fs: {
+                let mut fs = FuelStorage {
+                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                    energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
+                    specific_energy: None,
+                    mass: None,
+                };
+                fs.set_mass(None, MassSideEffect::None)
+                    .with_context(|| anyhow!(format_dbg!()))?;
+                fs
+            },
+            fc: FuelConverter::try_from(f2veh.clone())?,
+            res: ReversibleEnergyStorage::try_from(f2veh.clone()).with_context(|| format_dbg!())?,
+            em: ElectricMachine::try_from(f2veh.clone())?,
+            transmission: Transmission::try_from(f2veh.clone())?,
+            pt_cntrl,
+            mass: None,
+            sim_params: Default::default(),
+            aux_cntrl: Default::default(),
+            soc_bal_iter_history: Default::default(),
+            soc_bal_iters: Default::default(),
+        };
+        hev.init()?;
+        Ok(hev)
+    }
+}
 impl Mass for HybridElectricVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self
@@ -493,6 +547,15 @@ impl SetCumulative for HEVPowertrainControls {
         }
         Ok(())
     }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::RGWDB(rgwdb) => {
+                rgwdb.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+        }
+        Ok(())
+    }
 }
 impl Step for HEVPowertrainControls {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
@@ -681,7 +744,7 @@ pub struct RESGreedyWithDynamicBuffers {
     /// current state of control variables
     #[serde(default)]
     pub state: RGWDBState,
-    #[serde(default, skip_serializing_if = "RGWDBStateHistoryVec::is_empty")]
+    #[serde(default)]
     /// history of current state
     pub history: RGWDBStateHistoryVec,
 }
@@ -863,11 +926,11 @@ impl RESGreedyWithDynamicBuffers {
                     * (self
                         .speed_soc_fc_on_buffer
                         .with_context(|| format_dbg!())?
-                        .powi(typenum::P2::new())
+                        .powi(P2::new())
                         - veh_state
                             .speed_ach
                             .get_stale(|| format_dbg!())?
-                            .powi(typenum::P2::new()));
+                            .powi(P2::new()));
                 energy_delta_to_buffer_speed.max(si::Energy::ZERO)
                     * self
                         .speed_soc_fc_on_buffer_coeff
