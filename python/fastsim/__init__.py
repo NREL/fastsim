@@ -28,10 +28,11 @@ def check_version_gte_311() -> bool:
 
 
 if check_version_gte_311():
-    from typing_extensions import Self  # noqa:UP035
-else:
     # not available in older python versions
     from typing import Self
+else:
+    # available in older python versions
+    from typing_extensions import Self  # noqa:UP035
 
 
 def package_root() -> Path:
