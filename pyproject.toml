@@ -30,6 +30,7 @@ dependencies = [
     "executing~=2.0",
     "pip",
     "types-seaborn~=0.13.2",
+    "packaging>=25.0",
 ]
 
 [project.urls]

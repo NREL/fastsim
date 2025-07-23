@@ -2,13 +2,21 @@
 
 import inspect
 import re
+import sys
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Self, Union, cast  # noqa: UP035
+from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
 
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
 import polars as pl
+from packaging.version import Version
+
+if Version(sys.version) < Version("3.11"):
+    from typing_extensions import Self  # noqa:UP035
+else:
+    # not available in older python versions
+    from typing import Self
 
 import fastsim
 
