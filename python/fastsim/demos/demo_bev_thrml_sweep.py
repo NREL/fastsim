@@ -34,26 +34,31 @@ def try_walk(sd: fsim.SimDrive, loc: str) -> None:
 
 
 # array of ambient temperatures in kelvin
-te_amb_arr_k: list[float] = [t + celsius_to_kelvin for t in np.linspace(-7.0, 40.0, 20)]
+te_amb_arr_k: list[float] = [t + celsius_to_kelvin for t in np.linspace(-7.0, 40.0, 50)]
 # array of init temperatures in kelvin
 te_batt_and_cab_init_arr_k: list[float] = [
-    t + celsius_to_kelvin for t in np.linspace(-7.0, 45.0, 20)
+    t + celsius_to_kelvin for t in np.linspace(-7.0, 45.0, 50)
 ]
 
 cyc_key = "cycle"
 te_amb_key = "te_amb [*C]"
 te_init_key = "te_init [*C]"
 ecr_key = "ECR [kW-hr/100mi]"
+udds = "udds"
+hwfet = "hwfet"
 
 
-def sweep():
+def sweep() -> tuple[pd.DataFrame, pd.DataFrame]:
     """Sweep ambient and initial conditions"""
     # load 2020 Chevrolet Bolt BEV from file
     veh = fsim.Vehicle.from_resource("2020 Chevrolet Bolt EV thrml.yaml")
     veh.set_save_interval(1)
 
+    # full factorial of results
     res_list = []
-    for cyc_str in ["udds", "hwfet"]:
+    # results filtered for feasibility
+    res_list_feasible = []
+    for cyc_str in [udds, hwfet]:
         for te_amb_k in te_amb_arr_k:
             for te_init_k in te_batt_and_cab_init_arr_k:
                 cyc = fsim.Cycle.from_resource(cyc_str + ".csv")
@@ -91,13 +96,23 @@ def sweep():
                     * 100.0,
                 }
                 res_list.append(new_row)
+                feasible = (
+                    # if hot ambient, init temp must be at or above reasonable HVAC setpoint
+                    ((te_init_k - celsius_to_kelvin) >= 17.0) & ((te_amb_k + 5) >= te_init_k)
+                    |
+                    # if cold ambient, init temp must be at or above reasonable HVAC setpoint
+                    ((te_init_k - celsius_to_kelvin) <= 27.0) & ((te_amb_k - 5) <= te_init_k)
+                )
+                if feasible:
+                    res_list_feasible.append(new_row)
 
     df_res = pd.DataFrame(res_list)
+    df_feasible = pd.DataFrame(res_list_feasible)
 
-    return df_res
+    return df_res, df_feasible
 
 
-df_res = sweep()
+df_res, df_feasible = sweep()
 
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
@@ -109,107 +124,70 @@ SAVE_PLOTS = os.environ.get("SAVE_PLOTS", "true").lower() == "true"
 te_amb_step = int(len(te_amb_arr_k) / 10)
 te_amb_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k][::te_amb_step]
 
-fig, ax = plt.subplots()
-fig.suptitle("UDDS ECR v. Init. and Amb. Temp.")
-for te_amb_deg_c in te_amb_short_deg_c:
-    ax.plot(
-        df_res[(df_res["te_amb [*C]"] == te_amb_deg_c) & (df_res["cycle"] == "udds")][
-            "te_init [*C]"
-        ],
-        df_res[(df_res["te_amb [*C]"] == te_amb_deg_c) & (df_res["cycle"] == "udds")][
-            "ECR [kW-hr/100mi]"
-        ],
-        marker=".",
-        label=f"{te_amb_deg_c:.1f}",
-    )
-ax.set_xlabel("Cab. and Batt. Init. Temp. [*C]")
-ax.set_ylabel("Energy Consumption Rate [kW-hr/100mi]")
-ax.legend(title="te_amb [*C]")
-plt.tight_layout()
-
-if SAVE_PLOTS:
-    fig.savefig(Path(__file__).parent / "UDDS ECR v. Init. and Amb. Temp.svg")
-
-if SHOW_PLOTS:
-    plt.show()
-
-fig1, ax1 = plt.subplots()
-fig1.suptitle("HWFET ECR v. Init. and Amb. Temp.")
-for te_amb_deg_c in te_amb_short_deg_c:
-    ax1.plot(
-        df_res[(df_res["te_amb [*C]"] == te_amb_deg_c) & (df_res["cycle"] == "hwfet")][
-            "te_init [*C]"
-        ],
-        df_res[(df_res["te_amb [*C]"] == te_amb_deg_c) & (df_res["cycle"] == "hwfet")][
-            "ECR [kW-hr/100mi]"
-        ],
-        marker=".",
-        label=f"{te_amb_deg_c:.1f}",
-    )
-ax1.set_xlabel("Cab. and Batt. Init. Temp. [*C]")
-ax1.set_ylabel("Energy Consumption Rate [kW-hr/100mi]")
-ax1.legend(title="te_amb [*C]")
-plt.tight_layout()
-
-if SAVE_PLOTS:
-    fig1.savefig(Path(__file__).parent / "HWFET ECR v. Init. and Amb. Temp.svg")
-
-if SHOW_PLOTS:
-    plt.show()
-
-te_init_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k]
-
-
 te_init_step = int(len(te_amb_arr_k) / 10)
 te_init_short_deg_c = [te_init_k - celsius_to_kelvin for te_init_k in te_batt_and_cab_init_arr_k][
     ::te_init_step
 ]
 
-# plot ECR v. amb for a sweep of init
-fig2, ax2 = plt.subplots()
-fig2.suptitle("UDDS ECR v. Amb. and Init. Temp.")
-for te_init_deg_c in te_init_short_deg_c:
-    ax2.plot(
-        df_res[(df_res["te_init [*C]"] == te_init_deg_c) & (df_res["cycle"] == "udds")][
-            "te_amb [*C]"
-        ],
-        df_res[(df_res["te_init [*C]"] == te_init_deg_c) & (df_res["cycle"] == "udds")][
-            "ECR [kW-hr/100mi]"
-        ],
-        marker=".",
-        label=f"{te_amb_deg_c:.1f}",
+
+def plot_sweep(cyc: str, x_var: str, par_var_sweep: list[float]) -> tuple[plt.Figure, plt.Axes]:
+    """Plot sweep of ambient and initial temperatures, parameteric style"""
+    allowed_cycs = ["udds", "hwfet"]
+    assert cyc in allowed_cycs
+    allowed_x_vars = {
+        te_amb_key,
+        te_init_key,
+    }
+    assert x_var in allowed_x_vars
+    par_var = te_init_key if x_var == te_amb_key else te_amb_key
+    var_to_title = {te_amb_key: "Amb.", te_init_key: "Init."}
+
+    fig, ax = plt.subplots()
+    fig.suptitle(
+        cyc.upper() + f" ECR v. {var_to_title[x_var]} and {var_to_title[par_var]} Temp.",
     )
-ax2.set_xlabel("Ambient Temp. [*C]")
-ax2.set_ylabel("Energy Consumption Rate [kW-hr/100mi]")
-ax2.legend(title="te_amb [*C]")
-plt.tight_layout()
+    for par_var_val in par_var_sweep:
+        df_fltrd = df_res[(df_res[par_var] == par_var_val) & (df_res[cyc_key] == cyc)]
+        df_feas_fltrd = df_feasible[
+            (df_feasible[par_var] == par_var_val) & (df_feasible[cyc_key] == cyc)
+        ]
+        line = ax.plot(
+            df_feas_fltrd[x_var],
+            df_feas_fltrd[ecr_key],
+            label=f"{par_var_val:.1f}",
+        )[0]
+        ax.plot(
+            df_fltrd[x_var],
+            df_fltrd[ecr_key],
+            color=line.get_color(),
+            linestyle="--",
+            alpha=0.5,
+        )
+        ax.plot(
+            df_feas_fltrd[x_var],
+            df_feas_fltrd[ecr_key],
+            marker=".",
+            color=line.get_color(),
+            linestyle=None,
+        )
+    ax.set_xlabel(var_to_title[x_var] + "Temp. [*C]")
+    ax.set_ylabel("Energy Consumption Rate [kW-hr/100mi]")
+    ax.legend(title=par_var)
+    plt.tight_layout()
 
-if SAVE_PLOTS:
-    fig2.savefig(Path(__file__).parent / "UDDS ECR v. Amb. and Init. Temp.svg")
+    if SAVE_PLOTS:
+        fig.savefig(
+            Path(__file__).parent
+            / (cyc.upper() + f" ECR v. {var_to_title[x_var]} and {var_to_title[par_var]} Temp.svg"),
+        )
 
-if SHOW_PLOTS:
-    plt.show()
+    if SHOW_PLOTS:
+        plt.show()
 
-fig3, ax3 = plt.subplots()
-fig3.suptitle("HWFET ECR v. Amb. and Init. Temp.")
-for te_init_deg_c in te_init_short_deg_c:
-    ax3.plot(
-        df_res[(df_res["te_init [*C]"] == te_init_deg_c) & (df_res["cycle"] == "hwfet")][
-            "te_amb [*C]"
-        ],
-        df_res[(df_res["te_init [*C]"] == te_init_deg_c) & (df_res["cycle"] == "hwfet")][
-            "ECR [kW-hr/100mi]"
-        ],
-        marker=".",
-        label=f"{te_amb_deg_c:.1f}",
-    )
-ax3.set_xlabel("Ambient Temp. [*C]")
-ax3.set_ylabel("Energy Consumption Rate [kW-hr/100mi]")
-ax3.legend(title="te_amb [*C]")
-plt.tight_layout()
+    return fig, ax
 
-if SAVE_PLOTS:
-    fig3.savefig(Path(__file__).parent / "HWFET ECR v. Amb. and Init. Temp.svg")
 
-if SHOW_PLOTS:
-    plt.show()
+fig0, ax0 = plot_sweep(udds, te_init_key, te_amb_short_deg_c)
+fig1, ax1 = plot_sweep(udds, te_amb_key, te_init_short_deg_c)
+fig2, ax2 = plot_sweep(hwfet, te_init_key, te_amb_short_deg_c)
+fig3, ax3 = plot_sweep(hwfet, te_amb_key, te_init_short_deg_c)
