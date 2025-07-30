@@ -21,6 +21,8 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 
 celsius_to_kelvin = 273.15
 temp_amb_and_init = -6.7 + celsius_to_kelvin
+mph_per_mps = 2.24
+
 # `fastsim3` -- load vehicle and cycle, build simulation, and run
 # %%
 
@@ -33,11 +35,16 @@ def try_walk(sd: fsim.SimDrive, loc: str) -> None:
         raise Exception(f"{loc}:\n{err}")
 
 
+te_amb_sweep_size = 8
+te_init_sweep_size = te_amb_sweep_size
+
 # array of ambient temperatures in kelvin
-te_amb_arr_k: list[float] = [t + celsius_to_kelvin for t in np.linspace(-7.0, 40.0, 50)]
+te_amb_arr_k: list[float] = [
+    t + celsius_to_kelvin for t in np.linspace(-7.0, 40.0, te_amb_sweep_size)
+]
 # array of init temperatures in kelvin
 te_batt_and_cab_init_arr_k: list[float] = [
-    t + celsius_to_kelvin for t in np.linspace(-7.0, 45.0, 50)
+    t + celsius_to_kelvin for t in np.linspace(-7.0, 45.0, te_init_sweep_size)
 ]
 
 cyc_key = "cycle"
@@ -48,7 +55,7 @@ udds = "udds"
 hwfet = "hwfet"
 
 
-def sweep() -> tuple[pd.DataFrame, pd.DataFrame]:
+def sweep(verbose: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Sweep ambient and initial conditions"""
     # load 2020 Chevrolet Bolt BEV from file
     veh = fsim.Vehicle.from_resource("2020 Chevrolet Bolt EV thrml.yaml")
@@ -59,8 +66,12 @@ def sweep() -> tuple[pd.DataFrame, pd.DataFrame]:
     # results filtered for feasibility
     res_list_feasible = []
     for cyc_str in [udds, hwfet]:
+        print(f"cycle:{cyc_str}")
         for te_amb_k in te_amb_arr_k:
+            print(f"te_amb_k:{te_amb_k}")
             for te_init_k in te_batt_and_cab_init_arr_k:
+                if verbose:
+                    print(f"te_init_k:{te_init_k}")
                 cyc = fsim.Cycle.from_resource(cyc_str + ".csv")
                 cyc_dict = cyc.to_pydict()
                 cyc_dict["temp_amb_air_kelvin"] = [te_amb_k] * cyc.len()
@@ -94,6 +105,7 @@ def sweep() -> tuple[pd.DataFrame, pd.DataFrame]:
                     / 3_600
                     / (veh_dict_solved["state"]["dist_meters"] / 1e3 / 1.61)
                     * 100.0,
+                    "sd": sd.to_pydict(),
                 }
                 res_list.append(new_row)
                 feasible = (
@@ -112,7 +124,8 @@ def sweep() -> tuple[pd.DataFrame, pd.DataFrame]:
     return df_res, df_feasible
 
 
-df_res, df_feasible = sweep()
+print("Running sweep")
+df_res, df_feasible = sweep(verbose=False)
 
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
@@ -121,16 +134,83 @@ SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 SAVE_PLOTS = os.environ.get("SAVE_PLOTS", "true").lower() == "true"
 
 # plot ECR v. init for a sweep of amb
-te_amb_step = int(len(te_amb_arr_k) / 10)
+te_amb_step = int(len(te_amb_arr_k) / 10) if len(te_amb_arr_k) > 10 else 1
 te_amb_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k][::te_amb_step]
 
-te_init_step = int(len(te_amb_arr_k) / 10)
+te_init_step = (
+    int(len(te_batt_and_cab_init_arr_k) / 10) if len(te_batt_and_cab_init_arr_k) > 10 else 1
+)
 te_init_short_deg_c = [te_init_k - celsius_to_kelvin for te_init_k in te_batt_and_cab_init_arr_k][
     ::te_init_step
 ]
 
 
-def plot_sweep(cyc: str, x_var: str, par_var_sweep: list[float]) -> tuple[plt.Figure, plt.Axes]:
+def plot_time_series(df: pd.DataFrame, verbose: bool = False) -> None:
+    """Plot time series temperature data"""
+    for i, row in df.iterrows():
+        if verbose:
+            print(row)
+        sd = row["sd"]
+        fig, ax = plt.subplots(3, 1, sharex=True)
+        ax[0].plot(
+            sd["cyc"]["time_seconds"],
+            np.array(sd["veh"]["cabin"]["LumpedCabin"]["history"]["temperature_kelvin"])
+            - celsius_to_kelvin,
+            label="cabin",
+        )
+        ax[0].plot(
+            sd["cyc"]["time_seconds"],
+            np.array(
+                sd["veh"]["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["history"][
+                    "temperature_kelvin"
+                ],
+            )
+            - celsius_to_kelvin,
+            label="battery",
+        )
+        ax[0].plot(
+            sd["cyc"]["time_seconds"],
+            np.array(sd["cyc"]["temp_amb_air_kelvin"]) - celsius_to_kelvin,
+            label="ambient",
+        )
+        ax[0].set_xlabel("Time [s]")
+        ax[0].set_ylabel("Temperatures [°C]")
+        ax[0].legend()
+
+        ax[1].plot(
+            sd["veh"]["history"]["time_seconds"],
+            np.array(sd["veh"]["pt_type"]["BEV"]["res"]["history"]["soc"]),
+        )
+        ax[1].set_xlabel("Time [s]")
+        ax[1].set_ylabel("Battery State of Charge")
+
+        ax[-1].plot(
+            sd["veh"]["history"]["time_seconds"],
+            np.array(sd["veh"]["history"]["speed_ach_meters_per_second"]) * mph_per_mps,
+        )
+        ax[-1].set_xlabel("Time [s]")
+        ax[-1].set_ylabel("Speed [mph]")
+        plt.tight_layout()
+
+        if SAVE_PLOTS:
+            save_str = (
+                f"cyc - {row[cyc_key]}, te_init - {row[te_init_key]}, te_amb - {row[te_amb_key]}"
+            )
+            fig.savefig(
+                Path(__file__).parent / f"{save_str}.svg",
+            )
+
+        if SHOW_PLOTS:
+            plt.show()
+        plt.close()
+
+
+def plot_sweep(
+    df: pd.DataFrame,
+    cyc: str,
+    x_var: str,
+    par_var_sweep: list[float],
+) -> tuple[plt.Figure, plt.Axes]:
     """Plot sweep of ambient and initial temperatures, parameteric style"""
     allowed_cycs = ["udds", "hwfet"]
     assert cyc in allowed_cycs
@@ -147,7 +227,7 @@ def plot_sweep(cyc: str, x_var: str, par_var_sweep: list[float]) -> tuple[plt.Fi
         cyc.upper() + f" ECR v. {var_to_title[x_var]} and {var_to_title[par_var]} Temp.",
     )
     for par_var_val in par_var_sweep:
-        df_fltrd = df_res[(df_res[par_var] == par_var_val) & (df_res[cyc_key] == cyc)]
+        df_fltrd = df[(df[par_var] == par_var_val) & (df[cyc_key] == cyc)]
         df_feas_fltrd = df_feasible[
             (df_feasible[par_var] == par_var_val) & (df_feasible[cyc_key] == cyc)
         ]
@@ -187,7 +267,11 @@ def plot_sweep(cyc: str, x_var: str, par_var_sweep: list[float]) -> tuple[plt.Fi
     return fig, ax
 
 
-fig0, ax0 = plot_sweep(udds, te_init_key, te_amb_short_deg_c)
-fig1, ax1 = plot_sweep(udds, te_amb_key, te_init_short_deg_c)
-fig2, ax2 = plot_sweep(hwfet, te_init_key, te_amb_short_deg_c)
-fig3, ax3 = plot_sweep(hwfet, te_amb_key, te_init_short_deg_c)
+print("Plotting sweep results")
+fig0, ax0 = plot_sweep(df_res, udds, te_init_key, te_amb_short_deg_c)
+fig1, ax1 = plot_sweep(df_res, udds, te_amb_key, te_init_short_deg_c)
+fig2, ax2 = plot_sweep(df_res, hwfet, te_init_key, te_amb_short_deg_c)
+fig3, ax3 = plot_sweep(df_res, hwfet, te_amb_key, te_init_short_deg_c)
+
+print("Plotting time series")
+plot_time_series(df_res)
