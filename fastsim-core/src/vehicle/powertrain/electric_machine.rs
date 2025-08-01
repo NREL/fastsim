@@ -350,6 +350,7 @@ impl Powertrain for ElectricMachine {
                     }
                 }
         };
+        ensure!(eff_value >= si::Ratio::ZERO && eff_value <= 1.0 * uc::R);
         self.state.eff.update(eff_value, || format_dbg!())?;
 
         self.state.pwr_mech_dyn_brake.update(
