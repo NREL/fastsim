@@ -28,9 +28,6 @@ celsius_to_kelvin = 273.15
 temp_amb_and_init = -6.7 + celsius_to_kelvin
 mph_per_mps = 2.24
 
-te_amb_sweep_size = 50
-te_init_sweep_size = te_amb_sweep_size
-
 
 def try_walk(sd: fsim.SimDrive, loc: str) -> None:
     """Wrap `walk` in try to enable context"""
@@ -101,72 +98,6 @@ def sweep(df: pd.DataFrame, n_proc: int | None) -> tuple[pd.DataFrame, pd.DataFr
     return df_res, df_feasible
 
 
-def plot_sweep_cross_effects(
-    df: pd.DataFrame,
-    cyc: str,
-    x_var: str,
-    par_var_sweep: list[float],
-    show_plots: bool = False,
-    save_plots: bool = False,
-) -> tuple[plt.Figure, plt.Axes]:
-    """Plot sweep of ambient and initial temperatures, parameteric style"""
-    allowed_cycs = ["udds", "hwfet"]
-    assert cyc in allowed_cycs
-    allowed_x_vars = {
-        te_amb_key,
-        te_init_key,
-    }
-    assert x_var in allowed_x_vars
-    par_var = te_init_key if x_var == te_amb_key else te_amb_key
-    var_to_title = {te_amb_key: "Amb.", te_init_key: "Init."}
-
-    fig, ax = plt.subplots()
-    title_str = cyc.upper() + f"\\deltaECR / \\delta{x_var}"
-    fig.suptitle(
-        title_str,
-    )
-    for par_var_val in par_var_sweep:
-        df_fltrd = df[(df[par_var] == par_var_val) & (df[cyc_key] == cyc)]
-        df_feas_fltrd = df_feasible[
-            (df_feasible[par_var] == par_var_val) & (df_feasible[cyc_key] == cyc)
-        ]
-        d_ecr_d_x_var = np.diff(df_fltrd[ecr_key]) / np.diff(df_fltrd[x_var])
-        d_ecr_d_x_var_feas = np.diff(df_feas_fltrd[ecr_key]) / np.diff(df_feas_fltrd[x_var])
-        line = ax.plot(
-            df_feas_fltrd[x_var],
-            d_ecr_d_x_var_feas,
-            label=f"{par_var_val:.1f}",
-        )[0]
-        ax.plot(
-            df_fltrd[x_var],
-            d_ecr_d_x_var,
-            color=line.get_color(),
-            linestyle="--",
-            alpha=0.5,
-        )
-        ax.plot(
-            df_feas_fltrd[x_var],
-            d_ecr_d_x_var,
-            marker=".",
-            color=line.get_color(),
-            linestyle=None,
-        )
-    ax.set_xlabel(var_to_title[x_var] + "Temp. [*C]")
-    ax.set_ylabel(f"\\deltaECR [kW-hr/100mi] / \\delta{x_var}")
-    ax.legend(title=par_var)
-    plt.tight_layout()
-
-    if save_plots:
-        fig.savefig(
-            Path(__file__).parent / (title_str + ".svg"),
-        )
-
-    if show_plots:
-        plt.show()
-
-    return fig, ax
-
-
 def solve_row(iterrow: tuple[Hashable, pd.Series]) -> dict[str, Any]:
     """Solve row of dataframe and return result"""
     row = iterrow[1]
@@ -222,7 +153,7 @@ def plot_time_series(
     df: pd.DataFrame,
     verbose: bool = False,
     show_plots: bool = False,
-    save_plots: bool = False,
+    save_figs: bool = False,
 ) -> None:
     """Plot time series temperature data"""
     for i, row in df.iterrows():
@@ -270,7 +201,7 @@ def plot_time_series(
         ax[-1].set_ylabel("Speed [mph]")
         plt.tight_layout()
 
-        if save_plots:
+        if save_figs:
             save_str = (
                 f"cyc - {row[cyc_key]}, te_init - {row[te_init_key]}, te_amb - {row[te_amb_key]}"
             )
@@ -289,7 +220,7 @@ def plot_sweep(
     x_var: str,
     par_var_sweep: list[float],
     show_plots: bool = False,
-    save_plots: bool = False,
+    save_figs: bool = False,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot sweep of ambient and initial temperatures, parameteric style"""
     allowed_cycs = ["udds", "hwfet"]
@@ -303,8 +234,11 @@ def plot_sweep(
     var_to_title = {te_amb_key: "Amb.", te_init_key: "Init."}
 
     fig, ax = plt.subplots()
+    if not (show_plots and save_figs):
+        return (fig, ax)
+    title_str = cyc.upper() + f" ECR v. {var_to_title[x_var]} and {var_to_title[par_var]} Temp."
     fig.suptitle(
-        cyc.upper() + f" ECR v. {var_to_title[x_var]} and {var_to_title[par_var]} Temp.",
+        title_str,
     )
     for par_var_val in par_var_sweep:
         df_fltrd = df[(df[par_var] == par_var_val) & (df[cyc_key] == cyc)]
@@ -335,10 +269,9 @@ def plot_sweep(
     ax.legend(title=par_var)
     plt.tight_layout()
 
-    if save_plots:
+    if save_figs:
         fig.savefig(
-            Path(__file__).parent
-            / (cyc.upper() + f" ECR v. {var_to_title[x_var]} and {var_to_title[par_var]} Temp.svg"),
+            Path(__file__).parent / (title_str + ".svg"),
         )
 
     if show_plots:
@@ -347,17 +280,113 @@ def plot_sweep(
     return fig, ax
 
 
+def plot_sweep_cross_effects(
+    df: pd.DataFrame,
+    cyc: str,
+    x_var: str,
+    par_var_sweep: list[float],
+    show_plots: bool = False,
+    save_figs: bool = False,
+) -> tuple[plt.Figure, plt.Axes]:
+    """Plot sweep of ambient and initial temperatures, parameteric style"""
+    allowed_cycs = ["udds", "hwfet"]
+    assert cyc in allowed_cycs
+    allowed_x_vars = {
+        te_amb_key,
+        te_init_key,
+    }
+    assert x_var in allowed_x_vars
+    par_var = te_init_key if x_var == te_amb_key else te_amb_key
+    var_to_title = {te_amb_key: "Amb.", te_init_key: "Init."}
+
+    fig, ax = plt.subplots()
+    if not (show_plots and save_figs):
+        return (fig, ax)
+    title_str = cyc.upper() + f" ΔECR per Δ{x_var}"
+    fig.suptitle(
+        title_str,
+    )
+    for par_var_val in par_var_sweep:
+        df_fltrd = df[(df[par_var] == par_var_val) & (df[cyc_key] == cyc)]
+        df_feas_fltrd = df_feasible[
+            (df_feasible[par_var] == par_var_val) & (df_feasible[cyc_key] == cyc)
+        ]
+        d_ecr_d_x_var = np.diff(df_fltrd[ecr_key]) / np.diff(df_fltrd[x_var])
+        d_ecr_d_x_var_feas = np.diff(df_feas_fltrd[ecr_key]) / np.diff(df_feas_fltrd[x_var])
+        line = ax.plot(
+            df_feas_fltrd[x_var][1:],
+            d_ecr_d_x_var_feas,
+            label=f"{par_var_val:.1f}",
+        )[0]
+        ax.plot(
+            df_fltrd[x_var][1:],
+            d_ecr_d_x_var,
+            color=line.get_color(),
+            linestyle="--",
+            alpha=0.5,
+        )
+        ax.plot(
+            df_feas_fltrd[x_var][1:],
+            d_ecr_d_x_var_feas,
+            marker=".",
+            color=line.get_color(),
+            linestyle=None,
+        )
+    ax.set_xlabel(var_to_title[x_var] + "Temp. [*C]")
+    ax.set_ylabel(f"ΔECR [kW-hr/100mi] / Δ{x_var}")
+    ax.legend(title=par_var)
+    plt.tight_layout()
+
+    print(f"save_figs: {save_figs}")
+    if save_figs:
+        fig.savefig(
+            Path(__file__).parent / (title_str + ".svg"),
+        )
+
+    if show_plots:
+        plt.show()
+
+    return fig, ax
+
+
+def print_cross_delta(df: pd.DataFrame, cycle: str, fixed_var: str) -> None:
+    """
+    Print percent increase in ECR for one variable when the other is fixed
+    between 22*C and 24*C
+    """
+    ecr = df[((df[fixed_var] > 22.0) & (df[fixed_var] < 24.0)) & (df[cyc_key] == cycle)][ecr_key]
+    ecr_delta = (ecr.max() - ecr.min()) / ecr.min()
+    print(
+        f"Percent increase beween lowwest and highest ECR for {cycle} and fixed {fixed_var}:"
+        + f" {ecr_delta:.5%}",
+    )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run a sweep of ambient and initial temperatures",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("n_proc", type=int, default=4, help="Number of parallel processes.")
+    PYTEST = os.environ.get("PYTEST", "false").lower() == "true"
+    def_len = 10 if PYTEST else 50
+    parser.add_argument("--proc", type=int, default=4, help="Number of parallel processes.")
+    parser.add_argument("--show-plots", action="store_true", help="Show plots")
+    parser.add_argument("--save-figs", action="store_true", help="Save figures")
+    parser.add_argument(
+        "--len",
+        type=int,
+        default=def_len,
+        help="Number of elements in each dimension",
+    )
 
-    # if environment var `SHOW_PLOTS=false` is set, no plots are shown
-    SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
-    # if environment var `SAVE_FIGS=true` is set, save plots
-    SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
+    args = parser.parse_args()
+    print(args)
+    n_proc: int = args.proc  # type: ignore[attr-defined]
+
+    SHOW_PLOTS = args.show_plots
+    SAVE_FIGS = args.save_figs
+    te_amb_sweep_size = args.len
+    te_init_sweep_size = te_amb_sweep_size
 
     # array of ambient temperatures in kelvin
     te_amb_arr_k: list[float] = [
@@ -365,11 +394,8 @@ if __name__ == "__main__":
     ]
     # array of init temperatures in kelvin
     te_batt_and_cab_init_arr_k: list[float] = [
-        t + celsius_to_kelvin for t in np.linspace(-7.0, 40.0, te_init_sweep_size)
+        t + celsius_to_kelvin for t in np.linspace(-7.0, 45.0, te_init_sweep_size)
     ]
-
-    args = parser.parse_args()
-    n_proc: int = args.n_proc  # type: ignore[attr-defined]
 
     print(f"\nRunning sweep with {n_proc} parallel processes")
     df_doe = setup_sweep()
@@ -387,55 +413,56 @@ if __name__ == "__main__":
     ][::te_init_step]
 
     print("\nPlotting sweep results")
-    fig0, ax0 = plot_sweep(df_res, udds, te_init_key, te_amb_short_deg_c)
-    fig1, ax1 = plot_sweep(df_res, udds, te_amb_key, te_init_short_deg_c)
-    fig2, ax2 = plot_sweep(df_res, hwfet, te_init_key, te_amb_short_deg_c)
-    fig3, ax3 = plot_sweep(df_res, hwfet, te_amb_key, te_init_short_deg_c)
+    fig0, ax0 = plot_sweep(df_res, udds, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    fig1, ax1 = plot_sweep(df_res, udds, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    fig2, ax2 = plot_sweep(df_res, hwfet, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    fig3, ax3 = plot_sweep(df_res, hwfet, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+
+    print("\nPlotting sweep cross effects")
+    fig0, ax0 = plot_sweep_cross_effects(
+        df_res,
+        udds,
+        te_init_key,
+        te_amb_short_deg_c,
+        SHOW_PLOTS,
+        SAVE_FIGS,
+    )
+    fig1, ax1 = plot_sweep_cross_effects(
+        df_res,
+        udds,
+        te_amb_key,
+        te_init_short_deg_c,
+        SHOW_PLOTS,
+        SAVE_FIGS,
+    )
+    fig2, ax2 = plot_sweep_cross_effects(
+        df_res,
+        hwfet,
+        te_init_key,
+        te_amb_short_deg_c,
+        SHOW_PLOTS,
+        SAVE_FIGS,
+    )
+    fig3, ax3 = plot_sweep_cross_effects(
+        df_res,
+        hwfet,
+        te_amb_key,
+        te_init_short_deg_c,
+        SHOW_PLOTS,
+        SAVE_FIGS,
+    )
 
     # print("Plotting time series")
     # plot_time_series(df_res)
 
-    # perform some calculations
-    fixed_init_udds_ecr = df_res[
-        ((df_res[te_init_key] > 22.0) & (df_res[te_init_key] < 24.0)) & (df_res[cyc_key] == udds)
-    ][ecr_key]
-    ecr_delta_fixed_init_udds = (
-        fixed_init_udds_ecr.max() - fixed_init_udds_ecr.min()
-    ) / fixed_init_udds_ecr.min()
-    print(
-        "Percent increase beween lowwest and highest ECR for udds and fixed initial temp:"
-        + f" {ecr_delta_fixed_init_udds:.5%}",
-    )
+    print("Cross-effect deltas w.r.t. full dataframe")
+    print_cross_delta(df_res, udds, te_init_key)
+    print_cross_delta(df_res, udds, te_amb_key)
+    print_cross_delta(df_res, hwfet, te_init_key)
+    print_cross_delta(df_res, hwfet, te_amb_key)
 
-    fixed_amb_udds_ecr = df_res[
-        ((df_res[te_amb_key] > 22.0) & (df_res[te_amb_key] < 24.0)) & (df_res[cyc_key] == udds)
-    ][ecr_key]
-    ecr_delta_fixed_amb_udds = (
-        fixed_amb_udds_ecr.max() - fixed_amb_udds_ecr.min()
-    ) / fixed_amb_udds_ecr.min()
-    print(
-        "Percent increase beween lowwest and highest ECR for udds and fixed ambient temp:"
-        + f" {ecr_delta_fixed_amb_udds:.5%}",
-    )
-
-    fixed_init_hwfet_ecr = df_res[
-        ((df_res[te_init_key] > 22.0) & (df_res[te_init_key] < 24.0)) & (df_res[cyc_key] == hwfet)
-    ][ecr_key]
-    ecr_delta_fixed_init_hwfet = (
-        fixed_init_hwfet_ecr.max() - fixed_init_hwfet_ecr.min()
-    ) / fixed_init_hwfet_ecr.min()
-    print(
-        "Percent increase beween lowwest and highest ECR for hwfet and fixed initial temp:"
-        + f" {ecr_delta_fixed_init_hwfet:.5%}",
-    )
-
-    fixed_amb_hwfet_ecr = df_res[
-        ((df_res[te_amb_key] > 22.0) & (df_res[te_amb_key] < 24.0)) & (df_res[cyc_key] == hwfet)
-    ][ecr_key]
-    ecr_delta_fixed_amb_hwfet = (
-        fixed_amb_hwfet_ecr.max() - fixed_amb_hwfet_ecr.min()
-    ) / fixed_amb_hwfet_ecr.min()
-    print(
-        "Percent increase beween lowwest and highest ECR for hwfet and fixed ambient temp:"
-        + f" {ecr_delta_fixed_amb_hwfet:.5%}",
-    )
+    print("Cross-effect deltas w.r.t. feasible dataframe")
+    print_cross_delta(df_feasible, udds, te_init_key)
+    print_cross_delta(df_feasible, udds, te_amb_key)
+    print_cross_delta(df_feasible, hwfet, te_init_key)
+    print_cross_delta(df_feasible, hwfet, te_amb_key)
