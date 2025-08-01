@@ -92,7 +92,7 @@ impl Default for FuelProperties {
     }
 }
 
-const J_PER_KWH: f64 = 3_600.0;
+const J_PER_KWH: f64 = 3_600_000.0;
 lazy_static! {
     static ref CUBIC_METER_PER_GAL: f64 = 3.79e-3;
 }
