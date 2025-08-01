@@ -1232,8 +1232,6 @@ mod tests {
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
-        // TODO: remove below; this is here to prove that non-zero aux loads cause panic
-        veh.pwr_aux_base = 0.0 * uc::KW;
         f3veh_with_f2_eff(&f2veh, &mut veh);
 
         // Get FASTSim-3 label FE results

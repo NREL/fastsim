@@ -292,11 +292,30 @@ impl Powertrain for ElectricMachine {
             .pwr_out_req
             .update(pwr_out_req, || format_dbg!())?;
 
+        // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
+        // in which case, excess is handled by `pwr_mech_dyn_brake`
+        self.state.pwr_mech_prop_out.update(
+            pwr_out_req.max(-*self.state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?),
+            || format_dbg!(),
+        )?;
+
+        let is_max_output =
+            pwr_out_req == *self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?;
+
         // ensuring eff_interp_fwd has Extrapolate set to Error before calculating self.state.eff
         self.eff_interp_achieved
             .set_extrapolate(Extrapolate::Error)?;
 
-        self.state.eff.update(
+        let eff_value = if is_max_output {
+            if pwr_out_req >= si::Power::ZERO {
+                *self
+                    .state
+                    .eff_fwd_at_max_input
+                    .get_fresh(|| format_dbg!())?
+            } else {
+                *self.state.eff_at_max_regen.get_fresh(|| format_dbg!())?
+            }
+        } else {
             uc::R
                 * match &self.eff_interp_achieved {
                     InterpolatorEnum::Interp1D(interp) => interp
@@ -329,15 +348,9 @@ impl Powertrain for ElectricMachine {
                         ))
                         .into())
                     }
-                },
-            || format_dbg!(),
-        )?;
-        // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
-        // in which case, excess is handled by `pwr_mech_dyn_brake`
-        self.state.pwr_mech_prop_out.update(
-            pwr_out_req.max(-*self.state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?),
-            || format_dbg!(),
-        )?;
+                }
+        };
+        self.state.eff.update(eff_value, || format_dbg!())?;
 
         self.state.pwr_mech_dyn_brake.update(
             -(pwr_out_req - *self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?),
