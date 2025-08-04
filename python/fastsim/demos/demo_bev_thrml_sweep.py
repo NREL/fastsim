@@ -101,7 +101,7 @@ def sweep(df: pd.DataFrame, n_proc: int | None) -> tuple[pd.DataFrame, pd.DataFr
 def solve_row(iterrow: tuple[Hashable, pd.Series]) -> dict[str, Any]:
     """Solve row of dataframe and return result"""
     row = iterrow[1]
-    if cast(int, iterrow[0]) % 250 == 0:
+    if cast(int, iterrow[0]) % 500 == 0:
         print()
         print(fsim.utils.utilities.print_dt())
         print(row)
@@ -234,7 +234,7 @@ def plot_sweep(
     var_to_title = {te_amb_key: "Amb.", te_init_key: "Init."}
 
     fig, ax = plt.subplots()
-    if not (show_plots and save_figs):
+    if not (show_plots) and not (save_figs):
         return (fig, ax)
     title_str = cyc.upper() + f" ECR v. {var_to_title[x_var]} and {var_to_title[par_var]} Temp."
     fig.suptitle(
@@ -271,7 +271,7 @@ def plot_sweep(
 
     if save_figs:
         fig.savefig(
-            Path(__file__).parent / (title_str + ".svg"),
+            Path(__file__).parent / (title_str + "svg"),
         )
 
     if show_plots:
@@ -300,7 +300,7 @@ def plot_sweep_cross_effects(
     var_to_title = {te_amb_key: "Amb.", te_init_key: "Init."}
 
     fig, ax = plt.subplots()
-    if not (show_plots and save_figs):
+    if not (show_plots) and not (save_figs):
         return (fig, ax)
     title_str = cyc.upper() + f" ΔECR per Δ{x_var}"
     fig.suptitle(
@@ -339,8 +339,9 @@ def plot_sweep_cross_effects(
 
     print(f"save_figs: {save_figs}")
     if save_figs:
+        save_str = cyc.upper() + f" dECR per d{var_to_title[x_var]}"
         fig.savefig(
-            Path(__file__).parent / (title_str + ".svg"),
+            Path(__file__).parent / (save_str + "svg"),
         )
 
     if show_plots:
