@@ -301,8 +301,11 @@ impl Powertrain for ElectricMachine {
             || format_dbg!(),
         )?;
 
-        let is_max_output =
-            pwr_out_req == *self.state.pwr_mech_prop_out.get_fresh(|| format_dbg!())?;
+        let is_max_output = pwr_out_req
+            == *self
+                .state
+                .pwr_mech_fwd_out_max
+                .get_fresh(|| format_dbg!())?;
 
         // ensuring eff_interp_fwd has Extrapolate set to Error before calculating self.state.eff
         self.eff_interp_achieved
