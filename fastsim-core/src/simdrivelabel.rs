@@ -1233,6 +1233,9 @@ mod tests {
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
         f3veh_with_f2_eff(&f2veh, &mut veh);
+        // NOTE: need to initialize again after tweaks in f3veh_with_f2_eff
+        // to ensure, for example, that eff_interp_at_max_input is rebuilt.
+        veh.init().expect("init should work fine");
 
         // Get FASTSim-3 label FE results
         let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
