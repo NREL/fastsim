@@ -140,6 +140,8 @@ impl Powertrain for ElectricMachine {
             })?
             .set_extrapolate(Extrapolate::Clamp)?;
 
+        let raw_tractive_lookup_ratio = (*pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>();
+        let raw_regen_lookup_ratio = (*pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>();
         self.state.eff_fwd_at_max_input.update(
             uc::R
                 * self
@@ -148,7 +150,7 @@ impl Powertrain for ElectricMachine {
                     .map(|interpolator| {
                         interpolator
                             .interpolate(&[abs_checked_x_val(
-                                (*pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                raw_tractive_lookup_ratio,
                                 match interpolator {
                                     InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
                                         .as_slice()
@@ -178,7 +180,7 @@ impl Powertrain for ElectricMachine {
                     .map(|interpolator| {
                         interpolator
                             .interpolate(&[abs_checked_x_val(
-                                (*pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                                raw_regen_lookup_ratio,
                                 match interpolator {
                                     InterpolatorEnum::Interp1D(interp) => interp.data.grid[0]
                                         .as_slice()
@@ -306,6 +308,40 @@ impl Powertrain for ElectricMachine {
         self.eff_interp_achieved
             .set_extrapolate(Extrapolate::Error)?;
 
+        let raw_lookup_pwr_ratio = (pwr_out_req / self.pwr_out_max).get::<si::ratio>();
+        let calculated_eff = uc::R
+            * match &self.eff_interp_achieved {
+                InterpolatorEnum::Interp1D(interp) => interp
+                    .interpolate(&[{
+                        let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
+                            Ok({
+                                if interp.data.grid[0]
+                                    .first()
+                                    .with_context(|| anyhow!(format_dbg!()))?
+                                    >= &0.
+                                {
+                                    pwr_uncorrected.max(0.)
+                                } else {
+                                    pwr_uncorrected
+                                }
+                            })
+                        };
+                        pwr(raw_lookup_pwr_ratio)?
+                    }])
+                    .with_context(|| {
+                        anyhow!(
+                            "{}\n failed to calculate {}",
+                            format_dbg!(),
+                            stringify!(self.state.eff)
+                        )
+                    })?,
+                _ => {
+                    return Err(Error::InitError(format_dbg!(
+                        "Only 1-D interpolators are supported"
+                    ))
+                    .into())
+                }
+            };
         let eff_value = if is_max_output {
             if pwr_out_req >= si::Power::ZERO {
                 *self
@@ -316,39 +352,7 @@ impl Powertrain for ElectricMachine {
                 *self.state.eff_at_max_regen.get_fresh(|| format_dbg!())?
             }
         } else {
-            uc::R
-                * match &self.eff_interp_achieved {
-                    InterpolatorEnum::Interp1D(interp) => interp
-                        .interpolate(&[{
-                            let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
-                                Ok({
-                                    if interp.data.grid[0]
-                                        .first()
-                                        .with_context(|| anyhow!(format_dbg!()))?
-                                        >= &0.
-                                    {
-                                        pwr_uncorrected.max(0.)
-                                    } else {
-                                        pwr_uncorrected
-                                    }
-                                })
-                            };
-                            pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
-                        }])
-                        .with_context(|| {
-                            anyhow!(
-                                "{}\n failed to calculate {}",
-                                format_dbg!(),
-                                stringify!(self.state.eff)
-                            )
-                        })?,
-                    _ => {
-                        return Err(Error::InitError(format_dbg!(
-                            "Only 1-D interpolators are supported"
-                        ))
-                        .into())
-                    }
-                }
+            calculated_eff
         };
         ensure!(eff_value >= si::Ratio::ZERO && eff_value <= 1.0 * uc::R);
         self.state.eff.update(eff_value, || format_dbg!())?;
