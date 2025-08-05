@@ -1057,7 +1057,7 @@ pub fn f3veh_with_f2_eff(f2veh: &fastsim_2::vehicle::RustVehicle, veh: &mut Vehi
                 assert_eq!(interp1d.data.values.len(), 11);
                 interp1d.data.values = f2veh.mc_eff_map.clone().into();
                 assert_eq!(interp1d.data.grid[0].len(), interp1d.data.values.len());
-                interp1d.strategy = Strategy1DEnum::LeftNearest(strategy::LeftNearest);
+                interp1d.strategy = Strategy1DEnum::Linear(strategy::Linear); // Strategy1DEnum::LeftNearest(strategy::LeftNearest);
             }
             _ => panic!("wrong interpolator variant"),
         }
