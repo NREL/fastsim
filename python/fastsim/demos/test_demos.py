@@ -1,4 +1,5 @@
 """Test suite for FASTSim demo scripts to ensure they run without errors."""
+
 import os
 import subprocess
 import sys
@@ -18,6 +19,7 @@ def demo_paths():
 def test_demo(demo_path: Path):
     """Test that each demo script runs successfully without errors."""
     os.environ["SHOW_PLOTS"] = "false"
+    os.environ["PYTEST"] = "true"
     rslt = subprocess.run(
         [sys.executable, demo_path],
         capture_output=True,

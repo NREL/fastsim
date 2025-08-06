@@ -143,6 +143,7 @@ select = [
 ignore = [
   "D400", # first-line-should-end-with-a-period
   "E266", # Too many leading `#`
+  "D205", # blank line after summary
   "N807",
 ]
 
