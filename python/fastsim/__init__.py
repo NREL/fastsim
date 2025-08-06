@@ -2,9 +2,10 @@
 
 import inspect
 import re
+import sys
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, Optional, Self, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
 
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
@@ -15,6 +16,23 @@ import fastsim
 from . import utils  # type: ignore[attr-defined]  # noqa: F401
 from .fastsim import *  # noqa: F403
 from .fastsim import Cycle  # type: ignore[attr-defined]
+
+
+def check_version_gte_311() -> bool:
+    """Return true if python version is greater than or equal to 3.11"""
+    v = sys.version
+    m = re.match("(\\d)\\.(\\d{2})", v)
+    m = cast(list[str], m)
+    assert m[1] == "3"
+    return int(m[2]) >= 11
+
+
+if check_version_gte_311():
+    # not available in older python versions
+    from typing import Self
+else:
+    # available in older python versions
+    from typing_extensions import Self  # noqa:UP035
 
 
 def package_root() -> Path:
@@ -109,9 +127,9 @@ def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict:
 
 
 def get_hist_len(obj: dict) -> int | None:
-    """Find nested `history` and get lenth of first element"""
-    # TODO: check if this is sufficiently recursive and if it's not,
-    # make it recursive all the way down
+    """Find nested `history` and gets lenth of first element"""
+    # TODO: check if this is sufficiently recursive and if it's not, make it
+    # recursive all the way down
 
     if "history" in obj:
         return len(next(iter(obj["history"].values())))

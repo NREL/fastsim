@@ -222,8 +222,6 @@ impl LumpedCabin {
         self.state
             .pwr_thrml_to_res
             .update(pwr_thrml_to_res, || format_dbg!())?;
-        // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
-        // Transfer, 7th Edition
         let cab_te_film_ext: si::Temperature = 0.5
             * (self
                 .state
@@ -245,6 +243,8 @@ impl LumpedCabin {
 
         let nu_l_bar: si::Ratio =
             if *self.state.reynolds_for_plate.get_fresh(|| format_dbg!())? < re_l_crit {
+                // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
+                // Transfer, 7th Edition
                 // equation 7.30
                 0.664
                     * self

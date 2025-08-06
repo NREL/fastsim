@@ -60,7 +60,7 @@ sd = sd0.copy()
 # simulation start time
 t0 = time.perf_counter()
 # run simulation
-sd.walk()
+sd.walk_once()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
@@ -521,6 +521,8 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
         label="f2 regen buffer",
         alpha=0.5,
     )
+    ax[2].axhline(sd_dict["veh.pt_type.HEV.res.min_soc"], color="blue", label="min soc")
+    ax[2].axhline(sd_dict["veh.pt_type.HEV.res.max_soc"], color="red", label="max soc")
     ax[2].set_ylabel("[-]")
     ax[2].legend(loc="center right")
 
