@@ -378,7 +378,6 @@ impl SimDrive {
                 res.state.soh.mark_fresh(|| format_dbg!())?;
             }
             self.step(|| format_dbg!())?;
-            println!("{:?}", format_dbg!(self.veh.res().unwrap().state.soc));
             self.solve_step()
                 .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
             self.save_state(|| format_dbg!())?;
