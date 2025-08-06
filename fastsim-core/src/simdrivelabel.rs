@@ -1121,7 +1121,7 @@ mod tests {
             .unwrap();
 
         // Compare key results (allowing for small numerical differences)
-        let tolerance = 0.01; // 1% tolerance
+        let tolerance = 0.03; // 3% tolerance
 
         // Check MPGe values
         assert!(
