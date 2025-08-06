@@ -1,6 +1,6 @@
 [package]
 name = "fastsim-proc-macros"
-version = "1.0.1"
+version = "1.0.3"
 edition = { workspace = true }
 description = "Procedural macros for FASTSim"
 license = "Apache-2.0"
