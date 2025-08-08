@@ -369,7 +369,7 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
         (
             -sd_dict["veh.pt_type.HEV.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
             sd_dict["veh.pt_type.HEV.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
-        )
+        ),
     )
     ax[1].set_ylabel("FC Energy\nDelta (f3-f2) [MJ]\n+/- 10% Range")
     ax[1].legend()
