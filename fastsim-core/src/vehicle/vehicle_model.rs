@@ -253,7 +253,10 @@ impl Init for Vehicle {
         self.pt_type
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        let mass = self.mass()?.unwrap_or(0.0 * uc::KG);
+        let mass = self
+            .mass()
+            .unwrap_or(Some(0.0 * uc::KG))
+            .unwrap_or(0.0 * uc::KG);
         let _ = match &self.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => hev.check_buffers(mass),
             PowertrainType::PlugInHybridElectricVehicle(hev) => hev.check_buffers(mass),
