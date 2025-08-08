@@ -770,12 +770,12 @@ impl HistoryMethods for RESGreedyWithDynamicBuffers {
 impl Init for RESGreedyWithDynamicBuffers {
     fn init(&mut self) -> Result<(), Error> {
         // TODO: make sure these values propagate to the documented defaults above
-        init_opt_default!(self, speed_soc_disch_buffer, 70.0 * uc::MPH);
+        init_opt_default!(self, speed_soc_disch_buffer, 50.0 * uc::MPH);
         init_opt_default!(self, speed_soc_disch_buffer_coeff, 1.0 * uc::R);
         init_opt_default!(
             self,
             speed_soc_fc_on_buffer,
-            self.speed_soc_disch_buffer.unwrap() * 1.5
+            self.speed_soc_disch_buffer.unwrap() * 1.2
         );
         init_opt_default!(self, speed_soc_fc_on_buffer_coeff, 1.0 * uc::R);
         init_opt_default!(self, speed_soc_regen_buffer, 30. * uc::MPH);
