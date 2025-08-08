@@ -1357,7 +1357,7 @@ mod tests {
         assert!(
             (label_fe_f3.net_accel - label_fe_f2.net_accel).abs() / label_fe_f2.net_accel
                 < tolerance,
-            "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
+            "Net accel mismatch: F3={:.3}, F2={:.3}",
             label_fe_f3.net_accel,
             label_fe_f2.net_accel
         );
