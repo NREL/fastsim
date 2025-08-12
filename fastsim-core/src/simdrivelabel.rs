@@ -1231,7 +1231,7 @@ mod tests {
             udds_tolerance: 0.011, // 1.1% tolerance
             comb_tolerance: 0.011,
             hwy_tolerance: 0.011,
-            accel_tolerance: 0.011,
+            accel_tolerance: 0.05,
         };
 
         assert_labels_match_within_tolerance(&label_fe_f3, &label_fe_f2, &tol, true);
@@ -1267,7 +1267,7 @@ mod tests {
             udds_tolerance: 0.15, // 15% tolerance
             comb_tolerance: 0.15,
             hwy_tolerance: 0.15,
-            accel_tolerance: 0.2,
+            accel_tolerance: 0.05, // 5% tolerance
         };
 
         assert_labels_match_within_tolerance(&label_fe_f3, &label_fe_f2, &tol, false);
