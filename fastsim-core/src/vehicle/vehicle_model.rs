@@ -471,7 +471,25 @@ impl Vehicle {
     }
 
     pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        // TODO: account for traction limits here
+        // Calculate traction limits
+        let mass = self
+            .mass
+            .with_context(|| format!("{}\nMass should have been set before now", format_dbg!()))?;
+        let max_trac_accel = self.chassis.wheel_fric_coef
+            * self.chassis.drive_axle_weight_frac
+            * uc::ACC_GRAV
+            / (1.0 * uc::R
+                + self.chassis.cg_height * self.chassis.wheel_fric_coef / self.chassis.wheel_base);
+        let prev_speed = *self.state.speed_ach.get_stale(|| format_dbg!())?;
+        let max_trac_speed = prev_speed + (max_trac_accel * dt);
+        let max_trac_power = self.chassis.wheel_fric_coef
+            * self.chassis.drive_axle_weight_frac
+            * mass
+            * uc::ACC_GRAV
+            / (1.0 * uc::R
+                + self.chassis.cg_height * self.chassis.wheel_fric_coef / self.chassis.wheel_base)
+            * max_trac_speed;
+        // Calculate powertrain limits
         self.pt_type
             .set_curr_pwr_prop_out_max(
                 (si::Power::ZERO, si::Power::ZERO),
@@ -484,9 +502,14 @@ impl Vehicle {
             .pt_type
             .get_curr_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.state
-            .pwr_prop_fwd_max
-            .update(pwr_prop_maxes.0, || format_dbg!())?;
+        self.state.pwr_prop_fwd_max.update(
+            if pwr_prop_maxes.0 > max_trac_power {
+                max_trac_power
+            } else {
+                pwr_prop_maxes.0
+            },
+            || format_dbg!(),
+        )?;
         self.state
             .pwr_prop_bwd_max
             .update(pwr_prop_maxes.1, || format_dbg!())?;
