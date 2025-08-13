@@ -1114,63 +1114,79 @@ mod tests {
     ) {
         // Check MPGe values for HEV
         if all_electric {
+            let udds_err = (label_fe_f3.lab_udds_kwh_per_mi - label_fe_f2.lab_udds_kwh_per_mi)
+                .abs()
+                / label_fe_f2.lab_udds_kwh_per_mi;
             assert!(
-                (label_fe_f3.lab_udds_kwh_per_mi - label_fe_f2.lab_udds_kwh_per_mi).abs()
-                    / label_fe_f2.lab_udds_kwh_per_mi
-                    < tol.udds_tolerance,
-                "UDDS kWh/mi mismatch: F3={:.3}, F2={:.3}",
+                udds_err < tol.udds_tolerance,
+                "UDDS kWh/mi mismatch: F3={:.3}, F2={:.3}; err = {:.3} (> tol {:.3})",
                 label_fe_f3.lab_udds_kwh_per_mi,
-                label_fe_f2.lab_udds_kwh_per_mi
+                label_fe_f2.lab_udds_kwh_per_mi,
+                udds_err,
+                tol.udds_tolerance
             );
+            let comb_err = (label_fe_f3.lab_comb_kwh_per_mi - label_fe_f2.lab_comb_kwh_per_mi)
+                .abs()
+                / label_fe_f2.lab_comb_kwh_per_mi;
             assert!(
-                (label_fe_f3.lab_comb_kwh_per_mi - label_fe_f2.lab_comb_kwh_per_mi).abs()
-                    / label_fe_f2.lab_comb_kwh_per_mi
-                    < tol.comb_tolerance,
-                "Combined kWh/mi mismatch: F3={:.3}, F2={:.3}",
+                comb_err < tol.comb_tolerance,
+                "Combined kWh/mi mismatch: F3={:.3}, F2={:.3}; err = {:.3} (> tol {:.3})",
                 label_fe_f3.lab_comb_kwh_per_mi,
-                label_fe_f2.lab_comb_kwh_per_mi
+                label_fe_f2.lab_comb_kwh_per_mi,
+                comb_err,
+                tol.comb_tolerance
             );
+            let hwy_err = (label_fe_f3.lab_hwy_kwh_per_mi - label_fe_f2.lab_hwy_kwh_per_mi).abs()
+                / label_fe_f2.lab_hwy_kwh_per_mi;
             assert!(
-                (label_fe_f3.lab_hwy_kwh_per_mi - label_fe_f2.lab_hwy_kwh_per_mi).abs()
-                    / label_fe_f2.lab_hwy_kwh_per_mi
-                    < tol.udds_tolerance,
-                "UDDS kWh/mi mismatch: F3={:.3}, F2={:.3}",
+                hwy_err < tol.hwy_tolerance,
+                "HWY kWh/mi mismatch: F3={:.3}, F2={:.3}; err = {:.3} (> tol {:.3})",
                 label_fe_f3.lab_hwy_kwh_per_mi,
-                label_fe_f2.lab_hwy_kwh_per_mi
+                label_fe_f2.lab_hwy_kwh_per_mi,
+                hwy_err,
+                tol.hwy_tolerance
             );
         } else {
+            let udds_err = (label_fe_f3.lab_udds_mpgge - label_fe_f2.lab_udds_mpgge).abs()
+                / label_fe_f2.lab_udds_mpgge;
             assert!(
-                (label_fe_f3.lab_udds_mpgge - label_fe_f2.lab_udds_mpgge).abs()
-                    / label_fe_f2.lab_udds_mpgge
-                    < tol.udds_tolerance,
-                "UDDS MPGe mismatch: F3={:.3}, F2={:.3}",
+                udds_err < tol.udds_tolerance,
+                "UDDS MPGe mismatch: F3={:.3}, F2={:.3}; err = {:.3} (> tol {:.3})",
                 label_fe_f3.lab_udds_mpgge,
-                label_fe_f2.lab_udds_mpgge
+                label_fe_f2.lab_udds_mpgge,
+                udds_err,
+                tol.udds_tolerance
             );
+            let comb_err = (label_fe_f3.lab_comb_mpgge - label_fe_f2.lab_comb_mpgge).abs()
+                / label_fe_f2.lab_comb_mpgge;
             assert!(
-                (label_fe_f3.lab_comb_mpgge - label_fe_f2.lab_comb_mpgge).abs()
-                    / label_fe_f2.lab_comb_mpgge
-                    < tol.comb_tolerance,
-                "Combined MPGe mismatch: F3={:.3}, F2={:.3}",
+                comb_err < tol.comb_tolerance,
+                "Combined MPGe mismatch: F3={:.3}, F2={:.3}; err = {:.3} (> tol {:.3})",
                 label_fe_f3.lab_comb_mpgge,
-                label_fe_f2.lab_comb_mpgge
+                label_fe_f2.lab_comb_mpgge,
+                comb_err,
+                tol.comb_tolerance
             );
+            let hwy_err = (label_fe_f3.lab_hwy_mpgge - label_fe_f2.lab_hwy_mpgge).abs()
+                / label_fe_f2.lab_hwy_mpgge;
             assert!(
-                (label_fe_f3.lab_hwy_mpgge - label_fe_f2.lab_hwy_mpgge).abs()
-                    / label_fe_f2.lab_hwy_mpgge
-                    < tol.hwy_tolerance,
-                "Hwy MPGe mismatch: F3={:.3}, F2={:.3}",
+                hwy_err < tol.hwy_tolerance,
+                "Hwy MPGe mismatch: F3={:.3}, F2={:.3}; err = {:.3} (> tol {:.3})",
                 label_fe_f3.lab_hwy_mpgge,
-                label_fe_f2.lab_hwy_mpgge
+                label_fe_f2.lab_hwy_mpgge,
+                hwy_err,
+                tol.hwy_tolerance
             );
         }
-
+        let accel_err =
+            (label_fe_f3.net_accel - label_fe_f2.net_accel).abs() / label_fe_f2.net_accel;
         assert!(
-            (label_fe_f3.net_accel - label_fe_f2.net_accel).abs() / label_fe_f2.net_accel
-                < tol.accel_tolerance,
-            "Acceleration time mismatch: F3={:.3}, F2={:.3}",
+            accel_err < tol.accel_tolerance,
+            "Acceleration time mismatch: F3={:.3}, F2={:.3}; err = {:.3} (> tol {:.3})",
             label_fe_f3.net_accel,
-            label_fe_f2.net_accel
+            label_fe_f2.net_accel,
+            accel_err,
+            tol.accel_tolerance
         );
     }
 
