@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fastsim"
-version = "3.0.4"
+version = "3.0.5"
 authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
@@ -21,7 +21,7 @@ dependencies = [
     "pandas>=2.1.2",
     "polars~=1.4",
     "matplotlib~=3.3",
-    "numpy>=1.18, <=2.2.5",
+    "numpy>=1.18, <=2.3.2",
     "seaborn>=0.11.0,<13.2",
     "typing_extensions~=4.12",
     "PyYAML==6.0.2",
@@ -147,8 +147,8 @@ ignore = [
   "N807",
 ]
 
-[tool.ruff.lint.pydocstyle]
-convention = "numpy"
+# [tool.ruff.lint.pydocstyle]
+# convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
