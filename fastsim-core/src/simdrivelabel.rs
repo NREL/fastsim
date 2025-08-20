@@ -1687,4 +1687,41 @@ mod tests {
         let file_contents = include_str!("vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         run_fe_label_comparison_for(file_contents);
     }
+    #[test]
+    #[cfg(all(feature = "resources", feature = "yaml"))]
+    pub fn test_label_fe_post_proc_calcs_for_bev() {
+        let file_contents = include_str!("vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
+        use fastsim_2::traits::SerdeAPI;
+        let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
+
+        // Get FASTSim-2 label FE results
+        let f2veh_copy = f2veh.clone();
+        let (label_fe_f2, result) =
+            fastsim_2::simdrivelabel::get_label_fe(&f2veh_copy, Some(true), None)
+                .with_context(|| format_dbg!())
+                .unwrap();
+        let sim_data = SimulationDataForLabel::Bev {
+            veh_year: f2veh.veh_year,
+            udds_kwh_per_mi: label_fe_f2.lab_udds_kwh_per_mi,
+            hwy_kwh_per_mi: label_fe_f2.lab_hwy_kwh_per_mi,
+            bev_energy_capacity_kwh: f2veh.ess_max_kwh,
+        };
+        let max_epa_adj = 0.3;
+        assert!(result.is_some());
+        let results_data = result.unwrap();
+        assert!(results_data.contains_key("accel"));
+        let accel_sd = &results_data["accel"];
+        let accel_data = AccelData {
+            time_s: accel_sd.cyc.time_s.to_vec(),
+            speed_mph: accel_sd.mph_ach.to_vec(),
+        };
+        let label_fe_f3 = calculate_label_fuel_economy(
+            &FuelProperties::default(),
+            &PhevUtilizationParams::default(),
+            max_epa_adj,
+            &sim_data,
+            &accel_data,
+        );
+        assert_label_fe_same(&label_fe_f2, &label_fe_f3);
+    }
 }
