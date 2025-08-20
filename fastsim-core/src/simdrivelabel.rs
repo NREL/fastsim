@@ -1553,36 +1553,96 @@ mod tests {
 
         assert_labels_match_within_tolerance(&label_fe_f3, &label_fe_f2, &tol, false);
     }
+    fn frac_diff(base: f64, new_value: f64) -> f64 {
+        let abs_diff = (new_value - base).abs();
+        if base != 0.0 {
+            abs_diff / base
+        } else {
+            abs_diff
+        }
+    }
     fn assert_label_fe_same(
         label_fe_f2: &fastsim_2::simdrivelabel::LabelFe,
         label_fe_f3: &LabelFe,
     ) {
-        assert_eq!(label_fe_f3.lab_comb_mpgge, label_fe_f2.lab_comb_mpgge);
-        assert_eq!(
+        let tol = 1e-6;
+        let diff = frac_diff(label_fe_f2.lab_comb_mpgge, label_fe_f3.lab_comb_mpgge);
+        assert!(
+            diff < tol,
+            "lab_comb_mpgge: F3: {:.3}; F2: {:.3}",
+            label_fe_f3.lab_comb_mpgge,
+            label_fe_f2.lab_comb_mpgge
+        );
+        let diff = frac_diff(
+            label_fe_f2.lab_comb_kwh_per_mi,
+            label_fe_f3.lab_comb_kwh_per_mi,
+        );
+        assert!(
+            diff < tol,
+            "lab_comb_kwh_per_mi: F3: {:.3}; F2 {:.3}",
             label_fe_f3.lab_comb_kwh_per_mi,
             label_fe_f2.lab_comb_kwh_per_mi
         );
-        assert_eq!(label_fe_f3.adj_udds_mpgge, label_fe_f2.adj_udds_mpgge);
-        assert_eq!(label_fe_f3.adj_hwy_mpgge, label_fe_f2.adj_hwy_mpgge);
-        assert_eq!(label_fe_f3.adj_comb_mpgge, label_fe_f2.adj_comb_mpgge);
-        assert_eq!(
+        let diff = frac_diff(label_fe_f2.adj_udds_mpgge, label_fe_f3.adj_udds_mpgge);
+        assert!(
+            diff < tol,
+            "adj_udds_mpgge: F3: {:.3}; F2: {:.3}",
+            label_fe_f3.adj_udds_mpgge,
+            label_fe_f2.adj_udds_mpgge
+        );
+        let diff = frac_diff(label_fe_f2.adj_hwy_mpgge, label_fe_f3.adj_hwy_mpgge);
+        assert!(
+            diff < tol,
+            "adj_hwy_mpgge: F3: {:.3}; F2: {:.3}",
+            label_fe_f3.adj_hwy_mpgge,
+            label_fe_f2.adj_hwy_mpgge
+        );
+        let diff = frac_diff(label_fe_f2.adj_comb_mpgge, label_fe_f3.adj_comb_mpgge);
+        assert!(
+            diff < tol,
+            "adj_comb_mpgge: F3: {:.3}; F2: {:.3}",
+            label_fe_f3.adj_comb_mpgge,
+            label_fe_f2.adj_comb_mpgge
+        );
+        let diff = frac_diff(
+            label_fe_f2.adj_udds_kwh_per_mi,
+            label_fe_f3.adj_udds_kwh_per_mi,
+        );
+        assert!(
+            diff < tol,
+            "adj_udds_kwh_per_mi: F3 {:.3}; F2 {:.3}",
             label_fe_f3.adj_udds_kwh_per_mi,
             label_fe_f2.adj_udds_kwh_per_mi
         );
-        assert_eq!(
+        let diff = frac_diff(
+            label_fe_f2.adj_hwy_kwh_per_mi,
+            label_fe_f3.adj_hwy_kwh_per_mi,
+        );
+        assert!(
+            diff < tol,
+            "adj_hwy_kwh_per_mi: F3 {:.3}; F2 {:.3}",
             label_fe_f3.adj_hwy_kwh_per_mi,
             label_fe_f2.adj_hwy_kwh_per_mi
         );
-        assert_eq!(
+        let diff = frac_diff(
+            label_fe_f2.adj_comb_kwh_per_mi,
+            label_fe_f3.adj_comb_kwh_per_mi,
+        );
+        assert!(
+            diff < tol,
+            "adj_comb_kwh_per_mi: F3: {:.3}; F2: {:.3}",
             label_fe_f3.adj_comb_kwh_per_mi,
             label_fe_f2.adj_comb_kwh_per_mi
         );
+        let diff = frac_diff(label_fe_f2.net_accel, label_fe_f3.net_accel);
+        assert!(
+            diff < tol,
+            "net_accel: F3: {:.3}; F2: {:.3}",
+            label_fe_f3.net_accel,
+            label_fe_f2.net_accel
+        );
     }
-
-    #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
-    pub fn test_label_fe_post_proc_calcs_for_conv() {
-        let file_contents = include_str!("vehicle/fastsim-2_2012_Ford_Fusion.yaml");
+    fn run_fe_label_comparison_for(file_contents: &str) {
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
 
@@ -1604,7 +1664,7 @@ mod tests {
         let accel_sd = &results_data["accel"];
         let accel_data = AccelData {
             time_s: accel_sd.cyc.time_s.to_vec(),
-            speed_mph: accel_sd.mps_ach.to_vec(),
+            speed_mph: accel_sd.mph_ach.to_vec(),
         };
         let label_fe_f3 = calculate_label_fuel_economy(
             &FuelProperties::default(),
@@ -1614,5 +1674,17 @@ mod tests {
             &accel_data,
         );
         assert_label_fe_same(&label_fe_f2, &label_fe_f3);
+    }
+    #[test]
+    #[cfg(all(feature = "resources", feature = "yaml"))]
+    pub fn test_label_fe_post_proc_calcs_for_conv() {
+        let file_contents = include_str!("vehicle/fastsim-2_2012_Ford_Fusion.yaml");
+        run_fe_label_comparison_for(file_contents);
+    }
+    #[test]
+    #[cfg(all(feature = "resources", feature = "yaml"))]
+    pub fn test_label_fe_post_proc_calcs_for_hev() {
+        let file_contents = include_str!("vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
+        run_fe_label_comparison_for(file_contents);
     }
 }
