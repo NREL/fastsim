@@ -941,8 +941,25 @@ pub fn mok_calculate_label_fuel_economy(
     Ok(label_fe)
 }
 
+fn run_simdrive_with_init_soc(
+    veh: &Vehicle,
+    cycle: &str,
+    init_soc: si::Ratio,
+) -> anyhow::Result<SimDrive> {
+    let mut sd = SimDrive::new(veh.clone(), Cycle::from_resource(cycle, false)?, None);
+    let res_mut = sd.veh.res_mut().with_context(|| format_dbg!())?;
+    res_mut.state.soc.mark_stale();
+    res_mut.state.soc.update(init_soc, || format_dbg!())?;
+    sd.reset_cumulative(|| format_dbg!())?;
+    sd.reset_step(|| format_dbg!())?;
+    sd.clear();
+    sd.walk_once().with_context(|| format_dbg!())?;
+    Ok(sd)
+}
+
 /// Runs the appropriate simulations required for calculating
 /// the label fuel economy for the given vehicle.
+/// NOTE: does not run the acceleration test.
 pub fn mok_run_label_simulations(
     veh: &mut Vehicle,
     // max_epa_adj: Option<f64>,
@@ -1046,28 +1063,8 @@ pub fn mok_run_label_simulations(
 
         // Create SimDrive objects for Charge Sustaining PHEV calculations
         let init_soc = min_soc + 0.01 * uc::R;
-        let mut cs_udds_sd =
-            SimDrive::new(veh.clone(), Cycle::from_resource("udds.csv", false)?, None);
-        {
-            let res_mut = cs_udds_sd.veh.res_mut().with_context(|| format_dbg!())?;
-            res_mut.state.soc.mark_stale();
-            res_mut.state.soc.update(init_soc, || format_dbg!())?;
-            cs_udds_sd.reset_cumulative(|| format_dbg!())?;
-            cs_udds_sd.reset_step(|| format_dbg!())?;
-            cs_udds_sd.clear();
-            cs_udds_sd.walk_once().with_context(|| format_dbg!())?;
-        }
-        let mut cs_hwy_sd =
-            SimDrive::new(veh.clone(), Cycle::from_resource("hwfet.csv", false)?, None);
-        {
-            let res_mut = cs_hwy_sd.veh.res_mut().with_context(|| format_dbg!())?;
-            res_mut.state.soc.mark_stale();
-            res_mut.state.soc.update(init_soc, || format_dbg!())?;
-            cs_hwy_sd.reset_cumulative(|| format_dbg!())?;
-            cs_hwy_sd.reset_step(|| format_dbg!())?;
-            cs_hwy_sd.clear();
-            cs_hwy_sd.walk_once().with_context(|| format_dbg!())?;
-        }
+        let cs_udds_sd = run_simdrive_with_init_soc(veh, "udds.csv", init_soc)?;
+        let cs_hwy_sd = run_simdrive_with_init_soc(veh, "hwfet.csv", init_soc)?;
         Ok(SimulationDataForLabel::Phev {
             veh_year: veh.year,
             info: PhevVehicleInfo {
