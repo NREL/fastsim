@@ -750,7 +750,7 @@ pub fn mok_calculate_phev_label_helper(
 
 /// This is a pure function that calculates the label fuel economy given
 /// simulation results.
-pub fn mok_calculate_label_fuel_economy(
+pub fn calculate_label_fuel_economy(
     fuel_props: &FuelProperties,
     phev_utilization_params: &PhevUtilizationParams,
     max_epa_adj: f64,
@@ -1296,7 +1296,7 @@ pub fn get_label_fe(
         Some(phev_utilization_params.clone()),
     )?;
     let accel_data = run_accel(&veh_copy)?;
-    let mut label_fe = mok_calculate_label_fuel_economy(
+    let mut label_fe = calculate_label_fuel_economy(
         &fuel_props,
         phev_utilization_params,
         max_epa_adj,
@@ -2242,7 +2242,7 @@ mod tests {
             time_s: accel_sd.cyc.time_s.to_vec(),
             speed_mph: accel_sd.mph_ach.to_vec(),
         };
-        let label_fe_f3 = mok_calculate_label_fuel_economy(
+        let label_fe_f3 = calculate_label_fuel_economy(
             &FuelProperties::default(),
             &PhevUtilizationParams::default(),
             max_epa_adj,
@@ -2292,7 +2292,7 @@ mod tests {
             time_s: accel_sd.cyc.time_s.to_vec(),
             speed_mph: accel_sd.mph_ach.to_vec(),
         };
-        let label_fe_f3 = mok_calculate_label_fuel_economy(
+        let label_fe_f3 = calculate_label_fuel_economy(
             &FuelProperties::default(),
             &PhevUtilizationParams::default(),
             max_epa_adj,
@@ -2418,7 +2418,7 @@ mod tests {
             time_s: accel_sd.cyc.time_s.to_vec(),
             speed_mph: accel_sd.mph_ach.to_vec(),
         };
-        let label_fe_f3 = mok_calculate_label_fuel_economy(
+        let label_fe_f3 = calculate_label_fuel_economy(
             &FuelProperties::default(),
             &PhevUtilizationParams::default(),
             max_epa_adj,
