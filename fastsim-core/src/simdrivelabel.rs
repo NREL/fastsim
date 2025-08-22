@@ -51,6 +51,7 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> Option<f64> {
     }
 }
 
+/// Run the acceleration test and return the time/speed trace.
 pub fn run_accel(veh: &Vehicle) -> anyhow::Result<AccelData> {
     let mut sd_accel = SimDrive::new(veh.clone(), CYC_ACCEL.clone(), None);
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
@@ -430,6 +431,7 @@ pub fn calculate_transient_soc_helper(
     max_soc - cd_cycs.floor() * delta_soc
 }
 
+/// A helper function to calculate label fuel economy for PHEVs.
 pub fn calculate_phev_label_helper(
     info: &PhevVehicleInfo,
     data: &PhevSimulationDataForLabel,
