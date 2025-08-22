@@ -430,7 +430,7 @@ pub fn calculate_transient_soc_helper(
     max_soc - cd_cycs.floor() * delta_soc
 }
 
-pub fn mok_calculate_phev_label_helper(
+pub fn calculate_phev_label_helper(
     info: &PhevVehicleInfo,
     data: &PhevSimulationDataForLabel,
     fuel_props: &FuelProperties,
@@ -812,7 +812,7 @@ pub fn calculate_label_fuel_economy(
                 ..Default::default()
             };
             // UDDS
-            phev_calcs.udds = mok_calculate_phev_label_helper(
+            phev_calcs.udds = calculate_phev_label_helper(
                 info,
                 udds,
                 &fuel_props,
@@ -823,7 +823,7 @@ pub fn calculate_label_fuel_economy(
                 true,
             )?;
             // HWY
-            phev_calcs.hwy = mok_calculate_phev_label_helper(
+            phev_calcs.hwy = calculate_phev_label_helper(
                 info,
                 hwy,
                 &fuel_props,
