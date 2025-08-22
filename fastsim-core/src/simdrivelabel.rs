@@ -51,6 +51,25 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> Option<f64> {
     }
 }
 
+pub fn run_accel(veh: &Vehicle) -> anyhow::Result<AccelData> {
+    let mut sd_accel = SimDrive::new(veh.clone(), CYC_ACCEL.clone(), None);
+    sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
+    sd_accel.walk_once().with_context(|| format_dbg!())?;
+    // Extract speed values in mph
+    let mut speed_mph: Vec<f64> = vec![];
+    for s in sd_accel.veh.history.speed_ach.clone() {
+        speed_mph.push(s.get_fresh(|| format_dbg!())?.get::<si::mile_per_hour>())
+    }
+    // Extract time values in seconds
+    let time_s: Vec<f64> = sd_accel
+        .cyc
+        .time
+        .iter()
+        .map(|t| t.get::<si::second>())
+        .collect();
+    Ok(AccelData { time_s, speed_mph })
+}
+
 /// Returns time [s] for 0-60 mph acceleration at max power
 pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
@@ -965,7 +984,7 @@ pub fn mok_run_label_simulations(
     // max_epa_adj: Option<f64>,
     fuel_props: Option<FuelProperties>,
     phev_utilization_params: Option<PhevUtilizationParams>,
-) -> anyhow::Result<SimulationDataForLabel> {
+) -> anyhow::Result<(SimulationDataForLabel, HashMap<&str, SimDrive>)> {
     // let max_epa_adj = max_epa_adj.unwrap_or(0.3);
     let phev_utilization_params = &phev_utilization_params.unwrap_or_default();
     let fuel_props = fuel_props.unwrap_or_default();
@@ -1014,20 +1033,26 @@ pub fn mok_run_label_simulations(
     let is_bev = matches!(veh.pt_type, PowertrainType::BatteryElectricVehicle(_));
 
     if is_hev || is_conv {
-        Ok(SimulationDataForLabel::ConvOrHev {
-            veh_year: veh.year,
-            udds_mpgge: sd["udds"].veh.mpg(fuel_props.energy_density)?,
-            hwy_mpgge: sd["hwy"].veh.mpg(fuel_props.energy_density)?,
-        })
+        Ok((
+            SimulationDataForLabel::ConvOrHev {
+                veh_year: veh.year,
+                udds_mpgge: sd["udds"].veh.mpg(fuel_props.energy_density)?,
+                hwy_mpgge: sd["hwy"].veh.mpg(fuel_props.energy_density)?,
+            },
+            sd,
+        ))
     } else if is_bev {
         if let PowertrainType::BatteryElectricVehicle(bev) = &veh.pt_type {
             let res_energy_capacity_kwh = bev.res.energy_capacity.get::<si::kilowatt_hour>();
-            Ok(SimulationDataForLabel::Bev {
-                veh_year: veh.year,
-                udds_kwh_per_mi: sd["udds"].veh.kwh_per_mi()?,
-                hwy_kwh_per_mi: sd["hwy"].veh.kwh_per_mi()?,
-                bev_energy_capacity_kwh: res_energy_capacity_kwh,
-            })
+            Ok((
+                SimulationDataForLabel::Bev {
+                    veh_year: veh.year,
+                    udds_kwh_per_mi: sd["udds"].veh.kwh_per_mi()?,
+                    hwy_kwh_per_mi: sd["hwy"].veh.kwh_per_mi()?,
+                    bev_energy_capacity_kwh: res_energy_capacity_kwh,
+                },
+                sd,
+            ))
         } else {
             Err(anyhow!("is_bev but powertrain not BEV"))
         }
@@ -1065,171 +1090,176 @@ pub fn mok_run_label_simulations(
         let init_soc = min_soc + 0.01 * uc::R;
         let cs_udds_sd = run_simdrive_with_init_soc(veh, "udds.csv", init_soc)?;
         let cs_hwy_sd = run_simdrive_with_init_soc(veh, "hwfet.csv", init_soc)?;
-        Ok(SimulationDataForLabel::Phev {
-            veh_year: veh.year,
-            info: PhevVehicleInfo {
-                max_soc,
-                min_soc,
-                phev_max_regen,
-                veh_mass,
-                em_peak_eff,
-                energy_capacity,
-                chg_eff,
-                fuel_storage_capacity,
+        sd.insert("udds-cs", cs_udds_sd.clone());
+        sd.insert("hwy-cs", cs_hwy_sd.clone());
+        Ok((
+            SimulationDataForLabel::Phev {
+                veh_year: veh.year,
+                info: PhevVehicleInfo {
+                    max_soc,
+                    min_soc,
+                    phev_max_regen,
+                    veh_mass,
+                    em_peak_eff,
+                    energy_capacity,
+                    chg_eff,
+                    fuel_storage_capacity,
+                },
+                udds: PhevSimulationDataForLabel {
+                    cd_fuel_consumed_kwh: {
+                        if let Some(fc) = sd["udds"].veh.fc() {
+                            fc.state
+                                .energy_fuel
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::kilowatt_hour>()
+                        } else {
+                            0.0
+                        }
+                    },
+                    cd_soc_start: {
+                        if let Some(res) = sd["udds"].veh.res() {
+                            res.history
+                                .soc
+                                .first()
+                                .unwrap()
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::ratio>()
+                        } else {
+                            1.0
+                        }
+                    },
+                    cd_soc_end: {
+                        if let Some(res) = sd["udds"].veh.res() {
+                            res.history
+                                .soc
+                                .last()
+                                .unwrap()
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::ratio>()
+                        } else {
+                            0.0
+                        }
+                    },
+                    cyc_dist_mi: {
+                        sd["udds"]
+                            .veh
+                            .state
+                            .dist
+                            .get_fresh(|| format_dbg!())?
+                            .get::<si::mile>()
+                    },
+                    cd_kwh_per_mi: sd["udds"].veh.kwh_per_mi()?,
+                    cd_mpg: sd["udds"].veh.mpg(fuel_props.energy_density)?,
+                    cs_fuel_consumed_kwh: {
+                        if let Some(fc) = cs_udds_sd.veh.fc() {
+                            fc.state
+                                .energy_fuel
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::kilowatt_hour>()
+                        } else {
+                            0.0
+                        }
+                    },
+                    cs_ess_energy_kwh: {
+                        if let Some(res) = cs_udds_sd.veh.res() {
+                            res.state
+                                .energy_out_chemical
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::kilowatt_hour>()
+                        } else {
+                            0.0
+                        }
+                    },
+                    cs_kwh_per_mi: cs_udds_sd.veh.kwh_per_mi()?,
+                    cs_mpg: cs_udds_sd.veh.mpg(fuel_props.energy_density)?,
+                    cs_min_soc: min_soc.get::<si::ratio>(),
+                    cs_fs_energy_capacity_kwh: {
+                        if let Some(fs) = veh.pt_type.fs() {
+                            fs.energy_capacity.get::<si::kilowatt_hour>()
+                        } else {
+                            0.0
+                        }
+                    },
+                },
+                hwy: PhevSimulationDataForLabel {
+                    cd_fuel_consumed_kwh: {
+                        if let Some(fc) = sd["hwy"].veh.fc() {
+                            fc.state
+                                .energy_fuel
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::kilowatt_hour>()
+                        } else {
+                            0.0
+                        }
+                    },
+                    cd_soc_start: {
+                        if let Some(res) = sd["hwy"].veh.res() {
+                            res.history
+                                .soc
+                                .first()
+                                .unwrap()
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::ratio>()
+                        } else {
+                            1.0
+                        }
+                    },
+                    cd_soc_end: {
+                        if let Some(res) = sd["hwy"].veh.res() {
+                            res.history
+                                .soc
+                                .last()
+                                .unwrap()
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::ratio>()
+                        } else {
+                            0.0
+                        }
+                    },
+                    cyc_dist_mi: {
+                        sd["hwy"]
+                            .veh
+                            .state
+                            .dist
+                            .get_fresh(|| format_dbg!())?
+                            .get::<si::mile>()
+                    },
+                    cd_kwh_per_mi: sd["hwy"].veh.kwh_per_mi()?,
+                    cd_mpg: sd["hwy"].veh.mpg(fuel_props.energy_density)?,
+                    cs_fuel_consumed_kwh: {
+                        if let Some(fc) = cs_hwy_sd.veh.fc() {
+                            fc.state
+                                .energy_fuel
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::kilowatt_hour>()
+                        } else {
+                            0.0
+                        }
+                    },
+                    cs_ess_energy_kwh: {
+                        if let Some(res) = cs_hwy_sd.veh.res() {
+                            res.state
+                                .energy_out_chemical
+                                .get_fresh(|| format_dbg!())?
+                                .get::<si::kilowatt_hour>()
+                        } else {
+                            0.0
+                        }
+                    },
+                    cs_kwh_per_mi: cs_hwy_sd.veh.kwh_per_mi()?,
+                    cs_mpg: cs_hwy_sd.veh.mpg(fuel_props.energy_density)?,
+                    cs_min_soc: min_soc.get::<si::ratio>(),
+                    cs_fs_energy_capacity_kwh: {
+                        if let Some(fs) = veh.pt_type.fs() {
+                            fs.energy_capacity.get::<si::kilowatt_hour>()
+                        } else {
+                            0.0
+                        }
+                    },
+                },
             },
-            udds: PhevSimulationDataForLabel {
-                cd_fuel_consumed_kwh: {
-                    if let Some(fc) = sd["udds"].veh.fc() {
-                        fc.state
-                            .energy_fuel
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::kilowatt_hour>()
-                    } else {
-                        0.0
-                    }
-                },
-                cd_soc_start: {
-                    if let Some(res) = sd["udds"].veh.res() {
-                        res.history
-                            .soc
-                            .first()
-                            .unwrap()
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::ratio>()
-                    } else {
-                        1.0
-                    }
-                },
-                cd_soc_end: {
-                    if let Some(res) = sd["udds"].veh.res() {
-                        res.history
-                            .soc
-                            .last()
-                            .unwrap()
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::ratio>()
-                    } else {
-                        0.0
-                    }
-                },
-                cyc_dist_mi: {
-                    sd["udds"]
-                        .veh
-                        .state
-                        .dist
-                        .get_fresh(|| format_dbg!())?
-                        .get::<si::mile>()
-                },
-                cd_kwh_per_mi: sd["udds"].veh.kwh_per_mi()?,
-                cd_mpg: sd["udds"].veh.mpg(fuel_props.energy_density)?,
-                cs_fuel_consumed_kwh: {
-                    if let Some(fc) = cs_udds_sd.veh.fc() {
-                        fc.state
-                            .energy_fuel
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::kilowatt_hour>()
-                    } else {
-                        0.0
-                    }
-                },
-                cs_ess_energy_kwh: {
-                    if let Some(res) = cs_udds_sd.veh.res() {
-                        res.state
-                            .energy_out_chemical
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::kilowatt_hour>()
-                    } else {
-                        0.0
-                    }
-                },
-                cs_kwh_per_mi: cs_udds_sd.veh.kwh_per_mi()?,
-                cs_mpg: cs_udds_sd.veh.mpg(fuel_props.energy_density)?,
-                cs_min_soc: min_soc.get::<si::ratio>(),
-                cs_fs_energy_capacity_kwh: {
-                    if let Some(fs) = veh.pt_type.fs() {
-                        fs.energy_capacity.get::<si::kilowatt_hour>()
-                    } else {
-                        0.0
-                    }
-                },
-            },
-            hwy: PhevSimulationDataForLabel {
-                cd_fuel_consumed_kwh: {
-                    if let Some(fc) = sd["hwy"].veh.fc() {
-                        fc.state
-                            .energy_fuel
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::kilowatt_hour>()
-                    } else {
-                        0.0
-                    }
-                },
-                cd_soc_start: {
-                    if let Some(res) = sd["hwy"].veh.res() {
-                        res.history
-                            .soc
-                            .first()
-                            .unwrap()
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::ratio>()
-                    } else {
-                        1.0
-                    }
-                },
-                cd_soc_end: {
-                    if let Some(res) = sd["hwy"].veh.res() {
-                        res.history
-                            .soc
-                            .last()
-                            .unwrap()
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::ratio>()
-                    } else {
-                        0.0
-                    }
-                },
-                cyc_dist_mi: {
-                    sd["hwy"]
-                        .veh
-                        .state
-                        .dist
-                        .get_fresh(|| format_dbg!())?
-                        .get::<si::mile>()
-                },
-                cd_kwh_per_mi: sd["hwy"].veh.kwh_per_mi()?,
-                cd_mpg: sd["hwy"].veh.mpg(fuel_props.energy_density)?,
-                cs_fuel_consumed_kwh: {
-                    if let Some(fc) = cs_hwy_sd.veh.fc() {
-                        fc.state
-                            .energy_fuel
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::kilowatt_hour>()
-                    } else {
-                        0.0
-                    }
-                },
-                cs_ess_energy_kwh: {
-                    if let Some(res) = cs_hwy_sd.veh.res() {
-                        res.state
-                            .energy_out_chemical
-                            .get_fresh(|| format_dbg!())?
-                            .get::<si::kilowatt_hour>()
-                    } else {
-                        0.0
-                    }
-                },
-                cs_kwh_per_mi: cs_hwy_sd.veh.kwh_per_mi()?,
-                cs_mpg: cs_hwy_sd.veh.mpg(fuel_props.energy_density)?,
-                cs_min_soc: min_soc.get::<si::ratio>(),
-                cs_fs_energy_capacity_kwh: {
-                    if let Some(fs) = veh.pt_type.fs() {
-                        fs.energy_capacity.get::<si::kilowatt_hour>()
-                    } else {
-                        0.0
-                    }
-                },
-            },
-        })
+            sd,
+        ))
     } else {
         Err(anyhow!("Unhandled powertrain type"))
     }
@@ -1258,6 +1288,24 @@ pub fn get_label_fe(
     let max_epa_adj = max_epa_adj.unwrap_or(0.3);
     let phev_utilization_params = &phev_utilization_params.unwrap_or_default();
     let fuel_props = fuel_props.unwrap_or_default();
+    let veh_copy = veh.clone();
+
+    let (sim_data, sd) = mok_run_label_simulations(
+        veh,
+        Some(fuel_props.clone()),
+        Some(phev_utilization_params.clone()),
+    )?;
+    let accel_data = run_accel(&veh_copy)?;
+    let mut label_fe = mok_calculate_label_fuel_economy(
+        &fuel_props,
+        phev_utilization_params,
+        max_epa_adj,
+        &sim_data,
+        &accel_data,
+    )?;
+    label_fe.veh = Some(veh_copy);
+
+    /*
 
     let mut cyc: HashMap<&str, Cycle> = HashMap::new();
     let mut sd = HashMap::new();
@@ -1467,6 +1515,8 @@ pub fn get_label_fe(
 
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     label_fe.res_found = String::from("model needs to be implemented for this");
+
+    */
 
     if full_detail && verbose {
         println!("{label_fe:#?}");
