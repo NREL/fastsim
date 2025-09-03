@@ -2144,10 +2144,10 @@ mod tests {
     fn assert_label_fe_same(
         label_fe_f2: &fastsim_2::simdrivelabel::LabelFe,
         label_fe_f3: &LabelFe,
+        tol: f64,
     ) {
         let mut all_pass = true;
         let mut message = String::new();
-        let tol = 0.002;
         let diff = frac_diff(label_fe_f2.lab_comb_mpgge, label_fe_f3.lab_comb_mpgge);
         all_pass = all_pass && diff < tol;
         message = format!(
@@ -2220,7 +2220,7 @@ mod tests {
             tol, message
         );
     }
-    fn run_fe_label_comparison_for(file_contents: &str) {
+    fn run_fe_label_comparison_for(file_contents: &str, tolerance: f64) {
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
 
@@ -2252,19 +2252,21 @@ mod tests {
             &accel_data,
         )
         .expect("should return an OK result");
-        assert_label_fe_same(&label_fe_f2, &label_fe_f3);
+        assert_label_fe_same(&label_fe_f2, &label_fe_f3, tolerance);
     }
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     pub fn test_label_fe_post_proc_calcs_for_conv() {
         let file_contents = include_str!("vehicle/fastsim-2_2012_Ford_Fusion.yaml");
-        run_fe_label_comparison_for(file_contents);
+        let tolerance = 1e-6;
+        run_fe_label_comparison_for(file_contents, tolerance);
     }
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     pub fn test_label_fe_post_proc_calcs_for_hev() {
         let file_contents = include_str!("vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
-        run_fe_label_comparison_for(file_contents);
+        let tolerance = 1e-6;
+        run_fe_label_comparison_for(file_contents, tolerance);
     }
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
@@ -2302,7 +2304,8 @@ mod tests {
             &accel_data,
         )
         .expect("should have OK result");
-        assert_label_fe_same(&label_fe_f2, &label_fe_f3);
+        let tolerance = 1e-6;
+        assert_label_fe_same(&label_fe_f2, &label_fe_f3, tolerance);
     }
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
@@ -2428,6 +2431,7 @@ mod tests {
             &accel_data,
         )
         .expect("expect OK result");
-        assert_label_fe_same(&label_fe_f2, &label_fe_f3);
+        let tolerance = 0.002;
+        assert_label_fe_same(&label_fe_f2, &label_fe_f3, tolerance);
     }
 }
