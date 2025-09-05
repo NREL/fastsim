@@ -22,10 +22,10 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> Option<f64> {
     // Check if vehicle reaches 60 mph
     if accel_data.speed_mph.iter().any(|&x| x >= 60.0) {
         // Create interpolator from speed to time
-        let interp: InterpolatorEnumOwned<f64> = {
-            let wrapped_interp = InterpolatorEnum::new_1d(
-                accel_data.speed_mph.clone().into(),
-                accel_data.time_s.clone().into(),
+        let interp = {
+            let wrapped_interp = Interp1D::new(
+                Array::from_vec(accel_data.speed_mph.clone()),
+                Array::from_vec(accel_data.time_s.clone()),
                 strategy::Linear,
                 Extrapolate::Clamp,
             );
