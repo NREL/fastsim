@@ -1,4 +1,4 @@
-"""BEV thermal demo with cold start and cold ambient conditions."""
+"""BEV thermal demo with all conditions."""
 
 # %%
 import os
@@ -18,9 +18,16 @@ sns.set_theme()
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 # if environment var `SAVE_FIGS=true` is set, save plots
 SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
+# if running file to get values for paper
+RUNNING_FOR_PAPER = False
 
 celsius_to_kelvin = 273.15
 temp_amb_and_init = -6.7 + celsius_to_kelvin
+# temperatures for comparisons in fastsim paper
+cold_amb = -7.0
+warm_amb = 22.0
+hot_amb = 40.0
+hot_start = 45.0
 # `fastsim3` -- load vehicle and cycle, build simulation, and run
 # %%
 
@@ -34,9 +41,11 @@ def try_walk(sd: fsim.SimDrive, loc: str) -> None:
 
 
 # array of ambient temperatures in kelvin
-te_amb_arr_k: list[float] = [t + celsius_to_kelvin for t in np.linspace(-7.0, 40.0, 20)]
+te_amb_arr_k: list[float] = ([t + celsius_to_kelvin for t in np.linspace(-7.0, 40.0, 20)] + [22.0 + celsius_to_kelvin]) if RUNNING_FOR_PAPER else [t + celsius_to_kelvin for t in np.linspace(-7.0, 40.0, 20)]
 # array of init temperatures in kelvin
-te_batt_and_cab_init_arr_k: list[float] = [
+te_batt_and_cab_init_arr_k: list[float] = ([
+    t + celsius_to_kelvin for t in np.linspace(-7.0, 45.0, 20)
+] + [22.0 + celsius_to_kelvin]) if RUNNING_FOR_PAPER else [
     t + celsius_to_kelvin for t in np.linspace(-7.0, 45.0, 20)
 ]
 
@@ -98,6 +107,32 @@ def sweep():
 
 
 df_res = sweep()
+
+if RUNNING_FOR_PAPER:
+    # printing specific percent differences in Energy Consumption Rate (ECR) used for paper
+    # energy consumption at 22 degrees C start and ambient for comparison
+    ecr_comparison = df_res[(df_res[cyc_key] == "udds") & (df_res[te_amb_key] == warm_amb) & (df_res[te_init_key] == warm_amb)][ecr_key].values[0]
+    print("ecr for 22 degrees start and ambient, for comparison:", ecr_comparison)
+    # percent energy consumption of cold start (-7 degrees C) cold ambient (-7 degrees C), to baseline of 22 degrees start and ambient
+    ecr_cold_start_cold_amb = df_res[(df_res[cyc_key] == "udds") & (df_res[te_amb_key] == cold_amb) & (df_res[te_init_key] == cold_amb)][ecr_key].values[0]
+    print("ecr_cold_start_cold_amb:", ecr_cold_start_cold_amb)
+    ecr_cold_start_cold_amb_perc_diff = (ecr_cold_start_cold_amb - ecr_comparison) / ecr_comparison * 100.0
+    print(f"UDDS ECR percent difference for cold start (-7C) and cold ambient (-7C) vs. 22C start and ambient: {ecr_cold_start_cold_amb_perc_diff:.1f}%")
+    # percent energy consumption of warm start (22 degrees C) cold ambient (-7 degrees C), to baseline of 22 degrees start and ambient
+    ecr_warm_start_cold_amb = df_res[(df_res[cyc_key] == "udds") & (df_res[te_amb_key] == cold_amb) & (df_res[te_init_key] == warm_amb)][ecr_key].values[0]
+    print("ecr_warm_start_cold_amb:", ecr_warm_start_cold_amb)
+    ecr_warm_start_cold_amb_perc_diff = (ecr_warm_start_cold_amb - ecr_comparison) / ecr_comparison * 100.0
+    print(f"UDDS ECR percent difference for warm start (22C) and cold ambient (-7C) vs. 22C start and ambient: {ecr_warm_start_cold_amb_perc_diff:.1f}%")
+    # percent energy consumption of hot start (45 degrees C) hot ambient (40 degrees C), to baseline of 22 degrees start and ambient
+    ecr_hot_start_hot_amb = df_res[(df_res[cyc_key] == "udds") & (df_res[te_amb_key] == hot_amb) & (df_res[te_init_key] == hot_start)][ecr_key].values[0]
+    print("ecr_hot_start_hot_amb:", ecr_hot_start_hot_amb)
+    ecr_hot_start_hot_amb_perc_diff = (ecr_hot_start_hot_amb - ecr_comparison) / ecr_comparison * 100.0
+    print(f"UDDS ECR percent difference for hot start (45C) and hot ambient (45C) vs. 22C start and ambient: {ecr_hot_start_hot_amb_perc_diff:.1f}%")
+    # percent energy consumption of warm start (22 degrees C) hot ambient (40 degrees C), to baseline of 22 degrees start and ambient
+    ecr_warm_start_hot_amb = df_res[(df_res[cyc_key] == "udds") & (df_res[te_amb_key] == hot_amb) & (df_res[te_init_key] == warm_amb)][ecr_key].values[0]
+    print("ecr_warm_start_hot_amb:", ecr_warm_start_hot_amb)
+    ecr_warm_start_hot_amb_perc_diff = (ecr_warm_start_hot_amb - ecr_comparison) / ecr_comparison * 100.0
+    print(f"UDDS ECR percent difference for warm start (22C) and hot ambient (45C) vs. 22C start and ambient: {ecr_warm_start_hot_amb_perc_diff:.1f}%")
 
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"

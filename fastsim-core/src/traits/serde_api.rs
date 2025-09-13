@@ -30,6 +30,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     /// # Arguments:
     ///
     /// * `filepath` - Filepath, relative to the top of the `resources` folder (excluding any relevant prefix), from which to read the object
+    ///
+    /// NOTE: If a `File not found in resources` error is encountered, ensure that `cargo build` has been run since the last branch change.
+    /// If branches are changed and `cargo build` is not run, resources in the new branch may not be available.
     #[cfg(feature = "resources")]
     fn from_resource<P: AsRef<Path>>(filepath: P, skip_init: bool) -> Result<Self, Error> {
         let filepath = Path::new(Self::RESOURCES_SUBDIR).join(filepath);
