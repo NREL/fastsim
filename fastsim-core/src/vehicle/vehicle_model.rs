@@ -443,13 +443,11 @@ impl Vehicle {
 
     /// Solves for energy consumption
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.pt_type
-            .solve(
-                *self.state.pwr_tractive.get_fresh(|| format_dbg!())?,
-                true, // `enabled` should always be true at the powertrain level
-                dt,
-            )
-            .with_context(|| anyhow!(format_dbg!()))?;
+        self.pt_type.solve(
+            *self.state.pwr_tractive.get_fresh(|| format_dbg!())?,
+            true, // `enabled` should always be true at the powertrain level
+            dt,
+        )?;
         self.state.pwr_brake.update(
             -self
                 .state

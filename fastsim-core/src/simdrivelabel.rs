@@ -359,7 +359,9 @@ pub fn get_label_fe(
     sd.insert("hwy", SimDrive::new(veh.clone(), cyc["hwy"].clone(), None));
 
     for (k, val) in sd.iter_mut() {
-        val.walk().with_context(|| format_dbg!(k))?;
+        println!("starting walk for cycle {k}");
+        val.walk()?;
+        println!("finished walk for cycle {k}");
     }
 
     // find year-based adjustment parameters

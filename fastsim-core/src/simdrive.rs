@@ -378,8 +378,8 @@ impl SimDrive {
                 res.state.soh.mark_fresh(|| format_dbg!())?;
             }
             self.step(|| format_dbg!())?;
-            self.solve_step()
-                .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
+            self.solve_step()?;
+            // .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
             self.save_state(|| format_dbg!())?;
             if *self.veh.state.i.get_fresh(|| format_dbg!())? == len - 1 {
                 break;
@@ -473,8 +473,8 @@ impl SimDrive {
                     *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
                     || format_dbg!(),
                 )?;
-                self.set_ach_speed(self.cyc.speed[i], dt)
-                    .with_context(|| anyhow!(format_dbg!()))?;
+                self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt)?;
+                // .with_context(|| anyhow!(format_dbg!()))?;
                 if self.sim_params.trace_miss_opts.is_allow_checked() {
                     self.sim_params.trace_miss_tol.check_trace_miss(
                         self.cyc.speed[i],
@@ -483,9 +483,7 @@ impl SimDrive {
                         *self.veh.state.dist.get_fresh(|| format_dbg!())?,
                     )?;
                 }
-                self.veh
-                    .solve_powertrain(dt)
-                    .with_context(|| anyhow!(format_dbg!()))?;
+                self.veh.solve_powertrain(dt)?;
             }
             true => {
                 self.veh.mark_non_thermal_fresh()?;
@@ -648,7 +646,12 @@ impl SimDrive {
     /// # Arguments
     /// - `cyc_speed`: prescribed speed
     /// - `dt`: simulation time step size
-    pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
+    pub fn set_ach_speed(
+        &mut self,
+        cyc_speed: si::Velocity,
+        cyc_dist: si::Length,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
         let vs = &mut self.veh.state;
         vs.cyc_met.update(
             vs.pwr_tractive.get_fresh(|| format_dbg!())?
@@ -676,7 +679,53 @@ impl SimDrive {
                     // do nothing because `set_ach_speed` should be allowed to proceed to handle this
                 }
                 TraceMissOptions::AllowChecked => {
-                    // this will be handled later
+                    let ach_speed = *veh.state.speed_ach.clone().get_fresh(|| format_dbg!())?;
+                    let ach_dist = *veh.state.dist.clone().get_fresh(|| format_dbg!())?;
+                    self.sim_params
+                        .trace_miss_tol
+                        .check_trace_miss(cyc_speed, ach_speed, cyc_dist, ach_dist)
+                        .with_context(|| {
+                            format!(
+                                "{}\nFailed to meet speed trace.
+                    prescribed speed: {} mph
+                    prev speed_ach: {} mph
+                    pwr_tractive_for_cyc: {} kW
+                    pwr_tractive: {} kW
+                    pwr_prop_fwd_max: {} kW,
+                    pwr deficit: {} kW
+                    ",
+                                format_dbg!(),
+                                cyc_speed.get::<si::mile_per_hour>(),
+                                veh.state
+                                    .speed_ach
+                                    .get_stale(|| format_dbg!())
+                                    .unwrap()
+                                    .get::<si::mile_per_hour>(),
+                                veh.state
+                                    .pwr_tractive_for_cyc
+                                    .get_fresh(|| format_dbg!())
+                                    .unwrap()
+                                    .get::<si::kilowatt>(),
+                                veh.state
+                                    .pwr_tractive
+                                    .get_fresh(|| format_dbg!())
+                                    .unwrap()
+                                    .get::<si::kilowatt>(),
+                                veh.state
+                                    .pwr_prop_fwd_max
+                                    .get_fresh(|| format_dbg!())
+                                    .unwrap()
+                                    .get::<si::kilowatt>(),
+                                (*veh.state.pwr_tractive.get_fresh(|| format_dbg!()).unwrap()
+                                    - *veh
+                                        .state
+                                        .pwr_prop_fwd_max
+                                        .get_fresh(|| format_dbg!())
+                                        .unwrap())
+                                .get::<si::kilowatt>()
+                                .format_eng(None),
+                            )
+                        })?;
                 }
                 TraceMissOptions::Error => bail!(
                     "{}\nFailed to meet speed trace.
@@ -781,7 +830,7 @@ pwr deficit: {} kW
         // Rerun again to ensure we have updated achieved speed and state
         self.set_pwr_prop_for_speed(speed_ach_floored, speed_prev, dt)
             .with_context(|| format_dbg!())?;
-        self.set_ach_speed(speed_ach, dt)
+        self.set_ach_speed(speed_ach, cyc_dist, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
 
         if self.sim_params.trace_miss_opts == TraceMissOptions::Correct {
@@ -861,6 +910,22 @@ pub struct TraceMissTolerance {
 }
 
 impl TraceMissTolerance {
+    pub fn set_tol_dist(&mut self, tol: si::Length) {
+        self.tol_dist = tol;
+    }
+
+    pub fn set_tol_dist_frac(&mut self, tol: si::Ratio) {
+        self.tol_dist_frac = tol;
+    }
+
+    pub fn set_tol_speed(&mut self, tol: si::Velocity) {
+        self.tol_speed = tol;
+    }
+
+    pub fn set_tol_speed_frac(&mut self, tol: si::Ratio) {
+        self.tol_speed_frac = tol;
+    }
+
     fn check_trace_miss(
         &self,
         cyc_speed: si::Velocity,
