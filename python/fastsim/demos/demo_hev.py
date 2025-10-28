@@ -60,7 +60,7 @@ sd = sd0.copy()
 # simulation start time
 t0 = time.perf_counter()
 # run simulation
-sd.walk()
+sd.walk_once()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
@@ -369,7 +369,7 @@ def plot_fc_energy() -> tuple[Figure, Axes]:
         (
             -sd_dict["veh.pt_type.HEV.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
             sd_dict["veh.pt_type.HEV.fc.state.energy_fuel_joules"] * 1e-6 * 0.1,
-        )
+        ),
     )
     ax[1].set_ylabel("FC Energy\nDelta (f3-f2) [MJ]\n+/- 10% Range")
     ax[1].legend()
@@ -521,6 +521,8 @@ def plot_res_pwr() -> tuple[Figure, Axes]:
         label="f2 regen buffer",
         alpha=0.5,
     )
+    ax[2].axhline(sd_dict["veh.pt_type.HEV.res.min_soc"], color="blue", label="min soc")
+    ax[2].axhline(sd_dict["veh.pt_type.HEV.res.max_soc"], color="red", label="max soc")
     ax[2].set_ylabel("[-]")
     ax[2].legend(loc="center right")
 

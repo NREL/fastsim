@@ -38,6 +38,89 @@ pub struct HybridElectricVehicle {
     pub soc_bal_iters: TrackedState<u32>,
 }
 
+impl HybridElectricVehicle {
+    /// This method should be called after initialization but prior to
+    /// simulation start. It checks that the buffer parameters are reasonable as
+    /// compared to RES capacity and the like. Note: currently, this routine
+    /// doesn't panic -- only writes to stderr if it detects an issue.
+    pub fn check_buffers(&self, veh_mass: si::Mass) -> anyhow::Result<()> {
+        // CHECK BUFFER PARAMETERS ARE REALISTIC
+        let (disch_buffer, chrg_buffer, fc_on_soc) = match &self.pt_cntrl {
+            HEVPowertrainControls::RGWDB(rgwdb) => {
+                let disch_buffer = (0.5
+                    * veh_mass
+                    * rgwdb
+                        .speed_soc_disch_buffer
+                        .with_context(|| format_dbg!())?
+                        .powi(P2::new()))
+                .max(si::Energy::ZERO)
+                    * rgwdb
+                        .speed_soc_disch_buffer_coeff
+                        .with_context(|| format_dbg!())?;
+
+                let chrg_buffer = (0.5
+                    * veh_mass
+                    * ((70.0 * uc::MPH).powi(P2::new())
+                        - rgwdb
+                            .speed_soc_regen_buffer
+                            .with_context(|| format_dbg!())?
+                            .powi(P2::new())))
+                .max(si::Energy::ZERO)
+                    * rgwdb
+                        .speed_soc_regen_buffer_coeff
+                        .with_context(|| format_dbg!())?;
+
+                let fc_on_soc = {
+                    let energy_delta_to_buffer_speed: si::Energy = 0.5
+                        * veh_mass
+                        * rgwdb
+                            .speed_soc_fc_on_buffer
+                            .with_context(|| format_dbg!())?
+                            .powi(P2::new());
+                    energy_delta_to_buffer_speed.max(si::Energy::ZERO)
+                        * rgwdb
+                            .speed_soc_fc_on_buffer_coeff
+                            .with_context(|| format_dbg!())?
+                } / self.res.energy_capacity_usable()
+                    + self.res.min_soc;
+
+                (disch_buffer, chrg_buffer, fc_on_soc)
+            }
+        };
+        if fc_on_soc > self.res.max_soc {
+            eprintln!("fc_on_soc > self.res.max_soc");
+            eprintln!("fc_on_soc: {:?}", fc_on_soc);
+        }
+        if fc_on_soc < self.res.min_soc {
+            eprintln!("fc_on_soc < self.res.min_soc");
+            eprintln!("fc_on_soc: {:?}", fc_on_soc);
+        }
+        if disch_buffer > self.res.energy_capacity_usable() {
+            eprintln!("disch_buffer < self.res.energy_capacity_usable()");
+            eprintln!(
+                "disch_buffer: {:?} kWh",
+                disch_buffer.get::<si::kilowatt_hour>()
+            );
+            eprintln!(
+                "RES usable energy capacity: {:?} kWh",
+                self.res.energy_capacity_usable().get::<si::kilowatt_hour>()
+            );
+        }
+        if chrg_buffer > self.res.energy_capacity_usable() {
+            eprintln!("disch_buffer < self.res.energy_capacity_usable()");
+            eprintln!(
+                "chrg_buffer: {:?} kWh",
+                chrg_buffer.get::<si::kilowatt_hour>()
+            );
+            eprintln!(
+                "RES usable energy capacity: {:?} kWh",
+                self.res.energy_capacity_usable().get::<si::kilowatt_hour>()
+            );
+        }
+        Ok(())
+    }
+}
+
 #[pyo3_api]
 impl HybridElectricVehicle {}
 
@@ -770,12 +853,12 @@ impl HistoryMethods for RESGreedyWithDynamicBuffers {
 impl Init for RESGreedyWithDynamicBuffers {
     fn init(&mut self) -> Result<(), Error> {
         // TODO: make sure these values propagate to the documented defaults above
-        init_opt_default!(self, speed_soc_disch_buffer, 70.0 * uc::MPH);
+        init_opt_default!(self, speed_soc_disch_buffer, 50.0 * uc::MPH);
         init_opt_default!(self, speed_soc_disch_buffer_coeff, 1.0 * uc::R);
         init_opt_default!(
             self,
             speed_soc_fc_on_buffer,
-            self.speed_soc_disch_buffer.unwrap() * 1.5
+            self.speed_soc_disch_buffer.unwrap() * 1.2
         );
         init_opt_default!(self, speed_soc_fc_on_buffer_coeff, 1.0 * uc::R);
         init_opt_default!(self, speed_soc_regen_buffer, 30. * uc::MPH);

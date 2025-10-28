@@ -52,7 +52,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
             }
             PHEV => {
                 let phev = HybridElectricVehicle::try_from(f2veh)?;
-                Ok(PowertrainType::HybridElectricVehicle(Box::new(phev)))
+                Ok(PowertrainType::PlugInHybridElectricVehicle(Box::new(phev)))
             }
             BEV => {
                 let bev = BatteryElectricVehicle::try_from(f2veh)?;

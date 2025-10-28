@@ -1,6 +1,5 @@
 use super::{hev::HEVPowertrainControls, *};
 use crate::prelude::*;
-use ninterp::strategy::enums::Strategy1DEnum;
 pub mod fastsim2_interface;
 
 /// Possible aux load power sources
@@ -254,6 +253,15 @@ impl Init for Vehicle {
         self.pt_type
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        let mass = self
+            .mass()
+            .unwrap_or(Some(0.0 * uc::KG))
+            .unwrap_or(0.0 * uc::KG);
+        let _ = match &self.pt_type {
+            PowertrainType::HybridElectricVehicle(hev) => hev.check_buffers(mass),
+            PowertrainType::PlugInHybridElectricVehicle(hev) => hev.check_buffers(mass),
+            _ => Ok(()),
+        };
         Ok(())
     }
 }
@@ -463,7 +471,25 @@ impl Vehicle {
     }
 
     pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        // TODO: account for traction limits here
+        // Calculate traction limits
+        let mass = self
+            .mass
+            .with_context(|| format!("{}\nMass should have been set before now", format_dbg!()))?;
+        let max_trac_accel = self.chassis.wheel_fric_coef
+            * self.chassis.drive_axle_weight_frac
+            * uc::ACC_GRAV
+            / (1.0 * uc::R
+                + self.chassis.cg_height * self.chassis.wheel_fric_coef / self.chassis.wheel_base);
+        let prev_speed = *self.state.speed_ach.get_stale(|| format_dbg!())?;
+        let max_trac_speed = prev_speed + (max_trac_accel * dt);
+        let max_trac_power = self.chassis.wheel_fric_coef
+            * self.chassis.drive_axle_weight_frac
+            * mass
+            * uc::ACC_GRAV
+            / (1.0 * uc::R
+                + self.chassis.cg_height * self.chassis.wheel_fric_coef / self.chassis.wheel_base)
+            * max_trac_speed;
+        // Calculate powertrain limits
         self.pt_type
             .set_curr_pwr_prop_out_max(
                 (si::Power::ZERO, si::Power::ZERO),
@@ -476,9 +502,14 @@ impl Vehicle {
             .pt_type
             .get_curr_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.state
-            .pwr_prop_fwd_max
-            .update(pwr_prop_maxes.0, || format_dbg!())?;
+        self.state.pwr_prop_fwd_max.update(
+            if pwr_prop_maxes.0 > max_trac_power {
+                max_trac_power
+            } else {
+                pwr_prop_maxes.0
+            },
+            || format_dbg!(),
+        )?;
         self.state
             .pwr_prop_bwd_max
             .update(pwr_prop_maxes.1, || format_dbg!())?;
@@ -1026,39 +1057,6 @@ pub(crate) mod tests {
 
         if time_to_panic {
             panic!()
-        }
-    }
-}
-
-pub fn f3veh_with_f2_eff(f2veh: &fastsim_2::vehicle::RustVehicle, veh: &mut Vehicle) {
-    // tweak the efficiency interpolation to match fastsim-2
-    if let Some(fc) = veh.fc_mut() {
-        match &mut fc.eff_interp_from_pwr_out {
-            InterpolatorEnum::Interp1D(interp1d) => {
-                assert_eq!(f2veh.fc_perc_out_array.len(), 100);
-                assert_eq!(interp1d.data.grid[0].len(), 12);
-                interp1d.data.grid = [f2veh.fc_perc_out_array.clone().into()];
-                assert_eq!(f2veh.fc_eff_array.len(), 100);
-                assert_eq!(interp1d.data.values.len(), 12);
-                interp1d.data.values = f2veh.fc_eff_array.clone().into();
-                interp1d.strategy = Strategy1DEnum::LeftNearest(strategy::LeftNearest);
-            }
-            _ => panic!("wrong interpolator variant"),
-        }
-    }
-
-    if let Some(em) = veh.em_mut() {
-        match &mut em.eff_interp_achieved {
-            InterpolatorEnum::Interp1D(interp1d) => {
-                assert_eq!(f2veh.mc_perc_out_array.len(), 101);
-                assert_eq!(interp1d.data.grid[0].len(), 11);
-                interp1d.data.grid = [f2veh.fc_perc_out_array.clone().into()];
-                assert_eq!(f2veh.mc_full_eff_array.len(), 101);
-                assert_eq!(interp1d.data.values.len(), 11);
-                interp1d.data.values = f2veh.fc_eff_array.clone().into();
-                interp1d.strategy = Strategy1DEnum::LeftNearest(strategy::LeftNearest);
-            }
-            _ => panic!("wrong interpolator variant"),
         }
     }
 }

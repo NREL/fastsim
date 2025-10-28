@@ -161,7 +161,10 @@ impl ReversibleEnergyStorage {
         if pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())? >= si::Power::ZERO {
             // discharging
             ensure!(
-                utils::almost_le_uom(&(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?), &self.pwr_out_max, Some(TOL)),
+                utils::almost_le_uom(
+                    &(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?),
+                    &self.pwr_out_max,
+                    Some(TOL)),
                 "{}\nres required power ({:.6} kW) exceeds static max discharge power ({:.6} kW)\nstate.soc = {}",
                 format_dbg!(utils::almost_le_uom(
                     &(pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?),
@@ -169,7 +172,7 @@ impl ReversibleEnergyStorage {
                     Some(TOL)
                 )),
                 (pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?).get::<si::kilowatt>(),
-                state.pwr_disch_max.get_fresh(|| format_dbg!())?.get::<si::kilowatt>(),
+                &self.pwr_out_max.get::<si::kilowatt>(),
                 state.soc.get_stale(|| format_dbg!())?.get::<si::ratio>()
             );
             ensure!(
@@ -224,7 +227,7 @@ impl ReversibleEnergyStorage {
                     )),
                     (pwr_out_req + *state.pwr_aux.get_fresh(|| format_dbg!())?)
                         .get::<si::kilowatt>(),
-                    state
+                    -state
                         .pwr_charge_max
                         .get_fresh(|| format_dbg!())?
                         .get::<si::kilowatt>()
