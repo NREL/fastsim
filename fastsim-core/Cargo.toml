@@ -1,11 +1,11 @@
 [package]
 name = "fastsim-core"
-version = "1.0.3"
+version = "1.0.4"
 edition = { workspace = true }
 rust-version = { workspace = true }
 license = "Apache-2.0"
 description = "Core FASTSim models for vehicle energy usage simulation"
-exclude = [ "build.rs" ]
+exclude = ["build.rs"]
 authors = ["NREL/MTES/CIMS/MBAP Group <fastsim@nrel.gov>"]
 homepage = "https://www.nrel.gov/transportation/fastsim.html"
 readme = "../README.md"
@@ -13,7 +13,7 @@ repository = "https://github.com/NREL/fastsim"
 documentation = "https://nrel.github.io/fastsim/"
 
 [dependencies]
-fastsim-proc-macros = { path = "fastsim-proc-macros", version = "1.0.3" }
+fastsim-proc-macros = { path = "fastsim-proc-macros", version = "1.0.4" }
 fastsim-2 = { workspace = true }
 csv = { version = "1.1.6", optional = true }
 serde = { version = "1.0.136", features = ["derive"] }
@@ -61,7 +61,7 @@ num-traits = "0.2.19"
 pretty_assertions = "1.4.1"
 
 [features]
-default = [ "resources", "serde-default", "simdrivelabel" ]
+default = ["resources", "serde-default", "simdrivelabel"]
 ## Enables `pyo3` to provide fastsim-3 structs, methods, and functions to Python
 pyo3 = ["dep:pyo3", "fastsim-2/pyo3"]
 ## Compiles external resources (e.g. vehicle files or cycle files) to be
