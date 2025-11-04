@@ -2,14 +2,14 @@
 ,Scenario name,2025 Chevrolet Silverado EV LT,
 ,vehYear,2025,
 ,vehPtType,BEV,
-,dragCoef,0.33,from 2024 model; https://www.caranddriver.com/reviews/a44325529/2024-chevrolet-silverado-ev-work-truck-drive/
+,dragCoef,0.39296443680331283,
 ,frontalAreaM2,3.49036721,85% * 78 in * 81.6 in
 ,gliderKg,0,
 ,vehCgM,-0.53,negative = AWD
 ,driveAxleWeightFrac,0.59,
 ,wheelBaseM,3.70078,https://www.edmunds.com/chevrolet/silverado-ev/2025/features-specs/
 ,cargoKg,0,
-,vehOverrideKg,3849.185,8486 lb; https://www.caranddriver.com/reviews/a65279393/2025-chevrolet-silverado-ev-lt-extended-range-test/
+,vehOverrideKg,3991,8800 lb
 ,compMassMultiplier,1.4,
 ,maxFuelStorKw,0,
 ,fuelStorSecsToPeakPwr,1,
@@ -43,7 +43,7 @@
 ,essChgToFcMaxEffPerc,0.0,
 ,wheelInertiaKgM2,0.815,
 ,numWheels,4,
-,wheelRrCoef,0.0067318605853078015,
+,wheelRrCoef,0.006610684326044652,
 ,wheelRadiusM,0.4141,265/70R18; https://www.spitzerchevyamherst.com/inventory/new-2025-chevrolet-silverado-ev-lt-extended-range-four-wheel-drive-crew-cab-1gc10zed9su400641/
 ,wheelCoefOfFric,0.7,
 ,maxAccelBufferMph,60.0,
