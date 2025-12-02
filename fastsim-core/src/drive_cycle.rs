@@ -58,6 +58,38 @@ pub struct Cycle {
 
 #[pyo3_api]
 impl Cycle {
+    // TODO: add unit flexibility
+    #[new]
+    #[pyo3(signature = (
+        time_seconds,
+        speed_meters_per_second,
+        name=None,
+        // **py_kwargs
+    ))]
+    fn new(
+        time_seconds: Vec<f64>,
+        speed_meters_per_second: Vec<f64>,
+        name: Option<String>,
+        // py_kwargs: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<Cycle> {
+        let mut cb = CycleBuilder::new()
+            .time(time_seconds.into_iter().map(|t| t * uc::S).collect())
+            .speed(
+                speed_meters_per_second
+                    .into_iter()
+                    .map(|v| v * uc::MPS)
+                    .collect(),
+            );
+        cb.name = name;
+        // cb.name = py_kwargs
+        //     .map(|kwargs| kwargs.get_item("name"))
+        //     .transpose()?
+        //     .flatten()
+        //     .map(|any| any.extract::<String>())
+        //     .transpose()?;
+        Ok(cb.build()?)
+    }
+
     #[pyo3(name = "len")]
     /// return the length of the cycle
     fn len_py(&self) -> PyResult<usize> {
@@ -1519,12 +1551,15 @@ impl Cycle {
 
 impl TryFrom<CycleBuilder> for Cycle {
     type Error = anyhow::Error;
+    // TODO: allow more customization
     fn try_from(value: CycleBuilder) -> anyhow::Result<Self, Self::Error> {
         let mut cyc = Self {
-            name: value.name,
+            name: value.name.unwrap_or_default(),
             init_elev: None,
-            time: value.time,
-            speed: value.speed,
+            // TODO: add detailed error message
+            time: value.time.with_context(|| format_dbg!())?,
+            // TODO: add detailed error message
+            speed: value.speed.with_context(|| format_dbg!())?,
             dist: Default::default(),
             grade: Default::default(),
             elev: Default::default(),
@@ -1578,18 +1613,16 @@ impl CBTrait for Cycle {
     }
 }
 
-#[serde_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[non_exhaustive]
 /// Simple cycle to be converted into [Cycle] with appropriate defaults
 pub struct CycleBuilder {
     /// Name of cycle (can be left empty)
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub name: String,
+    pub name: Option<String>,
     /// simulation time
-    pub time: Vec<si::Time>,
+    pub time: Option<Vec<si::Time>>,
     /// prescribed speed
-    pub speed: Vec<si::Velocity>,
+    pub speed: Option<Vec<si::Velocity>>,
 }
 
 impl CBTrait for CycleBuilder {
@@ -1602,6 +1635,46 @@ impl CBTrait for CycleBuilder {
     fn with_temp_amb_air(&mut self, temp_amb_air: Vec<si::Temperature>) -> anyhow::Result<Cycle> {
         let mut cyc: Cycle = self.clone().try_into().with_context(|| format_dbg!())?;
         cyc.temp_amb_air = temp_amb_air;
+        Ok(cyc)
+    }
+}
+
+impl CycleBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn name(mut self, name: String) -> Self {
+        self.name = Some(name);
+        self
+    }
+
+    pub fn time(mut self, time: Vec<si::Time>) -> Self {
+        self.time = Some(time);
+        self
+    }
+
+    pub fn speed(mut self, speed: Vec<si::Velocity>) -> Self {
+        self.speed = Some(speed);
+        self
+    }
+
+    pub fn build(self) -> anyhow::Result<Cycle> {
+        let mut cyc = Cycle {
+            name: self.name.unwrap_or_default(),
+            init_elev: None,
+            time: self.time.unwrap_or_default(),
+            speed: self.speed.unwrap_or_default(),
+            dist: Default::default(),
+            grade: Default::default(),
+            elev: Default::default(),
+            pwr_max_chrg: Default::default(),
+            temp_amb_air: Default::default(),
+            pwr_solar_load: Default::default(),
+            grade_interp: None,
+            elev_interp: Default::default(),
+        };
+        cyc.init().with_context(|| format_dbg!())?;
         Ok(cyc)
     }
 }
@@ -2220,12 +2293,14 @@ mod tests {
 }
 
 lazy_static! {
-    pub static ref CYC_ACCEL: Cycle = Cycle::try_from(CycleBuilder {
-        name: String::from("accel test"),
-        time: (0..300)
-            .map(|t| (t as f64) * uc::S)
-            .collect::<Vec<si::Time>>(),
-        speed: vec![90.0 * uc::MPH; 300],
-    })
-    .unwrap();
+    pub static ref CYC_ACCEL: Cycle = CycleBuilder::new()
+        .name("accel test".to_string())
+        .time(
+            (0..300)
+                .map(|t| (t as f64) * uc::S)
+                .collect::<Vec<si::Time>>()
+        )
+        .speed(vec![90.0 * uc::MPH; 300])
+        .build()
+        .unwrap();
 }

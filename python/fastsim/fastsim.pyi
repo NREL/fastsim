@@ -108,6 +108,13 @@ class Cycle(SerdeAPI):
     @classmethod
     def list_resources(cls) -> list[str]: ...
     def len(self) -> int: ...
+    def __init__(
+        self,
+        time_seconds: list[float],
+        speed_meters_per_second: list[float],
+        name: str | None = None,
+        # **kwargs
+    ) -> None: ...
 
 class CycleElement(SerdeAPI): ...
 
