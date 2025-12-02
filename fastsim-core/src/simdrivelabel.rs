@@ -25,7 +25,8 @@ pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     // Extract speed values in mph
     let mut speed_mph: Vec<f64> = vec![];
     for s in sd_accel.veh.history.speed_ach.clone() {
-        speed_mph.push(s.get_fresh(|| format_dbg!())?.get::<si::mile_per_hour>())
+        speed_mph
+            .push((s.get_fresh(|| format_dbg!())?.get::<si::mile_per_hour>() * 10.0).round() / 10.0)
     }
 
     // Extract time values in seconds
@@ -359,9 +360,7 @@ pub fn get_label_fe(
     sd.insert("hwy", SimDrive::new(veh.clone(), cyc["hwy"].clone(), None));
 
     for (k, val) in sd.iter_mut() {
-        println!("starting walk for cycle {k}");
-        val.walk()?;
-        println!("finished walk for cycle {k}");
+        val.walk().with_context(|| format_dbg!(k))?;
     }
 
     // find year-based adjustment parameters

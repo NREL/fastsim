@@ -378,8 +378,8 @@ impl SimDrive {
                 res.state.soh.mark_fresh(|| format_dbg!())?;
             }
             self.step(|| format_dbg!())?;
-            self.solve_step()?;
-            // .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
+            self.solve_step()
+                .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
             self.save_state(|| format_dbg!())?;
             if *self.veh.state.i.get_fresh(|| format_dbg!())? == len - 1 {
                 break;
@@ -473,8 +473,8 @@ impl SimDrive {
                     *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
                     || format_dbg!(),
                 )?;
-                self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt)?;
-                // .with_context(|| anyhow!(format_dbg!()))?;
+                self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt)
+                    .with_context(|| anyhow!(format_dbg!()))?;
                 if self.sim_params.trace_miss_opts.is_allow_checked() {
                     self.sim_params.trace_miss_tol.check_trace_miss(
                         self.cyc.speed[i],
@@ -483,7 +483,9 @@ impl SimDrive {
                         *self.veh.state.dist.get_fresh(|| format_dbg!())?,
                     )?;
                 }
-                self.veh.solve_powertrain(dt)?;
+                self.veh
+                    .solve_powertrain(dt)
+                    .with_context(|| anyhow!(format_dbg!()))?;
             }
             true => {
                 self.veh.mark_non_thermal_fresh()?;

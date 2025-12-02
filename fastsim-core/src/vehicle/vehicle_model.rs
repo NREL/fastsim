@@ -182,6 +182,7 @@ impl Mass for Vehicle {
         new_mass: Option<si::Mass>,
         side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
+        // TODO: add a check for whether mass is negative!!
         ensure!(
             side_effect == MassSideEffect::None,
             "At the vehicle level, only `MassSideEffect::None` is allowed"
@@ -443,11 +444,13 @@ impl Vehicle {
 
     /// Solves for energy consumption
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.pt_type.solve(
-            *self.state.pwr_tractive.get_fresh(|| format_dbg!())?,
-            true, // `enabled` should always be true at the powertrain level
-            dt,
-        )?;
+        self.pt_type
+            .solve(
+                *self.state.pwr_tractive.get_fresh(|| format_dbg!())?,
+                true, // `enabled` should always be true at the powertrain level
+                dt,
+            )
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.state.pwr_brake.update(
             -self
                 .state

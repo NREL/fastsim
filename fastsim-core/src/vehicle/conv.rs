@@ -117,7 +117,9 @@ impl Powertrain for Box<ConventionalVehicle> {
             .solve(pwr_out_req, true, dt)
             .with_context(|| format_dbg!())?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
-        self.fc.solve(pwr_in_transmission, enabled, dt)?;
+        self.fc
+            .solve(pwr_in_transmission, enabled, dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(None)
     }
 
