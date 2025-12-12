@@ -1,4 +1,5 @@
 use super::{utils::ScalingMethods, *};
+use crate::uc::R;
 use crate::utils::interp::InterpolatorMutMethods;
 
 #[allow(unused_imports)]
@@ -124,6 +125,37 @@ impl ReversibleEnergyStorage {
     #[pyo3(name = "set_default_pwr_soc_and_temp_interp")]
     fn set_default_pwr_soc_and_temp_interp_py(&mut self) -> anyhow::Result<()> {
         self.set_default_pwr_soc_and_temp_interp()
+    }
+}
+
+impl ReversibleEnergyStorage {
+    /// Constructor for ReversibleEnergyStorage
+    pub fn new(
+        thrml: RESThermalOption,
+        mass: Option<si::Mass>,
+        specific_energy: Option<si::SpecificEnergy>,
+        pwr_out_max: si::Power,
+        energy_capacity: si::Energy,
+        eff_interp: EffInterp,
+        min_soc: si::Ratio,
+        max_soc: si::Ratio,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut reversible_energy_storage = Self {
+            thrml,
+            mass,
+            specific_energy,
+            pwr_out_max,
+            energy_capacity,
+            eff_interp,
+            min_soc,
+            max_soc,
+            save_interval,
+            state: ReversibleEnergyStorageState::default(),
+            history: ReversibleEnergyStorageStateHistoryVec::default(),
+        };
+        reversible_energy_storage.init()?;
+        Ok(reversible_energy_storage)
     }
 }
 
@@ -1115,6 +1147,27 @@ impl RESLumpedThermal {
         Default::default()
     }
 }
+
+impl RESLumpedThermal {
+    pub fn new(
+        heat_capacitance: si::HeatCapacity,
+        conductance_to_amb: si::ThermalConductance,
+        conductance_to_cab: si::ThermalConductance,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut res_lumped_thermal = Self {
+            heat_capacitance,
+            conductance_to_amb,
+            conductance_to_cab,
+            state: RESLumpedThermalState::default(),
+            history: RESLumpedThermalStateHistoryVec::default(),
+            save_interval,
+        };
+        res_lumped_thermal.init()?;
+        Ok(res_lumped_thermal)
+    }
+}
+
 impl SerdeAPI for RESLumpedThermal {}
 impl Init for RESLumpedThermal {}
 impl HistoryMethods for RESLumpedThermal {

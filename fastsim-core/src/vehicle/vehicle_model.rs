@@ -153,6 +153,40 @@ impl Vehicle {
     }
 }
 
+/// implementing constructor function for Vehicle
+impl Vehicle {
+    /// Create new Vehicle with specified parameters
+    pub fn new(
+        name: String,
+        doc: Option<String>,
+        year: u32,
+        pt_type: PowertrainType,
+        chassis: Chassis,
+        cabin: CabinOption,
+        hvac: HVACOption,
+        mass: Option<si::Mass>,
+        pwr_aux_base: si::Power,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut veh = Self {
+            name,
+            doc,
+            year,
+            pt_type,
+            chassis,
+            cabin,
+            hvac,
+            mass,
+            pwr_aux_base,
+            save_interval,
+            state: VehicleState::default(),
+            history: VehicleStateHistoryVec::default(),
+        };
+        veh.init()?;
+        Ok(veh)
+    }
+}
+
 impl Mass for Vehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self

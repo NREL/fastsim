@@ -36,6 +36,26 @@ impl FuelStorage {
     // }
 }
 
+impl FuelStorage {
+    pub fn new(
+        pwr_out_max: si::Power,
+        pwr_ramp_lag: si::Time,
+        energy_capacity: si::Energy,
+        specific_energy: Option<si::SpecificEnergy>,
+        mass: Option<si::Mass>,
+    ) -> anyhow::Result<Self> {
+        let mut fs = Self {
+            pwr_out_max,
+            pwr_ramp_lag,
+            energy_capacity,
+            specific_energy,
+            mass,
+        };
+        fs.init()?;
+        Ok(fs)
+    }
+}
+
 impl SerdeAPI for FuelStorage {}
 impl Init for FuelStorage {}
 

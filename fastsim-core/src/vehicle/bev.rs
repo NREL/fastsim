@@ -19,6 +19,24 @@ pub struct BatteryElectricVehicle {
 #[pyo3_api]
 impl BatteryElectricVehicle {}
 
+impl BatteryElectricVehicle {
+    pub fn new(
+        res: ReversibleEnergyStorage,
+        em: ElectricMachine,
+        transmission: Transmission,
+        mass: Option<si::Mass>,
+    ) -> anyhow::Result<Self> {
+        let mut bev = Self {
+            res,
+            em,
+            transmission,
+            mass,
+        };
+        bev.init()?;
+        Ok(bev)
+    }
+}
+
 impl Init for BatteryElectricVehicle {
     fn init(&mut self) -> Result<(), Error> {
         self.res

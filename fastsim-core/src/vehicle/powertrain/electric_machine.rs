@@ -94,6 +94,31 @@ impl ElectricMachine {
     }
 }
 
+impl ElectricMachine {
+    pub fn new(
+        eff_interp_achieved: InterpolatorEnumOwned<f64>,
+        eff_interp_at_max_input: Option<InterpolatorEnumOwned<f64>>,
+        pwr_out_max: si::Power,
+        specific_pwr: Option<si::SpecificPower>,
+        mass: Option<si::Mass>,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut em = ElectricMachine {
+            eff_interp_achieved,
+            eff_interp_at_max_input,
+            pwr_out_max,
+            specific_pwr,
+            mass,
+            save_interval,
+            state: ElectricMachineState::default(),
+            history: ElectricMachineStateHistoryVec::default(),
+        };
+        em.init()?;
+
+        Ok(em)
+    }
+}
+
 impl Powertrain for ElectricMachine {
     /// Returns maximum possible positive and negative propulsion-related powers
     /// this component/system can produce, accounting for any aux-related power

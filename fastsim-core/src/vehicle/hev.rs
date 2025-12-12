@@ -41,6 +41,36 @@ pub struct HybridElectricVehicle {
 #[pyo3_api]
 impl HybridElectricVehicle {}
 
+impl HybridElectricVehicle {
+    pub fn new(
+        res: ReversibleEnergyStorage,
+        fs: FuelStorage,
+        fc: FuelConverter,
+        em: ElectricMachine,
+        transmission: Transmission,
+        pt_cntrl: HEVPowertrainControls,
+        aux_cntrl: HEVAuxControls,
+        mass: Option<si::Mass>,
+        sim_params: HEVSimulationParams,
+    ) -> anyhow::Result<Self> {
+        let mut hev = Self {
+            res,
+            fs,
+            fc,
+            em,
+            transmission,
+            pt_cntrl,
+            aux_cntrl,
+            mass,
+            sim_params,
+            soc_bal_iter_history: Default::default(),
+            soc_bal_iters: Default::default(),
+        };
+        hev.init()?;
+        Ok(hev)
+    }
+}
+
 impl HistoryMethods for HybridElectricVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         bail!("`save_interval` is not implemented in HybridElectricVehicle")
@@ -500,6 +530,22 @@ pub struct HEVSimulationParams {
     pub save_soc_bal_iters: bool,
 }
 
+impl HEVSimulationParams {
+    pub fn new(
+        res_per_fuel_lim: si::Ratio,
+        soc_balance_iter_err: u32,
+        balance_soc: bool,
+        save_soc_bal_iters: bool,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            res_per_fuel_lim,
+            soc_balance_iter_err,
+            balance_soc,
+            save_soc_bal_iters,
+        })
+    }
+}
+
 impl Default for HEVSimulationParams {
     fn default() -> Self {
         Self {
@@ -751,6 +797,44 @@ pub struct RESGreedyWithDynamicBuffers {
 
 #[pyo3_api]
 impl RESGreedyWithDynamicBuffers {}
+
+impl RESGreedyWithDynamicBuffers {
+    pub fn new(
+        speed_soc_disch_buffer: Option<si::Velocity>,
+        speed_soc_disch_buffer_coeff: Option<si::Ratio>,
+        speed_soc_fc_on_buffer: Option<si::Velocity>,
+        speed_soc_fc_on_buffer_coeff: Option<si::Ratio>,
+        speed_soc_regen_buffer: Option<si::Velocity>,
+        speed_soc_regen_buffer_coeff: Option<si::Ratio>,
+        fc_min_time_on: Option<si::Time>,
+        speed_fc_forced_on: Option<si::Velocity>,
+        frac_pwr_demand_fc_forced_on: Option<si::Ratio>,
+        frac_of_most_eff_pwr_to_run_fc: Option<si::Ratio>,
+        save_interval: Option<usize>,
+        temp_fc_forced_on: Option<si::Temperature>,
+        temp_fc_allowed_off: Option<si::Temperature>,
+    ) -> anyhow::Result<Self> {
+        let mut res_greedy_w_dynamic_buffers = Self {
+            speed_soc_disch_buffer,
+            speed_soc_disch_buffer_coeff,
+            speed_soc_fc_on_buffer,
+            speed_soc_fc_on_buffer_coeff,
+            speed_soc_regen_buffer,
+            speed_soc_regen_buffer_coeff,
+            fc_min_time_on,
+            speed_fc_forced_on,
+            frac_pwr_demand_fc_forced_on,
+            frac_of_most_eff_pwr_to_run_fc,
+            save_interval,
+            temp_fc_forced_on,
+            temp_fc_allowed_off,
+            state: RGWDBState::default(),
+            history: RGWDBStateHistoryVec::default(),
+        };
+        res_greedy_w_dynamic_buffers.init()?;
+        Ok(res_greedy_w_dynamic_buffers)
+    }
+}
 
 impl HistoryMethods for RESGreedyWithDynamicBuffers {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {

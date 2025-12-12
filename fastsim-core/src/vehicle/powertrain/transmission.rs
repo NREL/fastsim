@@ -23,6 +23,25 @@ pub struct Transmission {
     pub history: TransmissionStateHistoryVec,
 }
 
+impl Transmission {
+    /// Constructor for Transmission
+    pub fn new(
+        mass: Option<si::Mass>,
+        eff_interp: InterpolatorEnumOwned<f64>,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut transmission = Self {
+            mass,
+            eff_interp,
+            save_interval,
+            state: Default::default(),
+            history: Default::default(),
+        };
+        transmission.init()?;
+        Ok(transmission)
+    }
+}
+
 impl Powertrain for Transmission {
     fn set_curr_pwr_prop_out_max(
         &mut self,

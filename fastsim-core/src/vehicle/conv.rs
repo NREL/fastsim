@@ -20,6 +20,26 @@ pub struct ConventionalVehicle {
 #[pyo3_api]
 impl ConventionalVehicle {}
 
+impl ConventionalVehicle {
+    pub fn new(
+        fs: FuelStorage,
+        fc: FuelConverter,
+        transmission: Transmission,
+        mass: Option<si::Mass>,
+        alt_eff: si::Ratio,
+    ) -> anyhow::Result<Self> {
+        let mut conv = Self {
+            fs,
+            fc,
+            transmission,
+            mass,
+            alt_eff,
+        };
+        conv.init()?;
+        Ok(conv)
+    }
+}
+
 impl SerdeAPI for ConventionalVehicle {}
 impl Init for ConventionalVehicle {
     fn init(&mut self) -> Result<(), Error> {

@@ -95,6 +95,39 @@ impl FuelConverter {
     }
 }
 
+/// implementing constructor for FuelConverter
+impl FuelConverter {
+    pub fn new(
+        thrml: FuelConverterThermalOption,
+        mass: Option<si::Mass>,
+        specific_pwr: Option<si::SpecificPower>,
+        pwr_out_max: si::Power,
+        pwr_out_max_init: si::Power,
+        pwr_ramp_lag: si::Time,
+        eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
+        pwr_for_peak_eff: si::Power,
+        pwr_idle_fuel: si::Power,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut fc = Self {
+            thrml,
+            mass,
+            specific_pwr,
+            pwr_out_max,
+            pwr_out_max_init,
+            pwr_ramp_lag,
+            eff_interp_from_pwr_out,
+            pwr_for_peak_eff,
+            pwr_idle_fuel,
+            save_interval,
+            state: FuelConverterState::default(),
+            history: FuelConverterStateHistoryVec::default(),
+        };
+        fc.init()?;
+        Ok(fc)
+    }
+}
+
 impl SerdeAPI for FuelConverter {}
 impl Init for FuelConverter {
     fn init(&mut self) -> Result<(), Error> {
@@ -790,6 +823,40 @@ impl FuelConverterThermal {
     }
 }
 
+impl FuelConverterThermal {
+    pub fn new(
+        heat_capacitance: si::HeatCapacity,
+        length_for_convection: si::Length,
+        htc_to_amb_stop: si::HeatTransferCoeff,
+        conductance_from_comb: si::ThermalConductance,
+        max_frac_from_comb: si::Ratio,
+        tstat_te_sto: Option<si::Temperature>,
+        tstat_te_delta: Option<si::TemperatureInterval>,
+        tstat_interp: Interp1DOwned<f64, strategy::Linear>,
+        radiator_effectiveness: si::Ratio,
+        fc_eff_model: FCTempEffModel,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut fc_thermal = Self {
+            heat_capacitance,
+            length_for_convection,
+            htc_to_amb_stop,
+            conductance_from_comb,
+            max_frac_from_comb,
+            tstat_te_sto,
+            tstat_te_delta,
+            tstat_interp,
+            radiator_effectiveness,
+            fc_eff_model,
+            state: FuelConverterThermalState::default(),
+            history: FuelConverterThermalStateHistoryVec::default(),
+            save_interval,
+        };
+        fc_thermal.init()?;
+        Ok(fc_thermal)
+    }
+}
+
 impl HistoryMethods for FuelConverterThermal {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         Ok(self.save_interval)
@@ -1166,6 +1233,20 @@ pub struct FCTempEffModelLinear {
     pub minimum: si::Ratio,
 }
 
+impl FCTempEffModelLinear {
+    pub fn new(
+        offset: si::Ratio,
+        slope_per_kelvin: f64,
+        minimum: si::Ratio,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            offset,
+            slope_per_kelvin,
+            minimum,
+        })
+    }
+}
+
 impl Default for FCTempEffModelLinear {
     fn default() -> Self {
         Self {
@@ -1185,6 +1266,20 @@ pub struct FCTempEffModelExponential {
     pub lag: si::TemperatureInterval,
     /// minimum value that `fc_eta_temp_coeff` can take
     pub minimum: si::Ratio,
+}
+
+impl FCTempEffModelExponential {
+    pub fn new(
+        offset: si::Temperature,
+        lag: si::TemperatureInterval,
+        minimum: si::Ratio,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            offset,
+            lag,
+            minimum,
+        })
+    }
 }
 
 impl Default for FCTempEffModelExponential {
