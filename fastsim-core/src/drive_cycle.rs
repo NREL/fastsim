@@ -211,13 +211,12 @@ impl Init for Cycle {
         self.elev = self
             .grade
             .iter()
-            .zip(&self.dist)
+            .zip(&self.dist.diff())
             .scan(
                 // already guaranteed to be `Some`
                 self.init_elev.unwrap(),
                 |elev, (grade, dist)| {
-                    // TODO: Kyle, check this
-                    *elev += *dist * *grade;
+                    *elev += *dist * grade.atan().sin();
                     Some(*elev)
                 },
             )
@@ -817,6 +816,7 @@ impl Cycle {
     }
 
     /// The elevation climb each step using trapezoidal integration.
+    // TODO: verify the height calculation is correct, see cycle init changes
     pub fn trapz_step_elevations(&self) -> Vec<si::Length> {
         let mut result = Vec::with_capacity(self.time.len());
         result.push(0.0 * uc::M);
@@ -1714,7 +1714,7 @@ mod tests {
         );
         assert_eq!(
             cyc.elev,
-            [121.92, 121.93, 121.99000000000001] // meters
+            [121.92, 121.9299995000375, 121.9699915024367] // meters
                 .iter()
                 .map(|x| *x * uc::M)
                 .collect::<Vec<si::Length>>()
@@ -1906,6 +1906,32 @@ mod tests {
         for i in 0..expected.len() {
             assert_eq!(actual[i], expected[i], "differ at step {i}");
         }
+    }
+
+    #[test]
+    fn test_elevation_accumulation() {
+        let mut cyc = Cycle {
+            name: String::from("elevation test"),
+            init_elev: Some(0.0 * uc::M),
+            time: Vec::linspace(0., 1000., 1001)
+                .iter()
+                .map(|x| (*x as f64) * uc::S)
+                .collect(),
+            speed: vec![20.0 * uc::MPS; 1001],
+            dist: vec![],
+            grade: vec![0.05 * uc::R; 1001],
+            elev: vec![],
+            pwr_max_chrg: vec![],
+            grade_interp: Default::default(),
+            elev_interp: Default::default(),
+            temp_amb_air: Default::default(),
+            pwr_solar_load: Default::default(),
+        };
+        cyc.init().unwrap();
+
+        let delta_elev = cyc.elev.last().unwrap().get::<si::meter>();
+        // Expected elevation change: 20 m/s * 1000 s * sin(atan(0.05)) = 998.7523388778305 m
+        assert!(almost_eq(delta_elev, 998.7523388778305, None));
     }
 
     #[test]
