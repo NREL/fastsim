@@ -166,9 +166,9 @@ impl Powertrain for BatteryElectricVehicle {
         let pwr_in_em = self
             .em
             .solve(pwr_in_transmission, true, dt)
-            .with_context(|| {
+            .map_err(|err| anyhow::anyhow!(
                 format!(
-                    "{}\ntransmission `pwr_out_req`: {} kW\n`self.transmission.state.pwr_out_fwd_max`: {} kW",
+                    "error at line {}: \ntransmission `pwr_out_req`: {} kW\n`self.transmission.state.pwr_out_fwd_max`: {} kW \n originating error: {}", 
                     format_dbg!(),
                     pwr_out_req.get::<si::kilowatt>().format_eng(None),
                     self.transmission
@@ -177,9 +177,7 @@ impl Powertrain for BatteryElectricVehicle {
                         .get_fresh(|| format_dbg!())
                         .unwrap()
                         .get::<si::kilowatt>()
-                        .format_eng(None)
-                )
-            })?
+                        .format_eng(None), err)))?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         self.res
             .solve(pwr_in_em, dt)

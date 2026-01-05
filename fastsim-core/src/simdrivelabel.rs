@@ -25,17 +25,26 @@ pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     // Extract speed values in mph
     let mut speed_mph: Vec<f64> = vec![];
     for s in sd_accel.veh.history.speed_ach.clone() {
-        speed_mph
-            .push((s.get_fresh(|| format_dbg!())?.get::<si::mile_per_hour>() * 10.0).round() / 10.0)
+        speed_mph.push(
+            (s.get_fresh(|| format_dbg!())?.get::<si::mile_per_hour>() * 100.0).round() / 100.0,
+        )
     }
 
+    let first_ind_after_60_mph = first_grtr(&speed_mph, 60.).with_context(|| format_dbg!())?;
+
+    // cut off speed_mph to only include values through first value greater than 60 mph
+    speed_mph.truncate(first_ind_after_60_mph + 1);
+
     // Extract time values in seconds
-    let time_s: Vec<f64> = sd_accel
+    let mut time_s: Vec<f64> = sd_accel
         .cyc
         .time
         .iter()
         .map(|t| t.get::<si::second>())
         .collect();
+
+    // ensure time_s matches speed_mph length
+    time_s.truncate(first_ind_after_60_mph + 1);
 
     // Check if vehicle reaches 60 mph
     if speed_mph.iter().any(|&x| x >= 60.0) {
@@ -46,7 +55,9 @@ pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
             strategy::Linear,
             Extrapolate::Clamp,
         )
-        .with_context(|| format_dbg!())?;
+        .map_err(|err| {
+            anyhow::anyhow!("Interpolator creation failed: {}, {}", err, format_dbg!())
+        })?;
 
         // Interpolate time at 60 mph
         let accel_time = interp.interpolate(&[60.0])?;

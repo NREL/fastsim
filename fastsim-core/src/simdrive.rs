@@ -372,18 +372,25 @@ impl SimDrive {
         };
 
         loop {
+            if *self.veh.state.i.get_fresh(|| format_dbg!())? == len - 1 {
+                break;
+            }
             self.check_and_reset(|| format_dbg!())?;
             self.veh.state.mass.mark_fresh(|| format_dbg!())?;
             if let Some(res) = self.veh.res_mut() {
                 res.state.soh.mark_fresh(|| format_dbg!())?;
             }
             self.step(|| format_dbg!())?;
-            self.solve_step()
-                .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
+            self.solve_step().map_err(|err| {
+                anyhow::anyhow!(format!(
+                    "solver step failed: {}\ntime step: {:?}\n originating error: {}",
+                    format_dbg!(),
+                    self.veh.state.i,
+                    err
+                ))
+            })?;
+            // .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
             self.save_state(|| format_dbg!())?;
-            if *self.veh.state.i.get_fresh(|| format_dbg!())? == len - 1 {
-                break;
-            }
         }
 
         if let Some(hvac) = hvac {
@@ -439,10 +446,27 @@ impl SimDrive {
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
         let time_prev = *self.veh.state.time.get_stale(|| format_dbg!())?;
-        self.veh.state.time.update(
-            *self.cyc.time.get(i).with_context(|| format_dbg!())?,
-            || format_dbg!(),
-        )?;
+        self.veh
+            .state
+            .time
+            .update(
+                *self.cyc.time.get(i).ok_or({
+                    anyhow::anyhow!(format!(
+                        "failed to get time for index {} at line {}",
+                        i,
+                        format_dbg!()
+                    ))
+                })?,
+                || format_dbg!(),
+            )
+            .map_err(|err| {
+                anyhow::anyhow!(format!(
+                    "updating time failed: {}\ntime step: {:?}\n originating error: {}",
+                    format_dbg!(),
+                    self.veh.state.i,
+                    err
+                ))
+            })?;
         let dt = *self.veh.state.time.get_fresh(|| format_dbg!())? - time_prev;
         // maybe make controls like:
         // ```
@@ -474,7 +498,16 @@ impl SimDrive {
                     || format_dbg!(),
                 )?;
                 self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt)
-                    .with_context(|| anyhow!(format_dbg!()))?;
+                    .map_err(|err| {
+                        anyhow::anyhow!(format!(
+                            "set_ach_speed failed at line {} with cycle speed {:?}, cyc dist {:?}, and dt {:?} and originating error {}",
+                            format_dbg!(),
+                            self.cyc.speed[i],
+                            self.cyc.dist[i],
+                            dt,
+                            err
+                        ))
+                    })?;
                 if self.sim_params.trace_miss_opts.is_allow_checked() {
                     self.sim_params.trace_miss_tol.check_trace_miss(
                         self.cyc.speed[i],
@@ -483,9 +516,13 @@ impl SimDrive {
                         *self.veh.state.dist.get_fresh(|| format_dbg!())?,
                     )?;
                 }
-                self.veh
-                    .solve_powertrain(dt)
-                    .with_context(|| anyhow!(format_dbg!()))?;
+                self.veh.solve_powertrain(dt).map_err(|err| {
+                    anyhow::anyhow!(format!(
+                        "solve_powertrain failed at line {} with originating error {}",
+                        format_dbg!(),
+                        err
+                    ))
+                })?;
             }
             true => {
                 self.veh.mark_non_thermal_fresh()?;

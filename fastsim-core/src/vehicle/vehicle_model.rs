@@ -484,7 +484,13 @@ impl Vehicle {
                 true, // `enabled` should always be true at the powertrain level
                 dt,
             )
-            .with_context(|| anyhow!(format_dbg!()))?;
+            .map_err(|err| {
+                anyhow::anyhow!(
+                    "solve() failed at line {} with originating error {}",
+                    format_dbg!(),
+                    err
+                )
+            })?;
         self.state.pwr_brake.update(
             -self
                 .state
