@@ -19,6 +19,9 @@ from fastsim import pymoo_api
 mps_per_mph = 0.447
 celsius_to_kelvin_offset = 273.15
 
+# path to 2020 Chevrolet Bolt dyno test data
+chevrolet_bolt_2020_dyno_data_path = "dyno_test_data/D3 2020 Chevrolet Bolt"
+
 # Initialize seaborn plot configuration
 sns.set_style("darkgrid")
 
@@ -35,7 +38,7 @@ sim_params = fsim.SimParams.from_pydict(sim_params_dict, skip_init=False)
 # https://www.anl.gov/taps/d3-2020-chevrolet-bolt
 # and then copy it to the local folder below
 cyc_folder_path = Path(__file__).parent / \
-    "dyno_test_data/2020 Chevrolet Bolt/Extended Datasets"
+    chevrolet_bolt_2020_dyno_data_path
 assert cyc_folder_path.exists(), cyc_folder_path
 
 # Test data columns
@@ -139,7 +142,7 @@ def df_to_cyc(df: pd.DataFrame) -> fsim.Cycle:
     return fsim.Cycle.from_pydict(cyc_dict, skip_init=False)
 
 
-pt_type_var = "BatteryElectricVehicle"
+pt_type_var = "BEV"
 cabin_type_var = "LumpedCabin"
 hvac_type_var = "LumpedCabinAndRES"
 
