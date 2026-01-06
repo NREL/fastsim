@@ -20,7 +20,7 @@ mps_per_mph = 0.447
 celsius_to_kelvin_offset = 273.15
 
 # path to 2020 Chevrolet Bolt dyno test data
-chevrolet_bolt_2020_dyno_data_path = "dyno_test_data/D3 2020 Chevrolet Bolt"
+chevrolet_bolt_2020_dyno_data_path = "dyno_test_data/2020 Chevrolet Bolt/Extended Datasets"
 
 # Initialize seaborn plot configuration
 sns.set_style("darkgrid")

@@ -33,7 +33,7 @@ cell_temp_column = "Cell_Temp[C]"
 soc_column = "HVBatt_SOC_CAN4__per"
 
 # Test data
-test_data_folder = "dyno_test_data/D3 2020 Chevrolet Bolt/"
+test_data_folder = "dyno_test_data/2020 Chevrolet Bolt/Extended Datasets/"
 test_data_file_name = "62009051 Test Data.txt"
 # test_data_file_name = "62009059 Test Data.txt"
 
