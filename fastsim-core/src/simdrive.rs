@@ -381,14 +381,21 @@ impl SimDrive {
                 res.state.soh.mark_fresh(|| format_dbg!())?;
             }
             self.step(|| format_dbg!())?;
-            self.solve_step().map_err(|err| {
+            match self.solve_step().map_err(|err| {
                 anyhow::anyhow!(format!(
                     "solver step failed: {}\ntime step: {:?}\n originating error: {}",
                     format_dbg!(),
                     self.veh.state.i,
                     err
                 ))
-            })?;
+            }) {
+                Ok(_) => {}
+                Err(err) => {
+                    println!("saving cycle since solver error occurred...");
+                    self.cyc.to_file("cyc_on_solver_error.yaml")?;
+                    return Err(err);
+                }
+            };
             // .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
             self.save_state(|| format_dbg!())?;
         }

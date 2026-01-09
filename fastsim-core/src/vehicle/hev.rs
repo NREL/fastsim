@@ -268,7 +268,13 @@ impl Powertrain for Box<HybridElectricVehicle> {
         let res_pwr_out_req = self
             .em
             .solve(em_pwr_out_req, true, dt)
-            .with_context(|| format_dbg!())?
+            .map_err(|err| {
+                anyhow!(format!(
+                    "em.solve failed with error {} at line {}",
+                    err,
+                    format_dbg!()
+                ))
+            })?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         // TODO: `res_pwr_out_req` probably does not include charging from the engine
         self.res

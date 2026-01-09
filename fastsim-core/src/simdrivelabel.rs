@@ -20,7 +20,13 @@ fn first_grtr(arr: &[f64], cut: f64) -> Option<usize> {
 /// Returns time [s] for 0-60 mph acceleration at max power
 pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
-    sd_accel.walk().with_context(|| format_dbg!())?;
+    sd_accel.walk().map_err(|err| {
+        anyhow::anyhow!(
+            "Acceleration simdrive walk failed with error {} at line {}",
+            err,
+            format_dbg!()
+        )
+    })?;
 
     // Extract speed values in mph
     let mut speed_mph: Vec<f64> = vec![];

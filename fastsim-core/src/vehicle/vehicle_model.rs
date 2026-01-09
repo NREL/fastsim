@@ -478,6 +478,13 @@ impl Vehicle {
 
     /// Solves for energy consumption
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        // println!(
+        //     "pwr_out_max in solve_powertrain: {}",
+        //     self.em()
+        //         .unwrap_or_else(|| 0.)
+        //         .pwr_out_max
+        //         .get::<si::watt>()
+        // );
         self.pt_type
             .solve(
                 *self.state.pwr_tractive.get_fresh(|| format_dbg!())?,

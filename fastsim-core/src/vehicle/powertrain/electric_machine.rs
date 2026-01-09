@@ -270,7 +270,7 @@ impl Powertrain for ElectricMachine {
     ) -> anyhow::Result<Option<si::Power>> {
         if pwr_out_req > si::Power::ZERO {
             ensure!(
-                pwr_out_req <= self.pwr_out_max,
+                almost_le_uom(&pwr_out_req, &self.pwr_out_max, None),
                 format!(
                     "{}\nedrv required power ({} kW) exceeds static max power ({} kW)",
                     format_dbg!(),
@@ -324,30 +324,38 @@ impl Powertrain for ElectricMachine {
         self.state.eff.update(
             uc::R
                 * match &self.eff_interp_achieved {
-                    InterpolatorEnum::Interp1D(interp) => interp
-                        .interpolate(&[{
-                            let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
-                                Ok({
-                                    if interp.data.grid[0]
-                                        .first()
-                                        .with_context(|| anyhow!(format_dbg!()))?
-                                        >= &0.
-                                    {
-                                        pwr_uncorrected.max(0.)
-                                    } else {
-                                        pwr_uncorrected
-                                    }
-                                })
-                            };
-                            pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
-                        }])
-                        .with_context(|| {
-                            anyhow!(
-                                "{}\n failed to calculate {}",
-                                format_dbg!(),
-                                stringify!(self.state.eff)
-                            )
-                        })?,
+                    InterpolatorEnum::Interp1D(interp) => {
+                        // println!("pwr_out_req: {}", pwr_out_req.get::<si::watt>());
+                        println!("self.pwr_out_max: {}", self.pwr_out_max.get::<si::watt>());
+                        // println!(
+                        //     "pwr_out_req / self.pwr_out_max: {}",
+                        //     (pwr_out_req / self.pwr_out_max).get::<si::ratio>()
+                        // );
+                        interp
+                            .interpolate(&[{
+                                let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
+                                    Ok({
+                                        if interp.data.grid[0]
+                                            .first()
+                                            .with_context(|| anyhow!(format_dbg!()))?
+                                            >= &0.
+                                        {
+                                            pwr_uncorrected.max(0.)
+                                        } else {
+                                            pwr_uncorrected
+                                        }
+                                    })
+                                };
+                                pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
+                            }])
+                            .with_context(|| {
+                                anyhow!(
+                                    "{}\n failed to calculate {}",
+                                    format_dbg!(),
+                                    stringify!(self.state.eff)
+                                )
+                            })?
+                    }
                     _ => {
                         return Err(Error::InitError(format_dbg!(
                             "Only 1-D interpolators are supported"
