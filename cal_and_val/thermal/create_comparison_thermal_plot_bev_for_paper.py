@@ -14,6 +14,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from pathlib import Path
 from copy import deepcopy
+from sklearn.metrics import root_mean_squared_error
 
 import fastsim as fsim
 from fastsim.demos.plot_utils import (
@@ -130,6 +131,7 @@ df = sd.to_dataframe()
 dyno_data_df = dyno_data_df[
     dyno_data_df[time_column] <= df["cyc.time_seconds"][-1]
 ]
+dyno_data_df = dyno_data_df[dyno_data_df[time_column] >= df["cyc.time_seconds"][0]]
 
 # plot figure
 sns.set_theme()
@@ -220,3 +222,14 @@ ax[2].set_ylabel("Speed [mph]")
 plt.tight_layout()
 plt.savefig(Path("./plots/res_pwr_" + test_data_file_name + ".svg"))
 plt.show()
+
+# calculate error percentages
+# dyno data has more time intervals than fastsim data, so limiting dyno data to fastsim time intervals for comparison
+dyno_data_df_fastsim_times_only = dyno_data_df[dyno_data_df[time_column].isin(df["cyc.time_seconds"])]
+# calculating the relative soc error over time
+soc_relative_error_over_time = ((dyno_data_df_fastsim_times_only[soc_column].to_numpy()
+        - (df["veh.pt_type.BEV.res.history.soc"] * 100).to_numpy()) / dyno_data_df_fastsim_times_only[soc_column].to_numpy()) * 100.
+# calculating the absolute soc error over time
+soc_abs_error_over_time = ((df["veh.pt_type.BEV.res.history.soc"] * 100)
+        - dyno_data_df_fastsim_times_only[soc_column].to_numpy()).to_numpy()
+rmse = root_mean_squared_error(dyno_data_df_fastsim_times_only[soc_column].to_numpy(), df["veh.pt_type.BEV.res.history.soc"] * 100)
