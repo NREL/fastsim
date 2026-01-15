@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fastsim"
-version = "3.0.5"
+version = "3.0.6"
 authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
@@ -90,7 +90,7 @@ dev = { features = ["dev"], solve-group = "default" }
 [tool.pixi.tasks]
 cargo_test = "cargo test --release"
 py_build = "maturin develop --release"
-py_test = { cmd = "pixi run -e dev pytest -v",  depends-on = ["py_build"] }
+py_test = { cmd = "pixi run -e dev pytest -v", depends-on = ["py_build"] }
 build_and_test = { depends-on = ["cargo_test", "py_test"] }
 fmt = "ruff format"
 lint = "pylint"
@@ -103,12 +103,17 @@ target-version = "py311"
 line-length = 100
 # Exclude specific paths
 exclude = [
-    "site-packages" # Ignore all errors in site-packages
+    "site-packages", # Ignore all errors in site-packages
 ]
 
 [tool.ruff.lint.isort]
 known-first-party = ["fastsim"]
-section-order = ["standard-library", "third-party", "first-party", "local-folder"]
+section-order = [
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -117,34 +122,34 @@ indent-style = "space"
 [tool.ruff.lint]
 preview = true
 select = [
-  "A", # flake8-builtins
-  "ARG", # flake8-unused-arguments
-  # "B", # flake8-bugbear
-  "C", # Pylint: Convention
-  "C4", # flake8-comprehensions
-  "C90", # mccabe
-  "COM", # flake8-commas
-  "D", # pydocstyle
-  "E", # Error
-  "F", # Pyflakes
-  "G", # flake8-logging-format
-  "I", # isort
-  "LOG", # flake8-logging
-  "N", # pep8-naming
-  "NPY", # numpy-specific
-  "PERF", # Perflint
-  # "PL", # Pylint
-  "Q", # flake8-quotes
-  "SIM", # flake8-simplify
-  # "TID", # flake8-tidy-imports (absolute imports)
-  "UP", # pyupgrade
-  "W" # Warning
+    "A",   # flake8-builtins
+    "ARG", # flake8-unused-arguments
+    # "B", # flake8-bugbear
+    "C",    # Pylint: Convention
+    "C4",   # flake8-comprehensions
+    "C90",  # mccabe
+    "COM",  # flake8-commas
+    "D",    # pydocstyle
+    "E",    # Error
+    "F",    # Pyflakes
+    "G",    # flake8-logging-format
+    "I",    # isort
+    "LOG",  # flake8-logging
+    "N",    # pep8-naming
+    "NPY",  # numpy-specific
+    "PERF", # Perflint
+    # "PL", # Pylint
+    "Q",   # flake8-quotes
+    "SIM", # flake8-simplify
+    # "TID", # flake8-tidy-imports (absolute imports)
+    "UP", # pyupgrade
+    "W",  # Warning
 ]
 ignore = [
-  "D400", # first-line-should-end-with-a-period
-  "E266", # Too many leading `#`
-  "D205", # blank line after summary
-  "N807",
+    "D400", # first-line-should-end-with-a-period
+    "E266", # Too many leading `#`
+    "D205", # blank line after summary
+    "N807",
 ]
 
 # [tool.ruff.lint.pydocstyle]

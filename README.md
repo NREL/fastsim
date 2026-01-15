@@ -8,7 +8,7 @@
 [![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NREL/fastsim)
 
 # Description
-This is the `fastim-3` version of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html).
+This is the `fastsim-3` version of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html).
 It introduces numerous new enhancements and features, including:
 - ~10x faster! -- when setting `save_interval` to `None`, which means only the state at the last 
   time step, which includes fuel consumption and/or battery depletion, among other useful 

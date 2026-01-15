@@ -453,6 +453,7 @@ impl SimDrive {
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
         let time_prev = *self.veh.state.time.get_stale(|| format_dbg!())?;
+        ensure!(self.cyc.time.len() > i);
         self.veh
             .state
             .time
