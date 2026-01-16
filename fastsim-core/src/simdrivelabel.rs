@@ -1515,7 +1515,13 @@ pub fn get_label_fe_phev(
         sd.reset_cumulative(|| format_dbg!())?;
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
-        sd.walk_once().with_context(|| format_dbg!())?;
+        sd.walk_once().map_err(|err| {
+            anyhow::anyhow!(format!(
+                "walk_once failed at line {} with error message {}",
+                format_dbg!(),
+                err
+            ))
+        })?;
 
         // charge depletion battery kW-hr
         phev_calc.trans_ess_kwh =
@@ -1531,7 +1537,13 @@ pub fn get_label_fe_phev(
         sd.reset_cumulative(|| format_dbg!())?;
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
-        sd.walk_once().with_context(|| format_dbg!())?;
+        sd.walk_once().map_err(|err| {
+            anyhow::anyhow!(format!(
+                "walk_once failed at line {} with error message {}",
+                format_dbg!(),
+                err
+            ))
+        })?;
 
         // charge sustaining fuel gallons
         let cs_fuel_energy_kwh = if let Some(fc) = sd.veh.fc() {
