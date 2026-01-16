@@ -79,8 +79,7 @@ pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     // Extract speed values in mph
     let mut speed_mph: Vec<f64> = vec![];
     for s in sd_accel.veh.history.speed_ach.clone() {
-        speed_mph
-            .push((s.get_fresh(|| format_dbg!())?.get::<si::mile_per_hour>() * 10.0).round() / 10.0)
+        speed_mph.push(s.get_fresh(|| format_dbg!())?.get::<si::mile_per_hour>())
     }
 
     // Extract time values in seconds
