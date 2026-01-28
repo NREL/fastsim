@@ -521,8 +521,6 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for FuelConverter {
         .try_into()
         .with_context(|| format_dbg!())?;
         fc.init()?;
-        fc.set_mass(None, MassSideEffect::None)
-            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(fc)
     }
 }
@@ -548,8 +546,6 @@ impl TryFrom<FCBuilder> for FuelConverter {
             history: Default::default(),
         };
         fc.init()?;
-        fc.set_mass(None, MassSideEffect::None)
-            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(fc)
     }
 }

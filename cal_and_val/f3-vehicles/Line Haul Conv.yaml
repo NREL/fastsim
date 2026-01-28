@@ -56,7 +56,6 @@ pt_type:
         strategy: Linear
         extrapolate: Error
       pwr_idle_fuel_watts: 0.0
-      save_interval: 1
       state:
         i: 0
         pwr_out_max_watts: 0.0
@@ -87,10 +86,10 @@ pt_type:
         energy_loss_joules: []
         fc_on: []
         time_on_seconds: []
+      save_interval: 1
     transmission:
       mass_kilograms: ~
       eff_interp: 0.8
-      save_interval: 1
       state:
         i: 0
         pwr_out_fwd_max_watts: 0.0
@@ -113,6 +112,7 @@ pt_type:
         energy_in_joules: []
         pwr_loss_watts: []
         energy_loss_joules: []
+      save_interval: 1
     mass_kilograms: ~
     alt_eff: 1.0
 chassis:

@@ -435,17 +435,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for HybridElectricVehicle {
             history: Default::default(),
         }));
         let mut hev = HybridElectricVehicle {
-            fs: {
-                let mut fs = FuelStorage {
-                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
-                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
-                    energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
-                    specific_energy: None,
-                    mass: None,
-                };
-                fs.set_mass(None, MassSideEffect::None)
-                    .with_context(|| anyhow!(format_dbg!()))?;
-                fs
+            fs: FuelStorage {
+                pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
+                specific_energy: None,
+                mass: None,
             },
             fc: FuelConverter::try_from(f2veh.clone())?,
             res: ReversibleEnergyStorage::try_from(f2veh.clone()).with_context(|| format_dbg!())?,
