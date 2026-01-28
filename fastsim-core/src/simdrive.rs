@@ -505,13 +505,13 @@ impl SimDrive {
                     || format_dbg!(),
                 )?;
                 self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt).map_err(|err| anyhow::anyhow!(format!(
-                            "set_ach_speed failed at line {} with cycle speed {:?}, cyc dist {:?}, and dt {:?} and originating error {}",
-                            format_dbg!(),
-                            self.cyc.speed[i],
-                            self.cyc.dist[i],
-                            dt,
-                            err
-                        )))?;
+                    "set_ach_speed failed at line {} with cycle speed {:?}, cyc dist {:?}, and dt {:?} and originating error {}",
+                    format_dbg!(),
+                    self.cyc.speed[i],
+                    self.cyc.dist[i],
+                    dt,
+                    err
+                )))?;
 
                 self.veh.solve_powertrain(dt).map_err(|err| {
                     anyhow::anyhow!(format!(

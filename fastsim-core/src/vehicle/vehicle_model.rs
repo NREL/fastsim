@@ -219,29 +219,29 @@ impl Mass for Vehicle {
             side_effect == MassSideEffect::None,
             "At the vehicle level, only `MassSideEffect::None` is allowed"
         );
-
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.mass = match new_mass {
+        self.mass = match (new_mass, derived_mass) {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
-            Some(new_mass) => {
-                if let Some(dm) = derived_mass {
-                    if dm != new_mass {
-                        self.expunge_mass_fields();
-                    }
+            (Some(new_mass), Some(dm)) => {
+                if dm != new_mass {
+                    self.expunge_mass_fields();
                 }
                 Some(new_mass)
             }
-            // Set using `derived_mass()`, failing if it returns `None`
-            None => Some(derived_mass.with_context(|| {
-                format!(
-                    "Not all mass fields in `{}` are set and no mass was provided.",
-                    stringify!(Vehicle)
-                )
-            })?),
+            (Some(new_mass), None) => Some(new_mass),
+            (None, Some(dm)) => Some(dm),
+            (None, None) => bail!(
+                "Not all mass fields in `{}` are set and no mass was provided.",
+                stringify!(Vehicle)
+            ),
         };
-        ensure!(self.mass > Some(0.0 * uc::KG), "Mass must be positive");
+        ensure!(
+            self.mass > Some(0.0 * uc::KG),
+            "{} mass must be positive",
+            stringify!(Vehicle)
+        );
         Ok(())
     }
 

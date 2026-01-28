@@ -2,8 +2,6 @@
 
 use std::collections::HashMap;
 
-use anyhow::Ok;
-
 // crate local
 use crate::drive_cycle::{Cycle, CYC_ACCEL};
 use crate::imports::*;
@@ -34,24 +32,24 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Resul
             Extrapolate::Clamp,
         )
         .map_err(|e| {
-            anyhow::anyhow!(format!(
+            anyhow!(
                 "Failed to create interpolator at line {} with originating error [{}]",
                 format_dbg!(),
                 e
-            ))
+            )
         })?;
 
         // Interpolate time at 60 mph
         let accel_time = interp.interpolate(&[60.0]).map_err(|e| {
-            anyhow::anyhow!(format!(
+            anyhow!(
                 "Failed to interpolate acceleration time at line {} with originating error [{}]",
                 format_dbg!(),
                 e
-            ))
+            )
         })?;
         Ok(accel_time)
     } else {
-        Err(anyhow::anyhow!("Vehicle does not reach 60 mph"))
+        bail!("Vehicle does not reach 60 mph")
     }
 }
 
@@ -79,7 +77,7 @@ pub fn run_accel(veh: &Vehicle) -> anyhow::Result<AccelData> {
 pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
     sd_accel.walk_once().map_err(|e| {
-        anyhow::anyhow!(
+        anyhow!(
             "Acceleration simdrive walk_once failed at line {} with originating error [{}]",
             format_dbg!(),
             e
@@ -101,7 +99,14 @@ pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
         .collect();
 
     let accel_data = AccelData { time_s, speed_mph };
-    let accel_time = get_0_to_60_time_from_accel_data(&accel_data).map_err(|err| anyhow::anyhow!("Vehicle {} doesn't reach 60 mph in the acceleration test at line {} with originating error [{}]", sd_accel.veh.name, format_dbg!(), err))?;
+    let accel_time = get_0_to_60_time_from_accel_data(&accel_data).map_err(|err| {
+        anyhow!(
+            "Vehicle {} doesn't reach 60 mph in the acceleration test at line {} with originating error [{}]",
+            sd_accel.veh.name,
+            format_dbg!(),
+            err
+        )
+    })?;
     Ok(accel_time)
 }
 
@@ -952,11 +957,11 @@ pub fn calculate_label_fuel_economy(
 
     // process acceleration test data
     label_fe.net_accel = get_0_to_60_time_from_accel_data(accel_data).map_err(|e| {
-        anyhow::anyhow!(format!(
+        anyhow!(
             "get_0_to_60_time_from_accel_data failed at line {} with originating error [{}]",
             format_dbg!(),
             e
-        ))
+        )
     })?;
 
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
@@ -978,11 +983,11 @@ fn run_simdrive_with_init_soc(
     sd.reset_step(|| format_dbg!())?;
     sd.clear();
     sd.walk_once().map_err(|e| {
-        anyhow::anyhow!(format!(
+        anyhow!(
             "run_simdrive_with_init_soc failed at line {} with originating error [{}]",
             format_dbg!(),
             e
-        ))
+        )
     })?;
     Ok(sd)
 }
@@ -1026,12 +1031,12 @@ pub fn run_label_simulations(
 
     for (k, val) in sd.iter_mut() {
         val.walk().map_err(|e| {
-            anyhow::anyhow!(format!(
+            anyhow!(
                 "run_label_simulations failed for key {} at line {} with originating error [{}]",
                 k,
                 format_dbg!(),
                 e
-            ))
+            )
         })?;
     }
 
@@ -1072,7 +1077,7 @@ pub fn run_label_simulations(
                 sd,
             ))
         } else {
-            Err(anyhow!("is_bev but powertrain not BEV"))
+            bail!("is_bev but powertrain not BEV")
         }
     } else if is_phev {
         // Get access to the PHEV powertrain
@@ -1279,7 +1284,7 @@ pub fn run_label_simulations(
             sd,
         ))
     } else {
-        Err(anyhow!("Unhandled powertrain type"))
+        bail!("Unhandled powertrain type")
     }
 }
 
@@ -1516,11 +1521,11 @@ pub fn get_label_fe_phev(
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
         sd.walk_once().map_err(|err| {
-            anyhow::anyhow!(format!(
+            anyhow!(
                 "walk_once failed at line {} with originating error {}",
                 format_dbg!(),
                 err
-            ))
+            )
         })?;
 
         // charge depletion battery kW-hr
@@ -1538,11 +1543,11 @@ pub fn get_label_fe_phev(
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
         sd.walk_once().map_err(|err| {
-            anyhow::anyhow!(format!(
+            anyhow!(
                 "walk_once failed at line {} with originating error {}",
                 format_dbg!(),
                 err
-            ))
+            )
         })?;
 
         // charge sustaining fuel gallons

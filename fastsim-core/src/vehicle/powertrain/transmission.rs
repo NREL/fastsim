@@ -169,7 +169,6 @@ impl Mass for Transmission {
         Ok(self.mass)
     }
 
-    // TODO: the side effect doesn't really do anything, hmmm
     fn set_mass(
         &mut self,
         new_mass: Option<si::Mass>,
@@ -177,18 +176,16 @@ impl Mass for Transmission {
     ) -> anyhow::Result<()> {
         match new_mass {
             Some(_) => {
-                ensure!(new_mass > Some(0.0 * uc::KG), "Mass must be positive");
+                ensure!(new_mass > Some(0.0 * uc::KG), "{} mass must be positive", stringify!(Transmission));
                 self.mass = new_mass;
             }
             None => {
                 self.mass = None;
             }
         }
-
         Ok(())
     }
 
-    // TODO this also doesn't really need to exist, except for the trait's sake
     fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
         Ok(self.mass)
     }
