@@ -474,7 +474,7 @@ impl SimDrive {
                     *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
                     || format_dbg!(),
                 )?;
-                self.set_ach_speed(self.cyc.speed[i], dt)
+                self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt)
                     .with_context(|| anyhow!(format_dbg!()))?;
                 if self.sim_params.trace_miss_opts.is_allow_checked() {
                     self.sim_params.trace_miss_tol.check_trace_miss(
@@ -649,7 +649,12 @@ impl SimDrive {
     /// # Arguments
     /// - `cyc_speed`: prescribed speed
     /// - `dt`: simulation time step size
-    pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
+    pub fn set_ach_speed(
+        &mut self,
+        cyc_speed: si::Velocity,
+        cyc_dist: si::Length,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
         let vs = &mut self.veh.state;
         vs.cyc_met.update(
             vs.pwr_tractive.get_fresh(|| format_dbg!())?
@@ -677,7 +682,53 @@ impl SimDrive {
                     // do nothing because `set_ach_speed` should be allowed to proceed to handle this
                 }
                 TraceMissOptions::AllowChecked => {
-                    // this will be handled later
+                    let ach_speed = *veh.state.speed_ach.get_fresh(|| format_dbg!())?;
+                    let ach_dist = *veh.state.dist.get_fresh(|| format_dbg!())?;
+                    self.sim_params
+                        .trace_miss_tol
+                        .check_trace_miss(cyc_speed, ach_speed, cyc_dist, ach_dist)
+                        .with_context(|| {
+                            format!(
+                                "{}\nFailed to meet speed trace.
+                    prescribed speed: {} mph
+                    prev speed_ach: {} mph
+                    pwr_tractive_for_cyc: {} kW
+                    pwr_tractive: {} kW
+                    pwr_prop_fwd_max: {} kW,
+                    pwr deficit: {} kW
+                    ",
+                                format_dbg!(),
+                                cyc_speed.get::<si::mile_per_hour>(),
+                                veh.state
+                                    .speed_ach
+                                    .get_stale(|| format_dbg!())
+                                    .unwrap()
+                                    .get::<si::mile_per_hour>(),
+                                veh.state
+                                    .pwr_tractive_for_cyc
+                                    .get_fresh(|| format_dbg!())
+                                    .unwrap()
+                                    .get::<si::kilowatt>(),
+                                veh.state
+                                    .pwr_tractive
+                                    .get_fresh(|| format_dbg!())
+                                    .unwrap()
+                                    .get::<si::kilowatt>(),
+                                veh.state
+                                    .pwr_prop_fwd_max
+                                    .get_fresh(|| format_dbg!())
+                                    .unwrap()
+                                    .get::<si::kilowatt>(),
+                                (*veh.state.pwr_tractive.get_fresh(|| format_dbg!()).unwrap()
+                                    - *veh
+                                        .state
+                                        .pwr_prop_fwd_max
+                                        .get_fresh(|| format_dbg!())
+                                        .unwrap())
+                                .get::<si::kilowatt>()
+                                .format_eng(None),
+                            )
+                        })?;
                 }
                 TraceMissOptions::Error => bail!(
                     "{}\nFailed to meet speed trace.
@@ -782,7 +833,7 @@ pwr deficit: {} kW
         // Rerun again to ensure we have updated achieved speed and state
         self.set_pwr_prop_for_speed(speed_ach_floored, speed_prev, dt)
             .with_context(|| format_dbg!())?;
-        self.set_ach_speed(speed_ach, dt)
+        self.set_ach_speed(speed_ach, cyc_dist, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
 
         if self.sim_params.trace_miss_opts == TraceMissOptions::Correct {
@@ -849,16 +900,16 @@ impl SetCumulative for SimDrive {
 pub struct TraceMissTolerance {
     /// if the vehicle falls this far behind trace in terms of absolute
     /// difference and [TraceMissOptions::is_allow_checked], fail
-    tol_dist: si::Length,
+    pub tol_dist: si::Length,
     /// if the vehicle falls this far behind trace in terms of fractional
     /// difference and [TraceMissOptions::is_allow_checked], fail
-    tol_dist_frac: si::Ratio,
+    pub tol_dist_frac: si::Ratio,
     /// if the vehicle falls this far behind instantaneous speed and
     /// [TraceMissOptions::is_allow_checked], fail
-    tol_speed: si::Velocity,
+    pub tol_speed: si::Velocity,
     /// if the vehicle falls this far behind instantaneous speed in terms of
     /// fractional difference and [TraceMissOptions::is_allow_checked], fail
-    tol_speed_frac: si::Ratio,
+    pub tol_speed_frac: si::Ratio,
 }
 
 impl TraceMissTolerance {
@@ -870,7 +921,7 @@ impl TraceMissTolerance {
         ach_dist: si::Length,
     ) -> anyhow::Result<()> {
         ensure!(
-            cyc_speed - ach_speed < self.tol_speed,
+            (cyc_speed - ach_speed).abs() < self.tol_speed,
             "{}\n{}\n{}",
             format_dbg!(cyc_speed),
             format_dbg!(ach_speed),
@@ -879,7 +930,7 @@ impl TraceMissTolerance {
         // if condition to prevent divide-by-zero errors
         if cyc_speed > self.tol_speed {
             ensure!(
-                (cyc_speed - ach_speed) / cyc_speed < self.tol_speed_frac,
+                (cyc_speed - ach_speed).abs() / cyc_speed < self.tol_speed_frac,
                 "{}\n{}\n{}",
                 format_dbg!(cyc_speed),
                 format_dbg!(ach_speed),
@@ -887,7 +938,7 @@ impl TraceMissTolerance {
             )
         }
         ensure!(
-            (cyc_dist - ach_dist) < self.tol_dist,
+            (cyc_dist - ach_dist).abs() < self.tol_dist,
             "{}\n{}\n{}",
             format_dbg!(cyc_dist),
             format_dbg!(ach_dist),
@@ -896,7 +947,7 @@ impl TraceMissTolerance {
         // if condition to prevent checking early in cycle
         if cyc_dist > self.tol_dist * 5.0 {
             ensure!(
-                (cyc_dist - ach_dist) / cyc_dist < self.tol_dist_frac,
+                (cyc_dist - ach_dist).abs() / cyc_dist < self.tol_dist_frac,
                 "{}\n{}\n{}",
                 format_dbg!(cyc_dist),
                 format_dbg!(ach_dist),

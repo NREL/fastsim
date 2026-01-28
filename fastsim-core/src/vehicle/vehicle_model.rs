@@ -181,6 +181,7 @@ impl Mass for Vehicle {
         new_mass: Option<si::Mass>,
         side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
+        // TODO: add a check for whether mass is negative!!
         ensure!(
             side_effect == MassSideEffect::None,
             "At the vehicle level, only `MassSideEffect::None` is allowed"
