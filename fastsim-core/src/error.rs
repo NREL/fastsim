@@ -13,7 +13,5 @@ pub enum Error {
     #[error("{0}")]
     NinterpError(String),
     #[error("{0}")]
-    SetAchSpeed(String),
-    #[error("{0}")]
     Other(String),
 }

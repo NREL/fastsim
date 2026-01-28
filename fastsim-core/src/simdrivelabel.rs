@@ -18,36 +18,56 @@ fn first_grtr(arr: &[f64], cut: f64) -> Option<usize> {
 }
 
 /// Get the 0 to 60 mph accelaration time from the given times and speeds.
-pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> Option<f64> {
+pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Result<f64> {
     // Check if vehicle reaches 60 mph
+    let first_ind_after_60_mph =
+        first_grtr(&accel_data.speed_mph, 60.).with_context(|| format_dbg!())?;
+
+    // // cut off speed_mph to only include values through first value greater than 60 mph
+    // let mut updated_speed_mph = accel_data.speed_mph.clone();
+
+    // updated_speed_mph.truncate(first_ind_after_60_mph + 1);
+
+    // let mut updated_time_s = accel_data.time_s.clone();
+
+    // // ensure time_s matches speed_mph length
+    // updated_time_s.truncate(first_ind_after_60_mph + 1);
+
     if accel_data.speed_mph.iter().any(|&x| x >= 60.0) {
         // Create interpolator from speed to time
-        let interp = {
-            let wrapped_interp = Interp1D::new(
-                Array::from_vec(accel_data.speed_mph.clone()),
-                Array::from_vec(accel_data.time_s.clone()),
-                strategy::Linear,
-                Extrapolate::Clamp,
-            );
-            if let Ok(interp) = wrapped_interp {
-                interp
-            } else {
-                return None;
-            }
-        };
+        let interp = Interp1D::new(
+            ArrayView::from(&accel_data.speed_mph[..first_ind_after_60_mph + 1]),
+            ArrayView::from(&accel_data.time_s[..first_ind_after_60_mph + 1]),
+            strategy::Linear,
+            Extrapolate::Clamp,
+        )
+        .map_err(|e| {
+            anyhow::anyhow!(format!(
+                "Failed to create interpolator at line {} with originating error {}",
+                format_dbg!(),
+                e
+            ))
+        })?;
 
         // Interpolate time at 60 mph
-        let accel_time = {
-            let result = interp.interpolate(&[60.0]);
-            if let Ok(accel_time_s) = result {
-                accel_time_s
-            } else {
-                return None;
-            }
-        };
-        Some(accel_time)
+        let accel_time = interp.interpolate(&[60.0]).map_err(|e| {
+            anyhow::anyhow!(format!(
+                "Failed to interpolate acceleration time at line {} with originating error {}",
+                format_dbg!(),
+                e
+            ))
+        })?;
+        // let accel_time = {
+        //     let result = interp.interpolate(&[60.0]);
+        //     if let Ok(accel_time_s) = result {
+        //         accel_time_s
+        //     } else {
+        //         return Err(anyhow::anyhow!("Failed to interpolate acceleration time"));
+        //     }
+        // };
+        Ok(accel_time)
     } else {
-        None
+        Err(anyhow::anyhow!("Vehicle does not reach 60 mph"))
     }
 }
 
@@ -74,13 +94,41 @@ pub fn run_accel(veh: &Vehicle) -> anyhow::Result<AccelData> {
 /// Returns time [s] for 0-60 mph acceleration at max power
 pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
-    sd_accel.walk_once().map_err(|err| {
-        anyhow::anyhow!(
-            "Acceleration simdrive walk_once failed with error {} at line {}",
-            err,
-            format_dbg!()
-        )
-    })?;
+    match sd_accel.walk_once() {
+        Ok(_) => {}
+        Err(err) => {
+            println!("Saving cycle since error occured.");
+            // sd_accel.veh.to_file("error_vehicle.yaml").unwrap();
+            // save cycle as well as vehicle name, fc kw, gas tank size, and battery size
+            sd_accel
+                .cyc
+                .to_file(format!(
+                    "error_cycle_{}_{}_{}.yaml",
+                    sd_accel.veh.name,
+                    match sd_accel.veh.fc() {
+                        Some(fc) => fc.pwr_out_max.get::<si::kilowatt>(),
+                        None => 0.0,
+                    },
+                    sd_accel.veh.res().map_or(0.0, |res| {
+                        res.energy_capacity.get::<si::kilowatt_hour>()
+                    }),
+                ))
+                .unwrap();
+            return Err(anyhow::anyhow!(
+                "Acceleration simdrive walk_once failed with error {} at line {}",
+                err,
+                format_dbg!()
+            ));
+        }
+    };
+
+    // .map_err(|err| {
+    //     anyhow::anyhow!(
+    //         "Acceleration simdrive walk_once failed with error {} at line {}",
+    //         err,
+    //         format_dbg!()
+    //     )
+    // })?;
 
     // Extract speed values in mph
     let mut speed_mph: Vec<f64> = vec![];
@@ -90,35 +138,44 @@ pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
         )
     }
 
-    let first_ind_after_60_mph = first_grtr(&speed_mph, 60.).with_context(|| format_dbg!())?;
-
-    // cut off speed_mph to only include values through first value greater than 60 mph
-    speed_mph.truncate(first_ind_after_60_mph + 1);
-
     // Extract time values in seconds
-    let mut time_s: Vec<f64> = sd_accel
+    let time_s: Vec<f64> = sd_accel
         .cyc
         .time
         .iter()
         .map(|t| t.get::<si::second>())
         .collect();
 
-    // ensure time_s matches speed_mph length
-    time_s.truncate(first_ind_after_60_mph + 1);
-
     let accel_data = AccelData { time_s, speed_mph };
-    let result = get_0_to_60_time_from_accel_data(&accel_data);
-    match result {
-        Some(accel_time_s) => Ok(accel_time_s),
-        None => {
+    let result = match get_0_to_60_time_from_accel_data(&accel_data) {
+        Ok(accel_time_s) => accel_time_s,
+        Err(_) => {
             // Vehicle doesn't reach 60 mph
+            sd_accel
+                .cyc
+                .to_file(format!(
+                    "error_cycle_{}_{}_{}.yaml",
+                    sd_accel.veh.name,
+                    match sd_accel.veh.fc() {
+                        Some(fc) => fc.pwr_out_max.get::<si::kilowatt>(),
+                        None => 0.0,
+                    },
+                    sd_accel.veh.res().map_or(0.0, |res| {
+                        res.energy_capacity.get::<si::kilowatt_hour>()
+                    }),
+                ))
+                .unwrap();
             println!(
                 "Warning: Vehicle '{}' doesn't reach 60 mph in the acceleration test",
                 sd_accel.veh.name
             );
-            Ok(f64::NAN)
+            return Err(anyhow::anyhow!(
+                "Vehicle '{}' doesn't reach 60 mph in the acceleration test",
+                sd_accel.veh.name
+            ));
         }
-    }
+    };
+    Ok(result)
 }
 
 // const MPH_PER_MPS: f64 = 2.2369362921;
@@ -967,10 +1024,13 @@ pub fn calculate_label_fuel_economy(
     }
 
     // process acceleration test data
-    label_fe.net_accel = match get_0_to_60_time_from_accel_data(accel_data) {
-        Some(accel_s) => accel_s,
-        None => f64::NAN,
-    };
+    label_fe.net_accel = get_0_to_60_time_from_accel_data(accel_data).map_err(|e| {
+        anyhow::anyhow!(format!(
+            "get_0_to_60_time_from_accel_data failed at line {} with originating error {}",
+            format_dbg!(),
+            e
+        ))
+    })?;
 
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     label_fe.res_found = String::from("model needs to be implemented for this");
@@ -990,7 +1050,13 @@ fn run_simdrive_with_init_soc(
     sd.reset_cumulative(|| format_dbg!())?;
     sd.reset_step(|| format_dbg!())?;
     sd.clear();
-    sd.walk_once().with_context(|| format_dbg!())?;
+    sd.walk_once().map_err(|e| {
+        anyhow::anyhow!(format!(
+            "run_simdrive_with_init_soc failed at line {} with originating error {}",
+            format_dbg!(),
+            e
+        ))
+    })?;
     Ok(sd)
 }
 
@@ -1032,7 +1098,14 @@ pub fn run_label_simulations(
     sd.insert("hwy", SimDrive::new(veh.clone(), cyc["hwy"].clone(), None));
 
     for (k, val) in sd.iter_mut() {
-        val.walk().with_context(|| format_dbg!(k))?;
+        val.walk().map_err(|e| {
+            anyhow::anyhow!(format!(
+                "run_label_simulations failed for key {} at line {} with originating error {}",
+                k,
+                format_dbg!(),
+                e
+            ))
+        })?;
     }
 
     // find year-based adjustment parameters

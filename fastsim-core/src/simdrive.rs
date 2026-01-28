@@ -231,7 +231,14 @@ impl SimDrive {
                         .with_context(|| format_dbg!())?
                         .soc_bal_iters
                         .increment(1, || format_dbg!())?;
-                    self.walk_once().with_context(|| format_dbg!())?;
+                    self.walk_once().map_err(|err| {
+                        anyhow::anyhow!(format!(
+                            "HEV walk_once failed: {}\ntime step: {:?}\n originating error: {}",
+                            format_dbg!(),
+                            self.veh.state.i,
+                            err
+                        ))
+                    })?;
                     let soc_final = self
                         .veh
                         .res()
@@ -372,9 +379,6 @@ impl SimDrive {
         };
 
         loop {
-            if *self.veh.state.i.get_fresh(|| format_dbg!())? == len - 1 {
-                break;
-            }
             self.check_and_reset(|| format_dbg!())?;
             self.veh.state.mass.mark_fresh(|| format_dbg!())?;
             if let Some(res) = self.veh.res_mut() {
@@ -391,13 +395,17 @@ impl SimDrive {
             }) {
                 Ok(_) => {}
                 Err(err) => {
-                    println!("saving cycle since solver error occurred...");
-                    self.cyc.to_file("cyc_on_solver_error.yaml")?;
+                    // println!("saving cycle and vehicle since solver error occurred...");
+                    // self.cyc.to_file("cyc_on_solver_error.yaml")?;
+                    // self.veh.to_file("veh_on_solver_error.yaml")?;
                     return Err(err);
                 }
             };
             // .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
             self.save_state(|| format_dbg!())?;
+            if *self.veh.state.i.get_fresh(|| format_dbg!())? == len - 1 {
+                break;
+            }
         }
 
         if let Some(hvac) = hvac {
@@ -505,25 +513,58 @@ impl SimDrive {
                     *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
                     || format_dbg!(),
                 )?;
-                self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt)
-                    .map_err(|err| {
-                        anyhow::anyhow!(format!(
+                match self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        println!("Saving cycle since error occured.");
+                        // sd_accel.veh.to_file("error_vehicle.yaml").unwrap();
+                        // save cycle as well as vehicle name, fc kw, gas tank size, and battery size
+                        self.cyc
+                            .to_file(format!(
+                                "error_cycle_{}_{}_{}_from_set_ach_speed.yaml",
+                                self.veh.name,
+                                match self.veh.fc() {
+                                    Some(fc) => fc.pwr_out_max.get::<si::kilowatt>(),
+                                    None => 0.0,
+                                },
+                                self.veh.res().map_or(0.0, |res| {
+                                    res.energy_capacity.get::<si::kilowatt_hour>()
+                                }),
+                            ))
+                            .unwrap();
+                        self.veh
+                            .to_file(format!(
+                                "error_veh_{}_{}_{}_from_set_ach_speed.yaml",
+                                self.veh.name,
+                                match self.veh.fc() {
+                                    Some(fc) => fc.pwr_out_max.get::<si::kilowatt>(),
+                                    None => 0.0,
+                                },
+                                self.veh.res().map_or(0.0, |res| {
+                                    res.energy_capacity.get::<si::kilowatt_hour>()
+                                }),
+                            ))
+                            .unwrap();
+                        return Err(anyhow::anyhow!(format!(
                             "set_ach_speed failed at line {} with cycle speed {:?}, cyc dist {:?}, and dt {:?} and originating error {}",
                             format_dbg!(),
                             self.cyc.speed[i],
                             self.cyc.dist[i],
                             dt,
                             err
-                        ))
-                    })?;
-                if self.sim_params.trace_miss_opts.is_allow_checked() {
-                    self.sim_params.trace_miss_tol.check_trace_miss(
-                        self.cyc.speed[i],
-                        *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
-                        self.cyc.dist[i],
-                        *self.veh.state.dist.get_fresh(|| format_dbg!())?,
-                    )?;
-                }
+                        )));
+                    }
+                };
+
+                // TODO: figure out why this is here specifically, and whether it's ok for it to be after set_cumulative
+                // if self.sim_params.trace_miss_opts.is_allow_checked() {
+                //     self.sim_params.trace_miss_tol.check_trace_miss(
+                //         self.cyc.speed[i],
+                //         *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
+                //         self.cyc.dist[i],
+                //         *self.veh.state.dist.get_fresh(|| format_dbg!())?,
+                //     )?;
+                // }
                 self.veh.solve_powertrain(dt).map_err(|err| {
                     anyhow::anyhow!(format!(
                         "solve_powertrain failed at line {} with originating error {}",
@@ -537,6 +578,14 @@ impl SimDrive {
             }
         }
         self.set_cumulative(dt, || format_dbg!())?;
+        if self.sim_params.trace_miss_opts.is_allow_checked() {
+            self.sim_params.trace_miss_tol.check_trace_miss(
+                self.cyc.speed[i],
+                *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
+                self.cyc.dist[i],
+                *self.veh.state.dist.get_fresh(|| format_dbg!())?,
+            )?;
+        }
         Ok(())
     }
 

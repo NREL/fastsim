@@ -315,9 +315,21 @@ impl Powertrain for ElectricMachine {
             );
         }
 
-        self.state
-            .pwr_out_req
-            .update(pwr_out_req, || format_dbg!())?;
+        // if pwr_out_req is almost less than or equal to pwr_out_max, but technically ever so slightly bigger
+        // set to pwr_out_max to avoid extrapolation errors
+        if (pwr_out_req > self.pwr_out_max) && almost_le_uom(&pwr_out_req, &self.pwr_out_max, None)
+        {
+            self.state
+                .pwr_out_req
+                .update(self.pwr_out_max, || format_dbg!())?;
+        } else {
+            self.state
+                .pwr_out_req
+                .update(pwr_out_req, || format_dbg!())?;
+        }
+
+        // updated pwr_out_req since it may have been changed slightly above
+        let pwr_out_req = *self.state.pwr_out_req.get_fresh(|| format_dbg!())?;
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
@@ -356,13 +368,20 @@ impl Powertrain for ElectricMachine {
                         };
                         pwr(raw_lookup_pwr_ratio)?
                     }])
-                    .with_context(|| {
+                    .map_err(|e| {
                         anyhow!(
-                            "{}\n failed to calculate {}",
-                            format_dbg!(),
-                            stringify!(self.state.eff)
+                            "failed to calculate efficiency with error {} at line {}",
+                            e,
+                            format_dbg!()
                         )
                     })?,
+                // .with_context(|| {
+                //     anyhow!(
+                //         "{}\n failed to calculate {}",
+                //         format_dbg!(),
+                //         stringify!(self.state.eff)
+                //     )
+                // })?,
                 _ => {
                     return Err(Error::InitError(format_dbg!(
                         "Only 1-D interpolators are supported"

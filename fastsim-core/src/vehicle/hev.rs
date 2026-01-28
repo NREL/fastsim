@@ -348,6 +348,19 @@ impl Powertrain for Box<HybridElectricVehicle> {
         self.fc
             .solve(fc_pwr_out_req, fc_on, dt)
             .with_context(|| format_dbg!())?;
+
+        // Mark all EM state fields as stale before calling solve
+        // This allows em.solve() to update them again
+        // TODO: figure out if this is the proper fix for em states being updated twice leading to an error
+        // (maybe there is a different fix, or em shouldn't be updated twice and that needs to be fixed)
+        // self.em.state.pwr_out_req.mark_stale();
+        // self.em.state.pwr_mech_prop_out.mark_stale();
+        // self.em.state.eff.mark_stale();
+        // self.em.state.pwr_mech_dyn_brake.mark_stale();
+        // self.em.state.pwr_elec_prop_in.mark_stale();
+        // self.em.state.pwr_elec_dyn_brake.mark_stale();
+        // self.em.state.pwr_loss.mark_stale();
+
         let res_pwr_out_req = self
             .em
             .solve(em_pwr_out_req, true, dt)
