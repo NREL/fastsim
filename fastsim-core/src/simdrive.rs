@@ -900,35 +900,19 @@ impl SetCumulative for SimDrive {
 pub struct TraceMissTolerance {
     /// if the vehicle falls this far behind trace in terms of absolute
     /// difference and [TraceMissOptions::is_allow_checked], fail
-    tol_dist: si::Length,
+    pub tol_dist: si::Length,
     /// if the vehicle falls this far behind trace in terms of fractional
     /// difference and [TraceMissOptions::is_allow_checked], fail
-    tol_dist_frac: si::Ratio,
+    pub tol_dist_frac: si::Ratio,
     /// if the vehicle falls this far behind instantaneous speed and
     /// [TraceMissOptions::is_allow_checked], fail
-    tol_speed: si::Velocity,
+    pub tol_speed: si::Velocity,
     /// if the vehicle falls this far behind instantaneous speed in terms of
     /// fractional difference and [TraceMissOptions::is_allow_checked], fail
-    tol_speed_frac: si::Ratio,
+    pub tol_speed_frac: si::Ratio,
 }
 
 impl TraceMissTolerance {
-    pub fn set_tol_dist(&mut self, tol: si::Length) {
-        self.tol_dist = tol;
-    }
-
-    pub fn set_tol_dist_frac(&mut self, tol: si::Ratio) {
-        self.tol_dist_frac = tol;
-    }
-
-    pub fn set_tol_speed(&mut self, tol: si::Velocity) {
-        self.tol_speed = tol;
-    }
-
-    pub fn set_tol_speed_frac(&mut self, tol: si::Ratio) {
-        self.tol_speed_frac = tol;
-    }
-
     fn check_trace_miss(
         &self,
         cyc_speed: si::Velocity,
