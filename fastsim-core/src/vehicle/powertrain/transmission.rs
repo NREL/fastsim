@@ -12,15 +12,14 @@ pub struct Transmission {
     /// interpolator for calculating [Self] efficiency as a function of the following variants:  
     /// - 0d -- constant
     pub eff_interp: InterpolatorEnumOwned<f64>,
-
-    /// time step interval between saves. 1 is a good option. If None, no saving occurs.
-    pub save_interval: Option<usize>,
     /// struct for tracking current state
     #[serde(default)]
     pub state: TransmissionState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     pub history: TransmissionStateHistoryVec,
+    /// time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
 }
 
 impl Transmission {
@@ -33,9 +32,9 @@ impl Transmission {
         let mut transmission = Self {
             mass,
             eff_interp,
-            save_interval,
             state: Default::default(),
             history: Default::default(),
+            save_interval,
         };
         transmission.init()?;
         Ok(transmission)
@@ -176,7 +175,15 @@ impl Mass for Transmission {
         new_mass: Option<si::Mass>,
         _side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
-        self.mass = new_mass;
+        match new_mass {
+            Some(_) => {
+                ensure!(new_mass > Some(0.0 * uc::KG), "Mass must be positive");
+                self.mass = new_mass;
+            }
+            None => {
+                self.mass = None;
+            }
+        }
 
         Ok(())
     }
@@ -197,9 +204,9 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Transmission {
         let transmission = Transmission {
             mass: None,
             eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
-            save_interval: Some(1),
             state: Default::default(),
             history: Default::default(),
+            save_interval: Some(1),
         };
         Ok(transmission)
     }

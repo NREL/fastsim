@@ -349,26 +349,14 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .solve(fc_pwr_out_req, fc_on, dt)
             .with_context(|| format_dbg!())?;
 
-        // Mark all EM state fields as stale before calling solve
-        // This allows em.solve() to update them again
-        // TODO: figure out if this is the proper fix for em states being updated twice leading to an error
-        // (maybe there is a different fix, or em shouldn't be updated twice and that needs to be fixed)
-        // self.em.state.pwr_out_req.mark_stale();
-        // self.em.state.pwr_mech_prop_out.mark_stale();
-        // self.em.state.eff.mark_stale();
-        // self.em.state.pwr_mech_dyn_brake.mark_stale();
-        // self.em.state.pwr_elec_prop_in.mark_stale();
-        // self.em.state.pwr_elec_dyn_brake.mark_stale();
-        // self.em.state.pwr_loss.mark_stale();
-
         let res_pwr_out_req = self
             .em
             .solve(em_pwr_out_req, true, dt)
             .map_err(|err| {
                 anyhow!(format!(
-                    "em.solve failed with error {} at line {}",
-                    err,
-                    format_dbg!()
+                    "em.solve failed at line {} with originating error [{}]",
+                    format_dbg!(),
+                    err
                 ))
             })?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
@@ -524,6 +512,7 @@ impl Mass for HybridElectricVehicle {
                 )
             })?),
         };
+        ensure!(self.mass > Some(0.0 * uc::KG), "Mass must be positive");
         Ok(())
     }
 
@@ -912,9 +901,9 @@ impl RESGreedyWithDynamicBuffers {
         speed_fc_forced_on: Option<si::Velocity>,
         frac_pwr_demand_fc_forced_on: Option<si::Ratio>,
         frac_of_most_eff_pwr_to_run_fc: Option<si::Ratio>,
-        save_interval: Option<usize>,
         temp_fc_forced_on: Option<si::Temperature>,
         temp_fc_allowed_off: Option<si::Temperature>,
+        save_interval: Option<usize>,
     ) -> anyhow::Result<Self> {
         let mut res_greedy_w_dynamic_buffers = Self {
             speed_soc_disch_buffer,
@@ -927,11 +916,11 @@ impl RESGreedyWithDynamicBuffers {
             speed_fc_forced_on,
             frac_pwr_demand_fc_forced_on,
             frac_of_most_eff_pwr_to_run_fc,
-            save_interval,
             temp_fc_forced_on,
             temp_fc_allowed_off,
             state: RGWDBState::default(),
             history: RGWDBStateHistoryVec::default(),
+            save_interval,
         };
         res_greedy_w_dynamic_buffers.init()?;
         Ok(res_greedy_w_dynamic_buffers)

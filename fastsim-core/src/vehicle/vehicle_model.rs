@@ -177,9 +177,9 @@ impl Vehicle {
             hvac,
             mass,
             pwr_aux_base,
-            save_interval,
             state: VehicleState::default(),
             history: VehicleStateHistoryVec::default(),
+            save_interval,
         };
         veh.init()?;
         Ok(veh)
@@ -215,7 +215,6 @@ impl Mass for Vehicle {
         new_mass: Option<si::Mass>,
         side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
-        // TODO: add a check for whether mass is negative!!
         ensure!(
             side_effect == MassSideEffect::None,
             "At the vehicle level, only `MassSideEffect::None` is allowed"
@@ -242,6 +241,7 @@ impl Mass for Vehicle {
                 )
             })?),
         };
+        ensure!(self.mass > Some(0.0 * uc::KG), "Mass must be positive");
         Ok(())
     }
 
@@ -486,13 +486,6 @@ impl Vehicle {
 
     /// Solves for energy consumption
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        // println!(
-        //     "pwr_out_max in solve_powertrain: {}",
-        //     self.em()
-        //         .unwrap_or_else(|| 0.)
-        //         .pwr_out_max
-        //         .get::<si::watt>()
-        // );
         self.pt_type
             .solve(
                 *self.state.pwr_tractive.get_fresh(|| format_dbg!())?,
@@ -501,7 +494,7 @@ impl Vehicle {
             )
             .map_err(|err| {
                 anyhow::anyhow!(
-                    "solve() failed at line {} with originating error {}",
+                    "solve() failed at line {} with originating error [{}]",
                     format_dbg!(),
                     err
                 )

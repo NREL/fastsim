@@ -1,5 +1,4 @@
 use super::{utils::ScalingMethods, *};
-use crate::uc::R;
 use crate::utils::interp::InterpolatorMutMethods;
 
 #[allow(unused_imports)]
@@ -37,15 +36,14 @@ pub struct ReversibleEnergyStorage {
     pub min_soc: si::Ratio,
     /// Hard limit on maximum SOC, e.g. 0.95
     pub max_soc: si::Ratio,
-
-    /// Time step interval at which history is saved
-    pub save_interval: Option<usize>,
     /// struct for tracking current state
     #[serde(default)]
     pub state: ReversibleEnergyStorageState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     pub history: ReversibleEnergyStorageStateHistoryVec,
+    /// Time step interval at which history is saved
+    pub save_interval: Option<usize>,
 }
 
 #[pyo3_api]
@@ -150,9 +148,9 @@ impl ReversibleEnergyStorage {
             eff_interp,
             min_soc,
             max_soc,
-            save_interval,
             state: ReversibleEnergyStorageState::default(),
             history: ReversibleEnergyStorageStateHistoryVec::default(),
+            save_interval,
         };
         reversible_energy_storage.init()?;
         Ok(reversible_energy_storage)
@@ -772,29 +770,43 @@ impl Mass for ReversibleEnergyStorage {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
-            if derived_mass != new_mass {
-                match side_effect {
-                    MassSideEffect::Extensive => {
-                        self.energy_capacity = self.specific_energy.ok_or_else(|| {
-                            anyhow!(
-                                "{}\nExpected `self.specific_energy` to be `Some`.",
-                                format_dbg!()
-                            )
-                        })? * new_mass;
-                    }
-                    MassSideEffect::Intensive => {
-                        self.specific_energy = Some(self.energy_capacity / new_mass);
-                    }
-                    MassSideEffect::None => {
-                        self.specific_energy = None;
+
+        self.mass = match new_mass {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            Some(new_mass) => {
+                if let Some(dm) = derived_mass {
+                    if dm != new_mass {
+                        // self.expunge_mass_fields();
+                        match side_effect {
+                            MassSideEffect::Extensive => {
+                                self.energy_capacity = self.specific_energy.ok_or_else(|| {
+                                    anyhow!(
+                                        "{}\nExpected `self.specific_energy` to be `Some`.",
+                                        format_dbg!()
+                                    )
+                                })? * new_mass;
+                            }
+                            MassSideEffect::Intensive => {
+                                self.specific_energy = Some(self.energy_capacity / new_mass);
+                            }
+                            MassSideEffect::None => {
+                                self.specific_energy = None;
+                            }
+                        }
                     }
                 }
+                Some(new_mass)
             }
-        } else if new_mass.is_none() {
-            self.specific_energy = None;
-        }
-        self.mass = new_mass;
+            // Set using `derived_mass()`, failing if it returns `None`
+            None => Some(derived_mass.with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(FuelStorage)
+                )
+            })?),
+        };
+
+        ensure!(self.mass > Some(0.0 * uc::KG), "Mass must be positive");
 
         Ok(())
     }

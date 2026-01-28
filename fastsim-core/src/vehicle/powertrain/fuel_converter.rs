@@ -37,14 +37,14 @@ pub struct FuelConverter {
     pub(crate) pwr_for_peak_eff: si::Power,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     pub pwr_idle_fuel: si::Power,
-    /// time step interval between saves. 1 is a good option. If None, no saving occurs.
-    pub save_interval: Option<usize>,
     /// struct for tracking current state
     #[serde(default)]
     pub state: FuelConverterState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     pub history: FuelConverterStateHistoryVec,
+    /// time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
 }
 
 #[pyo3_api]
@@ -119,9 +119,9 @@ impl FuelConverter {
             eff_interp_from_pwr_out,
             pwr_for_peak_eff,
             pwr_idle_fuel,
-            save_interval,
             state: FuelConverterState::default(),
             history: FuelConverterStateHistoryVec::default(),
+            save_interval,
         };
         fc.init()?;
         Ok(fc)
@@ -201,29 +201,43 @@ impl Mass for FuelConverter {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
-            if derived_mass != new_mass {
-                match side_effect {
-                    MassSideEffect::Extensive => {
-                        self.pwr_out_max = self.specific_pwr.ok_or_else(|| {
-                            anyhow!(
-                                "{}\nExpected `self.specific_pwr` to be `Some`.",
-                                format_dbg!()
-                            )
-                        })? * new_mass;
-                    }
-                    MassSideEffect::Intensive => {
-                        self.specific_pwr = Some(self.pwr_out_max / new_mass);
-                    }
-                    MassSideEffect::None => {
-                        self.specific_pwr = None;
+
+        self.mass = match new_mass {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            Some(new_mass) => {
+                if let Some(dm) = derived_mass {
+                    if dm != new_mass {
+                        // self.expunge_mass_fields();
+                        match side_effect {
+                            MassSideEffect::Extensive => {
+                                self.pwr_out_max = self.specific_pwr.with_context(|| {
+                                    format!(
+                                        "{}\nExpected `self.specific_pwr` to be `Some`.",
+                                        format_dbg!()
+                                    )
+                                })? * new_mass;
+                            }
+                            MassSideEffect::Intensive => {
+                                self.specific_pwr = Some(self.pwr_out_max / new_mass);
+                            }
+                            MassSideEffect::None => {
+                                self.specific_pwr = None;
+                            }
+                        }
                     }
                 }
+                Some(new_mass)
             }
-        } else if new_mass.is_none() {
-            self.specific_pwr = None;
-        }
-        self.mass = new_mass;
+            // Set using `derived_mass()`, failing if it returns `None`
+            None => Some(derived_mass.with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(FuelConverter)
+                )
+            })?),
+        };
+
+        ensure!(self.mass > Some(0.0 * uc::KG), "Mass must be positive");
         Ok(())
     }
 

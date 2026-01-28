@@ -104,6 +104,7 @@ impl Mass for BatteryElectricVehicle {
                 )
             })?),
         };
+        ensure!(self.mass > Some(0.0 * uc::KG), "Mass must be positive");
         Ok(())
     }
 
@@ -168,7 +169,7 @@ impl Powertrain for BatteryElectricVehicle {
             .solve(pwr_in_transmission, true, dt)
             .map_err(|err| anyhow::anyhow!(
                 format!(
-                    "error at line {}: \ntransmission `pwr_out_req`: {} kW\n`self.transmission.state.pwr_out_fwd_max`: {} kW \n originating error: {}", 
+                    "error at line {}: \ntransmission `pwr_out_req`: {} kW\n`self.transmission.state.pwr_out_fwd_max`: {} kW \n with originating error [{}]", 
                     format_dbg!(),
                     pwr_out_req.get::<si::kilowatt>().format_eng(None),
                     self.transmission

@@ -370,18 +370,11 @@ impl Powertrain for ElectricMachine {
                     }])
                     .map_err(|e| {
                         anyhow!(
-                            "failed to calculate efficiency with error {} at line {}",
-                            e,
-                            format_dbg!()
+                            "failed to calculate efficiency at line {} with originating error [{}]",
+                            format_dbg!(),
+                            e
                         )
                     })?,
-                // .with_context(|| {
-                //     anyhow!(
-                //         "{}\n failed to calculate {}",
-                //         format_dbg!(),
-                //         stringify!(self.state.eff)
-                //     )
-                // })?,
                 _ => {
                     return Err(Error::InitError(format_dbg!(
                         "Only 1-D interpolators are supported"
@@ -537,29 +530,42 @@ impl Mass for ElectricMachine {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
-            if derived_mass != new_mass {
-                match side_effect {
-                    MassSideEffect::Extensive => {
-                        self.pwr_out_max = self.specific_pwr.with_context(|| {
-                            format!(
-                                "{}\nExpected `self.specific_pwr` to be `Some`.",
-                                format_dbg!()
-                            )
-                        })? * new_mass;
-                    }
-                    MassSideEffect::Intensive => {
-                        self.specific_pwr = Some(self.pwr_out_max / new_mass);
-                    }
-                    MassSideEffect::None => {
-                        self.specific_pwr = None;
+        self.mass = match new_mass {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            Some(new_mass) => {
+                if let Some(dm) = derived_mass {
+                    if dm != new_mass {
+                        // self.expunge_mass_fields();
+                        match side_effect {
+                            MassSideEffect::Extensive => {
+                                self.pwr_out_max = self.specific_pwr.with_context(|| {
+                                    format!(
+                                        "{}\nExpected `self.specific_pwr` to be `Some`.",
+                                        format_dbg!()
+                                    )
+                                })? * new_mass;
+                            }
+                            MassSideEffect::Intensive => {
+                                self.specific_pwr = Some(self.pwr_out_max / new_mass);
+                            }
+                            MassSideEffect::None => {
+                                self.specific_pwr = None;
+                            }
+                        }
                     }
                 }
+                Some(new_mass)
             }
-        } else if new_mass.is_none() {
-            self.specific_pwr = None;
-        }
-        self.mass = new_mass;
+            // Set using `derived_mass()`, failing if it returns `None`
+            None => Some(derived_mass.with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(ElectricMachine)
+                )
+            })?),
+        };
+
+        ensure!(self.mass > Some(0.0 * uc::KG), "Mass must be positive");
         Ok(())
     }
 

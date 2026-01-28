@@ -238,6 +238,7 @@ impl Mass for ConventionalVehicle {
                 )
             })?),
         };
+        ensure!(self.mass > Some(0.0 * uc::KG), "Mass must be positive");
         Ok(())
     }
 
