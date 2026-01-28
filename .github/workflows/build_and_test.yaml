@@ -7,15 +7,13 @@ jobs:
     name: build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
     strategy:
       fail-fast: false
-      # NOTE: In the matrix below, we call out macos 13 and latest (> 13) explicitly. This is to enable running on both Intel and Apple Silicon for Mac.
-      # As of this writing, MacOS 13 is Intel and MacOS 14 and above is Apple Silicon. Ideally, the Apple transition to their new chip occurs fast and
-      # we can drop macos-13 checks and then just use 'latest'.
+      # NOTE: In the matrix below, we call out macos 15 and latest (> 15) explicitly. This is to enable running on both Intel and Apple Silicon for Mac.
       matrix:
         os:
           - base: ubuntu
             version: latest
           - base: macos
-            version: "13"
+            version: "15-intel"
             arch: "x86_64"
           - base: macos
             version: "latest"
@@ -47,13 +45,13 @@ jobs:
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
         if: matrix.os.base == 'macos' && matrix.os.version == 'latest'
 
-      - name: install rust target for MacOS 13 (Intel Mac)
+      - name: install rust target for MacOS 15-intel (Intel Mac)
         run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
-        if: matrix.os.base == 'macos' && matrix.os.version == '13'
+        if: matrix.os.base == 'macos' && matrix.os.version == '15-intel'
 
-      - name: Update minimum supported MacOS for Wheels for MacOS 13 (Intel Mac)
+      - name: Update minimum supported MacOS for Wheels for MacOS 15-intel (Intel Mac)
         run: echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
-        if: matrix.os.base == 'macos' && matrix.os.version == '13'
+        if: matrix.os.base == 'macos' && matrix.os.version == '15-intel'
 
       - name: set up python
         uses: actions/setup-python@v4
