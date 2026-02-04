@@ -53,7 +53,7 @@ jobs:
           python-version: "3.${{ matrix.python-version }}"
 
       - name: run cargo tests
-        run: cargo test
+        run: cd rust && cargo test
 
       - name: Upgrade to latest pip
         run: python -m pip install --upgrade pip
