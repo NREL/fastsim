@@ -2478,9 +2478,9 @@ class SimDrivePost(object):
             # Assign values to output dict for positive and negative energy variable names
             search = prog.search(var)
             output[search[1] + '_kj' + search[2] +
-                   '_pos'] = np.trapz(np.array(tempvars[var + '_pos']), np.array(self.cyc.time_s))
+                   '_pos'] = np.trapezoid(np.array(tempvars[var + '_pos']), np.array(self.cyc.time_s))
             output[search[1] + '_kj' + search[2] +
-                   '_neg'] = np.trapz(np.array(tempvars[var + '_neg']), np.array(self.cyc.time_s))
+                   '_neg'] = np.trapezoid(np.array(tempvars[var + '_neg']), np.array(self.cyc.time_s))
 
         output['dist_miles_final'] = sum(np.array(self.dist_mi))
         if sum(np.array(self.fs_kwh_out_ach)) > 0:

@@ -12,7 +12,6 @@ from pathlib import Path
 import re
 from contextlib import contextmanager
 import os
-from pkg_resources import get_distribution
 import pathlib
 import shutil
 

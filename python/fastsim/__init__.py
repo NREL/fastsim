@@ -40,8 +40,8 @@ DEFAULT_LOGGING_CONFIG = dict(
 logging.basicConfig(**DEFAULT_LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
-from pkg_resources import get_distribution
-__version__ = get_distribution("fastsim").version
+from importlib.metadata import version
+__version__ = version('fastsim')
 
 __doc__ += "\nhttps://pypi.org/project/fastsim/"
 __doc__ += "\nhttps://www.nrel.gov/transportation/fastsim.html"

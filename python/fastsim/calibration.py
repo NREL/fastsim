@@ -68,7 +68,7 @@ def get_error_val(
     assert len(model) == len(test) == len(
         time_steps), f"{len(model)}, {len(test)}, {len(time_steps)}"
 
-    return np.trapz(y=abs(model - test), x=time_steps) / (time_steps[-1] - time_steps[0])
+    return np.trapezoid(y=abs(model - test), x=time_steps) / (time_steps[-1] - time_steps[0])
 
 @dataclass
 class ModelObjectives(object):
