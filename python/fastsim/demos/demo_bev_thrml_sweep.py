@@ -227,7 +227,7 @@ SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 # if environment var `SAVE_PLOTS=true` is set, plots are saved
 SAVE_PLOTS = os.environ.get("SAVE_PLOTS", "true").lower() == "true"
 
-# plot ECR v. init for a sweep of amb
+############################################## plot ECR v. init for a sweep of amb
 te_amb_step = int(len(te_amb_arr_k) / 10)
 te_amb_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k][::te_amb_step]
 
@@ -404,7 +404,7 @@ if SAVE_PLOTS:
 if SHOW_PLOTS:
     plt.show()
 
-# plot ECR v. init for a sweep of amb using relative percentages rather than absolute temperatures
+######################################## plot ECR v. init for a sweep of amb using relative percentages rather than absolute temperatures
 ecr_comparison_udds = df_baseline_comp[(df_baseline_comp[cyc_key] == "udds") & (df_baseline_comp[te_amb_key] == baseline_temp) & (df_baseline_comp[te_init_key] == baseline_temp)][ecr_key].values[0]
 
 te_amb_step = int(len(te_amb_arr_k) / 10)
@@ -585,6 +585,206 @@ plt.tight_layout()
 
 if SAVE_PLOTS:
     fig3.savefig(Path(__file__).parent / "HWFET ECR v. Amb. and Init. Temp Percentage Difference.svg")
+
+if SHOW_PLOTS:
+    plt.show()
+
+############################################## plot ECR v. init for a sweep of amb
+te_amb_step = int(len(te_amb_arr_k) / 10)
+te_amb_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k][::te_amb_step]
+
+
+fig, ax = plt.subplots()
+fig.suptitle("UDDS ΔECR per ΔInit. Temp. [°C]")
+index = 0
+for te_amb_deg_c in te_amb_short_deg_c:
+    dotted_init_temps, solid_init_temps = get_reasonable_init_ranges(te_amb_deg_c, np.array(df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "udds")][
+            "te_init [°C]"
+        ]))
+
+    ax.plot(
+        df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "udds")][
+            "te_init [°C]"
+        ][1:],
+        df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "udds")][
+            "ECR [kW-hr/100mi]"
+        ].diff().dropna() /  df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "udds")][
+            "te_init [°C]"
+        ].diff().dropna(),
+        linestyle='dashed',
+        color = lighter_colors[index],
+    )
+
+    ax.plot(
+        np.array(df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "udds")][
+            "te_init [°C]"
+        ])[solid_init_temps[0]][1:],
+        np.diff(np.array(df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "udds")][
+            "ECR [kW-hr/100mi]"
+        ])[solid_init_temps[0]]) /  np.diff(np.array(df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "udds")][
+            "te_init [°C]"
+        ])[solid_init_temps[0]]),
+        marker=".",
+        linestyle='solid',
+        label=f"{te_amb_deg_c:.1f}",
+        color = colors[index],
+    )
+    index += 1
+ax.set_xlabel("Cab. and Batt. Init. Temp. [°C]")
+ax.set_ylabel("ΔECR [kW-hr/100mi] / ΔInit. Temp. [°C]")
+ax.set_ylim(bottom=-1.0, top = 0.6)
+ax.legend(title="te_amb [°C]")
+plt.tight_layout()
+
+if SAVE_PLOTS:
+    fig.savefig(Path(__file__).parent / "UDDS dECR per dInit.svg")
+
+if SHOW_PLOTS:
+    plt.show()
+
+fig1, ax1 = plt.subplots()
+fig1.suptitle("HWFET ΔECR per ΔInit. Temp. [°C]")
+index = 0
+for te_amb_deg_c in te_amb_short_deg_c:
+    dotted_init_temps, solid_init_temps = get_reasonable_init_ranges(te_amb_deg_c, np.array(df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_init [°C]"
+        ]))
+    ax1.plot(
+        df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_init [°C]"
+        ][1:],
+        df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "hwfet")][
+            "ECR [kW-hr/100mi]"
+        ].diff().dropna() / df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_init [°C]"
+        ].diff().dropna(),
+        linestyle='dashed',
+        color = lighter_colors[index],
+    )
+    ax1.plot(
+        np.array(df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_init [°C]"
+        ])[solid_init_temps][1:],
+        np.diff(np.array(df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "hwfet")][
+            "ECR [kW-hr/100mi]"
+        ])[solid_init_temps]) / np.diff(np.array(df_res[(df_res["te_amb [°C]"] == te_amb_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_init [°C]"
+        ])[solid_init_temps]),
+        marker=".",
+        linestyle='solid',
+        label=f"{te_amb_deg_c:.1f}",
+        color = colors[index],
+    )
+    index += 1
+ax1.set_xlabel("Cab. and Batt. Init. Temp. [°C]")
+ax1.set_ylabel("ΔECR [kW-hr/100mi] / ΔInit. Temp. [°C]")
+ax1.set_ylim(bottom=-0.7, top = 0.3)
+ax1.legend(title="te_amb [°C]")
+plt.tight_layout()
+
+if SAVE_PLOTS:
+    fig1.savefig(Path(__file__).parent / "HWFET dECR per dInit.svg")
+
+if SHOW_PLOTS:
+    plt.show()
+
+te_init_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k]
+
+
+te_init_step = int(len(te_amb_arr_k) / 10)
+te_init_short_deg_c = [te_init_k - celsius_to_kelvin for te_init_k in te_batt_and_cab_init_arr_k][
+    ::te_init_step
+]
+
+# plot ECR v. amb for a sweep of init
+fig2, ax2 = plt.subplots()
+fig2.suptitle("UDDS ΔECR per ΔAmbient Temp. [°C]")
+index = 0
+for te_init_deg_c in te_init_short_deg_c:
+    dotted_amb_temps, solid_amb_temps = get_reasonable_amb_ranges(te_init_deg_c, np.array(df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "udds")][
+            "te_amb [°C]"
+        ]))
+    ax2.plot(
+        df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "udds")][
+            "te_amb [°C]"
+        ][1:],
+        df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "udds")][
+            "ECR [kW-hr/100mi]"
+        ].diff().dropna() / df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "udds")][
+            "te_amb [°C]"
+        ].diff().dropna(),
+        linestyle='dashed',
+        color = lighter_colors[index],
+    )
+    ax2.plot(
+        np.array(df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "udds")][
+            "te_amb [°C]"
+        ])[solid_amb_temps][1:],
+        np.diff(np.array(df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "udds")][
+            "ECR [kW-hr/100mi]"
+        ])[solid_amb_temps]) / np.diff(np.array(df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "udds")][
+            "te_amb [°C]"
+        ])[solid_amb_temps]),
+        marker=".",
+        linestyle='solid',
+        label=f"{te_init_deg_c:.1f}",
+        color = colors[index],
+    )
+    index += 1
+ax2.set_xlabel("Ambient Temp. [°C]")
+ax2.set_ylabel("ΔECR [kW-hr/100mi] / ΔAmbient Temp. [°C]")
+ax2.set_ylim(bottom=-1.0, top = 0.6)
+ax2.legend(title="te_init [°C]")
+plt.tight_layout()
+
+if SAVE_PLOTS:
+    fig2.savefig(Path(__file__).parent / "UDDS dECR per dAmb.svg")
+
+if SHOW_PLOTS:
+    plt.show()
+
+fig3, ax3 = plt.subplots()
+fig3.suptitle("HWFET ΔECR per ΔAmbient Temp. [°C]")
+index = 0
+for te_init_deg_c in te_init_short_deg_c:
+    dotted_amb_temps, solid_amb_temps = get_reasonable_amb_ranges(te_init_deg_c, np.array(df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_amb [°C]"
+        ]))
+    ax3.plot(
+        df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_amb [°C]"
+        ][1:],
+        df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "hwfet")][
+            "ECR [kW-hr/100mi]"
+        ].diff().dropna() / df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_amb [°C]"
+        ].diff().dropna(),
+        linestyle='dashed',
+        color = lighter_colors[index],
+    )
+    ax3.plot(
+        np.array(df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_amb [°C]"
+        ])[solid_amb_temps][1:],
+        np.diff(np.array(df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "hwfet")][
+            "ECR [kW-hr/100mi]"
+        ])[solid_amb_temps]) / np.diff(np.array(df_res[(df_res["te_init [°C]"] == te_init_deg_c) & (df_res["cycle"] == "hwfet")][
+            "te_amb [°C]"
+        ])[solid_amb_temps]),
+        marker=".",
+        linestyle='solid',
+        label=f"{te_init_deg_c:.1f}",
+        color = colors[index],
+    )
+    index += 1
+ax3.set_xlabel("Ambient Temp. [°C]")
+ax3.set_ylabel("ΔECR [kW-hr/100mi] / ΔAmbient Temp. [°C]")
+ax3.set_ylim(bottom=-0.7, top = 0.3)
+ax3.legend(title="te_init [°C]")
+plt.tight_layout()
+
+if SAVE_PLOTS:
+    fig3.savefig(Path(__file__).parent / "HWFET dECR per dAmb.svg")
 
 if SHOW_PLOTS:
     plt.show()
