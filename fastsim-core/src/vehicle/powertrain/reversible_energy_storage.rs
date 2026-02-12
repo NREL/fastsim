@@ -36,15 +36,14 @@ pub struct ReversibleEnergyStorage {
     pub min_soc: si::Ratio,
     /// Hard limit on maximum SOC, e.g. 0.95
     pub max_soc: si::Ratio,
-
-    /// Time step interval at which history is saved
-    pub save_interval: Option<usize>,
     /// struct for tracking current state
     #[serde(default)]
     pub state: ReversibleEnergyStorageState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     pub history: ReversibleEnergyStorageStateHistoryVec,
+    /// Time step interval at which history is saved
+    pub save_interval: Option<usize>,
 }
 
 #[pyo3_api]
@@ -124,6 +123,37 @@ impl ReversibleEnergyStorage {
     #[pyo3(name = "set_default_pwr_soc_and_temp_interp")]
     fn set_default_pwr_soc_and_temp_interp_py(&mut self) -> anyhow::Result<()> {
         self.set_default_pwr_soc_and_temp_interp()
+    }
+}
+
+impl ReversibleEnergyStorage {
+    /// Constructor for ReversibleEnergyStorage
+    pub fn new(
+        thrml: RESThermalOption,
+        mass: Option<si::Mass>,
+        specific_energy: Option<si::SpecificEnergy>,
+        pwr_out_max: si::Power,
+        energy_capacity: si::Energy,
+        eff_interp: EffInterp,
+        min_soc: si::Ratio,
+        max_soc: si::Ratio,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut reversible_energy_storage = Self {
+            thrml,
+            mass,
+            specific_energy,
+            pwr_out_max,
+            energy_capacity,
+            eff_interp,
+            min_soc,
+            max_soc,
+            state: ReversibleEnergyStorageState::default(),
+            history: ReversibleEnergyStorageStateHistoryVec::default(),
+            save_interval,
+        };
+        reversible_energy_storage.init()?;
+        Ok(reversible_energy_storage)
     }
 }
 
@@ -740,30 +770,41 @@ impl Mass for ReversibleEnergyStorage {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
-            if derived_mass != new_mass {
-                match side_effect {
-                    MassSideEffect::Extensive => {
-                        self.energy_capacity = self.specific_energy.ok_or_else(|| {
-                            anyhow!(
-                                "{}\nExpected `self.specific_energy` to be `Some`.",
-                                format_dbg!()
-                            )
-                        })? * new_mass;
-                    }
-                    MassSideEffect::Intensive => {
-                        self.specific_energy = Some(self.energy_capacity / new_mass);
-                    }
-                    MassSideEffect::None => {
-                        self.specific_energy = None;
+        self.mass = match (new_mass, derived_mass) {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            (Some(new_mass), Some(dm)) => {
+                if dm != new_mass {
+                    match side_effect {
+                        MassSideEffect::Extensive => {
+                            self.energy_capacity = self.specific_energy.ok_or_else(|| {
+                                anyhow!(
+                                    "{}\nExpected `self.specific_energy` to be `Some`.",
+                                    format_dbg!()
+                                )
+                            })? * new_mass;
+                        }
+                        MassSideEffect::Intensive => {
+                            self.specific_energy = Some(self.energy_capacity / new_mass);
+                        }
+                        MassSideEffect::None => {
+                            self.specific_energy = None;
+                        }
                     }
                 }
-            }
-        } else if new_mass.is_none() {
-            self.specific_energy = None;
-        }
-        self.mass = new_mass;
-
+                Some(new_mass)
+            },
+            (Some(new_mass), None) => Some(new_mass),
+            (None, Some(dm)) => Some(dm),
+            (None, None) => bail!(
+                "Not all mass fields in `{}` are set and no mass was provided.",
+                stringify!(ReversibleEnergyStorage)
+            ),
+        };
+        ensure!(
+            self.mass > Some(0.0 * uc::KG),
+            "{} mass must be positive",
+            stringify!(ReversibleEnergyStorage)
+        );
         Ok(())
     }
 
@@ -1118,6 +1159,27 @@ impl RESLumpedThermal {
         Default::default()
     }
 }
+
+impl RESLumpedThermal {
+    pub fn new(
+        heat_capacitance: si::HeatCapacity,
+        conductance_to_amb: si::ThermalConductance,
+        conductance_to_cab: si::ThermalConductance,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut res_lumped_thermal = Self {
+            heat_capacitance,
+            conductance_to_amb,
+            conductance_to_cab,
+            state: RESLumpedThermalState::default(),
+            history: RESLumpedThermalStateHistoryVec::default(),
+            save_interval,
+        };
+        res_lumped_thermal.init()?;
+        Ok(res_lumped_thermal)
+    }
+}
+
 impl SerdeAPI for RESLumpedThermal {}
 impl Init for RESLumpedThermal {}
 impl HistoryMethods for RESLumpedThermal {

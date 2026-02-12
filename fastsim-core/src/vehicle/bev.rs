@@ -19,6 +19,24 @@ pub struct BatteryElectricVehicle {
 #[pyo3_api]
 impl BatteryElectricVehicle {}
 
+impl BatteryElectricVehicle {
+    pub fn new(
+        res: ReversibleEnergyStorage,
+        em: ElectricMachine,
+        transmission: Transmission,
+        mass: Option<si::Mass>,
+    ) -> anyhow::Result<Self> {
+        let mut bev = Self {
+            res,
+            em,
+            transmission,
+            mass,
+        };
+        bev.init()?;
+        Ok(bev)
+    }
+}
+
 impl Init for BatteryElectricVehicle {
     fn init(&mut self) -> Result<(), Error> {
         self.res
@@ -68,24 +86,26 @@ impl Mass for BatteryElectricVehicle {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.mass = match new_mass {
+        self.mass = match (new_mass, derived_mass) {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
-            Some(new_mass) => {
-                if let Some(dm) = derived_mass {
-                    if dm != new_mass {
-                        self.expunge_mass_fields();
-                    }
+            (Some(new_mass), Some(dm)) => {
+                if dm != new_mass {
+                    self.expunge_mass_fields();
                 }
                 Some(new_mass)
             }
-            // Set using `derived_mass()`, failing if it returns `None`
-            None => Some(derived_mass.with_context(|| {
-                format!(
-                    "Not all mass fields in `{}` are set and no mass was provided.",
-                    stringify!(BatteryElectricVehicle)
-                )
-            })?),
+            (Some(new_mass), None) => Some(new_mass),
+            (None, Some(dm)) => Some(dm),
+            (None, None) => bail!(
+                "Not all mass fields in `{}` are set and no mass was provided.",
+                stringify!(BatteryElectricVehicle)
+            ),
         };
+        ensure!(
+            self.mass > Some(0.0 * uc::KG),
+            "{} mass must be positive",
+            stringify!(BatteryElectricVehicle)
+        );
         Ok(())
     }
 
@@ -148,9 +168,9 @@ impl Powertrain for BatteryElectricVehicle {
         let pwr_in_em = self
             .em
             .solve(pwr_in_transmission, true, dt)
-            .with_context(|| {
+            .map_err(|err| anyhow::anyhow!(
                 format!(
-                    "{}\ntransmission `pwr_out_req`: {} kW\n`self.transmission.state.pwr_out_fwd_max`: {} kW",
+                    "error at line {}: \ntransmission `pwr_out_req`: {} kW\n`self.transmission.state.pwr_out_fwd_max`: {} kW \n with originating error [{}]", 
                     format_dbg!(),
                     pwr_out_req.get::<si::kilowatt>().format_eng(None),
                     self.transmission
@@ -159,9 +179,7 @@ impl Powertrain for BatteryElectricVehicle {
                         .get_fresh(|| format_dbg!())
                         .unwrap()
                         .get::<si::kilowatt>()
-                        .format_eng(None)
-                )
-            })?
+                        .format_eng(None), err)))?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         self.res
             .solve(pwr_in_em, dt)

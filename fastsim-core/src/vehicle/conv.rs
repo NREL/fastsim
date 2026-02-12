@@ -20,6 +20,26 @@ pub struct ConventionalVehicle {
 #[pyo3_api]
 impl ConventionalVehicle {}
 
+impl ConventionalVehicle {
+    pub fn new(
+        fs: FuelStorage,
+        fc: FuelConverter,
+        transmission: Transmission,
+        mass: Option<si::Mass>,
+        alt_eff: si::Ratio,
+    ) -> anyhow::Result<Self> {
+        let mut conv = Self {
+            fs,
+            fc,
+            transmission,
+            mass,
+            alt_eff,
+        };
+        conv.init()?;
+        Ok(conv)
+    }
+}
+
 impl SerdeAPI for ConventionalVehicle {}
 impl Init for ConventionalVehicle {
     fn init(&mut self) -> Result<(), Error> {
@@ -146,7 +166,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
     fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<ConventionalVehicle> {
         let conv = ConventionalVehicle {
             fs: {
-                let mut fs = FuelStorage {
+                let fs = FuelStorage {
                     pwr_out_max: f2veh.fs_max_kw * uc::KW,
                     pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
                     energy_capacity: f2veh.fs_kwh * uc::KWH,
@@ -155,8 +175,6 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
                     ),
                     mass: None,
                 };
-                fs.set_mass(None, MassSideEffect::None)
-                    .with_context(|| anyhow!(format_dbg!()))?;
                 fs
             },
             fc: FuelConverter::try_from(f2veh.clone())?,
@@ -200,24 +218,26 @@ impl Mass for ConventionalVehicle {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.mass = match new_mass {
+        self.mass = match (new_mass, derived_mass) {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
-            Some(new_mass) => {
-                if let Some(dm) = derived_mass {
-                    if dm != new_mass {
-                        self.expunge_mass_fields();
-                    }
+            (Some(new_mass), Some(dm)) => {
+                if dm != new_mass {
+                    self.expunge_mass_fields();
                 }
                 Some(new_mass)
             }
-            // Set using `derived_mass()`, failing if it returns `None`
-            None => Some(derived_mass.with_context(|| {
-                format!(
-                    "Not all mass fields in `{}` are set and no mass was provided.",
-                    stringify!(ConventionalVehicle)
-                )
-            })?),
+            (Some(new_mass), None) => Some(new_mass),
+            (None, Some(dm)) => Some(dm),
+            (None, None) => bail!(
+                "Not all mass fields in `{}` are set and no mass was provided.",
+                stringify!(ConventionalVehicle)
+            ),
         };
+        ensure!(
+            self.mass > Some(0.0 * uc::KG),
+            "{} mass must be positive",
+            stringify!(ConventionalVehicle)
+        );
         Ok(())
     }
 

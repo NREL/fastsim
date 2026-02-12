@@ -231,7 +231,14 @@ impl SimDrive {
                         .with_context(|| format_dbg!())?
                         .soc_bal_iters
                         .increment(1, || format_dbg!())?;
-                    self.walk_once().with_context(|| format_dbg!())?;
+                    self.walk_once().map_err(|err| {
+                        anyhow::anyhow!(format!(
+                            "HEV walk_once failed at line {}\ntime step: {:?}\n with originating error: [{}]",
+                            format_dbg!(),
+                            self.veh.state.i,
+                            err
+                        ))
+                    })?;
                     let soc_final = self
                         .veh
                         .res()
@@ -378,8 +385,14 @@ impl SimDrive {
                 res.state.soh.mark_fresh(|| format_dbg!())?;
             }
             self.step(|| format_dbg!())?;
-            self.solve_step()
-                .with_context(|| format!("{}\ntime step: {:?}", format_dbg!(), self.veh.state.i))?;
+            self.solve_step().map_err(|err| {
+                anyhow::anyhow!(format!(
+                    "solver step failed at line {}\ntime step: {:?}\n with originating error: [{}]",
+                    format_dbg!(),
+                    self.veh.state.i,
+                    err
+                ))
+            })?;
             self.save_state(|| format_dbg!())?;
             if *self.veh.state.i.get_fresh(|| format_dbg!())? == len - 1 {
                 break;
@@ -440,10 +453,27 @@ impl SimDrive {
         let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
         let time_prev = *self.veh.state.time.get_stale(|| format_dbg!())?;
         ensure!(self.cyc.time.len() > i);
-        self.veh.state.time.update(
-            *self.cyc.time.get(i).with_context(|| format_dbg!())?,
-            || format_dbg!(),
-        )?;
+        self.veh
+            .state
+            .time
+            .update(
+                *self.cyc.time.get(i).ok_or({
+                    anyhow::anyhow!(format!(
+                        "failed to get time for index {} at line {}",
+                        i,
+                        format_dbg!()
+                    ))
+                })?,
+                || format_dbg!(),
+            )
+            .map_err(|err| {
+                anyhow::anyhow!(format!(
+                    "updating time failed at line {}\ntime step: {:?}\n with originating error [{}]",
+                    format_dbg!(),
+                    self.veh.state.i,
+                    err
+                ))
+            })?;
         let dt = *self.veh.state.time.get_fresh(|| format_dbg!())? - time_prev;
         // maybe make controls like:
         // ```
@@ -474,25 +504,36 @@ impl SimDrive {
                     *self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?,
                     || format_dbg!(),
                 )?;
-                self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt)
-                    .with_context(|| anyhow!(format_dbg!()))?;
-                if self.sim_params.trace_miss_opts.is_allow_checked() {
-                    self.sim_params.trace_miss_tol.check_trace_miss(
-                        self.cyc.speed[i],
-                        *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
-                        self.cyc.dist[i],
-                        *self.veh.state.dist.get_fresh(|| format_dbg!())?,
-                    )?;
-                }
-                self.veh
-                    .solve_powertrain(dt)
-                    .with_context(|| anyhow!(format_dbg!()))?;
+                self.set_ach_speed(self.cyc.speed[i], self.cyc.dist[i], dt).map_err(|err| anyhow::anyhow!(format!(
+                    "set_ach_speed failed at line {} with cycle speed {:?}, cyc dist {:?}, and dt {:?} and originating error {}",
+                    format_dbg!(),
+                    self.cyc.speed[i],
+                    self.cyc.dist[i],
+                    dt,
+                    err
+                )))?;
+
+                self.veh.solve_powertrain(dt).map_err(|err| {
+                    anyhow::anyhow!(format!(
+                        "solve_powertrain failed at line {} with originating error [{}]",
+                        format_dbg!(),
+                        err
+                    ))
+                })?;
             }
             true => {
                 self.veh.mark_non_thermal_fresh()?;
             }
         }
         self.set_cumulative(dt, || format_dbg!())?;
+        if self.sim_params.trace_miss_opts.is_allow_checked() {
+            self.sim_params.trace_miss_tol.check_trace_miss(
+                self.cyc.speed[i],
+                *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
+                self.cyc.dist[i],
+                *self.veh.state.dist.get_fresh(|| format_dbg!())?,
+            )?;
+        }
         Ok(())
     }
 

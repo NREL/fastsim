@@ -124,6 +124,36 @@ impl HybridElectricVehicle {
 #[pyo3_api]
 impl HybridElectricVehicle {}
 
+impl HybridElectricVehicle {
+    pub fn new(
+        res: ReversibleEnergyStorage,
+        fs: FuelStorage,
+        fc: FuelConverter,
+        em: ElectricMachine,
+        transmission: Transmission,
+        pt_cntrl: HEVPowertrainControls,
+        aux_cntrl: HEVAuxControls,
+        mass: Option<si::Mass>,
+        sim_params: HEVSimulationParams,
+    ) -> anyhow::Result<Self> {
+        let mut hev = Self {
+            res,
+            fs,
+            fc,
+            em,
+            transmission,
+            pt_cntrl,
+            aux_cntrl,
+            mass,
+            sim_params,
+            soc_bal_iter_history: Default::default(),
+            soc_bal_iters: Default::default(),
+        };
+        hev.init()?;
+        Ok(hev)
+    }
+}
+
 impl HistoryMethods for HybridElectricVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         bail!("`save_interval` is not implemented in HybridElectricVehicle")
@@ -318,10 +348,17 @@ impl Powertrain for Box<HybridElectricVehicle> {
         self.fc
             .solve(fc_pwr_out_req, fc_on, dt)
             .with_context(|| format_dbg!())?;
+
         let res_pwr_out_req = self
             .em
             .solve(em_pwr_out_req, true, dt)
-            .with_context(|| format_dbg!())?
+            .map_err(|err| {
+                anyhow!(format!(
+                    "em.solve failed at line {} with originating error [{}]",
+                    format_dbg!(),
+                    err
+                ))
+            })?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         // TODO: `res_pwr_out_req` probably does not include charging from the engine
         self.res
@@ -398,17 +435,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for HybridElectricVehicle {
             history: Default::default(),
         }));
         let mut hev = HybridElectricVehicle {
-            fs: {
-                let mut fs = FuelStorage {
-                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
-                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
-                    energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
-                    specific_energy: None,
-                    mass: None,
-                };
-                fs.set_mass(None, MassSideEffect::None)
-                    .with_context(|| anyhow!(format_dbg!()))?;
-                fs
+            fs: FuelStorage {
+                pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
+                specific_energy: None,
+                mass: None,
             },
             fc: FuelConverter::try_from(f2veh.clone())?,
             res: ReversibleEnergyStorage::try_from(f2veh.clone()).with_context(|| format_dbg!())?,
@@ -457,24 +489,26 @@ impl Mass for HybridElectricVehicle {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.mass = match new_mass {
+        self.mass = match (new_mass, derived_mass) {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
-            Some(new_mass) => {
-                if let Some(dm) = derived_mass {
-                    if dm != new_mass {
-                        self.expunge_mass_fields();
-                    }
+            (Some(new_mass), Some(dm)) => {
+                if dm != new_mass {
+                    self.expunge_mass_fields();
                 }
                 Some(new_mass)
             }
-            // Set using `derived_mass()`, failing if it returns `None`
-            None => Some(derived_mass.with_context(|| {
-                format!(
-                    "Not all mass fields in `{}` are set and no mass was provided.",
-                    stringify!(HybridElectricVehicle)
-                )
-            })?),
+            (Some(new_mass), None) => Some(new_mass),
+            (None, Some(dm)) => Some(dm),
+            (None, None) => bail!(
+                "Not all mass fields in `{}` are set and no mass was provided.",
+                stringify!(HybridElectricVehicle)
+            ),
         };
+        ensure!(
+            self.mass > Some(0.0 * uc::KG),
+            "{} mass must be positive",
+            stringify!(HybridElectricVehicle)
+        );
         Ok(())
     }
 
@@ -581,6 +615,22 @@ pub struct HEVSimulationParams {
     pub balance_soc: bool,
     /// Whether to save each SOC balance iteration    
     pub save_soc_bal_iters: bool,
+}
+
+impl HEVSimulationParams {
+    pub fn new(
+        res_per_fuel_lim: si::Ratio,
+        soc_balance_iter_err: u32,
+        balance_soc: bool,
+        save_soc_bal_iters: bool,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            res_per_fuel_lim,
+            soc_balance_iter_err,
+            balance_soc,
+            save_soc_bal_iters,
+        })
+    }
 }
 
 impl Default for HEVSimulationParams {
@@ -834,6 +884,44 @@ pub struct RESGreedyWithDynamicBuffers {
 
 #[pyo3_api]
 impl RESGreedyWithDynamicBuffers {}
+
+impl RESGreedyWithDynamicBuffers {
+    pub fn new(
+        speed_soc_disch_buffer: Option<si::Velocity>,
+        speed_soc_disch_buffer_coeff: Option<si::Ratio>,
+        speed_soc_fc_on_buffer: Option<si::Velocity>,
+        speed_soc_fc_on_buffer_coeff: Option<si::Ratio>,
+        speed_soc_regen_buffer: Option<si::Velocity>,
+        speed_soc_regen_buffer_coeff: Option<si::Ratio>,
+        fc_min_time_on: Option<si::Time>,
+        speed_fc_forced_on: Option<si::Velocity>,
+        frac_pwr_demand_fc_forced_on: Option<si::Ratio>,
+        frac_of_most_eff_pwr_to_run_fc: Option<si::Ratio>,
+        temp_fc_forced_on: Option<si::Temperature>,
+        temp_fc_allowed_off: Option<si::Temperature>,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut res_greedy_w_dynamic_buffers = Self {
+            speed_soc_disch_buffer,
+            speed_soc_disch_buffer_coeff,
+            speed_soc_fc_on_buffer,
+            speed_soc_fc_on_buffer_coeff,
+            speed_soc_regen_buffer,
+            speed_soc_regen_buffer_coeff,
+            fc_min_time_on,
+            speed_fc_forced_on,
+            frac_pwr_demand_fc_forced_on,
+            frac_of_most_eff_pwr_to_run_fc,
+            temp_fc_forced_on,
+            temp_fc_allowed_off,
+            state: RGWDBState::default(),
+            history: RGWDBStateHistoryVec::default(),
+            save_interval,
+        };
+        res_greedy_w_dynamic_buffers.init()?;
+        Ok(res_greedy_w_dynamic_buffers)
+    }
+}
 
 impl HistoryMethods for RESGreedyWithDynamicBuffers {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {

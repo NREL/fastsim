@@ -14,7 +14,6 @@ pub enum PowertrainType {
     #[serde(rename = "BEV")]
     #[serde(alias = "BatteryElectricVehicle")]
     BatteryElectricVehicle(Box<BatteryElectricVehicle>),
-    // TODO: add PHEV here or maybe as an option in the HybridElectricVehicle
 }
 
 impl SerdeAPI for PowertrainType {}

@@ -14,7 +14,6 @@ pt_type:
         Constant: 0.9848857801796105
       min_soc: 0.05
       max_soc: 0.98
-      save_interval: 1
       state:
         pwr_prop_max_watts: 0.0
         pwr_regen_max_watts: 0.0
@@ -57,6 +56,7 @@ pt_type:
         energy_aux_joules: []
         energy_loss_joules: []
         energy_out_chemical_joules: []
+      save_interval: 1
     em:
       eff_interp_achieved:
         data:
@@ -175,7 +175,6 @@ pt_type:
     transmission:
       mass_kilograms: ~
       eff_interp: 0.98
-      save_interval: 1
       state:
         i: 0
         pwr_out_fwd_max_watts: 0.0
@@ -198,6 +197,7 @@ pt_type:
         energy_in_joules: []
         pwr_loss_watts: []
         energy_loss_joules: []
+      save_interval: 1
     mass_kilograms: ~
 chassis:
   drag_coef: 0.29
