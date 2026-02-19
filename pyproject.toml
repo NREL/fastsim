@@ -47,6 +47,7 @@ dev = [
     "pymoo~=0.6",
     "plotly~=6.0",
     "deepdiff>=8.4.2",
+    "pydoc-markdown~=4.8"
 ]
 
 [dependency-groups]
