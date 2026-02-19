@@ -1,4 +1,4 @@
-name: Deploy mdBook site to Pages
+name: Deploy Jupyter Book site to Pages
 
 on:
   # Runs on pushes targeting the default branch
@@ -33,11 +33,11 @@ jobs:
       MDBOOK_VERSION: 0.4.21
     steps:
       - uses: actions/checkout@v3
-      - name: Install mdBook and supporting dependencies
+
+      - name: Install Jupyter Book
         run: |
-          curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf -y | sh
-          rustup update
-          cargo install --version ${MDBOOK_VERSION} mdbook
+          pip install -U pip
+          pip install jupyter-book
 
       - name: Install dependencies for python docs
         run: sudo apt update &&
@@ -45,20 +45,24 @@ jobs:
           pipx ensurepath &&
           pipx install pydoc-markdown
 
-      - name: Generate python docs
+      - name: Generate Python docs
         working-directory: ${{runner.workspace}}/fastsim/
-        run: pydoc-markdown -I python/ --render-toc > docs/src/python-doc.md
+        run: pydoc-markdown -I python/ --render-toc > docs/python-doc.md
 
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v3
-      - name: Build with mdBook
+
+      - name: Build with Jupyter Book
         working-directory: ${{runner.workspace}}/fastsim/docs/
-        run: mdbook build
+        # TODO: fix errors to allow strict build
+        # run: jupyter book build --html --strict
+        run: jupyter book build --html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs/book
+          path: ./docs/_build/html
 
   # Deployment job
   deploy:
