@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-use crate::{imports::*, simdrive::roadload::StepInfo, simdrive::SimParams, vehicle::Vehicle};
+use crate::{
+    imports::*, simdrive::params::SimParams, simdrive::roadload::StepInfo, vehicle::Vehicle,
+};
 
 use super::manipulation_utils::trapz_distance_for_step;
 use super::{

@@ -4,7 +4,7 @@
 pub use crate::drive_cycle::maneuvers::Maneuver;
 pub use crate::drive_cycle::{CBTrait, Cycle, CycleElement};
 pub use crate::gas_properties::{get_sphere_conv_params, Air, Octane, H_STD, TE_STD_AIR};
-pub use crate::simdrive::{SimDrive, SimParams};
+pub use crate::simdrive::{params::SimParams, SimDrive};
 pub use crate::vehicle::cabin::{
     CabinOption, LumpedCabin, LumpedCabinState, LumpedCabinStateHistoryVec,
 };
