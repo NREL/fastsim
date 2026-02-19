@@ -230,10 +230,10 @@ def plot_bev_res_energy(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BEV.res.history.energy_out_electrical_joules"] / 1e3,
+        df["veh.pt_type.BEV.res.history.energy_out_electrical_joules"] / 2.77778e-7, # J to kWh
         label="electrical out",
     )
-    ax[0].set_ylabel("RES Energy [kW]")
+    ax[0].set_ylabel("RES Energy [kWh]")
     ax[0].legend()
 
     ax[1].set_prop_cycle(get_paired_cycler())
