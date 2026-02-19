@@ -36,6 +36,26 @@ impl FuelStorage {
     // }
 }
 
+impl FuelStorage {
+    pub fn new(
+        pwr_out_max: si::Power,
+        pwr_ramp_lag: si::Time,
+        energy_capacity: si::Energy,
+        specific_energy: Option<si::SpecificEnergy>,
+        mass: Option<si::Mass>,
+    ) -> anyhow::Result<Self> {
+        let mut fs = Self {
+            pwr_out_max,
+            pwr_ramp_lag,
+            energy_capacity,
+            specific_energy,
+            mass,
+        };
+        fs.init()?;
+        Ok(fs)
+    }
+}
+
 impl SerdeAPI for FuelStorage {}
 impl Init for FuelStorage {}
 
@@ -64,30 +84,41 @@ impl Mass for FuelStorage {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
-            if derived_mass != new_mass {
-                match side_effect {
-                    MassSideEffect::Extensive => {
-                        self.energy_capacity = self.specific_energy.with_context(|| {
-                            format!(
-                                "{}\nExpected `self.specific_energy` to be `Some`.",
-                                format_dbg!()
-                            )
-                        })? * new_mass;
-                    }
-                    MassSideEffect::Intensive => {
-                        self.specific_energy = Some(self.energy_capacity / new_mass);
-                    }
-                    MassSideEffect::None => {
-                        self.specific_energy = None;
+        self.mass = match (new_mass, derived_mass) {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            (Some(new_mass), Some(dm)) => {
+                if dm != new_mass {
+                    match side_effect {
+                        MassSideEffect::Extensive => {
+                            self.energy_capacity = self.specific_energy.with_context(|| {
+                                format!(
+                                    "{}\nExpected `self.specific_energy` to be `Some`.",
+                                    format_dbg!()
+                                )
+                            })? * new_mass;
+                        }
+                        MassSideEffect::Intensive => {
+                            self.specific_energy = Some(self.energy_capacity / new_mass);
+                        }
+                        MassSideEffect::None => {
+                            self.specific_energy = None;
+                        }
                     }
                 }
+                Some(new_mass)
             }
-        } else if new_mass.is_none() {
-            self.specific_energy = None;
-        }
-        self.mass = new_mass;
-
+            (Some(new_mass), None) => Some(new_mass),
+            (None, Some(dm)) => Some(dm),
+            (None, None) => bail!(
+                "Not all mass fields in `{}` are set and no mass was provided.",
+                stringify!(FuelStorage)
+            ),
+        };
+        ensure!(
+            self.mass > Some(0.0 * uc::KG),
+            "{} mass must be positive",
+            stringify!(FuelStorage)
+        );
         Ok(())
     }
 

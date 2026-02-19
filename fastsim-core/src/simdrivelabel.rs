@@ -18,36 +18,38 @@ fn first_grtr(arr: &[f64], cut: f64) -> Option<usize> {
 }
 
 /// Get the 0 to 60 mph accelaration time from the given times and speeds.
-pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> Option<f64> {
+pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Result<f64> {
     // Check if vehicle reaches 60 mph
+    let first_ind_after_60_mph =
+        first_grtr(&accel_data.speed_mph, 60.).with_context(|| format_dbg!())?;
+
     if accel_data.speed_mph.iter().any(|&x| x >= 60.0) {
         // Create interpolator from speed to time
-        let interp = {
-            let wrapped_interp = Interp1D::new(
-                Array::from_vec(accel_data.speed_mph.clone()),
-                Array::from_vec(accel_data.time_s.clone()),
-                strategy::Linear,
-                Extrapolate::Clamp,
-            );
-            if let Ok(interp) = wrapped_interp {
-                interp
-            } else {
-                return None;
-            }
-        };
+        let interp = Interp1D::new(
+            ArrayView::from(&accel_data.speed_mph[..first_ind_after_60_mph + 1]),
+            ArrayView::from(&accel_data.time_s[..first_ind_after_60_mph + 1]),
+            strategy::Linear,
+            Extrapolate::Clamp,
+        )
+        .map_err(|e| {
+            anyhow!(
+                "Failed to create interpolator at line {} with originating error [{}]",
+                format_dbg!(),
+                e
+            )
+        })?;
 
         // Interpolate time at 60 mph
-        let accel_time = {
-            let result = interp.interpolate(&[60.0]);
-            if let Ok(accel_time_s) = result {
-                accel_time_s
-            } else {
-                return None;
-            }
-        };
-        Some(accel_time)
+        let accel_time = interp.interpolate(&[60.0]).map_err(|e| {
+            anyhow!(
+                "Failed to interpolate acceleration time at line {} with originating error [{}]",
+                format_dbg!(),
+                e
+            )
+        })?;
+        Ok(accel_time)
     } else {
-        None
+        bail!("Vehicle does not reach 60 mph")
     }
 }
 
@@ -74,7 +76,13 @@ pub fn run_accel(veh: &Vehicle) -> anyhow::Result<AccelData> {
 /// Returns time [s] for 0-60 mph acceleration at max power
 pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
-    sd_accel.walk_once().with_context(|| format_dbg!())?;
+    sd_accel.walk_once().map_err(|e| {
+        anyhow!(
+            "Acceleration simdrive walk_once failed at line {} with originating error [{}]",
+            format_dbg!(),
+            e
+        )
+    })?;
 
     // Extract speed values in mph
     let mut speed_mph: Vec<f64> = vec![];
@@ -91,18 +99,15 @@ pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
         .collect();
 
     let accel_data = AccelData { time_s, speed_mph };
-    let result = get_0_to_60_time_from_accel_data(&accel_data);
-    match result {
-        Some(accel_time_s) => Ok(accel_time_s),
-        None => {
-            // Vehicle doesn't reach 60 mph
-            println!(
-                "Warning: Vehicle '{}' doesn't reach 60 mph in the acceleration test",
-                sd_accel.veh.name
-            );
-            Ok(f64::NAN)
-        }
-    }
+    let accel_time = get_0_to_60_time_from_accel_data(&accel_data).map_err(|err| {
+        anyhow!(
+            "Vehicle {} doesn't reach 60 mph in the acceleration test at line {} with originating error [{}]",
+            sd_accel.veh.name,
+            format_dbg!(),
+            err
+        )
+    })?;
+    Ok(accel_time)
 }
 
 // const MPH_PER_MPS: f64 = 2.2369362921;
@@ -951,10 +956,13 @@ pub fn calculate_label_fuel_economy(
     }
 
     // process acceleration test data
-    label_fe.net_accel = match get_0_to_60_time_from_accel_data(accel_data) {
-        Some(accel_s) => accel_s,
-        None => f64::NAN,
-    };
+    label_fe.net_accel = get_0_to_60_time_from_accel_data(accel_data).map_err(|e| {
+        anyhow!(
+            "get_0_to_60_time_from_accel_data failed at line {} with originating error [{}]",
+            format_dbg!(),
+            e
+        )
+    })?;
 
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     label_fe.res_found = String::from("model needs to be implemented for this");
@@ -974,7 +982,13 @@ fn run_simdrive_with_init_soc(
     sd.reset_cumulative(|| format_dbg!())?;
     sd.reset_step(|| format_dbg!())?;
     sd.clear();
-    sd.walk_once().with_context(|| format_dbg!())?;
+    sd.walk_once().map_err(|e| {
+        anyhow!(
+            "run_simdrive_with_init_soc failed at line {} with originating error [{}]",
+            format_dbg!(),
+            e
+        )
+    })?;
     Ok(sd)
 }
 
@@ -1016,7 +1030,14 @@ pub fn run_label_simulations(
     sd.insert("hwy", SimDrive::new(veh.clone(), cyc["hwy"].clone(), None));
 
     for (k, val) in sd.iter_mut() {
-        val.walk().with_context(|| format_dbg!(k))?;
+        val.walk().map_err(|e| {
+            anyhow!(
+                "run_label_simulations failed for key {} at line {} with originating error [{}]",
+                k,
+                format_dbg!(),
+                e
+            )
+        })?;
     }
 
     // find year-based adjustment parameters
@@ -1056,7 +1077,7 @@ pub fn run_label_simulations(
                 sd,
             ))
         } else {
-            Err(anyhow!("is_bev but powertrain not BEV"))
+            bail!("is_bev but powertrain not BEV")
         }
     } else if is_phev {
         // Get access to the PHEV powertrain
@@ -1263,7 +1284,7 @@ pub fn run_label_simulations(
             sd,
         ))
     } else {
-        Err(anyhow!("Unhandled powertrain type"))
+        bail!("Unhandled powertrain type")
     }
 }
 
@@ -1499,7 +1520,13 @@ pub fn get_label_fe_phev(
         sd.reset_cumulative(|| format_dbg!())?;
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
-        sd.walk_once().with_context(|| format_dbg!())?;
+        sd.walk_once().map_err(|err| {
+            anyhow!(
+                "walk_once failed at line {} with originating error {}",
+                format_dbg!(),
+                err
+            )
+        })?;
 
         // charge depletion battery kW-hr
         phev_calc.trans_ess_kwh =
@@ -1515,7 +1542,13 @@ pub fn get_label_fe_phev(
         sd.reset_cumulative(|| format_dbg!())?;
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
-        sd.walk_once().with_context(|| format_dbg!())?;
+        sd.walk_once().map_err(|err| {
+            anyhow!(
+                "walk_once failed at line {} with originating error {}",
+                format_dbg!(),
+                err
+            )
+        })?;
 
         // charge sustaining fuel gallons
         let cs_fuel_energy_kwh = if let Some(fc) = sd.veh.fc() {

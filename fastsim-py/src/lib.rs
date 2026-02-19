@@ -47,5 +47,7 @@ fn fastsim(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     // List enabled features
     m.add_function(wrap_pyfunction!(fastsim_core::enabled_features, m)?)?;
 
+    m.add_function(wrap_pyfunction!(fastsim_core::simdrivelabel::get_label_fe_py, m)?)?;
+
     Ok(())
 }

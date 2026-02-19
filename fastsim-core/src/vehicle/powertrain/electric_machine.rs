@@ -94,6 +94,31 @@ impl ElectricMachine {
     }
 }
 
+impl ElectricMachine {
+    pub fn new(
+        eff_interp_achieved: InterpolatorEnumOwned<f64>,
+        eff_interp_at_max_input: Option<InterpolatorEnumOwned<f64>>,
+        pwr_out_max: si::Power,
+        specific_pwr: Option<si::SpecificPower>,
+        mass: Option<si::Mass>,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut em = ElectricMachine {
+            eff_interp_achieved,
+            eff_interp_at_max_input,
+            pwr_out_max,
+            specific_pwr,
+            mass,
+            save_interval,
+            state: ElectricMachineState::default(),
+            history: ElectricMachineStateHistoryVec::default(),
+        };
+        em.init()?;
+
+        Ok(em)
+    }
+}
+
 impl Powertrain for ElectricMachine {
     /// Returns maximum possible positive and negative propulsion-related powers
     /// this component/system can produce, accounting for any aux-related power
@@ -247,7 +272,7 @@ impl Powertrain for ElectricMachine {
     ) -> anyhow::Result<Option<si::Power>> {
         if pwr_out_req > si::Power::ZERO {
             ensure!(
-                pwr_out_req <= self.pwr_out_max,
+                almost_le_uom(&pwr_out_req, &self.pwr_out_max, None),
                 format!(
                     "{}\nedrv required power ({} kW) exceeds static max power ({} kW)",
                     format_dbg!(),
@@ -290,9 +315,21 @@ impl Powertrain for ElectricMachine {
             );
         }
 
-        self.state
-            .pwr_out_req
-            .update(pwr_out_req, || format_dbg!())?;
+        // if pwr_out_req is almost less than or equal to pwr_out_max, but technically ever so slightly bigger
+        // set to pwr_out_max to avoid extrapolation errors
+        if (pwr_out_req > self.pwr_out_max) && almost_le_uom(&pwr_out_req, &self.pwr_out_max, None)
+        {
+            self.state
+                .pwr_out_req
+                .update(self.pwr_out_max, || format_dbg!())?;
+        } else {
+            self.state
+                .pwr_out_req
+                .update(pwr_out_req, || format_dbg!())?;
+        }
+
+        // updated pwr_out_req since it may have been changed slightly above
+        let pwr_out_req = *self.state.pwr_out_req.get_fresh(|| format_dbg!())?;
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
@@ -331,11 +368,11 @@ impl Powertrain for ElectricMachine {
                         };
                         pwr(raw_lookup_pwr_ratio)?
                     }])
-                    .with_context(|| {
+                    .map_err(|e| {
                         anyhow!(
-                            "{}\n failed to calculate {}",
+                            "failed to calculate efficiency at line {} with originating error [{}]",
                             format_dbg!(),
-                            stringify!(self.state.eff)
+                            e
                         )
                     })?,
                 _ => {
@@ -493,29 +530,39 @@ impl Mass for ElectricMachine {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
-            if derived_mass != new_mass {
-                match side_effect {
-                    MassSideEffect::Extensive => {
-                        self.pwr_out_max = self.specific_pwr.with_context(|| {
-                            format!(
-                                "{}\nExpected `self.specific_pwr` to be `Some`.",
-                                format_dbg!()
-                            )
-                        })? * new_mass;
-                    }
-                    MassSideEffect::Intensive => {
-                        self.specific_pwr = Some(self.pwr_out_max / new_mass);
-                    }
-                    MassSideEffect::None => {
-                        self.specific_pwr = None;
+        self.mass = match (new_mass, derived_mass) {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            (Some(new_mass), Some(dm)) => {
+                if dm != new_mass {
+                    match side_effect {
+                        MassSideEffect::Extensive => {
+                            self.pwr_out_max = self.specific_pwr.with_context(|| {
+                                format!(
+                                    "{}\nExpected `self.specific_pwr` to be `Some`.",
+                                    format_dbg!()
+                                )
+                            })? * new_mass;
+                        }
+                        MassSideEffect::Intensive => {
+                            self.specific_pwr = Some(self.pwr_out_max / new_mass);
+                        }
+                        MassSideEffect::None => {
+                            self.specific_pwr = None;
+                        }
                     }
                 }
+                Some(new_mass)
             }
-        } else if new_mass.is_none() {
-            self.specific_pwr = None;
-        }
-        self.mass = new_mass;
+            (Some(new_mass), None) => Some(new_mass),
+            (None, Some(dm)) => Some(dm),
+            (None, None) => {
+                bail!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(ElectricMachine)
+                )
+            }
+        };
+        ensure!(self.mass > Some(0.0 * uc::KG), "{} mass must be positive", stringify!(ElectricMachine));
         Ok(())
     }
 

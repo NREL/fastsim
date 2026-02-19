@@ -37,14 +37,14 @@ pub struct FuelConverter {
     pub(crate) pwr_for_peak_eff: si::Power,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     pub pwr_idle_fuel: si::Power,
-    /// time step interval between saves. 1 is a good option. If None, no saving occurs.
-    pub save_interval: Option<usize>,
     /// struct for tracking current state
     #[serde(default)]
     pub state: FuelConverterState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     pub history: FuelConverterStateHistoryVec,
+    /// time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
 }
 
 #[pyo3_api]
@@ -92,6 +92,39 @@ impl FuelConverter {
     fn get_specific_pwr_kw_per_kg(&self) -> Option<f64> {
         self.specific_pwr
             .map(|x| x.get::<si::kilowatt_per_kilogram>())
+    }
+}
+
+/// implementing constructor for FuelConverter
+impl FuelConverter {
+    pub fn new(
+        thrml: FuelConverterThermalOption,
+        mass: Option<si::Mass>,
+        specific_pwr: Option<si::SpecificPower>,
+        pwr_out_max: si::Power,
+        pwr_out_max_init: si::Power,
+        pwr_ramp_lag: si::Time,
+        eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
+        pwr_for_peak_eff: si::Power,
+        pwr_idle_fuel: si::Power,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut fc = Self {
+            thrml,
+            mass,
+            specific_pwr,
+            pwr_out_max,
+            pwr_out_max_init,
+            pwr_ramp_lag,
+            eff_interp_from_pwr_out,
+            pwr_for_peak_eff,
+            pwr_idle_fuel,
+            state: FuelConverterState::default(),
+            history: FuelConverterStateHistoryVec::default(),
+            save_interval,
+        };
+        fc.init()?;
+        Ok(fc)
     }
 }
 
@@ -168,29 +201,37 @@ impl Mass for FuelConverter {
         let derived_mass = self
             .derived_mass()
             .with_context(|| anyhow!(format_dbg!()))?;
-        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
-            if derived_mass != new_mass {
-                match side_effect {
-                    MassSideEffect::Extensive => {
-                        self.pwr_out_max = self.specific_pwr.ok_or_else(|| {
-                            anyhow!(
-                                "{}\nExpected `self.specific_pwr` to be `Some`.",
-                                format_dbg!()
-                            )
-                        })? * new_mass;
-                    }
-                    MassSideEffect::Intensive => {
-                        self.specific_pwr = Some(self.pwr_out_max / new_mass);
-                    }
-                    MassSideEffect::None => {
-                        self.specific_pwr = None;
+        self.mass = match (new_mass, derived_mass) {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            (Some(new_mass), Some(dm)) => {
+                if dm != new_mass {
+                    match side_effect {
+                        MassSideEffect::Extensive => {
+                            self.pwr_out_max = self.specific_pwr.with_context(|| {
+                                format!(
+                                    "{}\nExpected `self.specific_pwr` to be `Some`.",
+                                    format_dbg!()
+                                )
+                            })? * new_mass;
+                        }
+                        MassSideEffect::Intensive => {
+                            self.specific_pwr = Some(self.pwr_out_max / new_mass);
+                        }
+                        MassSideEffect::None => {
+                            self.specific_pwr = None;
+                        }
                     }
                 }
+                Some(new_mass)
             }
-        } else if new_mass.is_none() {
-            self.specific_pwr = None;
-        }
-        self.mass = new_mass;
+            (Some(new_mass), None) => Some(new_mass),
+            (None, Some(dm)) => Some(dm),
+            (None, None) => bail!(
+                "Not all mass fields in `{}` are set and no mass was provided.",
+                stringify!(FuelConverter)
+            ),
+        };
+        ensure!(self.mass > Some(0.0 * uc::KG), "{} mass must be positive", stringify!(FuelConverter));
         Ok(())
     }
 
@@ -474,8 +515,6 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for FuelConverter {
         .try_into()
         .with_context(|| format_dbg!())?;
         fc.init()?;
-        fc.set_mass(None, MassSideEffect::None)
-            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(fc)
     }
 }
@@ -501,8 +540,6 @@ impl TryFrom<FCBuilder> for FuelConverter {
             history: Default::default(),
         };
         fc.init()?;
-        fc.set_mass(None, MassSideEffect::None)
-            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(fc)
     }
 }
@@ -787,6 +824,40 @@ impl FuelConverterThermal {
     #[pyo3(name = "default")]
     fn default_py() -> Self {
         Default::default()
+    }
+}
+
+impl FuelConverterThermal {
+    pub fn new(
+        heat_capacitance: si::HeatCapacity,
+        length_for_convection: si::Length,
+        htc_to_amb_stop: si::HeatTransferCoeff,
+        conductance_from_comb: si::ThermalConductance,
+        max_frac_from_comb: si::Ratio,
+        tstat_te_sto: Option<si::Temperature>,
+        tstat_te_delta: Option<si::TemperatureInterval>,
+        tstat_interp: Interp1DOwned<f64, strategy::Linear>,
+        radiator_effectiveness: si::Ratio,
+        fc_eff_model: FCTempEffModel,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut fc_thermal = Self {
+            heat_capacitance,
+            length_for_convection,
+            htc_to_amb_stop,
+            conductance_from_comb,
+            max_frac_from_comb,
+            tstat_te_sto,
+            tstat_te_delta,
+            tstat_interp,
+            radiator_effectiveness,
+            fc_eff_model,
+            state: FuelConverterThermalState::default(),
+            history: FuelConverterThermalStateHistoryVec::default(),
+            save_interval,
+        };
+        fc_thermal.init()?;
+        Ok(fc_thermal)
     }
 }
 
@@ -1166,6 +1237,20 @@ pub struct FCTempEffModelLinear {
     pub minimum: si::Ratio,
 }
 
+impl FCTempEffModelLinear {
+    pub fn new(
+        offset: si::Ratio,
+        slope_per_kelvin: f64,
+        minimum: si::Ratio,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            offset,
+            slope_per_kelvin,
+            minimum,
+        })
+    }
+}
+
 impl Default for FCTempEffModelLinear {
     fn default() -> Self {
         Self {
@@ -1185,6 +1270,20 @@ pub struct FCTempEffModelExponential {
     pub lag: si::TemperatureInterval,
     /// minimum value that `fc_eta_temp_coeff` can take
     pub minimum: si::Ratio,
+}
+
+impl FCTempEffModelExponential {
+    pub fn new(
+        offset: si::Temperature,
+        lag: si::TemperatureInterval,
+        minimum: si::Ratio,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            offset,
+            lag,
+            minimum,
+        })
+    }
 }
 
 impl Default for FCTempEffModelExponential {
