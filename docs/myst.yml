@@ -6,10 +6,10 @@ project:
   # description:
   # keywords: []
   # authors: []
-  # github:
+  github: https://github.com/NatLabRockies/fastsim
   # To autogenerate a Table of Contents, run "jupyter book init --write-toc"
 site:
   template: book-theme
-  # options:
+  options:
   #   favicon: favicon.ico
-  #   logo: site_logo.png
+    logo: assets/fastsim-icon.svg

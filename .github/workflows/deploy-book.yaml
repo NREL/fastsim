@@ -34,20 +34,18 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Jupyter Book
+      - name: Install Jupyter Book and other dependencies
         run: |
           pip install -U pip
-          pip install jupyter-book
-
-      - name: Install dependencies for python docs
-        run: sudo apt update &&
-          sudo apt install pipx &&
-          pipx ensurepath &&
-          pipx install pydoc-markdown
+          pip install -r docs/requirements.txt
 
       - name: Generate Python docs
         working-directory: ${{runner.workspace}}/fastsim/
         run: pydoc-markdown -I python/ --render-toc > docs/python-doc.md
+
+      - name: Convert demos to notebooks
+        working-directory: ${{runner.workspace}}/fastsim/
+        run: python docs/demos_to_notebooks.py --dir=python/fastsim/demos
 
       - name: Setup Pages
         id: pages
