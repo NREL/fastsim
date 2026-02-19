@@ -3,6 +3,7 @@
 from pathlib import Path
 import nbformat
 import argparse
+import shutil
 import sys
 
 
@@ -110,12 +111,14 @@ Examples:
         "--dir", type=Path, help="Find examples in this directory", default=Path(__file__).parent
     )
     parser.add_argument(
-        "--out-dir", type=Path, help="Output directory for converted files", default=Path(__file__).parent/"_notebooks"
+        "--out-dir", type=Path, help="Output directory for converted files", default=Path(__file__).parent/"_demo_notebooks"
     )
 
     args = parser.parse_args()
-    # if args.file and args.dir:
-    #     raise argparse.ArgumentTypeError("Cannot specify both --file and --dir")
+    
+    # Clear output directory
+    shutil.rmtree(args.out_dir, ignore_errors=True)
+    args.out_dir.mkdir()
 
     if args.file:
         # Convert specific file
