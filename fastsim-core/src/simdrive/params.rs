@@ -45,6 +45,55 @@ impl SimParams {
     fn default_py() -> Self {
         Self::default()
     }
+
+    #[new]
+    #[pyo3(signature = (
+        ach_speed_max_iter = None,
+        ach_speed_tol = None,
+        ach_speed_solver_gain = None,
+        trace_miss_tol = None,
+        trace_miss_opts = None,
+        trace_miss_correct_max_steps = None,
+        f2_const_air_density = None,
+        ambient_thermal_soak = None
+    ))]
+    fn __new__(
+        ach_speed_max_iter: Option<u32>,
+        ach_speed_tol: Option<f64>,
+        ach_speed_solver_gain: Option<f64>,
+        trace_miss_tol: Option<TraceMissTolerance>,
+        trace_miss_opts: Option<String>,
+        trace_miss_correct_max_steps: Option<u32>,
+        f2_const_air_density: Option<bool>,
+        ambient_thermal_soak: Option<bool>,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            ach_speed_max_iter: ach_speed_max_iter
+                .unwrap_or_else(SimParams::def_ach_speed_max_iter),
+            ach_speed_tol: ach_speed_tol
+                .map(|v| v * uc::R)
+                .unwrap_or_else(SimParams::def_ach_speed_tol),
+            ach_speed_solver_gain: ach_speed_solver_gain
+                .unwrap_or_else(SimParams::def_ach_speed_solver_gain),
+            trace_miss_tol: trace_miss_tol.unwrap_or_else(SimParams::def_trace_miss_tol),
+            trace_miss_opts: match trace_miss_opts {
+                Some(trace_miss_opts) => match trace_miss_opts.to_lowercase().as_str() {
+                    "allow" => TraceMissOptions::Allow,
+                    "allowchecked" | "allow_checked" => TraceMissOptions::AllowChecked,
+                    "error" => TraceMissOptions::Error,
+                    "correct" => TraceMissOptions::Correct,
+                    _ => bail!("Invalid trace_miss_opts: {}", trace_miss_opts),
+                },
+                None => SimParams::def_trace_miss_opts(),
+            },
+            trace_miss_correct_max_steps: trace_miss_correct_max_steps
+                .unwrap_or_else(SimParams::def_trace_miss_correct_max_steps),
+            f2_const_air_density: f2_const_air_density
+                .unwrap_or_else(SimParams::def_f2_const_air_density),
+            ambient_thermal_soak: ambient_thermal_soak
+                .unwrap_or_else(SimParams::def_ambient_thermal_soak),
+        })
+    }
 }
 
 impl SimParams {
@@ -69,6 +118,9 @@ impl SimParams {
     fn def_f2_const_air_density() -> bool {
         Self::default().f2_const_air_density
     }
+    fn def_ambient_thermal_soak() -> bool {
+        Self::default().ambient_thermal_soak
+    }
 }
 
 impl SerdeAPI for SimParams {}
@@ -89,25 +141,7 @@ impl Default for SimParams {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-#[non_exhaustive]
-// NOTE: consider embedding this in TraceMissOptions::AllowChecked
-pub struct TraceMissTolerance {
-    /// if the vehicle falls this far behind trace in terms of absolute
-    /// difference and [TraceMissOptions::is_allow_checked], fail
-    pub tol_dist: si::Length,
-    /// if the vehicle falls this far behind trace in terms of fractional
-    /// difference and [TraceMissOptions::is_allow_checked], fail
-    pub tol_dist_frac: si::Ratio,
-    /// if the vehicle falls this far behind instantaneous speed and
-    /// [TraceMissOptions::is_allow_checked], fail
-    pub tol_speed: si::Velocity,
-    /// if the vehicle falls this far behind instantaneous speed in terms of
-    /// fractional difference and [TraceMissOptions::is_allow_checked], fail
-    pub tol_speed_frac: si::Ratio,
-}
-
+#[pyo3_api]
 impl TraceMissTolerance {
     pub fn check_trace_miss(
         &self,
@@ -174,13 +208,28 @@ pub enum TraceMissOptions {
     /// Allow trace miss without any fanfare
     Allow,
     /// Allow trace miss within error tolerance
-    AllowChecked,
+    AllowChecked {
+        /// if the vehicle falls this far behind trace in terms of absolute
+        /// difference and [TraceMissOptions::is_allow_checked], fail
+        tol_dist: si::Length,
+        /// if the vehicle falls this far behind trace in terms of fractional
+        /// difference and [TraceMissOptions::is_allow_checked], fail
+        tol_dist_frac: si::Ratio,
+        /// if the vehicle falls this far behind instantaneous speed and
+        /// [TraceMissOptions::is_allow_checked], fail
+        tol_speed: si::Velocity,
+        /// if the vehicle falls this far behind instantaneous speed in terms of
+        /// fractional difference and [TraceMissOptions::is_allow_checked], fail
+        tol_speed_frac: si::Ratio,
+    },
     #[default]
     /// Error out when trace miss happens
     Error,
     /// Correct trace miss with driver model that catches up
     Correct,
 }
+
+impl 
 
 impl SerdeAPI for TraceMissOptions {}
 impl Init for TraceMissOptions {}
