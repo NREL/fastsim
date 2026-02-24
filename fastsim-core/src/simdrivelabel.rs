@@ -1,10 +1,12 @@
 //! Module containing classes and methods for calculating label fuel economy.
 
 use std::collections::HashMap;
+use std::hash::Hash;
 
 // crate local
 use crate::drive_cycle::{Cycle, CYC_ACCEL};
 use crate::imports::*;
+use crate::prelude::SimParams;
 use crate::simdrive::SimDrive;
 use crate::vehicle::{PowertrainType, Vehicle};
 
@@ -54,8 +56,15 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Resul
 }
 
 /// Run the acceleration test and return the time/speed trace.
-pub fn run_accel(veh: &Vehicle) -> anyhow::Result<AccelData> {
-    let mut sd_accel = SimDrive::new(veh.clone(), CYC_ACCEL.clone(), None);
+pub fn run_accel(
+    veh: &Vehicle,
+    sim_params: &HashMap<&str, SimParams>,
+) -> anyhow::Result<AccelData> {
+    let mut sd_accel = SimDrive::new(
+        veh.clone(),
+        CYC_ACCEL.clone(),
+        sim_params.get("accel").cloned(),
+    );
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
     sd_accel.walk_once().with_context(|| format_dbg!())?;
     // Extract speed values in mph
@@ -995,12 +1004,13 @@ fn run_simdrive_with_init_soc(
 /// Runs the appropriate simulations required for calculating
 /// the label fuel economy for the given vehicle.
 /// NOTE: does not run the acceleration test.
-pub fn run_label_simulations(
-    veh: &mut Vehicle,
+pub fn run_label_simulations<'a>(
+    veh: &'a mut Vehicle,
     // max_epa_adj: Option<f64>,
     fuel_props: Option<FuelProperties>,
     phev_utilization_params: Option<PhevUtilizationParams>,
-) -> anyhow::Result<(SimulationDataForLabel, HashMap<&str, SimDrive>)> {
+    sim_params: &HashMap<&'a str, SimParams>,
+) -> anyhow::Result<(SimulationDataForLabel, HashMap<&'a str, SimDrive>)> {
     // let max_epa_adj = max_epa_adj.unwrap_or(0.3);
     let phev_utilization_params = &phev_utilization_params.unwrap_or_default();
     let fuel_props = fuel_props.unwrap_or_default();
@@ -1025,9 +1035,20 @@ pub fn run_label_simulations(
     // run simdrive for non-phev powertrains
     sd.insert(
         "udds",
-        SimDrive::new(veh.clone(), cyc["udds"].clone(), None),
+        SimDrive::new(
+            veh.clone(),
+            cyc["udds"].clone(),
+            sim_params.get("udds").cloned(),
+        ),
     );
-    sd.insert("hwy", SimDrive::new(veh.clone(), cyc["hwy"].clone(), None));
+    sd.insert(
+        "hwy",
+        SimDrive::new(
+            veh.clone(),
+            cyc["hwy"].clone(),
+            sim_params.get("hwy").cloned(),
+        ),
+    );
 
     for (k, val) in sd.iter_mut() {
         val.walk().map_err(|e| {
@@ -1300,25 +1321,29 @@ pub fn run_label_simulations(
 ///
 /// Returns label fuel economy values as a struct and (optionally)
 /// simdrive::SimDrive objects.
-pub fn get_label_fe(
-    veh: &mut Vehicle,
+pub fn get_label_fe<'a>(
+    veh: &'a mut Vehicle,
     max_epa_adj: Option<f64>,
     full_detail: bool,
     fuel_props: Option<FuelProperties>,
     phev_utilization_params: Option<PhevUtilizationParams>,
+    sim_params: Option<HashMap<&'a str, SimParams>>,
     verbose: bool,
-) -> anyhow::Result<(LabelFe, Option<HashMap<&str, SimDrive>>)> {
+) -> anyhow::Result<(LabelFe, Option<HashMap<&'a str, SimDrive>>)> {
     let max_epa_adj = max_epa_adj.unwrap_or(0.3);
     let phev_utilization_params = &phev_utilization_params.unwrap_or_default();
     let fuel_props = fuel_props.unwrap_or_default();
     let veh_copy = veh.clone();
 
+    let sim_params = sim_params.unwrap_or_default();
+
     let (sim_data, sd) = run_label_simulations(
         veh,
         Some(fuel_props.clone()),
         Some(phev_utilization_params.clone()),
+        &sim_params,
     )?;
-    let accel_data = run_accel(&veh_copy)?;
+    let accel_data = run_accel(&veh_copy, &sim_params)?;
     let mut label_fe = calculate_label_fuel_economy(
         &fuel_props,
         phev_utilization_params,
@@ -1363,6 +1388,7 @@ pub fn get_label_fe_py(
         full_detail.unwrap_or_default(),
         fuel_props,
         phev_utilization_params,
+        None, // TODO: allow sim_params input from Python when SimParams has a better Python interface
         verbose.unwrap_or_default(),
     )?;
     Ok(label_fe)
@@ -2022,7 +2048,7 @@ mod tests {
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
+        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2057,7 +2083,7 @@ mod tests {
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
+        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2091,7 +2117,7 @@ mod tests {
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
+        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2148,7 +2174,7 @@ mod tests {
         );
 
         // Get FASTSim-3 label FE results (if PHEV functionality is implemented)
-        let label_fe_f3 = get_label_fe(&mut veh, None, false, None, None, false)
+        let label_fe_f3 = get_label_fe(&mut veh, None, false, None, None, None, false)
             .unwrap()
             .0;
 
