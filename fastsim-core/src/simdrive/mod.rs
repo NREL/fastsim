@@ -636,11 +636,8 @@ impl SimDrive {
                     // do nothing because `set_ach_speed` should be allowed to proceed to handle this
                 }
                 TraceMissOptions::AllowChecked => {
-                    // Check trace miss using previous speed and distance
-                    // Current speed is able to be used if this logic is moved further down in the method
-                    // However, distance is accumulated at the end of the time step, so it is much simpler to check using previous values
-                    let ach_speed = *veh.state.speed_ach.get_stale(|| format_dbg!())?;
-                    let ach_dist = *veh.state.dist.get_stale(|| format_dbg!())?;
+                    let ach_speed = *veh.state.speed_ach.get_fresh(|| format_dbg!())?;
+                    let ach_dist = *veh.state.dist.get_fresh(|| format_dbg!())?;
                     self.sim_params
                         .trace_miss_tol
                         .check_trace_miss(cyc_speed, ach_speed, cyc_dist, ach_dist)
