@@ -92,7 +92,6 @@ impl Default for SimParams {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
-// NOTE: consider embedding this in TraceMissOptions::AllowChecked
 pub struct TraceMissTolerance {
     /// if the vehicle falls this far behind trace in terms of absolute
     /// difference and [TraceMissOptions::is_allow_checked], fail
@@ -175,8 +174,10 @@ pub enum TraceMissOptions {
     Allow,
     /// Allow trace miss within error tolerance
     AllowChecked,
+    // /// Show warning when trace miss happens
     #[default]
-    /// Error out when trace miss happens
+    // Warn,
+    /// Throw error when trace miss happens
     Error,
     /// Correct trace miss with driver model that catches up
     Correct,
@@ -285,6 +286,22 @@ mod tests {
         // assert!(sim.walk().is_err());
     }
 
+    // TODO: implement when TraceMissOptions::Warn is implemented
+    // #[test]
+    // #[cfg(feature = "yaml")]
+    // fn test_trace_miss_warn() {
+    //     let mut veh =
+    //         crate::vehicle::Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
+    //     veh.mass = Some(10000.0 * uc::KG);
+    //     let params = SimParams {
+    //         trace_miss_opts: TraceMissOptions::Warn,
+    //         ..Default::default()
+    //     };
+    //     let cyc = crate::drive_cycle::CYC_ACCEL.clone();
+    //     let mut sim = SimDrive::new(veh, cyc, Some(params));
+    //     todo!();
+    // }
+
     #[test]
     #[cfg(feature = "yaml")]
     fn test_trace_miss_error() {
@@ -300,7 +317,7 @@ mod tests {
         assert!(sim.walk().is_err());
     }
 
-    // TODO: implement when TraceMissOptions::Correct (time dilation) is implemented
+    // TODO: finish
     // #[test]
     // #[cfg(feature = "yaml")]
     // fn test_trace_miss_correct() {

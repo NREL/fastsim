@@ -50,7 +50,7 @@ impl SimDrive {
     }
 
     #[pyo3(name = "reset_py")]
-    /// Compines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
+    /// Combines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
     fn reset_py(&mut self) -> anyhow::Result<()> {
         self.reset_cumulative(|| format_dbg!())?;
         self.reset_step(|| format_dbg!())?;
@@ -609,128 +609,39 @@ impl SimDrive {
         cyc_dist: si::Length,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        let vs = &mut self.veh.state;
-        vs.cyc_met.update(
-            vs.pwr_tractive.get_fresh(|| format_dbg!())?
-                <= vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?,
+        self.veh.state.cyc_met.update(
+            self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?
+                <= self
+                    .veh
+                    .state
+                    .pwr_prop_fwd_max
+                    .get_fresh(|| format_dbg!())?,
             || format_dbg!(),
         )?;
-        vs.cyc_met_overall.update(
-            if !*vs.cyc_met.get_fresh(|| format_dbg!())? {
+        self.veh.state.cyc_met_overall.update(
+            if !*self.veh.state.cyc_met.get_fresh(|| format_dbg!())? {
                 // if current power demand is not met, then this becomes false for
                 // the rest of the cycle and should not be manipulated anywhere else
                 false
             } else {
-                *vs.cyc_met_overall.get_stale(|| format_dbg!())?
+                *self.veh.state.cyc_met_overall.get_stale(|| format_dbg!())?
             },
             || format_dbg!(),
         )?;
-        let veh = &mut self.veh;
-        let speed_prev = *veh.state.speed_ach.get_stale(|| format_dbg!())?;
-        if *veh.state.cyc_met.get_fresh(|| format_dbg!())? {
-            veh.state.speed_ach.update(cyc_speed, || format_dbg!())?;
+        let speed_prev = *self.veh.state.speed_ach.get_stale(|| format_dbg!())?;
+        if *self.veh.state.cyc_met.get_fresh(|| format_dbg!())? {
+            self.veh
+                .state
+                .speed_ach
+                .update(cyc_speed, || format_dbg!())?;
             return Ok(());
-        } else {
-            match self.sim_params.trace_miss_opts {
-                TraceMissOptions::Allow => {
-                    // do nothing because `set_ach_speed` should be allowed to proceed to handle this
-                }
-                TraceMissOptions::AllowChecked => {
-                    let ach_speed = *veh.state.speed_ach.get_fresh(|| format_dbg!())?;
-                    let ach_dist = *veh.state.dist.get_fresh(|| format_dbg!())?;
-                    self.sim_params
-                        .trace_miss_tol
-                        .check_trace_miss(cyc_speed, ach_speed, cyc_dist, ach_dist)
-                        .with_context(|| {
-                            format!(
-                                "{}\nFailed to meet speed trace.
-                    prescribed speed: {} mph
-                    prev speed_ach: {} mph
-                    pwr_tractive_for_cyc: {} kW
-                    pwr_tractive: {} kW
-                    pwr_prop_fwd_max: {} kW,
-                    pwr deficit: {} kW
-                    ",
-                                format_dbg!(),
-                                cyc_speed.get::<si::mile_per_hour>(),
-                                veh.state
-                                    .speed_ach
-                                    .get_stale(|| format_dbg!())
-                                    .unwrap()
-                                    .get::<si::mile_per_hour>(),
-                                veh.state
-                                    .pwr_tractive_for_cyc
-                                    .get_fresh(|| format_dbg!())
-                                    .unwrap()
-                                    .get::<si::kilowatt>(),
-                                veh.state
-                                    .pwr_tractive
-                                    .get_fresh(|| format_dbg!())
-                                    .unwrap()
-                                    .get::<si::kilowatt>(),
-                                veh.state
-                                    .pwr_prop_fwd_max
-                                    .get_fresh(|| format_dbg!())
-                                    .unwrap()
-                                    .get::<si::kilowatt>(),
-                                (*veh.state.pwr_tractive.get_fresh(|| format_dbg!()).unwrap()
-                                    - *veh
-                                        .state
-                                        .pwr_prop_fwd_max
-                                        .get_fresh(|| format_dbg!())
-                                        .unwrap())
-                                .get::<si::kilowatt>()
-                                .format_eng(None),
-                            )
-                        })?;
-                }
-                TraceMissOptions::Error => bail!(
-                    "{}\nFailed to meet speed trace.
-prescribed speed: {} mph
-prev speed_ach: {} mph
-pwr_tractive_for_cyc: {} kW
-pwr_tractive: {} kW
-pwr_prop_fwd_max: {} kW,
-pwr deficit: {} kW
-",
-                    format_dbg!(),
-                    cyc_speed.get::<si::mile_per_hour>(),
-                    veh.state
-                        .speed_ach
-                        .get_stale(|| format_dbg!())?
-                        .get::<si::mile_per_hour>(),
-                    veh.state
-                        .pwr_tractive_for_cyc
-                        .get_fresh(|| format_dbg!())?
-                        .get::<si::kilowatt>(),
-                    veh.state
-                        .pwr_tractive
-                        .get_fresh(|| format_dbg!())?
-                        .get::<si::kilowatt>(),
-                    veh.state
-                        .pwr_prop_fwd_max
-                        .get_fresh(|| format_dbg!())?
-                        .get::<si::kilowatt>(),
-                    (*veh.state.pwr_tractive.get_fresh(|| format_dbg!())?
-                        - *veh.state.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?)
-                    .get::<si::kilowatt>()
-                    .format_eng(None)
-                ),
-                TraceMissOptions::Correct => {
-                    // We will correct the deviation from trace by modifying the cycle to re-rendezvous with a later time/distance.
-                    // In so doing, we will use a less agressive roadload.
-                    // NOTE: actual correction occurs later but we need to calculate
-                    // the achieved speed first.
-                }
-            }
         }
-        let vs = &mut self.veh.state;
         let step_info = StepInfo {
             dt,
             speed_prev,
             cyc_speed,
-            grade_curr: *vs.grade_curr.get_fresh(|| format_dbg!())?,
-            air_density: *vs.air_density.get_fresh(|| format_dbg!())?,
+            grade_curr: *self.veh.state.grade_curr.get_fresh(|| format_dbg!())?,
+            air_density: *self.veh.state.air_density.get_fresh(|| format_dbg!())?,
             mass: self.veh.mass.with_context(|| {
                 format!("{}\nMass should have been set before now", format_dbg!())
             })?,
@@ -744,7 +655,11 @@ pwr deficit: {} kW
                 .wheel_radius
                 .with_context(|| format_dbg!())?,
             wheel_rr_coef: self.veh.chassis.wheel_rr_coef,
-            pwr_prop_fwd_max: *vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?,
+            pwr_prop_fwd_max: *self
+                .veh
+                .state
+                .pwr_prop_fwd_max
+                .get_fresh(|| format_dbg!())?,
         };
         let speed_ach = step_info.solve_for_speed(
             self.sim_params.ach_speed_max_iter * 10,
@@ -765,24 +680,27 @@ pwr deficit: {} kW
             }
         };
 
-        vs.speed_ach.update(speed_ach_floored, || format_dbg!())?;
+        self.veh
+            .state
+            .speed_ach
+            .update(speed_ach_floored, || format_dbg!())?;
         // NOTE: need to reset tracked state to allow
         // for calling set_pwr_prop_for_speed(.) again this step.
         // set_pwr_prop_for_speed has already been called so the
         // following variables have already been set fresh but need
         // to be re-iterated.
-        vs.air_density.mark_stale();
-        vs.cyc_met.mark_stale();
-        vs.cyc_met_overall.mark_stale();
-        vs.elev_curr.mark_stale();
-        vs.grade_curr.mark_stale();
-        vs.pwr_accel.mark_stale();
-        vs.pwr_ascent.mark_stale();
-        vs.pwr_drag.mark_stale();
-        vs.pwr_rr.mark_stale();
-        vs.pwr_tractive.mark_stale();
-        vs.pwr_whl_inertia.mark_stale();
-        vs.speed_ach.mark_stale();
+        self.veh.state.air_density.mark_stale();
+        self.veh.state.cyc_met.mark_stale();
+        self.veh.state.cyc_met_overall.mark_stale();
+        self.veh.state.elev_curr.mark_stale();
+        self.veh.state.grade_curr.mark_stale();
+        self.veh.state.pwr_accel.mark_stale();
+        self.veh.state.pwr_ascent.mark_stale();
+        self.veh.state.pwr_drag.mark_stale();
+        self.veh.state.pwr_rr.mark_stale();
+        self.veh.state.pwr_tractive.mark_stale();
+        self.veh.state.pwr_whl_inertia.mark_stale();
+        self.veh.state.speed_ach.mark_stale();
 
         // Rerun again to ensure we have updated achieved speed and state
         self.set_pwr_prop_for_speed(speed_ach_floored, speed_prev, dt)
@@ -790,26 +708,129 @@ pwr deficit: {} kW
         self.set_ach_speed(speed_ach, cyc_dist, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
 
-        if self.sim_params.trace_miss_opts == TraceMissOptions::Correct {
-            let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
-            let max_steps = self.sim_params.trace_miss_correct_max_steps.max(2) as usize;
-            let correction = calc_best_rendezvous(i, max_steps, &self.cyc, speed_ach_floored);
-            if correction.steps >= 2 {
-                // NOTE: in theory, grade could be slightly
-                // off with this deviation from trace. However, since we
-                // rendezvous in a small number of time steps, it should be
-                // close. The call again to init() should correct distance
-                // and elevation calculations.
-                self.cyc.speed[i] = speed_ach_floored;
-                self.cyc.modify_by_const_jerk_trajectory(
-                    i + 1,
-                    correction.steps,
-                    correction.jerk_m_per_s3 * uc::MPS3,
-                    correction.acceleration_m_per_s2 * uc::MPS2,
-                );
-                self.cyc.dist.clear();
-                self.cyc.elev.clear();
-                self.cyc.init().unwrap();
+        match self.sim_params.trace_miss_opts {
+            TraceMissOptions::Allow => {
+                // do nothing
+            }
+            TraceMissOptions::AllowChecked => {
+                // TraceMissOptions::AllowChecked | TraceMissOptions::Warn => {
+                let ach_speed = *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?;
+                let ach_dist = *self.veh.state.dist.get_stale(|| format_dbg!())? + ach_speed * dt; // distance actually gets updated after step is completely solved
+                self.sim_params
+                    .trace_miss_tol
+                    .check_trace_miss(cyc_speed, ach_speed, cyc_dist, ach_dist)
+                    .with_context(|| {
+                        format!(
+                            concat!(
+                                "{}\nFailed to meet speed trace\n",
+                                "   prescribed speed: {} mph\n",
+                                "   achieved speed: {} mph\n",
+                                "   pwr_tractive_for_cyc: {} kW\n",
+                                "   pwr_tractive: {} kW\n",
+                                "   pwr_prop_fwd_max: {} kW\n",
+                                "   pwr deficit: {} kW\n",
+                            ),
+                            format_dbg!(),
+                            cyc_speed.get::<si::mile_per_hour>(),
+                            ach_speed.get::<si::mile_per_hour>(),
+                            self.veh
+                                .state
+                                .pwr_tractive_for_cyc
+                                .get_fresh(|| format_dbg!())
+                                .unwrap()
+                                .get::<si::kilowatt>(),
+                            self.veh
+                                .state
+                                .pwr_tractive
+                                .get_fresh(|| format_dbg!())
+                                .unwrap()
+                                .get::<si::kilowatt>(),
+                            self.veh
+                                .state
+                                .pwr_prop_fwd_max
+                                .get_fresh(|| format_dbg!())
+                                .unwrap()
+                                .get::<si::kilowatt>(),
+                            (*self
+                                .veh
+                                .state
+                                .pwr_tractive
+                                .get_fresh(|| format_dbg!())
+                                .unwrap()
+                                - *self
+                                    .veh
+                                    .state
+                                    .pwr_prop_fwd_max
+                                    .get_fresh(|| format_dbg!())
+                                    .unwrap())
+                            .get::<si::kilowatt>()
+                            .format_eng(None),
+                        )
+                    })?;
+            }
+            TraceMissOptions::Error => {
+                let ach_speed = *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?;
+                bail!(
+                    concat!(
+                        "{}\nFailed to meet speed trace\n",
+                        "   prescribed speed: {} mph\n",
+                        "   achieved speed: {} mph\n",
+                        "   pwr_tractive_for_cyc: {} kW\n",
+                        "   pwr_tractive: {} kW\n",
+                        "   pwr_prop_fwd_max: {} kW\n",
+                        "   pwr deficit: {} kW\n",
+                    ),
+                    format_dbg!(),
+                    cyc_speed.get::<si::mile_per_hour>(),
+                    ach_speed.get::<si::mile_per_hour>(),
+                    self.veh
+                        .state
+                        .pwr_tractive_for_cyc
+                        .get_fresh(|| format_dbg!())?
+                        .get::<si::kilowatt>(),
+                    self.veh
+                        .state
+                        .pwr_tractive
+                        .get_fresh(|| format_dbg!())?
+                        .get::<si::kilowatt>(),
+                    self.veh
+                        .state
+                        .pwr_prop_fwd_max
+                        .get_fresh(|| format_dbg!())?
+                        .get::<si::kilowatt>(),
+                    (*self.veh.state.pwr_tractive.get_fresh(|| format_dbg!())?
+                        - *self
+                            .veh
+                            .state
+                            .pwr_prop_fwd_max
+                            .get_fresh(|| format_dbg!())?)
+                    .get::<si::kilowatt>()
+                    .format_eng(None)
+                )
+            }
+            TraceMissOptions::Correct => {
+                // We will correct the deviation from trace by modifying the cycle to re-rendezvous with a later time/distance.
+                // In so doing, we will use a less agressive roadload.
+                let i = *self.veh.state.i.get_fresh(|| format_dbg!())?;
+                let max_steps = self.sim_params.trace_miss_correct_max_steps.max(2) as usize;
+                let correction = calc_best_rendezvous(i, max_steps, &self.cyc, speed_ach_floored);
+                if correction.steps >= 2 {
+                    // NOTE: in theory, grade could be slightly
+                    // off with this deviation from trace. However, since we
+                    // rendezvous in a small number of time steps, it should be
+                    // close. The call again to init() should correct distance
+                    // and elevation calculations.
+                    self.cyc.speed[i] = speed_ach_floored;
+                    self.cyc.modify_by_const_jerk_trajectory(
+                        i + 1,
+                        correction.steps,
+                        correction.jerk_m_per_s3 * uc::MPS3,
+                        correction.acceleration_m_per_s2 * uc::MPS2,
+                    );
+                    self.cyc.dist.clear();
+                    self.cyc.elev.clear();
+                    self.cyc.init().unwrap();
+                }
             }
         }
 
