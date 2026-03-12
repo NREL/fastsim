@@ -146,7 +146,7 @@ impl SimDrive {
                         .increment(1, || format_dbg!())?;
                     self.walk_once().map_err(|err| {
                         anyhow::anyhow!(format!(
-                            "HEV walk_once failed at line {}\ntime step: {:?}\n with originating error: [{}]",
+                            "HEV walk_once failed at line {}\ntime step: {}\n with originating error: [{}]",
                             format_dbg!(),
                             self.veh.state.i,
                             err
@@ -300,7 +300,7 @@ impl SimDrive {
             self.step(|| format_dbg!())?;
             self.solve_step().map_err(|err| {
                 anyhow::anyhow!(format!(
-                    "solver step failed at line {}\ntime step: {:?}\n with originating error: [{}]",
+                    "solver step failed at line {}\ntime step: {}\n with originating error: [{}]",
                     format_dbg!(),
                     self.veh.state.i,
                     err
@@ -381,7 +381,7 @@ impl SimDrive {
             )
             .map_err(|err| {
                 anyhow::anyhow!(format!(
-                    "updating time failed at line {}\ntime step: {:?}\n with originating error [{}]",
+                    "updating time failed at line {}\ntime step: {}\n with originating error [{}]",
                     format_dbg!(),
                     self.veh.state.i,
                     err
@@ -439,14 +439,6 @@ impl SimDrive {
             }
         }
         self.set_cumulative(dt, || format_dbg!())?;
-        if self.sim_params.trace_miss_opts.is_allow_checked() {
-            self.sim_params.trace_miss_tol.check_trace_miss(
-                self.cyc.speed[i],
-                *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?,
-                self.cyc.dist[i],
-                *self.veh.state.dist.get_fresh(|| format_dbg!())?,
-            )?;
-        }
         Ok(())
     }
 
@@ -719,18 +711,21 @@ impl SimDrive {
                 self.sim_params
                     .trace_miss_tol
                     .check_trace_miss(cyc_speed, ach_speed, cyc_dist, ach_dist)
-                    .with_context(|| {
-                        format!(
+                    .map_err(|e| {
+                        anyhow!(
                             concat!(
-                                "{}\nFailed to meet speed trace\n",
-                                "   prescribed speed: {} mph\n",
-                                "   achieved speed: {} mph\n",
-                                "   pwr_tractive_for_cyc: {} kW\n",
-                                "   pwr_tractive: {} kW\n",
-                                "   pwr_prop_fwd_max: {} kW\n",
-                                "   pwr deficit: {} kW\n",
+                                "\n{}\n",
+                                "{}\n",
+                                "failed to meet speed trace\n",
+                                "    prescribed speed: {} mph\n",
+                                "    achieved speed: {} mph\n",
+                                "    pwr_tractive_for_cyc: {} kW\n",
+                                "    pwr_tractive: {} kW\n",
+                                "    pwr_prop_fwd_max: {} kW\n",
+                                "    pwr deficit: {} kW\n",
                             ),
                             format_dbg!(),
+                            e,
                             cyc_speed.get::<si::mile_per_hour>(),
                             ach_speed.get::<si::mile_per_hour>(),
                             self.veh
@@ -772,13 +767,13 @@ impl SimDrive {
                 let ach_speed = *self.veh.state.speed_ach.get_fresh(|| format_dbg!())?;
                 bail!(
                     concat!(
-                        "{}\nFailed to meet speed trace\n",
-                        "   prescribed speed: {} mph\n",
-                        "   achieved speed: {} mph\n",
-                        "   pwr_tractive_for_cyc: {} kW\n",
-                        "   pwr_tractive: {} kW\n",
-                        "   pwr_prop_fwd_max: {} kW\n",
-                        "   pwr deficit: {} kW\n",
+                        "{}\nfailed to meet speed trace\n",
+                        "    prescribed speed: {} mph\n",
+                        "    achieved speed: {} mph\n",
+                        "    pwr_tractive_for_cyc: {} kW\n",
+                        "    pwr_tractive: {} kW\n",
+                        "    pwr_prop_fwd_max: {} kW\n",
+                        "    pwr deficit: {} kW\n",
                     ),
                     format_dbg!(),
                     cyc_speed.get::<si::mile_per_hour>(),

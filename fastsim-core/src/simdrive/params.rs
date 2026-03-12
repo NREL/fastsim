@@ -117,36 +117,56 @@ impl TraceMissTolerance {
     ) -> anyhow::Result<()> {
         ensure!(
             (cyc_speed - ach_speed).abs() < self.tol_speed,
-            "{}\n{}\n{}",
-            format_dbg!(cyc_speed),
-            format_dbg!(ach_speed),
-            format_dbg!(self.tol_speed)
+            concat!(
+                "trace miss: achieved speed misses prescribed speed\n",
+                "    achieved speed: {:?}\n",
+                "    prescribed speed: {:?}\n",
+                "    exceeds allowed tolerance: {:?}",
+            ),
+            ach_speed,
+            cyc_speed,
+            self.tol_speed,
         );
         // if condition to prevent divide-by-zero errors
         if cyc_speed > self.tol_speed {
             ensure!(
                 (cyc_speed - ach_speed).abs() / cyc_speed < self.tol_speed_frac,
-                "{}\n{}\n{}",
-                format_dbg!(cyc_speed),
-                format_dbg!(ach_speed),
-                format_dbg!(self.tol_speed_frac)
+                concat!(
+                    "trace miss: achieved speed misses prescribed speed (fractional)\n",
+                    "    achieved speed: {:?}\n",
+                    "    prescribed speed: {:?}\n",
+                    "    exceeds allowed fractional tolerance: {:?}",
+                ),
+                ach_speed,
+                cyc_speed,
+                self.tol_speed_frac
             )
         }
         ensure!(
             (cyc_dist - ach_dist).abs() < self.tol_dist,
-            "{}\n{}\n{}",
-            format_dbg!(cyc_dist),
-            format_dbg!(ach_dist),
-            format_dbg!(self.tol_dist)
+            concat!(
+                "trace miss: achieved distance misses prescribed distance\n",
+                "    achieved distance: {:?}\n",
+                "    prescribed distance: {:?}\n",
+                "    exceeds allowed tolerance: {:?}",
+            ),
+            ach_dist,
+            cyc_dist,
+            self.tol_dist
         );
         // if condition to prevent checking early in cycle
         if cyc_dist > self.tol_dist * 5.0 {
             ensure!(
                 (cyc_dist - ach_dist).abs() / cyc_dist < self.tol_dist_frac,
-                "{}\n{}\n{}",
-                format_dbg!(cyc_dist),
-                format_dbg!(ach_dist),
-                format_dbg!(self.tol_dist_frac)
+                concat!(
+                    "trace miss: achieved distance misses prescribed distance (fractional)\n",
+                    "    achieved distance: {:?}\n",
+                    "    prescribed distance: {:?}\n",
+                    "    exceeds allowed fractional tolerance: {:?}",
+                ),
+                ach_dist,
+                cyc_dist,
+                self.tol_dist_frac
             )
         }
 
@@ -174,9 +194,12 @@ pub enum TraceMissOptions {
     Allow,
     /// Allow trace miss within error tolerance
     AllowChecked,
-    // /// Show warning when trace miss happens
-    #[default]
+    // /// Show warning when any trace miss happens
+    // #[default]
     // Warn,
+    // /// Show warning when trace miss outside tolerance happens
+    #[default]
+    // WarnChecked,
     /// Throw error when trace miss happens
     Error,
     /// Correct trace miss with driver model that catches up
@@ -191,6 +214,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(feature = "resources")]
     #[cfg(feature = "yaml")]
     fn test_trace_miss_allow() {
         let mut veh =
@@ -206,6 +230,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "resources")]
     #[cfg(feature = "yaml")]
     fn test_trace_miss_allowchecked() {
         let mut veh =
@@ -223,67 +248,54 @@ mod tests {
         let params = SimParams {
             trace_miss_opts: TraceMissOptions::AllowChecked,
             trace_miss_tol: TraceMissTolerance {
-                tol_dist: 100. * uc::M,
-                tol_dist_frac: 0.05 * uc::R,
-                tol_speed: 10. * uc::MPS,
-                tol_speed_frac: 0.5 * uc::R,
+                tol_dist: 1e6 * uc::M,
+                tol_dist_frac: 10.0 * uc::R,
+                tol_speed: *cyc.speed.max().unwrap(),
+                tol_speed_frac: 1.0 * uc::R,
             },
             ..Default::default()
         };
         let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
         sim.walk().unwrap();
-        // // misses mixed tolerances
-        // let params = SimParams {
-        //     trace_miss_opts: TraceMissOptions::AllowChecked,
-        //     trace_miss_tol: TraceMissTolerance {
-        //         tol_dist: 100. * uc::M,
-        //         tol_dist_frac: 0.05 * uc::R,
-        //         tol_speed: 10. * uc::MPS,
-        //         tol_speed_frac: 0.5 * uc::R,
-        //     },
-        //     ..Default::default()
-        // };
-        // let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        // assert!(sim.walk().is_err());
-        // // misses mixed tolerances
-        // let params = SimParams {
-        //     trace_miss_opts: TraceMissOptions::AllowChecked,
-        //     trace_miss_tol: TraceMissTolerance {
-        //         tol_dist: 100. * uc::M,
-        //         tol_dist_frac: 0.05 * uc::R,
-        //         tol_speed: 10. * uc::MPS,
-        //         tol_speed_frac: 0.5 * uc::R,
-        //     },
-        //     ..Default::default()
-        // };
-        // let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        // assert!(sim.walk().is_err());
-        // // misses mixed tolerances
-        // let params = SimParams {
-        //     trace_miss_opts: TraceMissOptions::AllowChecked,
-        //     trace_miss_tol: TraceMissTolerance {
-        //         tol_dist: 100. * uc::M,
-        //         tol_dist_frac: 0.05 * uc::R,
-        //         tol_speed: 10. * uc::MPS,
-        //         tol_speed_frac: 0.5 * uc::R,
-        //     },
-        //     ..Default::default()
-        // };
-        // let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        // assert!(sim.walk().is_err());
-        // // misses mixed tolerances
-        // let params = SimParams {
-        //     trace_miss_opts: TraceMissOptions::AllowChecked,
-        //     trace_miss_tol: TraceMissTolerance {
-        //         tol_dist: 100. * uc::M,
-        //         tol_dist_frac: 0.05 * uc::R,
-        //         tol_speed: 10. * uc::MPS,
-        //         tol_speed_frac: 0.5 * uc::R,
-        //     },
-        //     ..Default::default()
-        // };
-        // let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        // assert!(sim.walk().is_err());
+        // misses mixed tolerances
+        let params = SimParams {
+            trace_miss_opts: TraceMissOptions::AllowChecked,
+            trace_miss_tol: TraceMissTolerance {
+                tol_dist_frac: 10.0 * uc::R,
+                tol_speed: *cyc.speed.max().unwrap(),
+                tol_speed_frac: 1.0 * uc::R,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
+        assert!(sim.walk().is_err());
+        // misses mixed tolerances
+        let params = SimParams {
+            trace_miss_opts: TraceMissOptions::AllowChecked,
+            trace_miss_tol: TraceMissTolerance {
+                tol_dist: 100. * uc::M,
+                tol_dist_frac: 0.05 * uc::R,
+                tol_speed_frac: 0.5 * uc::R,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
+        assert!(sim.walk().is_err());
+        // misses mixed tolerances
+        let params = SimParams {
+            trace_miss_opts: TraceMissOptions::AllowChecked,
+            trace_miss_tol: TraceMissTolerance {
+                tol_dist: 100. * uc::M,
+                tol_dist_frac: 0.05 * uc::R,
+                tol_speed: 10. * uc::MPS,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
+        assert!(sim.walk().is_err());
     }
 
     // TODO: implement when TraceMissOptions::Warn is implemented
@@ -303,6 +315,7 @@ mod tests {
     // }
 
     #[test]
+    #[cfg(feature = "resources")]
     #[cfg(feature = "yaml")]
     fn test_trace_miss_error() {
         let mut veh =
@@ -317,19 +330,20 @@ mod tests {
         assert!(sim.walk().is_err());
     }
 
-    // TODO: finish
-    // #[test]
-    // #[cfg(feature = "yaml")]
-    // fn test_trace_miss_correct() {
-    //     let mut veh =
-    //         crate::vehicle::Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
-    //     veh.mass = Some(10000.0 * uc::KG);
-    //     let params = SimParams {
-    //         trace_miss_opts: TraceMissOptions::Correct,
-    //         ..Default::default()
-    //     };
-    //     let cyc = crate::drive_cycle::CYC_ACCEL.clone();
-    //     let mut sim = SimDrive::new(veh, cyc, Some(params));
-    //     todo!();
-    // }
+    // TODO: why does sim.cyc.speed have spikes? sim.veh.history.speed_ach seems reasonable
+    #[test]
+    #[cfg(feature = "resources")]
+    #[cfg(feature = "yaml")]
+    fn test_trace_miss_correct() {
+        let mut veh =
+            crate::vehicle::Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
+        veh.mass = Some(10000.0 * uc::KG);
+        let params = SimParams {
+            trace_miss_opts: TraceMissOptions::Correct,
+            ..Default::default()
+        };
+        let cyc = crate::drive_cycle::CYC_ACCEL.clone();
+        let mut sim = SimDrive::new(veh, cyc, Some(params));
+        sim.walk().unwrap();
+    }
 }
