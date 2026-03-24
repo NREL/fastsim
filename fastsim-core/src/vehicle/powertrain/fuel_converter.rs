@@ -1306,12 +1306,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn calling_solve_with_engine_start_stop() {
+    fn calling_solve_without_engine_start_stop() {
         // TODO: add start_stop flag to FuelConverter
         // TODO: add ability to access vehicle state from FuelConverter
         // -- perhaps an optional read-only reference to Veh?
+        let peak_pwr = 50.0 * uc::KW;
         let eff_interp_pwr_out_fraction = vec![0.0, 0.8, 1.0];
-        let eff_interp_eff_out = vec![0.3, 0.35, 0.31];
+        let eff_at_0_percent_pwr = 0.3;
+        let eff_at_80_percent_pwr = 0.35;
+        let eff_at_100_percent_pwr = 0.31;
+        let eff_interp_eff_out = vec![
+            eff_at_0_percent_pwr,
+            eff_at_80_percent_pwr,
+            eff_at_100_percent_pwr,
+        ];
+        let aux_pwr = 2.0 * uc::KW;
+        let idle_pwr = 1.0 * uc::KW;
         // NOTE: the below documents which fields at minimum must be marked fresh when coming into the
         // FuelConverter::solve() method. Possibly, more fields would be required if using more options.
         let mut fc_state = FuelConverterState::default();
@@ -1326,7 +1336,7 @@ mod tests {
         fc_state.pwr_prop.mark_stale();
         fc_state.energy_prop.mark_stale();
         fc_state.pwr_aux.mark_stale();
-        let res_pwr_aux_update = fc_state.pwr_aux.update(2.0 * uc::KW, || format_dbg!());
+        let res_pwr_aux_update = fc_state.pwr_aux.update(aux_pwr, || format_dbg!());
         assert!(res_pwr_aux_update.is_ok());
         fc_state.energy_aux.mark_stale();
         fc_state.pwr_fuel.mark_stale();
@@ -1339,7 +1349,7 @@ mod tests {
             thrml: FuelConverterThermalOption::None,
             mass: Option::None,
             specific_pwr: Option::None,
-            pwr_out_max: 50.0 * uc::KW,
+            pwr_out_max: peak_pwr,
             pwr_out_max_init: 5.0 * uc::KW,
             pwr_ramp_lag: 5.0 * uc::S,
             eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
@@ -1349,8 +1359,8 @@ mod tests {
                 Extrapolate::Error,
             )
             .unwrap(),
-            pwr_for_peak_eff: 40.0 * uc::KW,
-            pwr_idle_fuel: 2.0 * uc::KW,
+            pwr_for_peak_eff: peak_pwr * 0.8,
+            pwr_idle_fuel: idle_pwr,
             state: fc_state,
             history: FuelConverterStateHistoryVec::default(),
             save_interval: Option::None,
@@ -1362,5 +1372,15 @@ mod tests {
         let dt = 1.0 * uc::S;
         let solve_result = fc.solve(pwr_out_req, fc_on, dt);
         assert!(solve_result.is_ok());
+        // (eff_at_80_percent_pwr - eff_at_0_percent_pwr) * alpha + eff_at_0_percent_pwr
+        // alpha = (aux_pwr - 0) / (peak_pwr * 0.8 - 0)
+        let alpha = aux_pwr.value / (peak_pwr.value * 0.8);
+        let expected_eff =
+            (eff_at_80_percent_pwr - eff_at_0_percent_pwr) * alpha + eff_at_0_percent_pwr;
+        let expected_fuel_in = aux_pwr.value / expected_eff;
+        let actual_fuel_in_result = fc.state.pwr_fuel.get_fresh(|| format_dbg!());
+        assert!(actual_fuel_in_result.is_ok());
+        let actual_fuel_in = actual_fuel_in_result.unwrap().value;
+        assert!((actual_fuel_in - expected_fuel_in).abs() < 1e-6);
     }
 }
