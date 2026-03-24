@@ -37,6 +37,9 @@ pub struct FuelConverter {
     pub(crate) pwr_for_peak_eff: si::Power,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     pub pwr_idle_fuel: si::Power,
+    /// whether this fuel converter supports start/stop capability (auto-idle stop)
+    #[serde(default)]
+    pub start_stop: bool,
     /// struct for tracking current state
     #[serde(default)]
     pub state: FuelConverterState,
@@ -107,6 +110,7 @@ impl FuelConverter {
         eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
         pwr_for_peak_eff: si::Power,
         pwr_idle_fuel: si::Power,
+        start_stop: bool,
         save_interval: Option<usize>,
     ) -> anyhow::Result<Self> {
         let mut fc = Self {
@@ -119,6 +123,7 @@ impl FuelConverter {
             eff_interp_from_pwr_out,
             pwr_for_peak_eff,
             pwr_idle_fuel,
+            start_stop,
             state: FuelConverterState::default(),
             history: FuelConverterStateHistoryVec::default(),
             save_interval,
@@ -384,11 +389,16 @@ impl FuelConverter {
             )
         );
 
+        let min_fuel = if self.start_stop {
+            si::Power::ZERO
+        } else {
+            self.pwr_idle_fuel
+        };
         self.state.pwr_fuel.update(
             if *self.state.fc_on.get_fresh(|| format_dbg!())? {
                 ((pwr_out_req + *self.state.pwr_aux.get_fresh(|| format_dbg!())?)
                     / *self.state.eff.get_fresh(|| format_dbg!())?)
-                .max(self.pwr_idle_fuel)
+                .max(min_fuel)
             } else {
                 si::Power::ZERO
             },
@@ -540,6 +550,7 @@ impl TryFrom<FCBuilder> for FuelConverter {
             // TODO: make a function for setting this according with below line
             // this means that aux power must include idle fuel
             pwr_idle_fuel: si::Power::ZERO,
+            start_stop: false,
             save_interval: Some(1),
             history: Default::default(),
         };
@@ -1314,7 +1325,12 @@ mod tests {
     const EFF_AT_100_PERCENT_PWR: f64 = 0.31;
     const PEAK_POWER_KW: f64 = 50.0;
 
-    fn create_test_fuel_converter(aux_pwr: si::Power, idle_pwr: si::Power) -> FuelConverter {
+    fn create_test_fuel_converter(
+        aux_pwr: si::Power,
+        idle_pwr: si::Power,
+        has_start_stop: bool,
+        _is_stopped: bool,
+    ) -> FuelConverter {
         let peak_pwr = PEAK_POWER_KW * uc::KW;
         let eff_interp_pwr_out_fraction = vec![0.0, 0.8, 1.0];
         let eff_interp_eff_out = vec![
@@ -1361,6 +1377,7 @@ mod tests {
             .unwrap(),
             pwr_for_peak_eff: peak_pwr * 0.8,
             pwr_idle_fuel: idle_pwr,
+            start_stop: has_start_stop,
             state: fc_state,
             history: FuelConverterStateHistoryVec::default(),
             save_interval: Option::None,
@@ -1380,7 +1397,9 @@ mod tests {
         let peak_pwr = PEAK_POWER_KW * uc::KW;
         let aux_pwr = 2.0 * uc::KW;
         let idle_pwr = 1.0 * uc::KW;
-        let fc = create_test_fuel_converter(aux_pwr, idle_pwr);
+        let has_start_stop = false;
+        let is_stopped = true;
+        let fc = create_test_fuel_converter(aux_pwr, idle_pwr, has_start_stop, is_stopped);
         // (eff_at_80_percent_pwr - eff_at_0_percent_pwr) * alpha + eff_at_0_percent_pwr
         // alpha = (aux_pwr - 0) / (peak_pwr * 0.8 - 0)
         let alpha = aux_pwr.value / (peak_pwr.value * 0.8);
@@ -1401,8 +1420,28 @@ mod tests {
     fn calling_solve_with_no_aux_load_and_no_engine_start_stop_causes_idle_fuel_use() {
         let aux_pwr = 0.0 * uc::KW;
         let idle_pwr = 1.0 * uc::KW;
-        let fc = create_test_fuel_converter(aux_pwr, idle_pwr);
+        let has_start_stop = false;
+        let is_stopped = true;
+        let fc = create_test_fuel_converter(aux_pwr, idle_pwr, has_start_stop, is_stopped);
         let expected_fuel_in = idle_pwr.value;
+        let actual_fuel_in_result = fc.state.pwr_fuel.get_fresh(|| format_dbg!());
+        assert!(actual_fuel_in_result.is_ok());
+        let actual_fuel_in = actual_fuel_in_result.unwrap().value;
+        assert_abs_diff_eq!(actual_fuel_in, expected_fuel_in);
+        let fc_on_result = fc.state.fc_on.get_fresh(|| format_dbg!());
+        assert!(fc_on_result.is_ok());
+        let fc_on = fc_on_result.unwrap();
+        assert!(fc_on);
+    }
+
+    #[test]
+    fn calling_solve_with_engine_start_stop_and_no_aux_load() {
+        let aux_pwr = 0.0 * uc::KW;
+        let idle_pwr = 1.0 * uc::KW;
+        let has_start_stop = true;
+        let is_stopped = true;
+        let fc = create_test_fuel_converter(aux_pwr, idle_pwr, has_start_stop, is_stopped);
+        let expected_fuel_in = 0.0;
         let actual_fuel_in_result = fc.state.pwr_fuel.get_fresh(|| format_dbg!());
         assert!(actual_fuel_in_result.is_ok());
         let actual_fuel_in = actual_fuel_in_result.unwrap().value;
