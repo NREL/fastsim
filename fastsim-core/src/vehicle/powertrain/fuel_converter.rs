@@ -1306,7 +1306,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn calling_solve_without_engine_start_stop() {
+    fn calling_solve_with_aux_load_but_without_engine_start_stop() {
         // TODO: add start_stop flag to FuelConverter
         // TODO: add ability to access vehicle state from FuelConverter
         // -- perhaps an optional read-only reference to Veh?
@@ -1382,5 +1382,9 @@ mod tests {
         assert!(actual_fuel_in_result.is_ok());
         let actual_fuel_in = actual_fuel_in_result.unwrap().value;
         assert!((actual_fuel_in - expected_fuel_in).abs() < 1e-6);
+        let fc_on_result = fc.state.fc_on.get_fresh(|| format_dbg!());
+        assert!(fc_on_result.is_ok());
+        let fc_on = fc_on_result.unwrap();
+        assert!(fc_on);
     }
 }
