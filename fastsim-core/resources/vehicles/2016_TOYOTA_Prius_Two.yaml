@@ -109,7 +109,6 @@ pt_type:
         strategy: Linear
         extrapolate: Error
       pwr_idle_fuel_watts: 0.0
-      start_stop: false
       state:
         i: 0
         pwr_out_max_watts: 0.0
