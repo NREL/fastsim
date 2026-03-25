@@ -327,7 +327,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         // TODO: address these concerns
         // - what happens when the fc is on and producing more power than the
         //   transmission requires? It seems like the excess goes straight to the battery,
-        //   but it should probably go thourgh the em somehow.
+        //   but it should probably go through the em somehow.
         let pwr_in_transmission = self
             .transmission
             .solve(pwr_out_req, true, dt)
