@@ -556,7 +556,7 @@ impl std::string::ToString for PowertrainType {
         match self {
             PowertrainType::ConventionalVehicle(_) => String::from("Conv"),
             PowertrainType::HybridElectricVehicle(_) => String::from("HEV"),
-            PowertrainType::PlugInHybridElectricVehicle(_) => String::from("HEV"),
+            PowertrainType::PlugInHybridElectricVehicle(_) => String::from("PHEV"),
             PowertrainType::BatteryElectricVehicle(_) => String::from("BEV"),
         }
     }
