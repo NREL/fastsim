@@ -5,6 +5,9 @@ pub enum PowertrainType {
     #[serde(rename = "Conv")]
     #[serde(alias = "ConventionalVehicle")]
     ConventionalVehicle(Box<ConventionalVehicle>),
+    #[serde(rename = "MicroHEV")]
+    #[serde(alias = "MicroHybridElectricVehicle")]
+    MicroHybrid(Box<HybridElectricVehicle>),
     #[serde(rename = "HEV")]
     #[serde(alias = "HybridElectricVehicle")]
     HybridElectricVehicle(Box<HybridElectricVehicle>),
@@ -21,6 +24,7 @@ impl Init for PowertrainType {
     fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::ConventionalVehicle(conv) => conv.init(),
+            Self::MicroHybrid(uhev) => uhev.init(),
             Self::HybridElectricVehicle(hev) => hev.init(),
             Self::PlugInHybridElectricVehicle(phev) => phev.init(),
             Self::BatteryElectricVehicle(bev) => bev.init(),
@@ -33,6 +37,9 @@ impl SetCumulative for PowertrainType {
         match self {
             Self::ConventionalVehicle(conv) => {
                 conv.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::MicroHybrid(uhev) => {
+                uhev.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
             }
             Self::HybridElectricVehicle(hev) => {
                 hev.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))
@@ -50,6 +57,9 @@ impl SetCumulative for PowertrainType {
         match self {
             Self::ConventionalVehicle(conv) => {
                 conv.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))
+            }
+            Self::MicroHybrid(uhev) => {
+                uhev.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))
             }
             Self::HybridElectricVehicle(hev) => {
                 hev.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))
@@ -74,6 +84,12 @@ impl Powertrain for PowertrainType {
     ) -> anyhow::Result<()> {
         match self {
             Self::ConventionalVehicle(v) => v.set_curr_pwr_prop_out_max(
+                (si::Power::ZERO, si::Power::ZERO),
+                pwr_aux,
+                dt,
+                veh_state,
+            ),
+            Self::MicroHybrid(v) => v.set_curr_pwr_prop_out_max(
                 (si::Power::ZERO, si::Power::ZERO),
                 pwr_aux,
                 dt,
@@ -108,6 +124,7 @@ impl Powertrain for PowertrainType {
     ) -> anyhow::Result<Option<si::Power>> {
         match self {
             Self::ConventionalVehicle(v) => v.solve(pwr_out_req.max(si::Power::ZERO), enabled, dt),
+            Self::MicroHybrid(v) => v.solve(pwr_out_req, enabled, dt),
             Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
             Self::PlugInHybridElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
             Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, enabled, dt),
@@ -118,6 +135,7 @@ impl Powertrain for PowertrainType {
     fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         match self {
             Self::ConventionalVehicle(v) => v.get_curr_pwr_prop_out_max(),
+            Self::MicroHybrid(v) => v.get_curr_pwr_prop_out_max(),
             Self::HybridElectricVehicle(v) => v.get_curr_pwr_prop_out_max(),
             Self::PlugInHybridElectricVehicle(v) => v.get_curr_pwr_prop_out_max(),
             Self::BatteryElectricVehicle(v) => v.get_curr_pwr_prop_out_max(),
@@ -127,6 +145,7 @@ impl Powertrain for PowertrainType {
     fn pwr_regen(&self) -> anyhow::Result<si::Power> {
         match self {
             Self::ConventionalVehicle(v) => v.pwr_regen(),
+            Self::MicroHybrid(v) => v.pwr_regen(),
             Self::HybridElectricVehicle(v) => v.pwr_regen(),
             Self::PlugInHybridElectricVehicle(v) => v.pwr_regen(),
             Self::BatteryElectricVehicle(v) => v.pwr_regen(),
@@ -138,6 +157,7 @@ impl HistoryMethods for PowertrainType {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             PowertrainType::ConventionalVehicle(v) => v.save_interval(),
+            PowertrainType::MicroHybrid(v) => v.save_interval(),
             PowertrainType::HybridElectricVehicle(v) => v.save_interval(),
             PowertrainType::PlugInHybridElectricVehicle(v) => v.save_interval(),
             PowertrainType::BatteryElectricVehicle(v) => v.save_interval(),
@@ -146,6 +166,7 @@ impl HistoryMethods for PowertrainType {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
             PowertrainType::ConventionalVehicle(v) => v.set_save_interval(save_interval),
+            PowertrainType::MicroHybrid(v) => v.set_save_interval(save_interval),
             PowertrainType::HybridElectricVehicle(v) => v.set_save_interval(save_interval),
             PowertrainType::PlugInHybridElectricVehicle(v) => v.set_save_interval(save_interval),
             PowertrainType::BatteryElectricVehicle(v) => v.set_save_interval(save_interval),
@@ -154,6 +175,7 @@ impl HistoryMethods for PowertrainType {
     fn clear(&mut self) {
         match self {
             PowertrainType::ConventionalVehicle(v) => v.clear(),
+            PowertrainType::MicroHybrid(v) => v.clear(),
             PowertrainType::HybridElectricVehicle(v) => v.clear(),
             PowertrainType::PlugInHybridElectricVehicle(v) => v.clear(),
             PowertrainType::BatteryElectricVehicle(v) => v.clear(),
@@ -184,6 +206,14 @@ impl PowertrainType {
             Self::ConventionalVehicle(v) => {
                 v.solve_thermal(te_amb, pwr_thrml_fc_to_cab, veh_state, dt)
             }
+            Self::MicroHybrid(v) => v.solve_thermal(
+                te_amb,
+                pwr_thrml_fc_to_cab,
+                veh_state,
+                pwr_thrml_hvac_to_res,
+                te_cab,
+                dt,
+            ),
             Self::HybridElectricVehicle(v) => v.solve_thermal(
                 te_amb,
                 pwr_thrml_fc_to_cab,
@@ -262,6 +292,7 @@ impl PowertrainType {
     pub fn fc(&self) -> Option<&FuelConverter> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => Some(&conv.fc),
+            PowertrainType::MicroHybrid(uhev) => Some(&uhev.fc),
             PowertrainType::HybridElectricVehicle(hev) => Some(&hev.fc),
             PowertrainType::PlugInHybridElectricVehicle(hev) => Some(&hev.fc),
             PowertrainType::BatteryElectricVehicle(_) => None,
@@ -271,6 +302,7 @@ impl PowertrainType {
     pub fn fc_mut(&mut self) -> Option<&mut FuelConverter> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => Some(&mut conv.fc),
+            PowertrainType::MicroHybrid(uhev) => Some(&mut uhev.fc),
             PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.fc),
             PowertrainType::PlugInHybridElectricVehicle(hev) => Some(&mut hev.fc),
             PowertrainType::BatteryElectricVehicle(_) => None,
@@ -281,6 +313,10 @@ impl PowertrainType {
         match self {
             PowertrainType::ConventionalVehicle(conv) => {
                 conv.fc = fc;
+                Ok(())
+            }
+            PowertrainType::MicroHybrid(uhev) => {
+                uhev.fc = fc;
                 Ok(())
             }
             PowertrainType::HybridElectricVehicle(hev) => {
@@ -298,6 +334,7 @@ impl PowertrainType {
     pub fn fs(&self) -> Option<&FuelStorage> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => Some(&conv.fs),
+            PowertrainType::MicroHybrid(uhev) => Some(&uhev.fs),
             PowertrainType::HybridElectricVehicle(hev) => Some(&hev.fs),
             PowertrainType::PlugInHybridElectricVehicle(hev) => Some(&hev.fs),
             PowertrainType::BatteryElectricVehicle(_) => None,
@@ -307,6 +344,7 @@ impl PowertrainType {
     pub fn fs_mut(&mut self) -> Option<&mut FuelStorage> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => Some(&mut conv.fs),
+            PowertrainType::MicroHybrid(uhev) => Some(&mut uhev.fs),
             PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.fs),
             PowertrainType::PlugInHybridElectricVehicle(hev) => Some(&mut hev.fs),
             PowertrainType::BatteryElectricVehicle(_) => None,
@@ -317,6 +355,10 @@ impl PowertrainType {
         match self {
             PowertrainType::ConventionalVehicle(conv) => {
                 conv.fs = fs;
+                Ok(())
+            }
+            PowertrainType::MicroHybrid(uhev) => {
+                uhev.fs = fs;
                 Ok(())
             }
             PowertrainType::HybridElectricVehicle(hev) => {
@@ -334,6 +376,7 @@ impl PowertrainType {
     pub fn res(&self) -> Option<&ReversibleEnergyStorage> {
         match self {
             PowertrainType::ConventionalVehicle(_) => None,
+            PowertrainType::MicroHybrid(uhev) => Some(&uhev.res),
             PowertrainType::HybridElectricVehicle(hev) => Some(&hev.res),
             PowertrainType::PlugInHybridElectricVehicle(hev) => Some(&hev.res),
             PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.res),
@@ -343,6 +386,7 @@ impl PowertrainType {
     pub fn res_mut(&mut self) -> Option<&mut ReversibleEnergyStorage> {
         match self {
             PowertrainType::ConventionalVehicle(_) => None,
+            PowertrainType::MicroHybrid(uhev) => Some(&mut uhev.res),
             PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.res),
             PowertrainType::PlugInHybridElectricVehicle(hev) => Some(&mut hev.res),
             PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.res),
@@ -353,6 +397,10 @@ impl PowertrainType {
         match self {
             PowertrainType::ConventionalVehicle(_) => {
                 bail!("Conventional has no ReversibleEnergyStorage.")
+            }
+            PowertrainType::MicroHybrid(veh) => {
+                veh.res = res;
+                Ok(())
             }
             PowertrainType::HybridElectricVehicle(veh) => {
                 veh.res = res;
@@ -372,6 +420,7 @@ impl PowertrainType {
     pub fn em(&self) -> Option<&ElectricMachine> {
         match self {
             PowertrainType::ConventionalVehicle(_conv) => None,
+            PowertrainType::MicroHybrid(uhev) => Some(&uhev.em),
             PowertrainType::HybridElectricVehicle(hev) => Some(&hev.em),
             PowertrainType::PlugInHybridElectricVehicle(hev) => Some(&hev.em),
             PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.em),
@@ -381,6 +430,7 @@ impl PowertrainType {
     pub fn em_mut(&mut self) -> Option<&mut ElectricMachine> {
         match self {
             PowertrainType::ConventionalVehicle(_conv) => None,
+            PowertrainType::MicroHybrid(uhev) => Some(&mut uhev.em),
             PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.em),
             PowertrainType::PlugInHybridElectricVehicle(hev) => Some(&mut hev.em),
             PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.em),
@@ -391,6 +441,10 @@ impl PowertrainType {
         match self {
             PowertrainType::ConventionalVehicle(_conv) => {
                 Err(anyhow!("ConventionalVehicle has no `ElectricMachine`"))
+            }
+            PowertrainType::MicroHybrid(uhev) => {
+                uhev.em = em;
+                Ok(())
             }
             PowertrainType::HybridElectricVehicle(hev) => {
                 hev.em = em;
@@ -410,6 +464,7 @@ impl PowertrainType {
     pub fn trans(&self) -> Option<&Transmission> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => Some(&conv.transmission),
+            PowertrainType::MicroHybrid(uhev) => Some(&uhev.transmission),
             PowertrainType::HybridElectricVehicle(hev) => Some(&hev.transmission),
             PowertrainType::PlugInHybridElectricVehicle(phev) => Some(&phev.transmission),
             PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.transmission),
@@ -419,6 +474,7 @@ impl PowertrainType {
     pub fn trans_mut(&mut self) -> Option<&mut Transmission> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => Some(&mut conv.transmission),
+            PowertrainType::MicroHybrid(uhev) => Some(&mut uhev.transmission),
             PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.transmission),
             PowertrainType::PlugInHybridElectricVehicle(phev) => Some(&mut phev.transmission),
             PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.transmission),
@@ -427,8 +483,13 @@ impl PowertrainType {
 
     pub fn set_trans(&mut self, trans: Transmission) -> anyhow::Result<()> {
         match self {
-            PowertrainType::ConventionalVehicle(_conv) => {
-                Err(anyhow!("ConventionalVehicle has no `ElectricMachine`"))
+            PowertrainType::ConventionalVehicle(conv) => {
+                conv.transmission = trans;
+                Ok(())
+            }
+            PowertrainType::MicroHybrid(uhev) => {
+                uhev.transmission = trans;
+                Ok(())
             }
             PowertrainType::HybridElectricVehicle(hev) => {
                 hev.transmission = trans;
@@ -448,6 +509,7 @@ impl PowertrainType {
     pub fn variant_as_str(&self) -> String {
         match self {
             Self::ConventionalVehicle(_) => String::from("ConventionalVehicle"),
+            Self::MicroHybrid(_) => String::from("MicroHybridElectricVehicle"),
             Self::PlugInHybridElectricVehicle(_) => String::from("PlugInHybridElectricVehicle"),
             Self::HybridElectricVehicle(_) => String::from("HybridElectricVehicle"),
             Self::BatteryElectricVehicle(_) => String::from("BatteryElectricVehicle"),
@@ -465,6 +527,9 @@ impl SaveState for PowertrainType {
             }
             Self::ConventionalVehicle(conv) => {
                 conv.save_state(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::MicroHybrid(uhev) => {
+                uhev.save_state(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
             Self::HybridElectricVehicle(hev) => {
                 hev.save_state(|| format!("{}\n{}", loc(), format_dbg!()))?
@@ -485,6 +550,9 @@ impl TrackedStateMethods for PowertrainType {
             Self::ConventionalVehicle(conv) => {
                 conv.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
+            Self::MicroHybrid(uhev) => {
+                uhev.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
             Self::HybridElectricVehicle(hev) => {
                 hev.check_and_reset(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
@@ -499,6 +567,9 @@ impl TrackedStateMethods for PowertrainType {
         match self {
             Self::ConventionalVehicle(conv) => {
                 conv.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
+            Self::MicroHybrid(uhev) => {
+                uhev.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
             Self::HybridElectricVehicle(hev) => {
                 hev.mark_fresh(|| format!("{}\n{}", loc(), format_dbg!()))?
@@ -520,6 +591,7 @@ impl Step for PowertrainType {
             Self::ConventionalVehicle(conv) => {
                 conv.step(|| format!("{}\n{}", loc(), format_dbg!()))
             }
+            Self::MicroHybrid(uhev) => uhev.step(|| format!("{}\n{}", loc(), format_dbg!())),
             Self::HybridElectricVehicle(hev) => {
                 hev.step(|| format!("{}\n{}", loc(), format_dbg!()))
             }
@@ -537,6 +609,7 @@ impl Step for PowertrainType {
             Self::ConventionalVehicle(conv) => {
                 conv.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
             }
+            Self::MicroHybrid(uhev) => uhev.reset_step(|| format!("{}\n{}", loc(), format_dbg!())),
             Self::HybridElectricVehicle(hev) => {
                 hev.reset_step(|| format!("{}\n{}", loc(), format_dbg!()))
             }
@@ -555,6 +628,7 @@ impl std::string::ToString for PowertrainType {
     fn to_string(&self) -> String {
         match self {
             PowertrainType::ConventionalVehicle(_) => String::from("Conv"),
+            PowertrainType::MicroHybrid(_) => String::from("MicroHEV"),
             PowertrainType::HybridElectricVehicle(_) => String::from("HEV"),
             PowertrainType::PlugInHybridElectricVehicle(_) => String::from("PHEV"),
             PowertrainType::BatteryElectricVehicle(_) => String::from("BEV"),

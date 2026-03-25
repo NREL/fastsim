@@ -252,6 +252,7 @@ impl Mass for Vehicle {
             .with_context(|| anyhow!(format_dbg!()))?;
         let pt_mass = match &self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => conv.mass()?,
+            PowertrainType::MicroHybrid(uhev) => uhev.mass()?,
             PowertrainType::HybridElectricVehicle(hev) => hev.mass()?,
             PowertrainType::PlugInHybridElectricVehicle(phev) => phev.mass()?,
             PowertrainType::BatteryElectricVehicle(bev) => bev.mass()?,
@@ -267,6 +268,7 @@ impl Mass for Vehicle {
         self.chassis.expunge_mass_fields();
         match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => conv.expunge_mass_fields(),
+            PowertrainType::MicroHybrid(uhev) => uhev.expunge_mass_fields(),
             PowertrainType::HybridElectricVehicle(hev) => hev.expunge_mass_fields(),
             PowertrainType::PlugInHybridElectricVehicle(phev) => phev.expunge_mass_fields(),
             PowertrainType::BatteryElectricVehicle(bev) => bev.expunge_mass_fields(),
@@ -293,6 +295,7 @@ impl Init for Vehicle {
             .unwrap_or(Some(0.0 * uc::KG))
             .unwrap_or(0.0 * uc::KG);
         let _ = match &self.pt_type {
+            PowertrainType::MicroHybrid(uhev) => uhev.check_buffers(mass),
             PowertrainType::HybridElectricVehicle(hev) => hev.check_buffers(mass),
             PowertrainType::PlugInHybridElectricVehicle(hev) => hev.check_buffers(mass),
             _ => Ok(()),
@@ -323,6 +326,7 @@ impl HistoryMethods for Vehicle {
 /// TODO: update this constant to match fastsim-2 for gasoline
 pub(super) const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
 const CONV: &str = "Conv";
+const MICROHEV: &str = "MicroHEV";
 const HEV: &str = "HEV";
 const PHEV: &str = "PHEV";
 const BEV: &str = "BEV";
