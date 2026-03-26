@@ -1108,6 +1108,94 @@ pub(crate) mod tests {
         }
     }
 
+    fn make_conv_pacifica() -> anyhow::Result<Vehicle> {
+        let fs = FuelStorage::new(
+            2000000.0 * uc::W,
+            1.1 * uc::S,
+            2305080000.0 * uc::J,
+            Option::None,
+            Option::None,
+        )?;
+        let fc = FuelConverter::new(
+            FuelConverterThermalOption::None, // thrml
+            Option::None,                     // mass
+            Option::None,                     // specific_pwr
+            211088.0 * uc::W,                 // pwr_out_max
+            34604.59016393443 * uc::W,        // pwr_out_max_init
+            6.1 * uc::S,                      // pwr_ramp_lag
+            InterpolatorEnum::new_1d(
+                vec![
+                    0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
+                ]
+                .into(),
+                vec![
+                    0.0,
+                    0.0875106035,
+                    0.143482108,
+                    0.216273855,
+                    0.252599848,
+                    0.301508117,
+                    0.33,
+                    0.34,
+                    0.35,
+                    0.34,
+                    0.32,
+                    0.3,
+                ]
+                .into(),
+                strategy::Linear,
+                Extrapolate::Error,
+            )?, // eff_interp_from_pwr_out
+            0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
+            0.0 * uc::W,                      // pwr_idle_fuel
+            Option::None,
+        )?;
+        let tx = Transmission::new(
+            Option::None,                   // mass
+            InterpolatorEnum::new_0d(0.95), // eff_interp
+            Option::None,                   // save_interval
+        )?;
+        let conv = ConventionalVehicle::new(
+            fs,           // fs
+            fc,           // fc
+            tx,           // transmission
+            Option::None, // mass
+            1.0 * uc::R,  // alt_eff
+        )?;
+        let chassis = Chassis {
+            drag_coef: 0.3303036837542712 * uc::R,
+            frontal_area: 3.05124164 * uc::M2,
+            wheel_rr_coef: 0.0064798953284486704 * uc::R,
+            wheel_inertia: 0.815 * uc::KGM2,
+            num_wheels: 4,
+            wheel_radius: Option::Some(0.36865 * uc::M),
+            tire_code: Option::None,
+            cg_height: 0.53 * uc::M,
+            wheel_fric_coef: 0.8 * uc::R,
+            drive_type: chassis::DriveTypes::FWD,
+            drive_axle_weight_frac: 0.61 * uc::R,
+            wheel_base: 3.08864 * uc::M,
+            mass: Option::None,
+            glider_mass: Option::None,
+            cargo_mass: Option::None,
+        };
+        let boxed_conv = Box::new(conv);
+        let mut veh = Vehicle::new(
+            String::from("2026 Chrysler Pacifica Select"),   // name
+            Option::None,                                    // doc
+            2026,                                            // year
+            PowertrainType::ConventionalVehicle(boxed_conv), // pt_type
+            chassis,                                         // chassis
+            CabinOption::None,                               // cabin
+            HVACOption::None,                                // hvac
+            Option::Some(2154.564 * uc::KG),                 // mass
+            700.0 * uc::W,                                   // pwr_aux_base
+            Option::None,                                    // save_interval
+        )?;
+        veh.set_save_interval(Option::Some(1))?;
+        Ok(veh)
+    }
+
     fn make_microhybrid_pacifica() -> anyhow::Result<Vehicle> {
         let res = ReversibleEnergyStorage::new(
             RESThermalOption::None,             // thrml
@@ -1232,7 +1320,7 @@ pub(crate) mod tests {
             cargo_mass: Option::None,
         };
         let boxed_hev = Box::new(hev);
-        let veh = Vehicle::new(
+        let mut veh = Vehicle::new(
             String::from("2026 Chrysler Pacifica Select (uHEV Test)"), // name
             Option::None,                                              // doc
             2026,                                                      // year
@@ -1242,8 +1330,9 @@ pub(crate) mod tests {
             HVACOption::None,                                          // hvac
             Option::Some(2154.564 * uc::KG),                           // mass
             700.0 * uc::W,                                             // pwr_aux_base
-            Option::Some(1),                                           // save_interval
+            Option::None,                                              // save_interval
         )?;
+        veh.set_save_interval(Option::Some(1))?;
         Ok(veh)
     }
 
@@ -1256,5 +1345,70 @@ pub(crate) mod tests {
         let mut sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
         let walk_result = sd.walk();
         assert!(walk_result.is_ok());
+    }
+
+    fn accumulate_for_zero_speed(speeds_mps: &[f64], fuels_mj: &[f64]) -> f64 {
+        let shortest_idx = speeds_mps.len().min(fuels_mj.len());
+        let mut result_mj = 0.0;
+        for idx in 0..shortest_idx {
+            if speeds_mps[idx] == 0.0 {
+                result_mj += fuels_mj[idx];
+            }
+        }
+        result_mj
+    }
+
+    #[test]
+    fn micro_hybrid_saves_more_fuel_than_conventional() {
+        let veh_uhev_result = make_microhybrid_pacifica();
+        assert!(veh_uhev_result.is_ok());
+        let veh_uhev = veh_uhev_result.unwrap();
+        let veh_conv_result = make_conv_pacifica();
+        assert!(veh_conv_result.is_ok());
+        let veh_conv = veh_conv_result.unwrap();
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
+        let mut sd_uhev = crate::simdrive::SimDrive::new(veh_uhev, cyc.clone(), Default::default());
+        let result_uhev = sd_uhev.walk();
+        assert!(result_uhev.is_ok());
+        let mut sd_conv = crate::simdrive::SimDrive::new(veh_conv, cyc.clone(), Default::default());
+        let result_conv = sd_conv.walk();
+        assert!(result_conv.is_ok());
+        let speeds_mps: Vec<f64> = cyc
+            .speed
+            .iter()
+            .map(|spd| spd.get::<si::meter_per_second>())
+            .collect();
+        let fc_uhev = sd_uhev.veh.pt_type.fc().unwrap();
+        let fc_conv = sd_conv.veh.pt_type.fc().unwrap();
+        let fuels_uhev_mj: Vec<f64> = fc_uhev
+            .history
+            .energy_fuel
+            .iter()
+            .map(|ef| ef.get_fresh(|| format_dbg!()).unwrap().get::<si::joule>() / 1e6)
+            .collect();
+        let fuel_uhev_mj: f64 = fuels_uhev_mj.iter().sum();
+        let fuels_conv_mj: Vec<f64> = fc_conv
+            .history
+            .energy_fuel
+            .iter()
+            .map(|ef| ef.get_fresh(|| format_dbg!()).unwrap().get::<si::joule>() / 1e6)
+            .collect();
+        let fuel_conv_mj: f64 = fuels_conv_mj.iter().sum();
+        assert_eq!(speeds_mps.len(), fuels_uhev_mj.len());
+        assert_eq!(speeds_mps.len(), fuels_conv_mj.len());
+        eprintln!("fuel_uhev: {} MJ", fuel_uhev_mj);
+        eprintln!("fuel_conv: {} MJ", fuel_conv_mj);
+        assert!(
+            fuel_uhev_mj < fuel_conv_mj,
+            "Expected uHEV fuel ({fuel_uhev_mj}) to be less than conventional ({fuel_conv_mj})"
+        );
+        let fuel_stopped_uhev_mj = accumulate_for_zero_speed(&speeds_mps, &fuels_uhev_mj);
+        let fuel_stopped_conv_mj = accumulate_for_zero_speed(&speeds_mps, &fuels_conv_mj);
+        eprintln!("fuel_stopped_uhev: {} MJ", fuel_stopped_uhev_mj);
+        eprintln!("fuel_stopped_conv: {} MJ", fuel_stopped_conv_mj);
+        assert!(
+            fuel_stopped_uhev_mj < fuel_stopped_conv_mj,
+            "Expected stopped uHEV fuel ({fuel_stopped_uhev_mj}) to be less than stopped conventional ({fuel_stopped_conv_mj})"
+        );
     }
 }
