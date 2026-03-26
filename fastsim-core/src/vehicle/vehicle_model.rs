@@ -1108,8 +1108,7 @@ pub(crate) mod tests {
         }
     }
 
-    #[test]
-    fn we_can_create_and_simulate_a_micro_hybrid_vehicle() {
+    fn make_microhybrid_pacifica() -> anyhow::Result<Vehicle> {
         let res = ReversibleEnergyStorage::new(
             RESThermalOption::None,             // thrml
             Option::None,                       // mass
@@ -1120,16 +1119,14 @@ pub(crate) mod tests {
             0.0 * uc::R,                        // min_soc
             1.0 * uc::R,                        // max_soc
             Option::None,
-        )
-        .unwrap();
+        )?;
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
             2305080000.0 * uc::J,
             Option::None,
             Option::None,
-        )
-        .unwrap();
+        )?;
         let fc = FuelConverter::new(
             FuelConverterThermalOption::None, // thrml
             Option::None,                     // mass
@@ -1159,34 +1156,29 @@ pub(crate) mod tests {
                 .into(),
                 strategy::Linear,
                 Extrapolate::Error,
-            )
-            .unwrap(), // eff_interp_from_pwr_out
+            )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
             Option::None,
-        )
-        .unwrap();
+        )?;
         let em = ElectricMachine::new(
             InterpolatorEnum::new_1d(
                 vec![0.0, 1.0].into(),
                 vec![0.95, 0.95].into(),
                 strategy::Linear,
                 Extrapolate::Error,
-            )
-            .unwrap(), // eff_interp_achieved
+            )?, // eff_interp_achieved
             Option::None, // eff_interp_at_max_input
             5.0 * uc::KW, // pwr_out_max
             Option::None, // specific_pwr
             Option::None, // mass
             Option::None, // save_interval
-        )
-        .unwrap();
+        )?;
         let tx = Transmission::new(
             Option::None,                   // mass
             InterpolatorEnum::new_0d(0.95), // eff_interp
             Option::None,                   // save_interval
-        )
-        .unwrap();
+        )?;
         let ctrl = RESGreedyWithDynamicBuffers::new(
             Option::None, // speed_soc_disch_buffer
             Option::None, // speed_soc_disch_buffer_coeff
@@ -1201,8 +1193,7 @@ pub(crate) mod tests {
             Option::None, // temp_fc_forced_on
             Option::None, // temp_fc_allowed_off
             Option::None, // save_interval
-        )
-        .unwrap();
+        )?;
         let pt_ctrl = HEVPowertrainControls::RGWDB(Box::new(ctrl));
         let aux_ctrl = HEVAuxControls::AuxOnResPriority;
         // TODO: find more reasonable defaults
@@ -1211,8 +1202,7 @@ pub(crate) mod tests {
             0,            // soc_balance_iter_err
             false,        // balance_soc
             false,        // save_soc_bal_iters
-        )
-        .unwrap();
+        )?;
         let hev = HybridElectricVehicle::new(
             res,          // res
             fs,           // fs
@@ -1223,8 +1213,7 @@ pub(crate) mod tests {
             aux_ctrl,     // aux_cntrl
             Option::None, // mass
             sim_params,   // sim_params
-        )
-        .unwrap();
+        )?;
         let chassis = Chassis {
             drag_coef: 0.3303036837542712 * uc::R,
             frontal_area: 3.05124164 * uc::M2,
@@ -1254,8 +1243,15 @@ pub(crate) mod tests {
             Option::Some(2154.564 * uc::KG),                           // mass
             700.0 * uc::W,                                             // pwr_aux_base
             Option::Some(1),                                           // save_interval
-        )
-        .unwrap();
+        )?;
+        Ok(veh)
+    }
+
+    #[test]
+    fn we_can_create_and_simulate_a_micro_hybrid_vehicle() {
+        let veh_result = make_microhybrid_pacifica();
+        assert!(veh_result.is_ok());
+        let veh = veh_result.unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
         let walk_result = sd.walk();
