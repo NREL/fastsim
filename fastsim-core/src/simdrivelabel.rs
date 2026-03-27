@@ -1050,8 +1050,7 @@ pub fn run_label_simulations(
     label_fe.adj_params = adj_params.clone();
 
     // Check powertrain type
-    let is_conv = matches!(veh.pt_type, PowertrainType::ConventionalVehicle(_))
-        || matches!(veh.pt_type, PowertrainType::MicroHybrid(_));
+    let is_conv = matches!(veh.pt_type, PowertrainType::ConventionalVehicle(_));
     let is_hev = matches!(veh.pt_type, PowertrainType::HybridElectricVehicle(_));
     let is_phev = matches!(veh.pt_type, PowertrainType::PlugInHybridElectricVehicle(_));
     let is_bev = matches!(veh.pt_type, PowertrainType::BatteryElectricVehicle(_));

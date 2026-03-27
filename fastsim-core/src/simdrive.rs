@@ -320,17 +320,6 @@ impl SimDrive {
                     }
                 }
             }
-            PowertrainType::MicroHybrid(_) => {
-                // NOTE: setting micro-hybrid SOC to mid-way between min and max. Assuming we don't need to do SOC balancing...
-                // TODO: test if we need SOC balancing...
-                let res_mut = self.veh.res_mut().with_context(|| format_dbg!())?;
-                res_mut.state.soc.mark_stale();
-                res_mut
-                    .state
-                    .soc
-                    .update(0.5 * (res_mut.max_soc + res_mut.min_soc), || format_dbg!())?;
-                self.walk_once()?
-            }
             PowertrainType::PlugInHybridElectricVehicle(_) => {
                 let res_mut = self.veh.res_mut().with_context(|| format_dbg!())?;
                 res_mut.state.soc.mark_stale();
@@ -526,9 +515,6 @@ impl SimDrive {
 
                 // Handle control options requiring current step's speed
                 match &mut self.veh.pt_type {
-                    PowertrainType::MicroHybrid(hev) => hev
-                        .pt_cntrl
-                        .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,
                     PowertrainType::HybridElectricVehicle(hev) => hev
                         .pt_cntrl
                         .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,

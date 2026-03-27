@@ -46,10 +46,6 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                 let conv = ConventionalVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
             }
-            MICROHEV => {
-                let uhev = HybridElectricVehicle::try_from(f2veh)?;
-                Ok(PowertrainType::MicroHybrid(Box::new(uhev)))
-            }
             HEV => {
                 let hev = HybridElectricVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
@@ -67,7 +63,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     "Invalid powertrain type: {}.
 Expected one of {}",
                     f2veh.veh_pt_type,
-                    [CONV, MICROHEV, HEV, PHEV, BEV].join(", "),
+                    [CONV, HEV, PHEV, BEV].join(", "),
                 )
             }
         }
@@ -158,7 +154,6 @@ impl Vehicle {
             fc_eff_map_doc: None,
             fc_eff_type: match &self.pt_type {
                 PowertrainType::ConventionalVehicle(_) => "SI".into(),
-                PowertrainType::MicroHybrid(_) => "SI".into(),
                 PowertrainType::HybridElectricVehicle(_) => "Atkinson".into(),
                 PowertrainType::PlugInHybridElectricVehicle(_) => "Atkinson".into(),
                 PowertrainType::BatteryElectricVehicle(_) => "SI".into(),
@@ -392,7 +387,6 @@ impl Vehicle {
             veh_override_kg_doc: None,
             veh_pt_type: match &self.pt_type {
                 PowertrainType::ConventionalVehicle(_) => "Conv".into(),
-                PowertrainType::MicroHybrid(_) => "MicroHEV".into(),
                 PowertrainType::HybridElectricVehicle(_) => "HEV".into(),
                 PowertrainType::PlugInHybridElectricVehicle(_) => "PHEV".into(),
                 PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
