@@ -524,6 +524,19 @@ impl SimDrive {
                     err
                 )))?;
 
+                // Handle control options requiring current step's speed
+                match &mut self.veh.pt_type {
+                    PowertrainType::MicroHybrid(hev) => hev
+                        .pt_cntrl
+                        .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,
+                    PowertrainType::HybridElectricVehicle(hev) => hev
+                        .pt_cntrl
+                        .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,
+                    PowertrainType::PlugInHybridElectricVehicle(hev) => hev
+                        .pt_cntrl
+                        .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,
+                    _ => (),
+                }
                 self.veh.solve_powertrain(dt).map_err(|err| {
                     anyhow::anyhow!(format!(
                         "solve_powertrain failed at line {} with originating error [{}]",

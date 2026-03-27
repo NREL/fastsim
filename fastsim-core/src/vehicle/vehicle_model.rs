@@ -818,6 +818,7 @@ impl Vehicle {
         if let PowertrainType::HybridElectricVehicle(hev) = &mut self.pt_type {
             match &mut hev.pt_cntrl {
                 HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
+                HEVPowertrainControls::StartStop(ctrl) => ctrl.state.i.mark_stale(),
             }
             hev.pt_cntrl.mark_fresh(|| format_dbg!())?
         }
@@ -945,7 +946,7 @@ impl Default for VehicleState {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams};
+    use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, MicroHybridStartStopControl};
     use crate::vehicle::powertrain::reversible_energy_storage::EffInterp;
 
     use super::*;
@@ -1267,22 +1268,17 @@ pub(crate) mod tests {
             InterpolatorEnum::new_0d(0.95), // eff_interp
             Option::None,                   // save_interval
         )?;
-        let ctrl = RESGreedyWithDynamicBuffers::new(
-            Option::None, // speed_soc_disch_buffer
-            Option::None, // speed_soc_disch_buffer_coeff
-            Option::None, // speed_soc_fc_on_buffer
-            Option::None, // speed_soc_fc_on_buffer_coeff
-            Option::None, // speed_soc_regen_buffer
-            Option::None, // speed_soc_regen_buffer_coeff
+        let ctrl = MicroHybridStartStopControl::new(
             Option::None, // fc_min_time_on
-            Option::None, // speed_fc_forced_on
-            Option::None, // frac_pwr_demand_fc_forced_on
+            Option::None, // soc_fc_forced_on
             Option::None, // frac_of_most_eff_pwr_to_run_fc
             Option::None, // temp_fc_forced_on
             Option::None, // temp_fc_allowed_off
+            Option::None, // time_delay_after_stop_until_fc_can_turn_off
+            Option::None, // em_can_regen
             Option::None, // save_interval
         )?;
-        let pt_ctrl = HEVPowertrainControls::RGWDB(Box::new(ctrl));
+        let pt_ctrl = HEVPowertrainControls::StartStop(Box::new(ctrl));
         let aux_ctrl = HEVAuxControls::AuxOnResPriority;
         // TODO: find more reasonable defaults
         let sim_params = HEVSimulationParams::new(
@@ -1344,6 +1340,9 @@ pub(crate) mod tests {
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
         let walk_result = sd.walk();
+        if let Err(err) = walk_result {
+            panic!("Error: {}", err);
+        }
         assert!(walk_result.is_ok());
     }
 
@@ -1369,6 +1368,9 @@ pub(crate) mod tests {
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd_uhev = crate::simdrive::SimDrive::new(veh_uhev, cyc.clone(), Default::default());
         let result_uhev = sd_uhev.walk();
+        if let Err(err) = result_uhev {
+            panic!("Error: {}", err);
+        }
         assert!(result_uhev.is_ok());
         let mut sd_conv = crate::simdrive::SimDrive::new(veh_conv, cyc.clone(), Default::default());
         let result_conv = sd_conv.walk();
