@@ -1401,8 +1401,7 @@ impl MicroHybridStartStopControl {
         pwr_prop_req: si::Power,
         em_state: &ElectricMachineState,
     ) -> anyhow::Result<(si::Power, si::Power)> {
-        // TODO: rework to minimize charging of RESS. Want more
-        // opportunity for engine off.
+        let no_prop_pwr_demand = pwr_prop_req == si::Power::ZERO;
         let em_can_regen = self.em_can_regen.unwrap_or(true);
         let em_pwr = pwr_prop_req.min(si::Power::ZERO).max(if em_can_regen {
             -*em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?
@@ -1422,6 +1421,11 @@ impl MicroHybridStartStopControl {
                     .min(fc.pwr_for_peak_eff * frac_of_pwr_for_peak_eff)
                     // but not negative
                     .max(si::Power::ZERO)
+            } else if no_prop_pwr_demand {
+                // no propulsion power needed. Allow for engine-off
+                // as much as possible.
+                // TODO: take into consideration RESS SOC and aux loads?
+                0.0 * uc::W
             } else {
                 // positive tractive power
                 if pwr_prop_req - em_pwr > fc.pwr_for_peak_eff * frac_of_pwr_for_peak_eff {
