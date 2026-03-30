@@ -106,13 +106,10 @@ impl Powertrain for Box<ConventionalVehicle> {
             )
             .with_context(|| format_dbg!())?;
         match &mut self.pt_cntrl {
+            ConvPowertrainControls::Normal => (),
             ConvPowertrainControls::StartStop(ss) => {
                 ss.handle_fc_on_causes(&self.fc, veh_state, dt)?;
-                ss.state
-                    .aux_power_demand
-                    .update(pwr_aux > si::Power::ZERO, || format_dbg!())?;
             }
-            _ => (),
         }
         Ok(())
     }
@@ -147,7 +144,6 @@ impl Powertrain for Box<ConventionalVehicle> {
                 .get_fresh(|| format_dbg!())?,
             None
         ));
-        let enabled = true; // TODO: replace with a stop/start model
         let pwr_in_transmission = self
             .transmission
             .solve(pwr_out_req, true, dt)
@@ -159,8 +155,21 @@ impl Powertrain for Box<ConventionalVehicle> {
                 ss.handle_fc_on_causes_for_propulsion_request(pwr_in_transmission)?;
             }
         }
+        let fc_on: bool = self.pt_cntrl.engine_on()?;
+        if !fc_on {
+            // NOTE: zero out aux loads if engine is off
+            // NOTE: we could possibly use Vehicle.pwr_aux_base
+            //       to tell if we have "regular" auxliaries vs
+            //       "special" auxiliaries for which the engine
+            //       cannot be shut down.
+            self.fc.state.pwr_aux.mark_stale();
+            self.fc
+                .state
+                .pwr_aux
+                .update(si::Power::ZERO, || format_dbg!())?;
+        }
         self.fc
-            .solve(pwr_in_transmission, enabled, dt)
+            .solve(pwr_in_transmission, fc_on, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         Ok(None)
     }
@@ -640,8 +649,6 @@ pub struct ConvStartStopState {
     pub vehicle_not_stopped: TrackedState<bool>,
     /// Engine has not been on long enough (usually 30 s)
     pub on_time_too_short: TrackedState<bool>,
-    /// Aux power demand exceeds battery capability
-    pub aux_power_demand: TrackedState<bool>,
     /// The total time vehicle has been stopped
     pub time_vehicle_stopped: TrackedState<si::Time>,
     /// Vehicle stopped time
@@ -653,15 +660,15 @@ pub struct ConvStartStopState {
 impl ConvStartStopState {
     /// If any of the causes are true, engine must be on
     fn engine_on(&self) -> anyhow::Result<bool> {
-        Ok(*self.fc_temperature_too_low.get_fresh(|| format_dbg!())?
-            || *self.vehicle_not_stopped.get_fresh(|| format_dbg!())?
-            || *self.on_time_too_short.get_fresh(|| format_dbg!())?
-            || *self.aux_power_demand.get_fresh(|| format_dbg!())?
-            || *self
-                .vehicle_not_stopped_long_enough
-                .get_fresh(|| format_dbg!())?
-            || *self
-                .has_traction_power_request
-                .get_fresh(|| format_dbg!())?)
+        let c1 = *self.fc_temperature_too_low.get_fresh(|| format_dbg!())?;
+        let c2 = *self.vehicle_not_stopped.get_fresh(|| format_dbg!())?;
+        let c3 = *self.on_time_too_short.get_fresh(|| format_dbg!())?;
+        let c4 = *self
+            .vehicle_not_stopped_long_enough
+            .get_fresh(|| format_dbg!())?;
+        let c5 = *self
+            .has_traction_power_request
+            .get_fresh(|| format_dbg!())?;
+        Ok(c1 || c2 || c3 || c4 || c5)
     }
 }
