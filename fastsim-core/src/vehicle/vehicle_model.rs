@@ -942,6 +942,7 @@ impl Default for VehicleState {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use crate::vehicle::conv::ConvPowertrainControls;
     use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, MicroHybridStartStopControl};
     use crate::vehicle::powertrain::reversible_energy_storage::EffInterp;
 
@@ -1153,11 +1154,12 @@ pub(crate) mod tests {
             Option::None,                   // save_interval
         )?;
         let conv = ConventionalVehicle::new(
-            fs,           // fs
-            fc,           // fc
-            tx,           // transmission
-            Option::None, // mass
-            1.0 * uc::R,  // alt_eff
+            fs,                             // fs
+            fc,                             // fc
+            tx,                             // transmission
+            Option::None,                   // mass
+            ConvPowertrainControls::Normal, // powertrain control
+            1.0 * uc::R,                    // alt_eff
         )?;
         let chassis = Chassis {
             drag_coef: 0.3303036837542712 * uc::R,

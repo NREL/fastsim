@@ -12,6 +12,11 @@ pub struct ConventionalVehicle {
     pub fc: FuelConverter,
     #[has_state]
     pub transmission: Transmission,
+    /// control strategy. Especially used for stop/start and DFCO.
+    #[has_state]
+    #[serde(default)]
+    pub pt_cntrl: ConvPowertrainControls,
+    /// powertrain mass
     pub(crate) mass: Option<si::Mass>,
     /// Alternator efficiency used to calculate aux mechanical power demand on engine
     pub alt_eff: si::Ratio,
@@ -26,12 +31,14 @@ impl ConventionalVehicle {
         fc: FuelConverter,
         transmission: Transmission,
         mass: Option<si::Mass>,
+        pt_cntrl: ConvPowertrainControls,
         alt_eff: si::Ratio,
     ) -> anyhow::Result<Self> {
         let mut conv = Self {
             fs,
             fc,
             transmission,
+            pt_cntrl,
             mass,
             alt_eff,
         };
@@ -179,6 +186,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
             },
             fc: FuelConverter::try_from(f2veh.clone())?,
             transmission: Transmission::try_from(f2veh.clone())?,
+            pt_cntrl: ConvPowertrainControls::Normal,
             mass: None,
             alt_eff: f2veh.alt_eff * uc::R,
         };
@@ -265,5 +273,380 @@ impl Mass for ConventionalVehicle {
         self.fs.expunge_mass_fields();
         self.transmission.expunge_mass_fields();
         self.mass = None;
+    }
+}
+
+#[derive(
+    Clone, Debug, PartialEq, Deserialize, Serialize, IsVariant, derive_more::From, TryInto,
+)]
+pub enum ConvPowertrainControls {
+    /// Normal controller that doesn't do anything special
+    Normal,
+    /// Start/Stop controller that allows the fuel converter to turn off at
+    /// stop under certain conditions
+    StartStop(Box<ConvStartStopControl>),
+}
+
+impl Default for ConvPowertrainControls {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
+impl SetCumulative for ConvPowertrainControls {
+    fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrl) => {
+                ctrl.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+                Ok(())
+            }
+        }
+    }
+
+    fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrl) => {
+                ctrl.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Step for ConvPowertrainControls {
+    fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrl) => ctrl.step(loc),
+        }
+    }
+
+    fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrls) => ctrls.reset_step(loc),
+        }
+    }
+}
+
+impl StateMethods for ConvPowertrainControls {}
+
+impl SaveState for ConvPowertrainControls {
+    fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrl) => ctrl.save_state(loc),
+        }
+    }
+}
+
+impl TrackedStateMethods for ConvPowertrainControls {
+    fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrl) => ctrl.check_and_reset(loc),
+        }
+    }
+
+    fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrl) => ctrl.mark_fresh(loc),
+        }
+    }
+}
+
+impl HistoryMethods for ConvPowertrainControls {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrl) => Ok(ctrl.set_save_interval(save_interval)?),
+        }
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            Self::Normal => Ok(Option::None),
+            Self::StartStop(ctrl) => ctrl.save_interval(),
+        }
+    }
+
+    fn clear(&mut self) {
+        match self {
+            Self::Normal => (),
+            Self::StartStop(ctrl) => ctrl.clear(),
+        }
+    }
+}
+
+impl Init for ConvPowertrainControls {
+    fn init(&mut self) -> Result<(), Error> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrl) => ctrl.init(),
+        }
+    }
+}
+
+impl ConvPowertrainControls {
+    pub fn engine_on(&self) -> anyhow::Result<bool> {
+        match self {
+            Self::Normal => Ok(true),
+            Self::StartStop(ctrl) => ctrl.state.engine_on(),
+        }
+    }
+
+    pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
+        match self {
+            Self::Normal => Ok(()),
+            Self::StartStop(ctrl) => ctrl.handle_fc_on_causes_for_speed(speed),
+        }
+    }
+}
+
+#[serde_api]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+pub struct ConvStartStopControl {
+    /// Minimum time engine must remain on if it was on during the previous
+    /// simulation time step.
+    pub fc_min_time_on: Option<si::Time>,
+    /// temperature at which engine is forced on to warm up
+    #[serde(default)]
+    pub temp_fc_forced_on: Option<si::Temperature>,
+    /// temperature at which engine is allowed to turn off due to being sufficiently warm
+    #[serde(default)]
+    pub temp_fc_allowed_off: Option<si::Temperature>,
+    /// Time delay after the vehicle reaches a stop before the engine is allowed
+    /// to turn off. This is to try to prevent engine stopping when the vehicle
+    /// stop is only momentary.
+    #[serde(default)]
+    pub time_delay_after_stop_until_fc_can_turn_off: Option<si::Time>,
+    #[serde(default)]
+    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
+    /// current state of control variables
+    #[serde(default)]
+    pub state: ConvStartStopState,
+    /// history of current state
+    pub history: ConvStartStopStateHistoryVec,
+}
+
+#[pyo3_api]
+impl ConvStartStopControl {}
+
+impl HistoryMethods for ConvStartStopControl {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+
+    fn clear(&mut self) {
+        self.history.clear();
+    }
+}
+
+impl Init for ConvStartStopControl {
+    fn init(&mut self) -> Result<(), Error> {
+        init_opt_default!(self, fc_min_time_on, uc::S * 5.0);
+        init_opt_default!(
+            self,
+            time_delay_after_stop_until_fc_can_turn_off,
+            0.0 * uc::S
+        );
+        Ok(())
+    }
+}
+
+impl SerdeAPI for ConvStartStopControl {}
+
+impl ConvStartStopControl {
+    pub fn new(
+        fc_min_time_on: Option<si::Time>,
+        temp_fc_forced_on: Option<si::Temperature>,
+        temp_fc_allowed_off: Option<si::Temperature>,
+        time_delay_after_stop_until_fc_can_turn_off: Option<si::Time>,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut result = Self {
+            fc_min_time_on,
+            temp_fc_forced_on,
+            temp_fc_allowed_off,
+            time_delay_after_stop_until_fc_can_turn_off,
+            save_interval,
+            state: ConvStartStopState::default(),
+            history: ConvStartStopStateHistoryVec::default(),
+        };
+        result.init()?;
+        Ok(result)
+    }
+
+    pub fn handle_fc_on_causes(
+        &mut self,
+        fc: &FuelConverter,
+        veh_state: &VehicleState,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
+        // NOTE: handle_fc_on_causes_for_propulsion_request called elsewhere
+        self.handle_fc_on_causes_for_stopped_time(veh_state, dt)?;
+        self.handle_fc_on_causes_for_temp(fc)?;
+        // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
+        self.handle_fc_on_causes_for_on_time(fc)?;
+        Ok(())
+    }
+
+    pub fn handle_fc_on_causes_for_propulsion_request(
+        &mut self,
+        pwr_in_transmission: si::Power,
+    ) -> anyhow::Result<()> {
+        self.state
+            .has_traction_power_request
+            .update(pwr_in_transmission > si::Power::ZERO, || format_dbg!())?;
+        Ok(())
+    }
+
+    fn handle_fc_on_causes_for_stopped_time(
+        &mut self,
+        veh_state: &VehicleState,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
+        let v_prev = *veh_state.speed_ach.get_stale(|| format_dbg!())?;
+        let dt_stopped = *self
+            .state
+            .time_vehicle_stopped
+            .get_stale(|| format_dbg!())?;
+        let new_dt_stopped = if v_prev == si::Velocity::ZERO {
+            dt_stopped + dt
+        } else {
+            0.0 * uc::S
+        };
+        self.state
+            .time_vehicle_stopped
+            .update(new_dt_stopped, || format_dbg!())?;
+        let dt_delay = self
+            .time_delay_after_stop_until_fc_can_turn_off
+            .unwrap_or(0.0 * uc::S);
+        self.state
+            .vehicle_not_stopped_long_enough
+            .update(new_dt_stopped < dt_delay, || format_dbg!())?;
+        Ok(())
+    }
+
+    fn handle_fc_on_causes_for_temp(&mut self, fc: &FuelConverter) -> anyhow::Result<()> {
+        let fc_temperature = if let Some(temp_ts) = fc.temperature() {
+            Some(*temp_ts.get_fresh(|| format_dbg!())?)
+        } else {
+            None
+        };
+        let key = (
+            fc_temperature,
+            fc_temperature,
+            self.temp_fc_forced_on,
+            self.temp_fc_allowed_off,
+        );
+        match key {
+            (None, None, None, None) => {
+                self.state
+                    .fc_temperature_too_low
+                    .update(false, || format_dbg!())?;
+            }
+            (
+                Some(temperature),
+                Some(temp_prev),
+                Some(temp_fc_forced_on),
+                Some(temp_fc_allowed_off),
+            ) => {
+                self.state.fc_temperature_too_low.update(
+                    temperature < temp_fc_forced_on
+                        || (temp_prev < temp_fc_forced_on && temperature < temp_fc_allowed_off),
+                    || format_dbg!(),
+                )?;
+            }
+            _ => {
+                bail!("{}\n`fc.temperature()`, `fc.temp_prev()`, `self.temp_fc_forced_on`, `self.temp_fc_allowed_off` must all be `None` or `Some`",
+                    format_dbg!((
+                        fc.temperature(),
+                        self.temp_fc_forced_on,
+                        self.temp_fc_allowed_off,
+                    ))
+                );
+            }
+        }
+        Ok(())
+    }
+
+    pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
+        self.state
+            .vehicle_not_stopped
+            .update(speed.get::<si::meter_per_second>() > 1e-6, || format_dbg!())?;
+        Ok(())
+    }
+
+    fn handle_fc_on_causes_for_on_time(&mut self, fc: &FuelConverter) -> Result<(), anyhow::Error> {
+        self.state.on_time_too_short.update(*fc.state.fc_on.get_stale(|| format_dbg!())? && *fc.state.time_on.get_stale(|| format_dbg!())?
+                    < self.fc_min_time_on.with_context(|| {
+                    anyhow!(
+                        "{}\n Expected `ResGreedyWithBuffers::init` to have been called beforehand.",
+                        format_dbg!()
+                    )
+                })?, || format_dbg!())?;
+        Ok(())
+    }
+}
+
+#[serde_api]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    StateMethods,
+    SetCumulative,
+)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+pub struct ConvStartStopState {
+    /// time step index
+    pub i: TrackedState<usize>,
+    /// Engine must be on to self heat if thermal model is enabled
+    pub fc_temperature_too_low: TrackedState<bool>,
+    /// Engine stop/start can only happen while vehicle is stopped
+    pub vehicle_not_stopped: TrackedState<bool>,
+    /// Engine has not been on long enough (usually 30 s)
+    pub on_time_too_short: TrackedState<bool>,
+    /// Aux power demand exceeds battery capability
+    pub aux_power_demand: TrackedState<bool>,
+    /// The total time vehicle has been stopped
+    pub time_vehicle_stopped: TrackedState<si::Time>,
+    /// Vehicle stopped time
+    pub vehicle_not_stopped_long_enough: TrackedState<bool>,
+    /// Vehicle has a request for traction power for the current timestep
+    pub has_traction_power_request: TrackedState<bool>,
+}
+
+impl ConvStartStopState {
+    /// If any of the causes are true, engine must be on
+    fn engine_on(&self) -> anyhow::Result<bool> {
+        Ok(*self.fc_temperature_too_low.get_fresh(|| format_dbg!())?
+            || *self.vehicle_not_stopped.get_fresh(|| format_dbg!())?
+            || *self.on_time_too_short.get_fresh(|| format_dbg!())?
+            || *self.aux_power_demand.get_fresh(|| format_dbg!())?
+            || *self
+                .vehicle_not_stopped_long_enough
+                .get_fresh(|| format_dbg!())?
+            || *self
+                .has_traction_power_request
+                .get_fresh(|| format_dbg!())?)
     }
 }
