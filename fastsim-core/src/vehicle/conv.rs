@@ -85,7 +85,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         _pwr_upstream: (si::Power, si::Power),
         pwr_aux: si::Power,
         dt: si::Time,
-        _veh_state: &VehicleState,
+        veh_state: &VehicleState,
     ) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
         self.fc
@@ -102,9 +102,18 @@ impl Powertrain for Box<ConventionalVehicle> {
                 ),
                 f64::NAN * uc::W,
                 dt,
-                _veh_state,
+                veh_state,
             )
             .with_context(|| format_dbg!())?;
+        match &mut self.pt_cntrl {
+            ConvPowertrainControls::StartStop(ss) => {
+                ss.handle_fc_on_causes(&self.fc, veh_state, dt)?;
+                ss.state
+                    .aux_power_demand
+                    .update(pwr_aux > si::Power::ZERO, || format_dbg!())?;
+            }
+            _ => (),
+        }
         Ok(())
     }
 
@@ -144,6 +153,12 @@ impl Powertrain for Box<ConventionalVehicle> {
             .solve(pwr_out_req, true, dt)
             .with_context(|| format_dbg!())?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
+        match &mut self.pt_cntrl {
+            ConvPowertrainControls::Normal => (),
+            ConvPowertrainControls::StartStop(ss) => {
+                ss.handle_fc_on_causes_for_propulsion_request(pwr_in_transmission)?;
+            }
+        }
         self.fc
             .solve(pwr_in_transmission, enabled, dt)
             .with_context(|| anyhow!(format_dbg!()))?;

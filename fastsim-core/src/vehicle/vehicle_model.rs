@@ -942,7 +942,7 @@ impl Default for VehicleState {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::vehicle::conv::ConvPowertrainControls;
+    use crate::vehicle::conv::{ConvPowertrainControls, ConvStartStopControl};
     use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, MicroHybridStartStopControl};
     use crate::vehicle::powertrain::reversible_energy_storage::EffInterp;
 
@@ -1106,7 +1106,7 @@ pub(crate) mod tests {
         }
     }
 
-    fn make_conv_pacifica() -> anyhow::Result<Vehicle> {
+    fn make_conv_pacifica(with_conv_stop_start: bool) -> anyhow::Result<Vehicle> {
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
@@ -1153,13 +1153,35 @@ pub(crate) mod tests {
             InterpolatorEnum::new_0d(0.95), // eff_interp
             Option::None,                   // save_interval
         )?;
+        let pt_controls = {
+            if with_conv_stop_start {
+                let ctrl = ConvStartStopControl::new(
+                    Option::None, // fc_min_time_on
+                    Option::None, // temp_fc_forced_on
+                    Option::None, // temp_fc_allowed_off
+                    Option::None, // time_delay_after_stop_until_fc_can_turn_off
+                    Option::None, // save_interval
+                )
+                .map_err(|err| {
+                    assert!(
+                        false,
+                        "Unable to create stop/start control for conv: {}",
+                        err
+                    );
+                });
+                let ctrl = ctrl.ok().unwrap();
+                ConvPowertrainControls::StartStop(Box::new(ctrl))
+            } else {
+                ConvPowertrainControls::Normal
+            }
+        };
         let conv = ConventionalVehicle::new(
-            fs,                             // fs
-            fc,                             // fc
-            tx,                             // transmission
-            Option::None,                   // mass
-            ConvPowertrainControls::Normal, // powertrain control
-            1.0 * uc::R,                    // alt_eff
+            fs,           // fs
+            fc,           // fc
+            tx,           // transmission
+            Option::None, // mass
+            pt_controls,  // powertrain control
+            1.0 * uc::R,  // alt_eff
         )?;
         let chassis = Chassis {
             drag_coef: 0.3303036837542712 * uc::R,
@@ -1359,7 +1381,7 @@ pub(crate) mod tests {
         let veh_uhev_result = make_microhybrid_pacifica();
         assert!(veh_uhev_result.is_ok());
         let veh_uhev = veh_uhev_result.unwrap();
-        let veh_conv_result = make_conv_pacifica();
+        let veh_conv_result = make_conv_pacifica(false);
         assert!(veh_conv_result.is_ok());
         let veh_conv = veh_conv_result.unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
@@ -1408,6 +1430,63 @@ pub(crate) mod tests {
         assert!(
             fuel_stopped_uhev_mj < fuel_stopped_conv_mj,
             "Expected stopped uHEV fuel ({fuel_stopped_uhev_mj}) to be less than stopped conventional ({fuel_stopped_conv_mj})"
+        );
+    }
+
+    #[test]
+    fn stop_start_conv_saves_more_fuel_than_normal_conventional() {
+        let veh_ss_result = make_conv_pacifica(true);
+        assert!(veh_ss_result.is_ok());
+        let veh_ss = veh_ss_result.unwrap();
+        let veh_conv_result = make_conv_pacifica(false);
+        assert!(veh_conv_result.is_ok());
+        let veh_conv = veh_conv_result.unwrap();
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
+        let mut sd_ss = crate::simdrive::SimDrive::new(veh_ss, cyc.clone(), Default::default());
+        let result_ss = sd_ss.walk();
+        if let Err(err) = result_ss {
+            panic!("Error: {}", err);
+        }
+        assert!(result_ss.is_ok());
+        let mut sd_conv = crate::simdrive::SimDrive::new(veh_conv, cyc.clone(), Default::default());
+        let result_conv = sd_conv.walk();
+        assert!(result_conv.is_ok());
+        let speeds_mps: Vec<f64> = cyc
+            .speed
+            .iter()
+            .map(|spd| spd.get::<si::meter_per_second>())
+            .collect();
+        let fc_ss = sd_ss.veh.pt_type.fc().unwrap();
+        let fc_conv = sd_conv.veh.pt_type.fc().unwrap();
+        let fuels_ss_mj: Vec<f64> = fc_ss
+            .history
+            .energy_fuel
+            .iter()
+            .map(|ef| ef.get_fresh(|| format_dbg!()).unwrap().get::<si::joule>() / 1e6)
+            .collect();
+        let fuel_ss_mj: f64 = fuels_ss_mj.iter().sum();
+        let fuels_conv_mj: Vec<f64> = fc_conv
+            .history
+            .energy_fuel
+            .iter()
+            .map(|ef| ef.get_fresh(|| format_dbg!()).unwrap().get::<si::joule>() / 1e6)
+            .collect();
+        let fuel_conv_mj: f64 = fuels_conv_mj.iter().sum();
+        assert_eq!(speeds_mps.len(), fuels_ss_mj.len());
+        assert_eq!(speeds_mps.len(), fuels_conv_mj.len());
+        eprintln!("fuel_ss: {} MJ", fuel_ss_mj);
+        eprintln!("fuel_conv: {} MJ", fuel_conv_mj);
+        assert!(
+            fuel_ss_mj < fuel_conv_mj,
+            "Expected ss fuel ({fuel_ss_mj}) to be less than conventional ({fuel_conv_mj})"
+        );
+        let fuel_stopped_ss_mj = accumulate_for_zero_speed(&speeds_mps, &fuels_ss_mj);
+        let fuel_stopped_conv_mj = accumulate_for_zero_speed(&speeds_mps, &fuels_conv_mj);
+        eprintln!("fuel_stopped_ss: {} MJ", fuel_stopped_ss_mj);
+        eprintln!("fuel_stopped_conv: {} MJ", fuel_stopped_conv_mj);
+        assert!(
+            fuel_stopped_ss_mj < fuel_stopped_conv_mj,
+            "Expected stopped ss fuel ({fuel_stopped_ss_mj}) to be less than stopped conventional ({fuel_stopped_conv_mj})"
         );
     }
 }

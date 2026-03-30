@@ -521,6 +521,9 @@ impl SimDrive {
                     PowertrainType::PlugInHybridElectricVehicle(hev) => hev
                         .pt_cntrl
                         .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,
+                    PowertrainType::ConventionalVehicle(conv) => conv
+                        .pt_cntrl
+                        .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,
                     _ => (),
                 }
                 self.veh.solve_powertrain(dt).map_err(|err| {
