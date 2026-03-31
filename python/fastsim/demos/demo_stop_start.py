@@ -92,6 +92,7 @@ def conv_to_micro_hybrid(
     res_capacity_joules: float | None = None,
     em_eff: float | None = None,
     em_max_pwr_w: float | None = None,
+    allow_regen: bool = True,
 ) -> fsim.Vehicle:
     """Build a micro hybrid version of the Chrysler Pacifica Select."""
     # veh = fsim.Vehicle.from_resource("2026_Chrysler_Pacifica_Select.yaml")
@@ -250,7 +251,7 @@ def conv_to_micro_hybrid(
             "temp_fc_forced_on_kelvin": None,
             "temp_fc_allowed_off_kelvin": None,
             "time_delay_after_stop_until_fc_can_turn_off_seconds": None,
-            "em_can_regen": None,
+            "em_can_regen": allow_regen,
             "save_interval": 1,
             "state": {
                 "i": 0,
@@ -326,7 +327,7 @@ print(f"Stop/Start Reduction in Fuel Usage (uHEV): {percent_reduction} %")
 
 def plot_fc_pwr(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False) -> tuple[Figure, Axes]:
     """Plot fuel converter powers."""
-    fig, ax = plt.subplots(4, 1, sharex=True, figsize=figsize_3_stacked)
+    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     title_postfix = " (uHEV)" if is_hev else ""
     plt.suptitle("Fuel Converter Power" + title_postfix)
     tag = "HEV" if is_hev else "Conv"
