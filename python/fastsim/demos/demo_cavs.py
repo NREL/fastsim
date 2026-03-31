@@ -1,5 +1,4 @@
-"""
-Demonstration of Connected Automated Vehicle (CAV) Functionality in FASTSim
+"""Demonstration of Connected Automated Vehicle (CAV) Functionality in FASTSim.
 
 This module demonstrates:
 - cycle manipulation utilities
@@ -26,7 +25,7 @@ LIST_COLUMN_OPTIONS = False
 
 
 def microtrip_demo():
-    """Run a demonstration of cycle manipulation utilities"""
+    """Run a demonstration of cycle manipulation utilities."""
     cycle_name = "udds"
     cycle = fsim.Cycle.from_resource(f"{cycle_name}.csv")
 
@@ -59,7 +58,7 @@ def microtrip_demo():
 
 
 def plot_speed_by_time(df, c0, is_coast=None, save_interval=1, title=None, with_elevation=False):
-    """Plot speed by time"""
+    """Plot speed by time."""
     fig, ax = plt.subplots()
     ax2 = None if not with_elevation else ax.twinx()
     ax.plot(
@@ -97,7 +96,7 @@ def plot_speed_by_time(df, c0, is_coast=None, save_interval=1, title=None, with_
 
 
 def plot_speed_by_dist(df, c0, is_coast=None, save_interval=1, title=None, with_elevation=False):
-    """Plot speed by distance"""
+    """Plot speed by distance."""
     fig, ax = plt.subplots()
     ax2 = None if not with_elevation else ax.twinx()
     ax.plot(
@@ -135,7 +134,7 @@ def plot_speed_by_dist(df, c0, is_coast=None, save_interval=1, title=None, with_
 
 
 def setup_models(cyc_file="udds.csv", veh_file="2012_Ford_Fusion.yaml"):
-    """Set up and return cycle and vehicle models"""
+    """Set up and return cycle and vehicle models."""
     veh = fsim.Vehicle.from_resource(veh_file)
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource(cyc_file)
@@ -155,7 +154,7 @@ def setup_models(cyc_file="udds.csv", veh_file="2012_Ford_Fusion.yaml"):
 
 
 def basic_coasting_demo():
-    """Demonstrate coasting starting from a given speed"""
+    """Demonstrate coasting starting from a given speed."""
     # veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
     coast_speed_mps = 20.0
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
@@ -205,7 +204,7 @@ def basic_coasting_demo():
 
 
 def advanced_coasting_demo():
-    """Demonstrate coasting starting from a given speed"""
+    """Demonstrate coasting starting from a given speed."""
     # veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
@@ -272,7 +271,7 @@ def advanced_coasting_demo():
 
 
 def basic_cruise_demo():
-    """Demonstrate basic Eco-Cruise usage"""
+    """Demonstrate basic Eco-Cruise usage."""
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource("udds.csv")
@@ -322,7 +321,7 @@ def basic_cruise_demo():
 
 
 def cruise_and_coast_demo():
-    """Demonstrate both cruise and coast"""
+    """Demonstrate both cruise and coast."""
     # veh = fsim.Vehicle.from_resource("2022_Renault_Zoe_ZE50_R135.yaml")
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
@@ -415,7 +414,7 @@ def cruise_and_coast_demo():
 
 
 def coast_with_grade_demo():
-    """Coasting in the presence of grade"""
+    """Coasting in the presence of grade."""
     veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
     veh.set_save_interval(1)
     cyc_d = {
