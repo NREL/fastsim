@@ -1,5 +1,8 @@
-use super::{hev::HEVPowertrainControls, *};
-use crate::prelude::*;
+use super::{hev::HEVPowertrainControls, hev::MicroHybridStartStopControl, *};
+use crate::{
+    prelude::*,
+    vehicle::conv::{ConvPowertrainControls, ConvStartStopControl},
+};
 pub mod fastsim2_interface;
 
 /// Possible aux load power sources
@@ -149,6 +152,48 @@ impl Vehicle {
     #[pyo3(name = "reset_cumulative")]
     fn reset_cumulative_py(&mut self) -> anyhow::Result<()> {
         self.reset_cumulative(|| format_dbg!())
+    }
+
+    #[pyo3(name = "use_stop_start")]
+    fn use_stop_start_py(&mut self) -> anyhow::Result<()> {
+        match &mut self.pt_type {
+            PowertrainType::ConventionalVehicle(veh) => {
+                match veh.pt_cntrl {
+                    ConvPowertrainControls::Normal => {
+                        let save_interval = veh.save_interval().unwrap_or(Option::None);
+                        veh.pt_cntrl =
+                            ConvPowertrainControls::StartStop(Box::new(ConvStartStopControl::new(
+                                Option::None, // fc_min_time_on
+                                Option::None, // temp_fc_forced_on
+                                Option::None, // temp_fc_allowed_off
+                                Option::None, // time_delay_after_stop_until_fc_can_turn_off
+                                save_interval,
+                            )?));
+                    }
+                    ConvPowertrainControls::StartStop(_) => (),
+                }
+            }
+            PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
+                HEVPowertrainControls::RGWDB(_) => {
+                    let save_interval = veh.save_interval().unwrap_or(Option::None);
+                    veh.pt_cntrl = HEVPowertrainControls::StartStop(Box::new(
+                        MicroHybridStartStopControl::new(
+                            Option::None, // fc_min_time_on
+                            Option::None, // soc_fc_forced_on
+                            Option::None, // frac_of_most_eff_pwr_to_run_fc
+                            Option::None, // temp_fc_forced_on
+                            Option::None, // temp_fc_allowed_off
+                            Option::None, // time_delay_after_stop_until_fc_can_turn_off
+                            Option::None, // em_can_regen
+                            save_interval,
+                        )?,
+                    ));
+                }
+                HEVPowertrainControls::StartStop(_) => (),
+            },
+            _ => (),
+        }
+        Ok(())
     }
 }
 
@@ -1488,5 +1533,25 @@ pub(crate) mod tests {
             fuel_stopped_ss_mj < fuel_stopped_conv_mj,
             "Expected stopped ss fuel ({fuel_stopped_ss_mj}) to be less than stopped conventional ({fuel_stopped_conv_mj})"
         );
+    }
+
+    #[test]
+    fn that_use_start_stop_switches_the_controller() {
+        let veh_result = make_conv_pacifica(false);
+        assert!(veh_result.is_ok());
+        let mut veh = veh_result.unwrap();
+        let use_result = veh.use_stop_start_py();
+        assert!(use_result.is_ok());
+        match veh.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
+                ConvPowertrainControls::Normal => {
+                    assert!(false, "Powertrain controls didn't change");
+                }
+                _ => (),
+            },
+            _ => {
+                assert!(false, "Unexpected powertrain type");
+            }
+        }
     }
 }
