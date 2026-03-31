@@ -154,8 +154,8 @@ impl Vehicle {
         self.reset_cumulative(|| format_dbg!())
     }
 
-    #[pyo3(name = "use_stop_start")]
-    fn use_stop_start_py(&mut self) -> anyhow::Result<()> {
+    #[pyo3(name = "use_stop_start_controller")]
+    fn use_stop_start_controller_py(&mut self) -> anyhow::Result<()> {
         match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(veh) => {
                 match veh.pt_cntrl {
@@ -191,6 +191,45 @@ impl Vehicle {
                 }
                 HEVPowertrainControls::StartStop(_) => (),
             },
+            _ => (),
+        }
+        Ok(())
+    }
+
+    #[pyo3(name = "use_normal_controller")]
+    fn use_normal_controller_py(&mut self) -> anyhow::Result<()> {
+        let save_interval = self.save_interval().unwrap_or(Option::None);
+        match &mut self.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => match &conv.pt_cntrl {
+                ConvPowertrainControls::StartStop(_) => {
+                    conv.pt_cntrl = ConvPowertrainControls::Normal;
+                }
+                ConvPowertrainControls::Normal => (),
+            },
+            PowertrainType::HybridElectricVehicle(hev) => {
+                match &hev.pt_cntrl {
+                    HEVPowertrainControls::StartStop(_) => {
+                        hev.pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(
+                            RESGreedyWithDynamicBuffers::new(
+                                Option::None, // speed_soc_disch_buffer
+                                Option::None, // speed_soc_disch_buffer_coeff
+                                Option::None, // speed_soc_fc_on_buffer
+                                Option::None, // speed_soc_fc_on_buffer_coeff
+                                Option::None, // speed_soc_regen_buffer
+                                Option::None, // speed_soc_regen_buffer_coeff
+                                Option::None, // fc_min_time_on
+                                Option::None, // speed_fc_forced_on
+                                Option::None, // frac_pwr_demand_fc_forced_on
+                                Option::None, // frac_of_most_eff_pwr_to_run_fc
+                                Option::None, // temp_fc_forced_on
+                                Option::None, // temp_fc_allowed_off
+                                save_interval,
+                            )?,
+                        ))
+                    }
+                    HEVPowertrainControls::RGWDB(_) => (),
+                }
+            }
             _ => (),
         }
         Ok(())
@@ -1536,13 +1575,13 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn that_use_start_stop_switches_the_controller() {
+    fn that_use_start_stop_switches_the_conv_controller() {
         let veh_result = make_conv_pacifica(false);
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
-        let use_result = veh.use_stop_start_py();
+        let use_result = veh.use_stop_start_controller_py();
         assert!(use_result.is_ok());
-        match veh.pt_type {
+        match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
                 ConvPowertrainControls::Normal => {
                     assert!(false, "Powertrain controls didn't change");
@@ -1553,5 +1592,23 @@ pub(crate) mod tests {
                 assert!(false, "Unexpected powertrain type");
             }
         }
+        let normal_result = veh.use_normal_controller_py();
+        assert!(normal_result.is_ok());
+        match &veh.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
+                ConvPowertrainControls::StartStop(_) => {
+                    assert!(false, "Powertrain controls didn't change");
+                }
+                _ => (),
+            },
+            _ => {
+                assert!(false, "Unexpected powertrain type");
+            }
+        }
     }
+
+    // #[test]
+    // fn that_use_start_stop_switches_the_hev_controller() {
+    //     let veh_result = make_microhybrid_pacifica();
+    // }
 }
