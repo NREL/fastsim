@@ -1607,8 +1607,39 @@ pub(crate) mod tests {
         }
     }
 
-    // #[test]
-    // fn that_use_start_stop_switches_the_hev_controller() {
-    //     let veh_result = make_microhybrid_pacifica();
-    // }
+    #[test]
+    fn that_use_start_stop_switches_the_hev_controller() {
+        let veh_result = make_microhybrid_pacifica();
+        assert!(veh_result.is_ok());
+        let mut veh = veh_result.unwrap();
+        let use_result = veh.use_normal_controller_py();
+        assert!(use_result.is_ok());
+        match &veh.pt_type {
+            PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
+                HEVPowertrainControls::StartStop(_) => {
+                    assert!(false, "Powertrain controls didn't change");
+                }
+                HEVPowertrainControls::RGWDB(_) => (),
+            },
+            _ => {
+                assert!(false, "Unexpected powertrain type");
+            }
+        }
+        let use_ss_result = veh.use_stop_start_controller_py();
+        assert!(use_ss_result.is_ok());
+        match &veh.pt_type {
+            PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
+                HEVPowertrainControls::RGWDB(_) => {
+                    assert!(
+                        false,
+                        "Powertrain controls didn't change: RGWDB => StopStart"
+                    );
+                }
+                HEVPowertrainControls::StartStop(_) => (),
+            },
+            _ => {
+                assert!(false, "Unexpected powertrain type");
+            }
+        }
+    }
 }
