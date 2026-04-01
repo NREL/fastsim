@@ -1,4 +1,6 @@
-use crate::vehicle::common::handle_fc_on_causes_for_propulsion_request;
+use crate::vehicle::common::{
+    handle_fc_on_causes_for_propulsion_request, handle_fc_on_causes_for_stopped_time,
+};
 
 use super::*;
 
@@ -525,37 +527,16 @@ impl ConvStopStartControl {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // NOTE: handle_fc_on_causes_for_propulsion_request called elsewhere
-        self.handle_fc_on_causes_for_stopped_time(veh_state, dt)?;
+        handle_fc_on_causes_for_stopped_time(
+            &mut self.state.time_vehicle_stopped,
+            &mut self.state.vehicle_not_stopped_long_enough,
+            veh_state,
+            dt,
+            self.time_delay_after_stop_until_fc_can_turn_off,
+        )?;
         self.handle_fc_on_causes_for_temp(fc)?;
         // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
         self.handle_fc_on_causes_for_on_time(fc)?;
-        Ok(())
-    }
-
-    fn handle_fc_on_causes_for_stopped_time(
-        &mut self,
-        veh_state: &VehicleState,
-        dt: si::Time,
-    ) -> anyhow::Result<()> {
-        let v_prev = *veh_state.speed_ach.get_stale(|| format_dbg!())?;
-        let dt_stopped = *self
-            .state
-            .time_vehicle_stopped
-            .get_stale(|| format_dbg!())?;
-        let new_dt_stopped = if v_prev == si::Velocity::ZERO {
-            dt_stopped + dt
-        } else {
-            0.0 * uc::S
-        };
-        self.state
-            .time_vehicle_stopped
-            .update(new_dt_stopped, || format_dbg!())?;
-        let dt_delay = self
-            .time_delay_after_stop_until_fc_can_turn_off
-            .unwrap_or(0.0 * uc::S);
-        self.state
-            .vehicle_not_stopped_long_enough
-            .update(new_dt_stopped < dt_delay, || format_dbg!())?;
         Ok(())
     }
 
