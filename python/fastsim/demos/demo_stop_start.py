@@ -15,6 +15,7 @@ import fastsim as fsim
 from fastsim.demos.plot_utils import (
     figsize_3_stacked,
     get_paired_cycler,
+    get_uni_cycler,
 )
 
 sns.set_theme()
@@ -97,7 +98,7 @@ def conv_to_micro_hybrid(
     """Build a micro hybrid version of the Chrysler Pacifica Select."""
     # veh = fsim.Vehicle.from_resource("2026_Chrysler_Pacifica_Select.yaml")
     res_eff = 0.90 if res_eff is None else res_eff
-    res_capacity_joules = 360_000.0 if res_capacity_joules is None else res_capacity_joules
+    res_capacity_joules = 72_000.0 if res_capacity_joules is None else res_capacity_joules
     em_eff = 0.95 if em_eff is None else em_eff
     em_max_pwr_w = 5_000.0 if em_max_pwr_w is None else em_max_pwr_w
     assert res_capacity_joules > 0.0
@@ -327,7 +328,8 @@ print(f"Stop/Start Reduction in Fuel Usage (uHEV): {percent_reduction} %")
 
 def plot_fc_pwr(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False) -> tuple[Figure, Axes]:
     """Plot fuel converter powers."""
-    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
+    num_subplots = 4 if is_hev else 3
+    fig, ax = plt.subplots(num_subplots, 1, sharex=True, figsize=figsize_3_stacked)
     title_postfix = " (uHEV)" if is_hev else ""
     plt.suptitle("Fuel Converter Power" + title_postfix)
     tag = "HEV" if is_hev else "Conv"
@@ -375,8 +377,8 @@ def plot_fc_pwr(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False) -> 
         label="f3",
     )
     ax[2].plot(
-        df["cyc.time_seconds"],
-        df["veh.history.speed_ach_meters_per_second"],
+        df_ss["cyc.time_seconds"],
+        df_ss["veh.history.speed_ach_meters_per_second"],
         label="f3 (ss)",
     )
     ax[2].legend()
@@ -385,6 +387,20 @@ def plot_fc_pwr(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False) -> 
     x_min, x_max = ax[2].get_xlim()[0], ax[2].get_xlim()[1]
     x_max = (x_max - x_min) * 1.15
     ax[2].set_xlim([x_min, x_max])
+
+    if is_hev:
+        ax[3].set_prop_cycle(get_uni_cycler())
+        ax[3].plot(
+            df_ss["cyc.time_seconds"],
+            df_ss["veh.pt_type.HEV.res.history.soc"],
+            label="soc",
+        )
+        ax[3].legend()
+        ax[3].set_xlabel("Time [s]")
+        ax[3].set_ylabel("SOC")
+        x_min, x_max = ax[3].get_xlim()[0], ax[3].get_xlim()[1]
+        x_max = (x_max - x_min) * 1.15
+        ax[3].set_xlim([x_min, x_max])
 
     plt.tight_layout()
     if SAVE_FIGS:
