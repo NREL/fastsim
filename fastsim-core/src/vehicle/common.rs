@@ -90,3 +90,11 @@ pub fn handle_fc_on_causes_for_on_time(
     )?;
     Ok(())
 }
+
+pub fn handle_fc_on_causes_for_speed(
+    vehicle_not_stopped: &mut TrackedState<bool>,
+    speed: si::Velocity,
+) -> anyhow::Result<()> {
+    vehicle_not_stopped.update(speed.get::<si::meter_per_second>() > 1e-6, || format_dbg!())?;
+    Ok(())
+}

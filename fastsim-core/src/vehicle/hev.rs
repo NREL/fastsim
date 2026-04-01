@@ -881,7 +881,9 @@ impl HEVPowertrainControls {
 
     pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
         match self {
-            Self::StopStart(ctrl) => ctrl.handle_fc_on_causes_for_speed(speed)?,
+            Self::StopStart(ctrl) => {
+                handle_fc_on_causes_for_speed(&mut ctrl.state.vehicle_not_stopped, speed)?
+            }
             _ => (),
         }
         Ok(())
@@ -1495,13 +1497,6 @@ impl HEVStopStartControl {
             self.fc_min_time_on,
             &mut self.state.on_time_too_short,
         )?;
-        Ok(())
-    }
-
-    pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
-        self.state
-            .vehicle_not_stopped
-            .update(speed.get::<si::meter_per_second>() > 1e-6, || format_dbg!())?;
         Ok(())
     }
 
