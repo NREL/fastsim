@@ -1,5 +1,7 @@
 use super::{vehicle_model::VehicleState, *};
-use crate::prelude::ElectricMachineState;
+use crate::{
+    prelude::ElectricMachineState, vehicle::common::handle_fc_on_causes_for_propulsion_request,
+};
 
 #[serde_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
@@ -1460,7 +1462,10 @@ impl HEVStopStartControl {
             });
             (fc_pwr, em_pwr_corrected)
         };
-        self.handle_fc_on_causes_for_propulsion_request(fc_pwr)?;
+        handle_fc_on_causes_for_propulsion_request(
+            &mut self.state.has_traction_power_request,
+            fc_pwr,
+        )?;
         Ok((fc_pwr, em_pwr))
     }
 
@@ -1477,16 +1482,6 @@ impl HEVStopStartControl {
         // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
         self.handle_fc_on_causes_for_low_soc(res)?;
         self.handle_fc_on_causes_for_on_time(fc)?;
-        Ok(())
-    }
-
-    fn handle_fc_on_causes_for_propulsion_request(
-        &mut self,
-        pwr_in_transmission: si::Power,
-    ) -> anyhow::Result<()> {
-        self.state
-            .has_traction_power_request
-            .update(pwr_in_transmission > si::Power::ZERO, || format_dbg!())?;
         Ok(())
     }
 

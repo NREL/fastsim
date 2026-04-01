@@ -1,3 +1,5 @@
+use crate::vehicle::common::handle_fc_on_causes_for_propulsion_request;
+
 use super::*;
 
 #[serde_api]
@@ -152,7 +154,10 @@ impl Powertrain for Box<ConventionalVehicle> {
         match &mut self.pt_cntrl {
             ConvPowertrainControls::Normal => (),
             ConvPowertrainControls::StopStart(ss) => {
-                ss.handle_fc_on_causes_for_propulsion_request(pwr_in_transmission)?;
+                handle_fc_on_causes_for_propulsion_request(
+                    &mut ss.state.has_traction_power_request,
+                    pwr_in_transmission,
+                )?;
             }
         }
         let fc_on: bool = self.pt_cntrl.engine_on()?;
@@ -524,16 +529,6 @@ impl ConvStopStartControl {
         self.handle_fc_on_causes_for_temp(fc)?;
         // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
         self.handle_fc_on_causes_for_on_time(fc)?;
-        Ok(())
-    }
-
-    pub fn handle_fc_on_causes_for_propulsion_request(
-        &mut self,
-        pwr_in_transmission: si::Power,
-    ) -> anyhow::Result<()> {
-        self.state
-            .has_traction_power_request
-            .update(pwr_in_transmission > si::Power::ZERO, || format_dbg!())?;
         Ok(())
     }
 
