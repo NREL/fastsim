@@ -455,9 +455,9 @@ pub struct ConvStopStartControl {
     pub save_interval: Option<usize>,
     /// current state of control variables
     #[serde(default)]
-    pub state: ConvStartStopState,
+    pub state: ConvStopStartState,
     /// history of current state
-    pub history: ConvStartStopStateHistoryVec,
+    pub history: ConvStopStartStateHistoryVec,
 }
 
 #[pyo3_api]
@@ -506,8 +506,8 @@ impl ConvStopStartControl {
             temp_fc_allowed_off,
             time_delay_after_stop_until_fc_can_turn_off,
             save_interval,
-            state: ConvStartStopState::default(),
-            history: ConvStartStopStateHistoryVec::default(),
+            state: ConvStopStartState::default(),
+            history: ConvStopStartStateHistoryVec::default(),
         };
         result.init()?;
         Ok(result)
@@ -640,7 +640,7 @@ impl ConvStopStartControl {
 )]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
-pub struct ConvStartStopState {
+pub struct ConvStopStartState {
     /// time step index
     pub i: TrackedState<usize>,
     /// Engine must be on to self heat if thermal model is enabled
@@ -657,7 +657,7 @@ pub struct ConvStartStopState {
     pub has_traction_power_request: TrackedState<bool>,
 }
 
-impl ConvStartStopState {
+impl ConvStopStartState {
     /// If any of the causes are true, engine must be on
     fn engine_on(&self) -> anyhow::Result<bool> {
         let c1 = *self.fc_temperature_too_low.get_fresh(|| format_dbg!())?;
