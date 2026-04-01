@@ -308,7 +308,7 @@ pub enum ConvPowertrainControls {
     Normal,
     /// Start/Stop controller that allows the fuel converter to turn off at
     /// stop under certain conditions
-    StopStart(Box<ConvStartStopControl>),
+    StopStart(Box<ConvStopStartControl>),
 }
 
 impl Default for ConvPowertrainControls {
@@ -435,7 +435,7 @@ impl ConvPowertrainControls {
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
-pub struct ConvStartStopControl {
+pub struct ConvStopStartControl {
     /// Minimum time engine must remain on if it was on during the previous
     /// simulation time step.
     pub fc_min_time_on: Option<si::Time>,
@@ -461,9 +461,9 @@ pub struct ConvStartStopControl {
 }
 
 #[pyo3_api]
-impl ConvStartStopControl {}
+impl ConvStopStartControl {}
 
-impl HistoryMethods for ConvStartStopControl {
+impl HistoryMethods for ConvStopStartControl {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
@@ -478,7 +478,7 @@ impl HistoryMethods for ConvStartStopControl {
     }
 }
 
-impl Init for ConvStartStopControl {
+impl Init for ConvStopStartControl {
     fn init(&mut self) -> Result<(), Error> {
         init_opt_default!(self, fc_min_time_on, uc::S * 5.0);
         init_opt_default!(
@@ -490,9 +490,9 @@ impl Init for ConvStartStopControl {
     }
 }
 
-impl SerdeAPI for ConvStartStopControl {}
+impl SerdeAPI for ConvStopStartControl {}
 
-impl ConvStartStopControl {
+impl ConvStopStartControl {
     pub fn new(
         fc_min_time_on: Option<si::Time>,
         temp_fc_forced_on: Option<si::Temperature>,

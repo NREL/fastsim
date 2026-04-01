@@ -1,7 +1,7 @@
 use super::{hev::HEVPowertrainControls, hev::HEVStopStartControl, *};
 use crate::{
     prelude::*,
-    vehicle::conv::{ConvPowertrainControls, ConvStartStopControl},
+    vehicle::conv::{ConvPowertrainControls, ConvStopStartControl},
 };
 pub mod fastsim2_interface;
 
@@ -162,7 +162,7 @@ impl Vehicle {
                     ConvPowertrainControls::Normal => {
                         let save_interval = veh.save_interval().unwrap_or(Option::None);
                         veh.pt_cntrl =
-                            ConvPowertrainControls::StopStart(Box::new(ConvStartStopControl::new(
+                            ConvPowertrainControls::StopStart(Box::new(ConvStopStartControl::new(
                                 Option::None, // fc_min_time_on
                                 Option::None, // temp_fc_forced_on
                                 Option::None, // temp_fc_allowed_off
@@ -1025,7 +1025,7 @@ impl Default for VehicleState {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::vehicle::conv::{ConvPowertrainControls, ConvStartStopControl};
+    use crate::vehicle::conv::{ConvPowertrainControls, ConvStopStartControl};
     use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, HEVStopStartControl};
     use crate::vehicle::powertrain::reversible_energy_storage::EffInterp;
 
@@ -1238,7 +1238,7 @@ pub(crate) mod tests {
         )?;
         let pt_controls = {
             if with_conv_stop_start {
-                let ctrl = ConvStartStopControl::new(
+                let ctrl = ConvStopStartControl::new(
                     Option::None, // fc_min_time_on
                     Option::None, // temp_fc_forced_on
                     Option::None, // temp_fc_allowed_off
