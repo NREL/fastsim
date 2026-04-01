@@ -1574,7 +1574,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn that_use_start_stop_switches_the_conv_controller() {
+    fn that_use_stop_start_switches_the_conv_controller() {
         let veh_result = make_conv_pacifica(false);
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
@@ -1607,7 +1607,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn that_use_start_stop_switches_the_hev_controller() {
+    fn that_use_stop_start_switches_the_hev_controller() {
         let veh_result = make_microhybrid_pacifica();
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
