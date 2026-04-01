@@ -162,7 +162,7 @@ impl Vehicle {
                     ConvPowertrainControls::Normal => {
                         let save_interval = veh.save_interval().unwrap_or(Option::None);
                         veh.pt_cntrl =
-                            ConvPowertrainControls::StartStop(Box::new(ConvStartStopControl::new(
+                            ConvPowertrainControls::StopStart(Box::new(ConvStartStopControl::new(
                                 Option::None, // fc_min_time_on
                                 Option::None, // temp_fc_forced_on
                                 Option::None, // temp_fc_allowed_off
@@ -170,7 +170,7 @@ impl Vehicle {
                                 save_interval,
                             )?));
                     }
-                    ConvPowertrainControls::StartStop(_) => (),
+                    ConvPowertrainControls::StopStart(_) => (),
                 }
             }
             PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
@@ -200,7 +200,7 @@ impl Vehicle {
         let save_interval = self.save_interval().unwrap_or(Option::None);
         match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match &conv.pt_cntrl {
-                ConvPowertrainControls::StartStop(_) => {
+                ConvPowertrainControls::StopStart(_) => {
                     conv.pt_cntrl = ConvPowertrainControls::Normal;
                 }
                 ConvPowertrainControls::Normal => (),
@@ -1253,7 +1253,7 @@ pub(crate) mod tests {
                     );
                 });
                 let ctrl = ctrl.ok().unwrap();
-                ConvPowertrainControls::StartStop(Box::new(ctrl))
+                ConvPowertrainControls::StopStart(Box::new(ctrl))
             } else {
                 ConvPowertrainControls::Normal
             }
@@ -1595,7 +1595,7 @@ pub(crate) mod tests {
         assert!(normal_result.is_ok());
         match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
-                ConvPowertrainControls::StartStop(_) => {
+                ConvPowertrainControls::StopStart(_) => {
                     assert!(false, "Powertrain controls didn't change");
                 }
                 _ => (),
