@@ -1482,53 +1482,15 @@ impl HEVStopStartControl {
             dt,
             self.time_delay_after_stop_until_fc_can_turn_off,
         )?;
-        self.handle_fc_on_causes_for_temp(fc)?;
+        handle_fc_on_causes_for_temp(
+            fc,
+            self.temp_fc_forced_on,
+            self.temp_fc_allowed_off,
+            &mut self.state.fc_temperature_too_low,
+        )?;
         // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
         self.handle_fc_on_causes_for_low_soc(res)?;
         self.handle_fc_on_causes_for_on_time(fc)?;
-        Ok(())
-    }
-
-    fn handle_fc_on_causes_for_temp(&mut self, fc: &FuelConverter) -> anyhow::Result<()> {
-        let fc_temperature = if let Some(temp_ts) = fc.temperature() {
-            Some(*temp_ts.get_fresh(|| format_dbg!())?)
-        } else {
-            None
-        };
-        let key = (
-            fc_temperature,
-            fc_temperature,
-            self.temp_fc_forced_on,
-            self.temp_fc_allowed_off,
-        );
-        match key {
-            (None, None, None, None) => {
-                self.state
-                    .fc_temperature_too_low
-                    .update(false, || format_dbg!())?;
-            }
-            (
-                Some(temperature),
-                Some(temp_prev),
-                Some(temp_fc_forced_on),
-                Some(temp_fc_allowed_off),
-            ) => {
-                self.state.fc_temperature_too_low.update(
-                    temperature < temp_fc_forced_on
-                        || (temp_prev < temp_fc_forced_on && temperature < temp_fc_allowed_off),
-                    || format_dbg!(),
-                )?;
-            }
-            _ => {
-                bail!("{}\n`fc.temperature()`, `fc.temp_prev()`, `self.temp_fc_forced_on`, `self.temp_fc_allowed_off` must all be `None` or `Some`",
-                    format_dbg!((
-                        fc.temperature(),
-                        self.temp_fc_forced_on,
-                        self.temp_fc_allowed_off,
-                    ))
-                );
-            }
-        }
         Ok(())
     }
 
