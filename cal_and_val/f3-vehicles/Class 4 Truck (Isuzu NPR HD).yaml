@@ -113,6 +113,7 @@ pt_type:
         pwr_loss_watts: []
         energy_loss_joules: []
       save_interval: 1
+    pt_cntrl: Normal
     mass_kilograms: ~
     alt_eff: 1.0
 chassis:
