@@ -76,3 +76,17 @@ pub fn handle_fc_on_causes_for_temp(
     }
     Ok(())
 }
+
+pub fn handle_fc_on_causes_for_on_time(
+    fc: &FuelConverter,
+    fc_min_time_on: Option<si::Time>,
+    on_time_too_short: &mut TrackedState<bool>,
+) -> Result<(), anyhow::Error> {
+    on_time_too_short.update(
+        *fc.state.fc_on.get_stale(|| format_dbg!())?
+            && *fc.state.time_on.get_stale(|| format_dbg!())?
+                < fc_min_time_on.with_context(|| format_dbg!())?,
+        || format_dbg!(),
+    )?;
+    Ok(())
+}

@@ -1,6 +1,6 @@
 use crate::vehicle::common::{
-    handle_fc_on_causes_for_propulsion_request, handle_fc_on_causes_for_stopped_time,
-    handle_fc_on_causes_for_temp,
+    handle_fc_on_causes_for_on_time, handle_fc_on_causes_for_propulsion_request,
+    handle_fc_on_causes_for_stopped_time, handle_fc_on_causes_for_temp,
 };
 
 use super::*;
@@ -542,7 +542,11 @@ impl ConvStopStartControl {
             &mut self.state.fc_temperature_too_low,
         )?;
         // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
-        self.handle_fc_on_causes_for_on_time(fc)?;
+        handle_fc_on_causes_for_on_time(
+            fc,
+            self.fc_min_time_on,
+            &mut self.state.on_time_too_short,
+        )?;
         Ok(())
     }
 
@@ -550,17 +554,6 @@ impl ConvStopStartControl {
         self.state
             .vehicle_not_stopped
             .update(speed.get::<si::meter_per_second>() > 1e-6, || format_dbg!())?;
-        Ok(())
-    }
-
-    fn handle_fc_on_causes_for_on_time(&mut self, fc: &FuelConverter) -> Result<(), anyhow::Error> {
-        self.state.on_time_too_short.update(*fc.state.fc_on.get_stale(|| format_dbg!())? && *fc.state.time_on.get_stale(|| format_dbg!())?
-                    < self.fc_min_time_on.with_context(|| {
-                    anyhow!(
-                        "{}\n Expected `ResGreedyWithBuffers::init` to have been called beforehand.",
-                        format_dbg!()
-                    )
-                })?, || format_dbg!())?;
         Ok(())
     }
 }

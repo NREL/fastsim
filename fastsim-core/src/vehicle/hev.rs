@@ -1490,7 +1490,11 @@ impl HEVStopStartControl {
         )?;
         // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
         self.handle_fc_on_causes_for_low_soc(res)?;
-        self.handle_fc_on_causes_for_on_time(fc)?;
+        handle_fc_on_causes_for_on_time(
+            fc,
+            self.fc_min_time_on,
+            &mut self.state.on_time_too_short,
+        )?;
         Ok(())
     }
 
@@ -1514,17 +1518,6 @@ impl HEVStopStartControl {
             *res.state.soc.get_stale(|| format_dbg!())? < soc_fc_forced_on,
             || format_dbg!(),
         )?;
-        Ok(())
-    }
-
-    fn handle_fc_on_causes_for_on_time(&mut self, fc: &FuelConverter) -> Result<(), anyhow::Error> {
-        self.state.on_time_too_short.update(*fc.state.fc_on.get_stale(|| format_dbg!())? && *fc.state.time_on.get_stale(|| format_dbg!())?
-                    < self.fc_min_time_on.with_context(|| {
-                    anyhow!(
-                        "{}\n Expected `ResGreedyWithBuffers::init` to have been called beforehand.",
-                        format_dbg!()
-                    )
-                })?, || format_dbg!())?;
         Ok(())
     }
 }
