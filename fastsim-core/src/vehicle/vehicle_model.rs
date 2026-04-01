@@ -1,4 +1,4 @@
-use super::{hev::HEVPowertrainControls, hev::MicroHybridStartStopControl, *};
+use super::{hev::HEVPowertrainControls, hev::HEVStopStartControl, *};
 use crate::{
     prelude::*,
     vehicle::conv::{ConvPowertrainControls, ConvStartStopControl},
@@ -176,8 +176,8 @@ impl Vehicle {
             PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
                 HEVPowertrainControls::RGWDB(_) => {
                     let save_interval = veh.save_interval().unwrap_or(Option::None);
-                    veh.pt_cntrl = HEVPowertrainControls::StopStart(Box::new(
-                        MicroHybridStartStopControl::new(
+                    veh.pt_cntrl =
+                        HEVPowertrainControls::StopStart(Box::new(HEVStopStartControl::new(
                             Option::None, // fc_min_time_on
                             Option::None, // soc_fc_forced_on
                             Option::None, // frac_of_most_eff_pwr_to_run_fc
@@ -186,8 +186,7 @@ impl Vehicle {
                             Option::None, // time_delay_after_stop_until_fc_can_turn_off
                             Option::None, // em_can_regen
                             save_interval,
-                        )?,
-                    ));
+                        )?));
                 }
                 HEVPowertrainControls::StopStart(_) => (),
             },
@@ -1027,7 +1026,7 @@ impl Default for VehicleState {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::vehicle::conv::{ConvPowertrainControls, ConvStartStopControl};
-    use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, MicroHybridStartStopControl};
+    use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, HEVStopStartControl};
     use crate::vehicle::powertrain::reversible_energy_storage::EffInterp;
 
     use super::*;
@@ -1372,7 +1371,7 @@ pub(crate) mod tests {
             InterpolatorEnum::new_0d(0.95), // eff_interp
             Option::None,                   // save_interval
         )?;
-        let ctrl = MicroHybridStartStopControl::new(
+        let ctrl = HEVStopStartControl::new(
             Option::None, // fc_min_time_on
             Option::None, // soc_fc_forced_on
             Option::None, // frac_of_most_eff_pwr_to_run_fc

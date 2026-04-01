@@ -700,7 +700,7 @@ pub enum HEVPowertrainControls {
     RGWDB(Box<RESGreedyWithDynamicBuffers>),
     /// Uses the [ReversibleEnergyStorage] only for supplying auxiliary power.
     /// Also, includes logic for when the [FuelConverter] must be on.
-    StopStart(Box<MicroHybridStartStopControl>),
+    StopStart(Box<HEVStopStartControl>),
 }
 
 impl Default for HEVPowertrainControls {
@@ -1299,7 +1299,7 @@ impl StartStopState {
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
-pub struct MicroHybridStartStopControl {
+pub struct HEVStopStartControl {
     /// Minimum time engine must remain on if it was on during the previous
     /// simulation time step.
     pub fc_min_time_on: Option<si::Time>,
@@ -1335,9 +1335,9 @@ pub struct MicroHybridStartStopControl {
 }
 
 #[pyo3_api]
-impl MicroHybridStartStopControl {}
+impl HEVStopStartControl {}
 
-impl HistoryMethods for MicroHybridStartStopControl {
+impl HistoryMethods for HEVStopStartControl {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
@@ -1352,7 +1352,7 @@ impl HistoryMethods for MicroHybridStartStopControl {
     }
 }
 
-impl Init for MicroHybridStartStopControl {
+impl Init for HEVStopStartControl {
     fn init(&mut self) -> Result<(), Error> {
         init_opt_default!(self, fc_min_time_on, 5.0 * uc::S);
         init_opt_default!(self, soc_fc_forced_on, 0.1 * uc::R);
@@ -1366,9 +1366,9 @@ impl Init for MicroHybridStartStopControl {
     }
 }
 
-impl SerdeAPI for MicroHybridStartStopControl {}
+impl SerdeAPI for HEVStopStartControl {}
 
-impl MicroHybridStartStopControl {
+impl HEVStopStartControl {
     pub fn new(
         fc_min_time_on: Option<si::Time>,
         soc_fc_forced_on: Option<si::Ratio>,
