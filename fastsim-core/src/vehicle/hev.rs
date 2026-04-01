@@ -86,7 +86,7 @@ impl HybridElectricVehicle {
 
                 (disch_buffer, chrg_buffer, fc_on_soc)
             }
-            HEVPowertrainControls::StartStop(_) => {
+            HEVPowertrainControls::StopStart(_) => {
                 let fc_on_soc = 0.10 * (self.res.max_soc - self.res.min_soc) + self.res.min_soc;
                 let chrg_buffer = self.res.energy_capacity_usable();
                 let disch_buffer = self.res.energy_capacity_usable();
@@ -251,7 +251,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
                 (disch_buffer, chrg_buffer)
             }
-            HEVPowertrainControls::StartStop(ctrl) => {
+            HEVPowertrainControls::StopStart(ctrl) => {
                 ctrl.handle_fc_on_causes(&self.fc, veh_state, &self.res, dt)?;
 
                 let disch_buffer = 0.0 * uc::J;
@@ -288,7 +288,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     .aux_power_demand
                     .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
             }
-            HEVPowertrainControls::StartStop(ctrl) => {
+            HEVPowertrainControls::StopStart(ctrl) => {
                 ctrl.state
                     .aux_power_demand
                     .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
@@ -700,7 +700,7 @@ pub enum HEVPowertrainControls {
     RGWDB(Box<RESGreedyWithDynamicBuffers>),
     /// Uses the [ReversibleEnergyStorage] only for supplying auxiliary power.
     /// Also, includes logic for when the [FuelConverter] must be on.
-    StartStop(Box<MicroHybridStartStopControl>),
+    StopStart(Box<MicroHybridStartStopControl>),
 }
 
 impl Default for HEVPowertrainControls {
@@ -715,7 +715,7 @@ impl SetCumulative for HEVPowertrainControls {
             Self::RGWDB(rgwdb) => {
                 rgwdb.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
             }
-            Self::StartStop(ctrl) => {
+            Self::StopStart(ctrl) => {
                 ctrl.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
             }
         }
@@ -727,7 +727,7 @@ impl SetCumulative for HEVPowertrainControls {
             Self::RGWDB(rgwdb) => {
                 rgwdb.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
-            Self::StartStop(ctrl) => {
+            Self::StopStart(ctrl) => {
                 ctrl.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
         }
@@ -738,7 +738,7 @@ impl Step for HEVPowertrainControls {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.step(loc)?,
-            HEVPowertrainControls::StartStop(ctrls) => ctrls.step(loc)?,
+            HEVPowertrainControls::StopStart(ctrls) => ctrls.step(loc)?,
         }
         Ok(())
     }
@@ -746,7 +746,7 @@ impl Step for HEVPowertrainControls {
     fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.reset_step(loc)?,
-            HEVPowertrainControls::StartStop(ctrls) => ctrls.reset_step(loc)?,
+            HEVPowertrainControls::StopStart(ctrls) => ctrls.reset_step(loc)?,
         }
         Ok(())
     }
@@ -758,7 +758,7 @@ impl SaveState for HEVPowertrainControls {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_state(loc)?,
-            HEVPowertrainControls::StartStop(ctrl) => ctrl.save_state(loc)?,
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.save_state(loc)?,
         }
         Ok(())
     }
@@ -767,7 +767,7 @@ impl TrackedStateMethods for HEVPowertrainControls {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.check_and_reset(loc)?,
-            HEVPowertrainControls::StartStop(ctrl) => ctrl.check_and_reset(loc)?,
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.check_and_reset(loc)?,
         }
         Ok(())
     }
@@ -775,7 +775,7 @@ impl TrackedStateMethods for HEVPowertrainControls {
     fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.mark_fresh(loc)?,
-            HEVPowertrainControls::StartStop(ctrl) => ctrl.mark_fresh(loc)?,
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.mark_fresh(loc)?,
         }
         Ok(())
     }
@@ -784,20 +784,20 @@ impl HistoryMethods for HEVPowertrainControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => Ok(rgwdb.set_save_interval(save_interval)?),
-            HEVPowertrainControls::StartStop(ctrl) => Ok(ctrl.set_save_interval(save_interval)?),
+            HEVPowertrainControls::StopStart(ctrl) => Ok(ctrl.set_save_interval(save_interval)?),
         }
     }
 
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_interval(),
-            HEVPowertrainControls::StartStop(ctrl) => ctrl.save_interval(),
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.save_interval(),
         }
     }
     fn clear(&mut self) {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.clear(),
-            HEVPowertrainControls::StartStop(ctrl) => ctrl.clear(),
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.clear(),
         }
     }
 }
@@ -806,7 +806,7 @@ impl Init for HEVPowertrainControls {
     fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::RGWDB(rgwb) => rgwb.init()?,
-            Self::StartStop(ctrl) => ctrl.init()?,
+            Self::StopStart(ctrl) => ctrl.init()?,
         }
         Ok(())
     }
@@ -868,20 +868,20 @@ impl HEVPowertrainControls {
 
         match self {
             Self::RGWDB(rgwdb) => rgwdb.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
-            Self::StartStop(ctrl) => ctrl.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
+            Self::StopStart(ctrl) => ctrl.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
         }
     }
 
     pub fn engine_on(&self) -> anyhow::Result<bool> {
         match self {
             Self::RGWDB(rgwdb) => rgwdb.state.engine_on(),
-            Self::StartStop(ctrl) => ctrl.state.engine_on(),
+            Self::StopStart(ctrl) => ctrl.state.engine_on(),
         }
     }
 
     pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
         match self {
-            Self::StartStop(ctrl) => ctrl.handle_fc_on_causes_for_speed(speed)?,
+            Self::StopStart(ctrl) => ctrl.handle_fc_on_causes_for_speed(speed)?,
             _ => (),
         }
         Ok(())

@@ -244,7 +244,7 @@ def conv_to_micro_hybrid(
         },
     }
     pt_cntrl = {
-        "StartStop": {
+        "StopStart": {
             "fc_min_time_on_seconds": None,
             "soc_fc_forced_on": None,
             "frac_of_most_eff_pwr_to_run_fc": None,

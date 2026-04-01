@@ -234,7 +234,7 @@ impl Vehicle {
                         .with_context(|| format_dbg!("Expected `Some`."))?
                         * (hev.fc.pwr_out_max + hev.res.pwr_out_max.min(hev.em.pwr_out_max)))
                     .get::<si::kilowatt>(),
-                    HEVPowertrainControls::StartStop(_) => 0.0,
+                    HEVPowertrainControls::StopStart(_) => 0.0,
                 },
                 _ => 0.0,
             },
@@ -319,7 +319,7 @@ impl Vehicle {
                         .speed_fc_forced_on
                         .with_context(|| format_dbg!("Expected Some"))?
                         .get::<si::mile_per_hour>(),
-                    HEVPowertrainControls::StartStop(_) => 0.0,
+                    HEVPowertrainControls::StopStart(_) => 0.0,
                 },
                 _ => 0.0,
             },

@@ -176,7 +176,7 @@ impl Vehicle {
             PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
                 HEVPowertrainControls::RGWDB(_) => {
                     let save_interval = veh.save_interval().unwrap_or(Option::None);
-                    veh.pt_cntrl = HEVPowertrainControls::StartStop(Box::new(
+                    veh.pt_cntrl = HEVPowertrainControls::StopStart(Box::new(
                         MicroHybridStartStopControl::new(
                             Option::None, // fc_min_time_on
                             Option::None, // soc_fc_forced_on
@@ -189,7 +189,7 @@ impl Vehicle {
                         )?,
                     ));
                 }
-                HEVPowertrainControls::StartStop(_) => (),
+                HEVPowertrainControls::StopStart(_) => (),
             },
             _ => (),
         }
@@ -208,7 +208,7 @@ impl Vehicle {
             },
             PowertrainType::HybridElectricVehicle(hev) => {
                 match &hev.pt_cntrl {
-                    HEVPowertrainControls::StartStop(_) => {
+                    HEVPowertrainControls::StopStart(_) => {
                         hev.pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(
                             RESGreedyWithDynamicBuffers::new(
                                 Option::None, // speed_soc_disch_buffer
@@ -898,7 +898,7 @@ impl Vehicle {
         if let PowertrainType::HybridElectricVehicle(hev) = &mut self.pt_type {
             match &mut hev.pt_cntrl {
                 HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
-                HEVPowertrainControls::StartStop(ctrl) => ctrl.state.i.mark_stale(),
+                HEVPowertrainControls::StopStart(ctrl) => ctrl.state.i.mark_stale(),
             }
             hev.pt_cntrl.mark_fresh(|| format_dbg!())?
         }
@@ -1382,7 +1382,7 @@ pub(crate) mod tests {
             Option::None, // em_can_regen
             Option::None, // save_interval
         )?;
-        let pt_ctrl = HEVPowertrainControls::StartStop(Box::new(ctrl));
+        let pt_ctrl = HEVPowertrainControls::StopStart(Box::new(ctrl));
         let aux_ctrl = HEVAuxControls::AuxOnResPriority;
         let sim_params = HEVSimulationParams::new(
             0.05 * uc::R, // res_per_fuel_lim
@@ -1616,7 +1616,7 @@ pub(crate) mod tests {
         assert!(use_result.is_ok());
         match &veh.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
-                HEVPowertrainControls::StartStop(_) => {
+                HEVPowertrainControls::StopStart(_) => {
                     assert!(false, "Powertrain controls didn't change");
                 }
                 HEVPowertrainControls::RGWDB(_) => (),
@@ -1635,7 +1635,7 @@ pub(crate) mod tests {
                         "Powertrain controls didn't change: RGWDB => StopStart"
                     );
                 }
-                HEVPowertrainControls::StartStop(_) => (),
+                HEVPowertrainControls::StopStart(_) => (),
             },
             _ => {
                 assert!(false, "Unexpected powertrain type");
