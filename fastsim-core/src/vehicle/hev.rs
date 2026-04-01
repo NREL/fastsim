@@ -1256,7 +1256,7 @@ for an HEV equipped with thermal models or superfluous otherwise",
 )]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
-pub struct StartStopState {
+pub struct StopStartState {
     /// time step index
     pub i: TrackedState<usize>,
     /// Engine must be on to self heat if thermal model is enabled
@@ -1277,7 +1277,7 @@ pub struct StartStopState {
     pub has_traction_power_request: TrackedState<bool>,
 }
 
-impl StartStopState {
+impl StopStartState {
     /// If any of the causes are true, engine must be on
     fn engine_on(&self) -> anyhow::Result<bool> {
         Ok(*self.fc_temperature_too_low.get_fresh(|| format_dbg!())?
@@ -1329,9 +1329,9 @@ pub struct HEVStopStartControl {
     pub save_interval: Option<usize>,
     /// current state of control variables
     #[serde(default)]
-    pub state: StartStopState,
+    pub state: StopStartState,
     /// history of current state
-    pub history: StartStopStateHistoryVec,
+    pub history: StopStartStateHistoryVec,
 }
 
 #[pyo3_api]
@@ -1388,8 +1388,8 @@ impl HEVStopStartControl {
             time_delay_after_stop_until_fc_can_turn_off,
             em_can_regen,
             save_interval,
-            state: StartStopState::default(),
-            history: StartStopStateHistoryVec::default(),
+            state: StopStartState::default(),
+            history: StopStartStateHistoryVec::default(),
         };
         result.init()?;
         Ok(result)
