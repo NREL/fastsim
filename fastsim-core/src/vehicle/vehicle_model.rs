@@ -1189,7 +1189,7 @@ pub(crate) mod tests {
         }
     }
 
-    fn make_conv_pacifica(with_conv_stop_start: bool) -> anyhow::Result<Vehicle> {
+    fn make_conv_pacifica(with_conv_stop_start: bool, with_dfco: bool) -> anyhow::Result<Vehicle> {
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
@@ -1258,13 +1258,20 @@ pub(crate) mod tests {
                 ConvPowertrainControls::Normal
             }
         };
+        let dfco_controls = conv::DfcoControls::new(
+            with_dfco,       // dfco_enabled
+            25.0 * uc::MPH,  // minimum_dfco_speed
+            -0.2 * uc::MPS2, // minimum_dfco_deceleration
+            Option::None,    // save_interval
+        )?;
         let conv = ConventionalVehicle::new(
-            fs,           // fs
-            fc,           // fc
-            tx,           // transmission
-            Option::None, // mass
-            pt_controls,  // powertrain control
-            1.0 * uc::R,  // alt_eff
+            fs,            // fs
+            fc,            // fc
+            tx,            // transmission
+            Option::None,  // mass
+            pt_controls,   // powertrain control
+            dfco_controls, // dfco_cntrl
+            1.0 * uc::R,   // alt_eff
         )?;
         let chassis = Chassis {
             drag_coef: 0.3303036837542712 * uc::R,
@@ -1464,7 +1471,7 @@ pub(crate) mod tests {
         let veh_uhev_result = make_microhybrid_pacifica();
         assert!(veh_uhev_result.is_ok());
         let veh_uhev = veh_uhev_result.unwrap();
-        let veh_conv_result = make_conv_pacifica(false);
+        let veh_conv_result = make_conv_pacifica(false, false);
         assert!(veh_conv_result.is_ok());
         let veh_conv = veh_conv_result.unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
@@ -1518,10 +1525,10 @@ pub(crate) mod tests {
 
     #[test]
     fn stop_start_conv_saves_more_fuel_than_normal_conventional() {
-        let veh_ss_result = make_conv_pacifica(true);
+        let veh_ss_result = make_conv_pacifica(true, false);
         assert!(veh_ss_result.is_ok());
         let veh_ss = veh_ss_result.unwrap();
-        let veh_conv_result = make_conv_pacifica(false);
+        let veh_conv_result = make_conv_pacifica(false, false);
         assert!(veh_conv_result.is_ok());
         let veh_conv = veh_conv_result.unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
@@ -1575,7 +1582,7 @@ pub(crate) mod tests {
 
     #[test]
     fn that_use_stop_start_switches_the_conv_controller() {
-        let veh_result = make_conv_pacifica(false);
+        let veh_result = make_conv_pacifica(false, false);
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
         let use_result = veh.use_stop_start_controller_py();
@@ -1640,5 +1647,47 @@ pub(crate) mod tests {
                 assert!(false, "Unexpected powertrain type");
             }
         }
+    }
+
+    fn sum_fuel_in_mj(fc: &FuelConverter) -> f64 {
+        let fuels_mj: Vec<f64> = fc
+            .history
+            .energy_fuel
+            .iter()
+            .map(|ef| ef.get_fresh(|| format_dbg!()).unwrap().get::<si::joule>() / 1e6)
+            .collect();
+        fuels_mj.iter().sum()
+    }
+
+    #[test]
+    fn that_a_vehicle_with_dfco_enabled_uses_less_fuel() {
+        let veh_result = make_conv_pacifica(false, false);
+        assert!(veh_result.is_ok());
+        let veh = veh_result.unwrap();
+        let veh_dfco_result = make_conv_pacifica(false, true);
+        assert!(veh_dfco_result.is_ok());
+        let veh_dfco = veh_dfco_result.unwrap();
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
+        let mut sd = crate::simdrive::SimDrive::new(veh, cyc.clone(), Default::default());
+        let sd_result = sd.walk();
+        if let Err(err) = sd_result {
+            panic!("Error: {}", err);
+        }
+        assert!(sd_result.is_ok());
+        let mut sd_dfco = crate::simdrive::SimDrive::new(veh_dfco, cyc.clone(), Default::default());
+        let sd_dfco_result = sd_dfco.walk();
+        assert!(sd_dfco_result.is_ok());
+        let fc = sd.veh.pt_type.fc().unwrap();
+        let fc_dfco = sd_dfco.veh.pt_type.fc().unwrap();
+        let fuel_mj: f64 = sum_fuel_in_mj(&fc);
+        let fuel_dfco_mj: f64 = sum_fuel_in_mj(&fc_dfco);
+        eprintln!("fuel     : {} MJ", fuel_mj);
+        eprintln!("fuel_dfco: {} MJ", fuel_dfco_mj);
+        let percent_reduction = ((fuel_mj - fuel_dfco_mj) * 100.0) / fuel_mj;
+        eprintln!("percent reduction: {}", percent_reduction);
+        assert!(
+            fuel_dfco_mj < fuel_mj,
+            "Expected DFCO fuel ({fuel_dfco_mj}) to be less than conventional ({fuel_mj})"
+        );
     }
 }

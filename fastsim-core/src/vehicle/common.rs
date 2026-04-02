@@ -108,25 +108,23 @@ pub struct VehicleDynamicState {
     pub minimum_dfco_deceleration: si::Acceleration,
 }
 
-/// Handle deceleration fuel cut-off (DFCO) logic. Note: considerations
-/// related to whether the engine is too cold would be handled by the
-/// handle_fc_on_causes_for_temp.
-pub fn handle_fc_on_causes_for_dfco(
-    cannot_dfco: &mut TrackedState<bool>,
-    dynamic_state: &VehicleDynamicState,
-) -> anyhow::Result<()> {
-    let accel = (dynamic_state.speed - dynamic_state.prev_speed) / dynamic_state.dt;
-    let is_accel = accel > si::Acceleration::ZERO;
-    let no_dfco = if dynamic_state.speed < dynamic_state.minimum_dfco_speed {
+/// Determine if decel fuel cut-off (DFCO) is disabled based on vehicle
+/// dynamics considerations (i.e., speed, acceleration). Note: considerations
+/// related to whether the engine is too cold and such would be handled
+/// elsewhere.
+pub fn is_dfco_disabled_due_to_veh_dynamics(dynamic_state: &VehicleDynamicState) -> bool {
+    let decel = (dynamic_state.speed - dynamic_state.prev_speed) / dynamic_state.dt;
+    let is_accel = decel > si::Acceleration::ZERO;
+    if !dynamic_state.dfco_allowed {
         true
-    } else if is_accel || accel > dynamic_state.minimum_dfco_deceleration {
+    } else if dynamic_state.speed < dynamic_state.minimum_dfco_speed {
+        true
+    } else if is_accel || decel > dynamic_state.minimum_dfco_deceleration {
         true
     } else {
         // NOTE: we **can** apply DFCO
         false
-    };
-    cannot_dfco.update(no_dfco, || format_dbg!())?;
-    Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -146,43 +144,33 @@ pub(crate) mod tests {
 
     #[test]
     fn dfco_activates_when_all_conditions_are_good() {
-        let mut cannot_dfco = TrackedState::new(true);
-        cannot_dfco.mark_stale();
         let s = make_favorable_dfco_conditions();
-        let result = handle_fc_on_causes_for_dfco(&mut cannot_dfco, &s);
-        assert!(result.is_ok());
-        let value_result = cannot_dfco.get_fresh(|| format_dbg!());
-        assert!(value_result.is_ok());
-        let value = *value_result.unwrap();
-        assert_eq!(false, value);
+        let result = is_dfco_disabled_due_to_veh_dynamics(&s);
+        assert_eq!(false, result);
     }
 
     #[test]
     fn dfco_cannot_be_active_if_speed_too_low() {
-        let mut cannot_dfco = TrackedState::new(false);
-        cannot_dfco.mark_stale();
         let mut s = make_favorable_dfco_conditions();
         s.prev_speed = 10.0 * uc::MPH;
         s.speed = 8.0 * uc::MPH;
-        let result = handle_fc_on_causes_for_dfco(&mut cannot_dfco, &s);
-        assert!(result.is_ok());
-        let value_result = cannot_dfco.get_fresh(|| format_dbg!());
-        assert!(value_result.is_ok());
-        let value = *value_result.unwrap();
-        assert_eq!(true, value);
+        let result = is_dfco_disabled_due_to_veh_dynamics(&s);
+        assert_eq!(result, true);
     }
 
     #[test]
     fn dfco_cannot_be_active_if_not_decelerating() {
-        let mut cannot_dfco = TrackedState::new(false);
-        cannot_dfco.mark_stale();
         let mut s = make_favorable_dfco_conditions();
         s.speed = s.prev_speed + 2.0 * uc::MPH;
-        let result = handle_fc_on_causes_for_dfco(&mut cannot_dfco, &s);
-        assert!(result.is_ok());
-        let value_result = cannot_dfco.get_fresh(|| format_dbg!());
-        assert!(value_result.is_ok());
-        let value = *value_result.unwrap();
-        assert_eq!(true, value);
+        let result = is_dfco_disabled_due_to_veh_dynamics(&s);
+        assert_eq!(true, result);
+    }
+
+    #[test]
+    fn dfco_cannot_be_active_if_not_allowed() {
+        let mut s = make_favorable_dfco_conditions();
+        s.dfco_allowed = false;
+        let result = is_dfco_disabled_due_to_veh_dynamics(&s);
+        assert_eq!(true, result);
     }
 }

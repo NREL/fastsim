@@ -7,6 +7,8 @@ use super::vehicle::Vehicle;
 use crate::drive_cycle::manipulation_utils::calc_best_rendezvous;
 use crate::imports::*;
 use crate::prelude::*;
+use crate::vehicle::common::is_dfco_disabled_due_to_veh_dynamics;
+use crate::vehicle::common::VehicleDynamicState;
 
 #[serde_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -521,9 +523,22 @@ impl SimDrive {
                     PowertrainType::PlugInHybridElectricVehicle(hev) => hev
                         .pt_cntrl
                         .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,
-                    PowertrainType::ConventionalVehicle(conv) => conv
-                        .pt_cntrl
-                        .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,
+                    PowertrainType::ConventionalVehicle(conv) => {
+                        let dynamic_state = VehicleDynamicState {
+                            prev_speed: self.cyc.speed[i - 1],
+                            speed: self.cyc.speed[i],
+                            dt,
+                            dfco_allowed: conv.dfco_cntrl.dfco_enabled,
+                            minimum_dfco_speed: conv.dfco_cntrl.minimum_dfco_speed,
+                            minimum_dfco_deceleration: conv.dfco_cntrl.minimum_dfco_deceleration,
+                        };
+                        conv.dfco_cntrl.state.vehicle_dynamics_prevent_dfco.update(
+                            is_dfco_disabled_due_to_veh_dynamics(&dynamic_state),
+                            || format_dbg!(),
+                        )?;
+                        conv.pt_cntrl
+                            .handle_fc_on_causes_for_speed(self.cyc.speed[i])?
+                    }
                     _ => (),
                 }
                 self.veh.solve_powertrain(dt).map_err(|err| {

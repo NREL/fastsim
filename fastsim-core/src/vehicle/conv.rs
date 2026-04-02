@@ -7,6 +7,106 @@ use crate::vehicle::common::{
 use super::*;
 
 #[serde_api]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+pub struct DfcoControls {
+    /// If true DFCO is enabled, else it will never run.
+    pub dfco_enabled: bool,
+    /// The minimum speed at or above which which DFCO can activate.
+    pub minimum_dfco_speed: si::Velocity,
+    /// The minimum vehicle acceleration required for
+    /// DFCO to be able to activate.
+    pub minimum_dfco_deceleration: si::Acceleration,
+    #[serde(default)]
+    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
+    /// current state of control variables
+    #[serde(default)]
+    pub state: DfcoState,
+    /// history of current state
+    pub history: DfcoStateHistoryVec,
+}
+
+#[pyo3_api]
+impl DfcoControls {}
+
+impl HistoryMethods for DfcoControls {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+
+    fn clear(&mut self) {
+        self.history.clear();
+    }
+}
+
+impl Init for DfcoControls {
+    fn init(&mut self) -> Result<(), Error> {
+        if self.minimum_dfco_deceleration > si::Acceleration::ZERO {
+            Err(Error::InitError(String::from(
+                "minimum_dfco_acceleration must be <= 0 m/s2",
+            )))
+        } else if self.minimum_dfco_speed < si::Velocity::ZERO {
+            Err(Error::InitError(String::from(
+                "minimum_dfco_speed must be >= 0 m/s",
+            )))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl SerdeAPI for DfcoControls {}
+
+impl DfcoControls {
+    pub fn new(
+        dfco_enabled: bool,
+        minimum_dfco_speed: si::Velocity,
+        minimum_dfco_deceleration: si::Acceleration,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut result = Self {
+            dfco_enabled,
+            minimum_dfco_speed,
+            minimum_dfco_deceleration,
+            save_interval,
+            state: DfcoState::default(),
+            history: DfcoStateHistoryVec::default(),
+        };
+        result.init()?;
+        Ok(result)
+    }
+}
+
+#[serde_api]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    StateMethods,
+    SetCumulative,
+)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+pub struct DfcoState {
+    /// time step index
+    pub i: TrackedState<usize>,
+    /// vehicle dynamics must support DFCO to be on
+    pub vehicle_dynamics_prevent_dfco: TrackedState<bool>,
+}
+
+#[serde_api]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, StateMethods, SetCumulative)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -22,6 +122,9 @@ pub struct ConventionalVehicle {
     #[has_state]
     #[serde(default)]
     pub pt_cntrl: ConvPowertrainControls,
+    #[has_state]
+    #[serde(default)]
+    pub dfco_cntrl: DfcoControls,
     /// powertrain mass
     pub(crate) mass: Option<si::Mass>,
     /// Alternator efficiency used to calculate aux mechanical power demand on engine
@@ -38,6 +141,7 @@ impl ConventionalVehicle {
         transmission: Transmission,
         mass: Option<si::Mass>,
         pt_cntrl: ConvPowertrainControls,
+        dfco_cntrl: DfcoControls,
         alt_eff: si::Ratio,
     ) -> anyhow::Result<Self> {
         let mut conv = Self {
@@ -45,6 +149,7 @@ impl ConventionalVehicle {
             fc,
             transmission,
             pt_cntrl,
+            dfco_cntrl,
             mass,
             alt_eff,
         };
@@ -164,7 +269,16 @@ impl Powertrain for Box<ConventionalVehicle> {
                 )?;
             }
         }
-        let fc_on: bool = self.pt_cntrl.engine_on()?;
+        let fc_on: bool = {
+            let preliminary_fc_on = self.pt_cntrl.engine_on()?;
+            let dfco_can_run = !*self
+                .dfco_cntrl
+                .state
+                .vehicle_dynamics_prevent_dfco
+                .get_fresh(|| format_dbg!())?;
+            let no_tractive_effort_requested = pwr_out_req <= 1e-6 * uc::KW;
+            preliminary_fc_on && !(dfco_can_run && no_tractive_effort_requested)
+        };
         if !fc_on {
             // NOTE: zero out aux loads if engine is off
             // NOTE: we could possibly use Vehicle.pwr_aux_base
@@ -220,6 +334,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
             fc: FuelConverter::try_from(f2veh.clone())?,
             transmission: Transmission::try_from(f2veh.clone())?,
             pt_cntrl: ConvPowertrainControls::Normal,
+            dfco_cntrl: DfcoControls::default(),
             mass: None,
             alt_eff: f2veh.alt_eff * uc::R,
         };
@@ -449,6 +564,7 @@ impl ConvPowertrainControls {
 pub struct ConvStopStartControl {
     /// Minimum time engine must remain on if it was on during the previous
     /// simulation time step.
+    #[serde(default)]
     pub fc_min_time_on: Option<si::Time>,
     /// temperature at which engine is forced on to warm up
     #[serde(default)]
