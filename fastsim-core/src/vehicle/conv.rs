@@ -282,7 +282,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         if !fc_on {
             // NOTE: zero out aux loads if engine is off
             // NOTE: we could possibly use Vehicle.pwr_aux_base
-            //       to tell if we have "regular" auxliaries vs
+            //       to tell if we have "regular" auxiliaries vs
             //       "special" auxiliaries for which the engine
             //       cannot be shut down.
             self.fc.state.pwr_aux.mark_stale();
