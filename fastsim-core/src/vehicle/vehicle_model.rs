@@ -233,6 +233,27 @@ impl Vehicle {
         }
         Ok(())
     }
+
+    #[pyo3(name = "set_dfco_params")]
+    fn set_dfco_params_py(
+        &mut self,
+        enabled: bool,
+        min_dfco_speed_m_per_s: f64,
+        max_accel_for_dfco_m_per_s2: f64,
+    ) -> anyhow::Result<()> {
+        let min_dfco_speed_m_per_s = min_dfco_speed_m_per_s.max(0.0);
+        let max_accel_for_dfco_m_per_s2 = max_accel_for_dfco_m_per_s2.min(0.0);
+        match &mut self.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => {
+                conv.dfco_cntrl.dfco_enabled = enabled;
+                conv.dfco_cntrl.minimum_dfco_speed = min_dfco_speed_m_per_s * uc::MPS;
+                conv.dfco_cntrl.minimum_dfco_deceleration = max_accel_for_dfco_m_per_s2 * uc::MPS2;
+                conv.dfco_cntrl.save_interval = self.save_interval;
+            }
+            _ => (),
+        }
+        Ok(())
+    }
 }
 
 /// implementing constructor function for Vehicle

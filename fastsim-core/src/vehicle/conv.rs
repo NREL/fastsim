@@ -270,14 +270,15 @@ impl Powertrain for Box<ConventionalVehicle> {
             }
         }
         let fc_on: bool = {
-            let preliminary_fc_on = self.pt_cntrl.engine_on()?;
-            let dfco_can_run = !*self
+            let fc_on = self.pt_cntrl.engine_on()?;
+            let fc_on_dfco = *self
                 .dfco_cntrl
                 .state
                 .vehicle_dynamics_prevent_dfco
                 .get_fresh(|| format_dbg!())?;
             let no_tractive_effort_requested = pwr_out_req <= 1e-6 * uc::KW;
-            preliminary_fc_on && !(dfco_can_run && no_tractive_effort_requested)
+            let fc_off = !fc_on || (!fc_on_dfco && no_tractive_effort_requested);
+            !fc_off
         };
         if !fc_on {
             // NOTE: zero out aux loads if engine is off

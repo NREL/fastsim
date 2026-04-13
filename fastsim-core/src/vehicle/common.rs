@@ -119,6 +119,8 @@ pub fn is_dfco_disabled_due_to_veh_dynamics(dynamic_state: &VehicleDynamicState)
         true
     } else if dynamic_state.speed < dynamic_state.minimum_dfco_speed {
         true
+    } else if dynamic_state.speed <= 1e-6 * uc::MPS {
+        true
     } else if is_accel || decel > dynamic_state.minimum_dfco_deceleration {
         true
     } else {
