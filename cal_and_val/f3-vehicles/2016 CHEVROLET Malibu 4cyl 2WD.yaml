@@ -114,6 +114,17 @@ pt_type:
         energy_loss_joules: []
       save_interval: 1
     pt_cntrl: Normal
+    dfco_cntrl:
+      dfco_enabled: false
+      minimum_dfco_speed_meters_per_second: 0.0
+      minimum_dfco_deceleration_meters_per_second_squared: 0.0
+      save_interval: ~
+      state:
+        i: 0
+        vehicle_dynamics_prevent_dfco: false
+      history:
+        i: []
+        vehicle_dynamics_prevent_dfco: []
     mass_kilograms: ~
     alt_eff: 1.0
 chassis:
