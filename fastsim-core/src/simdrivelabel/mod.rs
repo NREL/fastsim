@@ -2034,7 +2034,7 @@ mod tests {
             udds_tolerance: 0.03, // 3% tolerance
             comb_tolerance: 0.03,
             hwy_tolerance: 0.03,
-            accel_tolerance: 0.05,
+            accel_tolerance: 0.06, // bumped from 0.05: F3 accel is now faster due to speed flooring fix
         };
 
         assert_labels_match_within_tolerance(&label_fe_f3, &label_fe_f2, &tol, false);
@@ -2160,7 +2160,7 @@ mod tests {
             udds_tolerance: 0.05, // 5% tolerance
             comb_tolerance: 0.05,
             hwy_tolerance: 0.05,
-            accel_tolerance: 0.105,
+            accel_tolerance: 0.12, // bumped from 0.105: F3 accel is now faster due to speed flooring fix
         };
 
         assert_labels_match_within_tolerance(&label_fe_f3, &label_fe_f2, &tol, false);
