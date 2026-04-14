@@ -119,7 +119,7 @@ def plot_fc_pwr(df: pd.DataFrame, df_dfco: pd.DataFrame) -> tuple[Figure, Axes]:
             + df_dfco[f"veh.pt_type.{tag}.fc.history.pwr_aux_watts"]
         )
         / 1e3,
-        label="f3 shaft (ss)",
+        label="f3 shaft (dfco)",
     )
     ax[0].set_ylabel("FC Power [kW]")
     ax[0].legend()
@@ -133,7 +133,7 @@ def plot_fc_pwr(df: pd.DataFrame, df_dfco: pd.DataFrame) -> tuple[Figure, Axes]:
     ax[1].plot(
         df_dfco["cyc.time_seconds"],
         df_dfco[f"veh.pt_type.{tag}.fc.history.pwr_fuel_watts"] / 1e3,
-        label="f3 fuel (ss)",
+        label="f3 fuel (dfco)",
     )
     ax[1].set_ylabel("FC Power [kW]")
     ax[1].legend()
@@ -147,7 +147,7 @@ def plot_fc_pwr(df: pd.DataFrame, df_dfco: pd.DataFrame) -> tuple[Figure, Axes]:
     ax[2].plot(
         df_dfco["cyc.time_seconds"],
         df_dfco["veh.history.speed_ach_meters_per_second"],
-        label="f3 (ss)",
+        label="f3 (dfco)",
     )
     ax[2].legend()
     ax[2].set_xlabel("Time [s]")
