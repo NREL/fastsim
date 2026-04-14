@@ -839,16 +839,15 @@ pwr deficit: {} kW
             self.sim_params.ach_speed_solver_gain,
         );
         let speed_ach_floored = {
-            // NOTE: what we are doing here is "flooring" the speed to the nearest tenth of a m/s.
-            // The purpose is to slightly reduce the target speed below the max power threshold
-            // to prevent float precision issues from sending us right back into trace miss.
-            let v = ((speed_ach.get::<si::meter_per_second>() * 10.0).floor() / 10.0) * uc::MPS;
-            // NOTE: if after "flooring" we happen to exactly be the same as
-            // previous, we subtract off a tenth of a m/s but prevent going below 0 m/s.
-            if v == speed_ach {
-                (v - 0.1 * uc::MPS).max(si::Velocity::ZERO)
+            // NOTE: we only subtract a tiny epsilon when the solved speed exactly equals
+            // the previous speed, to guarantee forward progress and avoid float precision
+            // issues that could send us right back into trace miss. Previously, this
+            // floored to the nearest 0.1 m/s every step, which accumulated significant
+            // speed loss during sustained trace-miss events (e.g., 0-60 acceleration).
+            if speed_ach == speed_prev {
+                (speed_ach - 1.0e-6 * uc::MPS).max(si::Velocity::ZERO)
             } else {
-                v
+                speed_ach
             }
         };
 
