@@ -284,6 +284,13 @@ def conv_to_micro_hybrid(
         "balance_soc": True,
         "save_soc_bal_iters": False,
     }
+    # NOTE: The value of 11.9 kW below is the approximate idle fuel consumption of the
+    # conventional version of the vehicle. In theory, this could be much lower as the
+    # accessories can be supplied electrically (thus alleviating the need for engine on).
+    # NOTE: if pwr_idle_fuel_watts is too low or zero, the engine effectively uses DFCO
+    # behavior where it "shuts off" (i.e., technically on but using no fuel) if no
+    # tractive effort is demanded.
+    veh_dict["pt_type"]["Conv"]["fc"]["pwr_idle_fuel_watts"] = 11_900.0
     veh_dict["pt_type"] = {
         "HEV": {
             "res": res,
@@ -411,6 +418,49 @@ def plot_fc_pwr(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False) -> 
     return fig, ax
 
 
+def plot_engine_on_flags(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False):
+    """Plot engine flags."""
+    if not is_hev:
+        return
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
+    plt.suptitle("Fuel Converter On Logic")
+    ax[0].set_prop_cycle(get_paired_cycler())
+    ax[0].plot(
+        df_ss["cyc.time_seconds"],
+        df_ss["veh.pt_type.HEV.pt_cntrl.StopStart.history.vehicle_not_stopped"],
+        label="not stopped",
+    )
+    ax[0].legend()
+
+    ax[1].set_prop_cycle(get_paired_cycler())
+    ax[1].plot(
+        df["cyc.time_seconds"],
+        df["veh.history.speed_ach_meters_per_second"],
+        label="f3",
+    )
+    ax[1].plot(
+        df_ss["cyc.time_seconds"],
+        df_ss["veh.history.speed_ach_meters_per_second"],
+        label="f3 (ss)",
+    )
+    ax[1].legend()
+    ax[1].set_xlabel("Time [s]")
+    ax[1].set_ylabel("Ach Speed [m/s]")
+    x_min, x_max = ax[1].get_xlim()[0], ax[1].get_xlim()[1]
+    x_max = (x_max - x_min) * 1.15
+    ax[1].set_xlim([x_min, x_max])
+
+    plt.tight_layout()
+    if SAVE_FIGS:
+        plt.savefig(Path("./plots/fc_onoff.svg"))
+    if SHOW_PLOTS:
+        plt.show()
+
+    return fig, ax
+
+
 fig, ax = plot_fc_pwr(df, df_ss)
 
 fig2, ax2 = plot_fc_pwr(df, df_uhev, is_hev=True)
+
+fig3, ax3 = plot_engine_on_flags(df, df_uhev, is_hev=True)
