@@ -75,7 +75,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for Chassis {
         Ok(Self {
             drag_coef: f2veh.drag_coef * uc::R,
             frontal_area: f2veh.frontal_area_m2 * uc::M2,
-            cg_height: f2veh.veh_cg_m * uc::M,
+            cg_height: f2veh.veh_cg_m.abs() * uc::M,
             wheel_fric_coef: f2veh.wheel_coef_of_fric * uc::R,
             drive_type,
             drive_axle_weight_frac: f2veh.drive_axle_weight_frac * uc::R,
