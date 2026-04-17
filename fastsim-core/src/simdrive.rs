@@ -699,7 +699,8 @@ impl SimDrive {
         let vs = &mut self.veh.state;
         vs.cyc_met.update(
             vs.pwr_tractive.get_fresh(|| format_dbg!())?
-                <= vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?,
+                <= vs.pwr_prop_fwd_max.get_fresh(|| format_dbg!())?
+                && cyc_speed <= *vs.speed_trac_fwd_max.get_fresh(|| format_dbg!())?,
             || format_dbg!(),
         )?;
         vs.cyc_met_overall.update(
@@ -838,6 +839,12 @@ pwr deficit: {} kW
             self.sim_params.ach_speed_tol,
             self.sim_params.ach_speed_solver_gain,
         );
+        // Clamp to traction (tire grip) speed limit. The solver operates with
+        // the raw powertrain power budget; traction is enforced here as a speed
+        // ceiling rather than a power cap, which avoids the near-zero power
+        // bottleneck at low speeds (where P = F*v ≈ 0).
+        let speed_trac_max = *vs.speed_trac_fwd_max.get_fresh(|| format_dbg!())?;
+        let speed_ach = speed_ach.min(speed_trac_max);
         let speed_ach_floored = {
             // NOTE: we only subtract a tiny epsilon when the solved speed exactly equals
             // the previous speed, to guarantee forward progress and avoid float precision

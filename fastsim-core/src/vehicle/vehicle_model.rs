@@ -512,25 +512,34 @@ impl Vehicle {
     }
 
     pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        // Calculate traction limits
-        let mass = self
-            .mass
-            .with_context(|| format!("{}\nMass should have been set before now", format_dbg!()))?;
+        // Calculate traction-limited max speed (acceleration-based, not power-based).
+        // This is stored as a speed ceiling and enforced after the trace-miss solver,
+        // rather than being converted to a power cap that starves the solver at low speeds.
+        //
+        // Weight transfer sign depends on drive type:
+        //   FWD: under acceleration, weight shifts to rear (away from drive axle) → reduces traction
+        //   RWD: under acceleration, weight shifts to rear (toward drive axle) → increases traction
+        //   AWD/4WD: both axles drive, weight transfer doesn't reduce total drive grip
+        let cg_height_abs = self.chassis.cg_height.abs();
+        let weight_transfer_sign: f64 = match self.chassis.drive_type {
+            chassis::DriveTypes::FWD => 1.0,    // weight shifts away from front drive axle → reduces traction
+            chassis::DriveTypes::RWD => -1.0,   // weight shifts toward rear drive axle → increases traction
+            chassis::DriveTypes::AWD
+            | chassis::DriveTypes::FourWD => 0.0, // net zero effect on total drive traction
+        };
         let max_trac_accel = self.chassis.wheel_fric_coef
             * self.chassis.drive_axle_weight_frac
             * uc::ACC_GRAV
             / (1.0 * uc::R
-                + self.chassis.cg_height * self.chassis.wheel_fric_coef / self.chassis.wheel_base);
+                + weight_transfer_sign * cg_height_abs * self.chassis.wheel_fric_coef
+                    / self.chassis.wheel_base);
         let prev_speed = *self.state.speed_ach.get_stale(|| format_dbg!())?;
         let max_trac_speed = prev_speed + (max_trac_accel * dt);
-        let max_trac_power = self.chassis.wheel_fric_coef
-            * self.chassis.drive_axle_weight_frac
-            * mass
-            * uc::ACC_GRAV
-            / (1.0 * uc::R
-                + self.chassis.cg_height * self.chassis.wheel_fric_coef / self.chassis.wheel_base)
-            * max_trac_speed;
-        // Calculate powertrain limits
+        self.state
+            .speed_trac_fwd_max
+            .update(max_trac_speed, || format_dbg!())?;
+
+        // Calculate powertrain limits (no traction power cap applied here)
         self.pt_type
             .set_curr_pwr_prop_out_max(
                 (si::Power::ZERO, si::Power::ZERO),
@@ -543,14 +552,9 @@ impl Vehicle {
             .pt_type
             .get_curr_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.state.pwr_prop_fwd_max.update(
-            if pwr_prop_maxes.0 > max_trac_power {
-                max_trac_power
-            } else {
-                pwr_prop_maxes.0
-            },
-            || format_dbg!(),
-        )?;
+        self.state
+            .pwr_prop_fwd_max
+            .update(pwr_prop_maxes.0, || format_dbg!())?;
         self.state
             .pwr_prop_bwd_max
             .update(pwr_prop_maxes.1, || format_dbg!())?;
@@ -839,6 +843,8 @@ pub struct VehicleState {
     // power and energy fields
     /// maximum forward propulsive power vehicle can produce
     pub pwr_prop_fwd_max: TrackedState<si::Power>,
+    /// maximum forward speed achievable given traction (tire grip) limits
+    pub speed_trac_fwd_max: TrackedState<si::Velocity>,
     /// pwr exerted on wheels by powertrain
     /// maximum backward propulsive power (e.g. regenerative braking) vehicle can produce
     pub pwr_prop_bwd_max: TrackedState<si::Power>,
@@ -907,6 +913,7 @@ impl Default for VehicleState {
             i: TrackedState::new(Default::default()),
             time: Default::default(),
             pwr_prop_fwd_max: Default::default(),
+            speed_trac_fwd_max: Default::default(),
             pwr_prop_bwd_max: Default::default(),
             pwr_tractive: Default::default(),
             pwr_tractive_for_cyc: Default::default(),
