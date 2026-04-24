@@ -427,8 +427,9 @@ impl PowertrainType {
 
     pub fn set_trans(&mut self, trans: Transmission) -> anyhow::Result<()> {
         match self {
-            PowertrainType::ConventionalVehicle(_conv) => {
-                Err(anyhow!("ConventionalVehicle has no `ElectricMachine`"))
+            PowertrainType::ConventionalVehicle(conv) => {
+                conv.transmission = trans;
+                Ok(())
             }
             PowertrainType::HybridElectricVehicle(hev) => {
                 hev.transmission = trans;
@@ -556,7 +557,7 @@ impl std::string::ToString for PowertrainType {
         match self {
             PowertrainType::ConventionalVehicle(_) => String::from("Conv"),
             PowertrainType::HybridElectricVehicle(_) => String::from("HEV"),
-            PowertrainType::PlugInHybridElectricVehicle(_) => String::from("HEV"),
+            PowertrainType::PlugInHybridElectricVehicle(_) => String::from("PHEV"),
             PowertrainType::BatteryElectricVehicle(_) => String::from("BEV"),
         }
     }

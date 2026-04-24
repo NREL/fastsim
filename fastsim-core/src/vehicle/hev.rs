@@ -1,5 +1,5 @@
 use super::{vehicle_model::VehicleState, *};
-use crate::prelude::ElectricMachineState;
+use crate::{prelude::ElectricMachineState, vehicle::common::*};
 
 #[serde_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
@@ -84,6 +84,12 @@ impl HybridElectricVehicle {
                 } / self.res.energy_capacity_usable()
                     + self.res.min_soc;
 
+                (disch_buffer, chrg_buffer, fc_on_soc)
+            }
+            HEVPowertrainControls::StopStart(_) => {
+                let fc_on_soc = 0.10 * (self.res.max_soc - self.res.min_soc) + self.res.min_soc;
+                let chrg_buffer = self.res.energy_capacity_usable();
+                let disch_buffer = self.res.energy_capacity_usable();
                 (disch_buffer, chrg_buffer, fc_on_soc)
             }
         };
@@ -245,6 +251,13 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
                 (disch_buffer, chrg_buffer)
             }
+            HEVPowertrainControls::StopStart(ctrl) => {
+                ctrl.handle_fc_on_causes(&self.fc, veh_state, &self.res, dt)?;
+
+                let disch_buffer = 0.0 * uc::J;
+                let chrg_buffer = self.res.energy_capacity_usable();
+                (disch_buffer, chrg_buffer)
+            }
         };
         // set total max powers, including aux power
         self.fc
@@ -272,6 +285,11 @@ impl Powertrain for Box<HybridElectricVehicle> {
             HEVPowertrainControls::RGWDB(rgwdb) => {
                 rgwdb
                     .state
+                    .aux_power_demand
+                    .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
+            }
+            HEVPowertrainControls::StopStart(ctrl) => {
+                ctrl.state
                     .aux_power_demand
                     .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
             }
@@ -327,7 +345,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         // TODO: address these concerns
         // - what happens when the fc is on and producing more power than the
         //   transmission requires? It seems like the excess goes straight to the battery,
-        //   but it should probably go thourgh the em somehow.
+        //   but it should probably go through the em somehow.
         let pwr_in_transmission = self
             .transmission
             .solve(pwr_out_req, true, dt)
@@ -343,11 +361,28 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .pt_cntrl
             .get_pwr_fc_and_em(pwr_in_transmission, &self.fc, &self.em.state, &self.res)
             .with_context(|| format_dbg!())?;
-        let fc_on: bool = self.pt_cntrl.engine_on()?;
+        let fc_on: bool = self.pt_cntrl.engine_on().map_err(|err| {
+            anyhow::anyhow!(
+                "self.pt_cntrl.engine_on() failed at line {} with \
+                originating error [{}]",
+                format_dbg!(),
+                err
+            )
+        })?;
 
-        self.fc
-            .solve(fc_pwr_out_req, fc_on, dt)
-            .with_context(|| format_dbg!())?;
+        self.fc.solve(fc_pwr_out_req, fc_on, dt).map_err(|err| {
+            anyhow::anyhow!(
+                "self.fc.solve(fc_pwr_out_req, fc_on, dt) with values: \
+                    fc_pwr_out_req={:?}, fc_on={}, dt={:?} \
+                    failed at line {} \
+                    with originating error [{}]",
+                fc_pwr_out_req,
+                fc_on,
+                dt,
+                format_dbg!(),
+                err
+            )
+        })?;
 
         let res_pwr_out_req = self
             .em
@@ -361,9 +396,13 @@ impl Powertrain for Box<HybridElectricVehicle> {
             })?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         // TODO: `res_pwr_out_req` probably does not include charging from the engine
-        self.res
-            .solve(res_pwr_out_req, dt)
-            .with_context(|| format_dbg!())?;
+        self.res.solve(res_pwr_out_req, dt).map_err(|err| {
+            anyhow!(format!(
+                "res.solve failed at line {} with originating error [{}]",
+                format_dbg!(),
+                err
+            ))
+        })?;
         Ok(None)
     }
 
@@ -663,6 +702,9 @@ pub enum HEVPowertrainControls {
     /// and discharge power inside of static min and max SOC range.  Also, includes
     /// buffer for forcing [FuelConverter] to be active/on.
     RGWDB(Box<RESGreedyWithDynamicBuffers>),
+    /// Uses the [ReversibleEnergyStorage] only for supplying auxiliary power.
+    /// Also, includes logic for when the [FuelConverter] must be on.
+    StopStart(Box<HEVStopStartControl>),
 }
 
 impl Default for HEVPowertrainControls {
@@ -677,6 +719,9 @@ impl SetCumulative for HEVPowertrainControls {
             Self::RGWDB(rgwdb) => {
                 rgwdb.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
             }
+            Self::StopStart(ctrl) => {
+                ctrl.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
+            }
         }
         Ok(())
     }
@@ -686,6 +731,9 @@ impl SetCumulative for HEVPowertrainControls {
             Self::RGWDB(rgwdb) => {
                 rgwdb.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
+            Self::StopStart(ctrl) => {
+                ctrl.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
+            }
         }
         Ok(())
     }
@@ -694,6 +742,7 @@ impl Step for HEVPowertrainControls {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.step(loc)?,
+            HEVPowertrainControls::StopStart(ctrls) => ctrls.step(loc)?,
         }
         Ok(())
     }
@@ -701,6 +750,7 @@ impl Step for HEVPowertrainControls {
     fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.reset_step(loc)?,
+            HEVPowertrainControls::StopStart(ctrls) => ctrls.reset_step(loc)?,
         }
         Ok(())
     }
@@ -712,6 +762,7 @@ impl SaveState for HEVPowertrainControls {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_state(loc)?,
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.save_state(loc)?,
         }
         Ok(())
     }
@@ -720,6 +771,7 @@ impl TrackedStateMethods for HEVPowertrainControls {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.check_and_reset(loc)?,
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.check_and_reset(loc)?,
         }
         Ok(())
     }
@@ -727,6 +779,7 @@ impl TrackedStateMethods for HEVPowertrainControls {
     fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.mark_fresh(loc)?,
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.mark_fresh(loc)?,
         }
         Ok(())
     }
@@ -735,17 +788,20 @@ impl HistoryMethods for HEVPowertrainControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => Ok(rgwdb.set_save_interval(save_interval)?),
+            HEVPowertrainControls::StopStart(ctrl) => Ok(ctrl.set_save_interval(save_interval)?),
         }
     }
 
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_interval(),
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.save_interval(),
         }
     }
     fn clear(&mut self) {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.clear(),
+            HEVPowertrainControls::StopStart(ctrl) => ctrl.clear(),
         }
     }
 }
@@ -754,6 +810,7 @@ impl Init for HEVPowertrainControls {
     fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::RGWDB(rgwb) => rgwb.init()?,
+            Self::StopStart(ctrl) => ctrl.init()?,
         }
         Ok(())
     }
@@ -815,13 +872,25 @@ impl HEVPowertrainControls {
 
         match self {
             Self::RGWDB(rgwdb) => rgwdb.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
+            Self::StopStart(ctrl) => ctrl.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
         }
     }
 
     pub fn engine_on(&self) -> anyhow::Result<bool> {
         match self {
             Self::RGWDB(rgwdb) => rgwdb.state.engine_on(),
+            Self::StopStart(ctrl) => ctrl.state.engine_on(),
         }
+    }
+
+    pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
+        match self {
+            Self::StopStart(ctrl) => {
+                handle_fc_on_causes_for_speed(&mut ctrl.state.vehicle_not_stopped, speed)?
+            }
+            _ => (),
+        }
+        Ok(())
     }
 }
 
@@ -1175,6 +1244,279 @@ for an HEV equipped with thermal models or superfluous otherwise",
                 );
             }
         }
+        Ok(())
+    }
+}
+
+#[serde_api]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    HistoryVec,
+    StateMethods,
+    SetCumulative,
+)]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+pub struct StopStartState {
+    /// time step index
+    pub i: TrackedState<usize>,
+    /// Engine must be on to self heat if thermal model is enabled
+    pub fc_temperature_too_low: TrackedState<bool>,
+    /// Engine stop/start can only happen while vehicle is stopped
+    pub vehicle_not_stopped: TrackedState<bool>,
+    /// Engine has not been on long enough (usually 30 s)
+    pub on_time_too_short: TrackedState<bool>,
+    /// Aux power demand exceeds battery capability
+    pub aux_power_demand: TrackedState<bool>,
+    /// SOC is below min buffer so FC is charging RES
+    pub charging_for_low_soc: TrackedState<bool>,
+    /// The total time vehicle has been stopped
+    pub time_vehicle_stopped: TrackedState<si::Time>,
+    /// Vehicle stopped time
+    pub vehicle_not_stopped_long_enough: TrackedState<bool>,
+    /// Vehicle has a request for traction power for the current timestep
+    pub has_traction_power_request: TrackedState<bool>,
+}
+
+impl StopStartState {
+    /// If any of the causes are true, engine must be on
+    fn engine_on(&self) -> anyhow::Result<bool> {
+        Ok(*self.fc_temperature_too_low.get_fresh(|| format_dbg!())?
+            || *self.vehicle_not_stopped.get_fresh(|| format_dbg!())?
+            || *self.on_time_too_short.get_fresh(|| format_dbg!())?
+            || *self.aux_power_demand.get_fresh(|| format_dbg!())?
+            || *self.charging_for_low_soc.get_fresh(|| format_dbg!())?
+            || *self
+                .vehicle_not_stopped_long_enough
+                .get_fresh(|| format_dbg!())?
+            || *self
+                .has_traction_power_request
+                .get_fresh(|| format_dbg!())?)
+    }
+}
+
+#[serde_api]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[non_exhaustive]
+#[serde(deny_unknown_fields)]
+pub struct HEVStopStartControl {
+    /// Minimum time engine must remain on if it was on during the previous
+    /// simulation time step.
+    pub fc_min_time_on: Option<si::Time>,
+    /// The range of usable SOC of the storage system below which the
+    /// [FuelConverter] is forced on.
+    pub soc_fc_forced_on: Option<si::Ratio>,
+    /// Force engine, if on, to run at this fraction of power at which peak
+    /// efficiency occurs or the required power, whichever is greater. If SOC is
+    /// below min buffer or engine is otherwise forced on and battery has room
+    /// to receive charge, engine will run at this level and charge.
+    pub frac_of_most_eff_pwr_to_run_fc: Option<si::Ratio>,
+    /// temperature at which engine is forced on to warm up
+    #[serde(default)]
+    pub temp_fc_forced_on: Option<si::Temperature>,
+    /// temperature at which engine is allowed to turn off due to being sufficiently warm
+    #[serde(default)]
+    pub temp_fc_allowed_off: Option<si::Temperature>,
+    /// Time delay after the vehicle reaches a stop before the engine is allowed
+    /// to turn off. This is to try to prevent engine stopping when the vehicle
+    /// stop is only momentary.
+    #[serde(default)]
+    pub time_delay_after_stop_until_fc_can_turn_off: Option<si::Time>,
+    /// If true, the electric machine can recharge from regenerative braking
+    pub em_can_regen: Option<bool>,
+    #[serde(default)]
+    /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
+    pub save_interval: Option<usize>,
+    /// current state of control variables
+    #[serde(default)]
+    pub state: StopStartState,
+    /// history of current state
+    pub history: StopStartStateHistoryVec,
+}
+
+#[pyo3_api]
+impl HEVStopStartControl {}
+
+impl HistoryMethods for HEVStopStartControl {
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+
+    fn clear(&mut self) {
+        self.history.clear();
+    }
+}
+
+impl Init for HEVStopStartControl {
+    fn init(&mut self) -> Result<(), Error> {
+        init_opt_default!(self, fc_min_time_on, 5.0 * uc::S);
+        init_opt_default!(self, soc_fc_forced_on, 0.1 * uc::R);
+        init_opt_default!(self, frac_of_most_eff_pwr_to_run_fc, 1.0 * uc::R);
+        init_opt_default!(
+            self,
+            time_delay_after_stop_until_fc_can_turn_off,
+            0.0 * uc::S
+        );
+        Ok(())
+    }
+}
+
+impl SerdeAPI for HEVStopStartControl {}
+
+impl HEVStopStartControl {
+    pub fn new(
+        fc_min_time_on: Option<si::Time>,
+        soc_fc_forced_on: Option<si::Ratio>,
+        frac_of_most_eff_pwr_to_run_fc: Option<si::Ratio>,
+        temp_fc_forced_on: Option<si::Temperature>,
+        temp_fc_allowed_off: Option<si::Temperature>,
+        time_delay_after_stop_until_fc_can_turn_off: Option<si::Time>,
+        em_can_regen: Option<bool>,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut result = Self {
+            fc_min_time_on,
+            soc_fc_forced_on,
+            frac_of_most_eff_pwr_to_run_fc,
+            temp_fc_forced_on,
+            temp_fc_allowed_off,
+            time_delay_after_stop_until_fc_can_turn_off,
+            em_can_regen,
+            save_interval,
+            state: StopStartState::default(),
+            history: StopStartStateHistoryVec::default(),
+        };
+        result.init()?;
+        Ok(result)
+    }
+
+    fn get_pwr_fc_and_em(
+        &mut self,
+        fc: &FuelConverter,
+        pwr_prop_req: si::Power,
+        em_state: &ElectricMachineState,
+    ) -> anyhow::Result<(si::Power, si::Power)> {
+        let no_prop_pwr_demand = pwr_prop_req == si::Power::ZERO;
+        let em_can_regen = self.em_can_regen.unwrap_or(true);
+        let em_pwr = pwr_prop_req.min(si::Power::ZERO).max(if em_can_regen {
+            -*em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?
+        } else {
+            si::Power::ZERO
+        });
+        let (fc_pwr, em_pwr) = {
+            // engine is on or forced on if tractive effort is required
+            let frac_of_pwr_for_peak_eff: si::Ratio = self
+                .frac_of_most_eff_pwr_to_run_fc
+                .with_context(|| format_dbg!())?;
+            let fc_pwr = if pwr_prop_req < si::Power::ZERO {
+                // negative tractive power
+                // max power system can receive from engine during negative traction
+                (*em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())? + pwr_prop_req)
+                    // or peak efficiency power if it's lower than above
+                    .min(fc.pwr_for_peak_eff * frac_of_pwr_for_peak_eff)
+                    // but not negative
+                    .max(si::Power::ZERO)
+            } else if no_prop_pwr_demand {
+                // no propulsion power needed. Allow for engine-off
+                // as much as possible.
+                // TODO: take into consideration RESS SOC and aux loads?
+                0.0 * uc::W
+            } else {
+                // positive tractive power
+                if pwr_prop_req - em_pwr > fc.pwr_for_peak_eff * frac_of_pwr_for_peak_eff {
+                    // engine needs to run higher than peak efficiency point
+                    pwr_prop_req - em_pwr
+                } else {
+                    // engine does not need to run higher than peak
+                    // efficiency point to make tractive demand
+
+                    // fc handles all power not covered by em
+                    (pwr_prop_req - em_pwr)
+                        // and if that's less than the
+                        // efficiency-focused value, then operate at
+                        // that value
+                        .max(fc.pwr_for_peak_eff * frac_of_pwr_for_peak_eff)
+                        // but don't exceed what the battery can
+                        // absorb + tractive demand
+                        .min(
+                            pwr_prop_req
+                                + *em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?,
+                        )
+                }
+            }
+            // and don't exceed what the fc can do
+            .min(*fc.state.pwr_prop_max.get_fresh(|| format_dbg!())?);
+
+            // recalculate `em_pwr` based on `fc_pwr`
+            let em_pwr_corrected = (pwr_prop_req - fc_pwr).max(if em_can_regen {
+                -*em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?
+            } else {
+                si::Power::ZERO
+            });
+            (fc_pwr, em_pwr_corrected)
+        };
+        handle_fc_on_causes_for_propulsion_request(
+            &mut self.state.has_traction_power_request,
+            fc_pwr,
+        )?;
+        Ok((fc_pwr, em_pwr))
+    }
+
+    pub fn handle_fc_on_causes(
+        &mut self,
+        fc: &FuelConverter,
+        veh_state: &VehicleState,
+        res: &ReversibleEnergyStorage,
+        dt: si::Time,
+    ) -> Result<(), anyhow::Error> {
+        // NOTE: handle_fc_on_causes_for_propulsion_request called elsewhere
+        handle_fc_on_causes_for_stopped_time(
+            &mut self.state.time_vehicle_stopped,
+            &mut self.state.vehicle_not_stopped_long_enough,
+            veh_state,
+            dt,
+            self.time_delay_after_stop_until_fc_can_turn_off,
+        )?;
+        handle_fc_on_causes_for_temp(
+            fc,
+            self.temp_fc_forced_on,
+            self.temp_fc_allowed_off,
+            &mut self.state.fc_temperature_too_low,
+        )?;
+        // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
+        self.handle_fc_on_causes_for_low_soc(res)?;
+        handle_fc_on_causes_for_on_time(
+            fc,
+            self.fc_min_time_on,
+            &mut self.state.on_time_too_short,
+        )?;
+        Ok(())
+    }
+
+    fn handle_fc_on_causes_for_low_soc(
+        &mut self,
+        res: &ReversibleEnergyStorage,
+    ) -> anyhow::Result<()> {
+        let soc_fc_forced_on = if let Some(soc_frac) = self.soc_fc_forced_on {
+            soc_frac * (res.max_soc - res.min_soc) + res.min_soc
+        } else {
+            0.1 * (res.max_soc - res.min_soc) + res.min_soc
+        };
+        self.state.charging_for_low_soc.update(
+            *res.state.soc.get_stale(|| format_dbg!())? < soc_fc_forced_on,
+            || format_dbg!(),
+        )?;
         Ok(())
     }
 }

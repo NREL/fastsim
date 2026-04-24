@@ -57,7 +57,13 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Resul
 pub fn run_accel(veh: &Vehicle) -> anyhow::Result<AccelData> {
     let mut sd_accel = SimDrive::new(veh.clone(), CYC_ACCEL.clone(), None);
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
-    sd_accel.walk_once().with_context(|| format_dbg!())?;
+    sd_accel.walk_once().map_err(|e| {
+        anyhow!(
+            "Acceleration simdrive walk_once failed at line {} with originating error [{}]",
+            format_dbg!(),
+            e
+        )
+    })?;
     // Extract speed values in mph
     let mut speed_mph: Vec<f64> = vec![];
     for s in sd_accel.veh.history.speed_ach.clone() {
