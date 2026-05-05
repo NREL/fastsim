@@ -26,6 +26,7 @@ pub mod gas_properties;
 pub mod imports;
 pub mod prelude;
 // #[cfg(feature = "pyo3")] -- feature gate provided inside module
+pub mod five_cycle;
 pub mod pyo3;
 pub mod si;
 pub mod simdrive;

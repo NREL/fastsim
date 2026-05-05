@@ -156,6 +156,59 @@ impl Vehicle {
 
     #[pyo3(name = "use_stop_start_controller")]
     fn use_stop_start_controller_py(&mut self) -> anyhow::Result<()> {
+        self.use_stop_start_controller()
+    }
+
+    #[pyo3(name = "use_normal_controller")]
+    fn use_normal_controller_py(&mut self) -> anyhow::Result<()> {
+        self.use_normal_controller()
+    }
+
+    #[pyo3(name = "set_dfco_params")]
+    fn set_dfco_params_py(
+        &mut self,
+        enabled: bool,
+        min_dfco_speed_m_per_s: f64,
+        max_accel_for_dfco_m_per_s2: f64,
+    ) -> anyhow::Result<()> {
+        self.set_dfco_params(enabled, min_dfco_speed_m_per_s, max_accel_for_dfco_m_per_s2)
+    }
+}
+
+/// implementing constructor function for Vehicle
+impl Vehicle {
+    /// Create new Vehicle with specified parameters
+    pub fn new(
+        name: String,
+        doc: Option<String>,
+        year: u32,
+        pt_type: PowertrainType,
+        chassis: Chassis,
+        cabin: CabinOption,
+        hvac: HVACOption,
+        mass: Option<si::Mass>,
+        pwr_aux_base: si::Power,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut veh = Self {
+            name,
+            doc,
+            year,
+            pt_type,
+            chassis,
+            cabin,
+            hvac,
+            mass,
+            pwr_aux_base,
+            state: VehicleState::default(),
+            history: VehicleStateHistoryVec::default(),
+            save_interval,
+        };
+        veh.init()?;
+        Ok(veh)
+    }
+
+    pub fn use_stop_start_controller(&mut self) -> anyhow::Result<()> {
         match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(veh) => {
                 match veh.pt_cntrl {
@@ -195,8 +248,7 @@ impl Vehicle {
         Ok(())
     }
 
-    #[pyo3(name = "use_normal_controller")]
-    fn use_normal_controller_py(&mut self) -> anyhow::Result<()> {
+    pub fn use_normal_controller(&mut self) -> anyhow::Result<()> {
         let save_interval = self.save_interval().unwrap_or(Option::None);
         match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match &conv.pt_cntrl {
@@ -234,8 +286,7 @@ impl Vehicle {
         Ok(())
     }
 
-    #[pyo3(name = "set_dfco_params")]
-    fn set_dfco_params_py(
+    pub fn set_dfco_params(
         &mut self,
         enabled: bool,
         min_dfco_speed_m_per_s: f64,
@@ -253,40 +304,6 @@ impl Vehicle {
             _ => (),
         }
         Ok(())
-    }
-}
-
-/// implementing constructor function for Vehicle
-impl Vehicle {
-    /// Create new Vehicle with specified parameters
-    pub fn new(
-        name: String,
-        doc: Option<String>,
-        year: u32,
-        pt_type: PowertrainType,
-        chassis: Chassis,
-        cabin: CabinOption,
-        hvac: HVACOption,
-        mass: Option<si::Mass>,
-        pwr_aux_base: si::Power,
-        save_interval: Option<usize>,
-    ) -> anyhow::Result<Self> {
-        let mut veh = Self {
-            name,
-            doc,
-            year,
-            pt_type,
-            chassis,
-            cabin,
-            hvac,
-            mass,
-            pwr_aux_base,
-            state: VehicleState::default(),
-            history: VehicleStateHistoryVec::default(),
-            save_interval,
-        };
-        veh.init()?;
-        Ok(veh)
     }
 }
 
@@ -1606,7 +1623,7 @@ pub(crate) mod tests {
         let veh_result = make_conv_pacifica(false, false);
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
-        let use_result = veh.use_stop_start_controller_py();
+        let use_result = veh.use_stop_start_controller();
         assert!(use_result.is_ok());
         match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
@@ -1619,7 +1636,7 @@ pub(crate) mod tests {
                 assert!(false, "Unexpected powertrain type");
             }
         }
-        let normal_result = veh.use_normal_controller_py();
+        let normal_result = veh.use_normal_controller();
         assert!(normal_result.is_ok());
         match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
@@ -1639,7 +1656,7 @@ pub(crate) mod tests {
         let veh_result = make_microhybrid_pacifica();
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
-        let use_result = veh.use_normal_controller_py();
+        let use_result = veh.use_normal_controller();
         assert!(use_result.is_ok());
         match &veh.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
@@ -1652,7 +1669,7 @@ pub(crate) mod tests {
                 assert!(false, "Unexpected powertrain type");
             }
         }
-        let use_ss_result = veh.use_stop_start_controller_py();
+        let use_ss_result = veh.use_stop_start_controller();
         assert!(use_ss_result.is_ok());
         match &veh.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {

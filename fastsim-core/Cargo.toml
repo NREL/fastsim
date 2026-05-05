@@ -59,6 +59,7 @@ num-traits = "0.2.19"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
+log = "0.4.29"
 
 [features]
 default = ["resources", "serde-default", "simdrivelabel"]
