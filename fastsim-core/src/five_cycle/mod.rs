@@ -36,7 +36,7 @@ pub fn pct_error(actual: f64, expected: f64) -> f64 {
 }
 
 pub fn main(veh: &Vehicle) {
-    init_logger(LevelFilter::Warn).unwrap();
+    init_logger(LevelFilter::Info).unwrap();
 
     // Pacifica FE targets
     // https://fueleconomy.gov/feg/Find.do?action=sbs&id=49434
@@ -47,79 +47,84 @@ pub fn main(veh: &Vehicle) {
     // label combined FE
     let target_combined_fe = 22.2452;
 
-    // let hfet_fe = hfet(veh.clone());
-    // log::warn!("hfet_fe: {} MPG", hfet_fe);
-    // let (us06_city_fe, us06_highway_fe) = us06(veh.clone());
-    // log::warn!("us06_city_fe: {} MPG", us06_city_fe);
-    // log::warn!("us06_highway_fe: {} MPG", us06_highway_fe);
-    // let sc03_fe = sc03(veh.clone());
-    // log::warn!("sc03_fe: {} MPG", sc03_fe);
-    // let (bag_1_fe_20, bag_2_fe_20, bag_3_fe_20) = ftp(
-    //     veh.clone(),
-    //     (-6.66666667 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN,
-    // );
-    // log::warn!("bag_1_fe_20: {} MPG", bag_1_fe_20);
-    // log::warn!("bag_2_fe_20: {} MPG", bag_2_fe_20);
-    // log::warn!("bag_3_fe_20: {} MPG", bag_3_fe_20);
-    // let (bag_1_fe_75, bag_2_fe_75, bag_3_fe_75) =
-    //     ftp(veh.clone(), (23.8889 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN);
-    // log::warn!("bag_1_fe_75: {} MPG", bag_1_fe_75);
-    // log::warn!("bag_2_fe_75: {} MPG", bag_2_fe_75);
-    // log::warn!("bag_3_fe_75: {} MPG", bag_3_fe_75);
+    log::info!("HFET");
+    let hfet_fe = hfet(veh.clone());
+    log::warn!("hfet_fe: {} MPG", hfet_fe);
+    log::info!("US06");
+    let (us06_city_fe, us06_highway_fe) = us06(veh.clone());
+    log::warn!("us06_city_fe: {} MPG", us06_city_fe);
+    log::warn!("us06_highway_fe: {} MPG", us06_highway_fe);
+    log::info!("SC03");
+    let sc03_fe = sc03(veh.clone());
+    log::warn!("sc03_fe: {} MPG", sc03_fe);
+    log::info!("FTP Cold");
+    let (bag_1_fe_20, bag_2_fe_20, bag_3_fe_20) = ftp(
+        veh.clone(),
+        (-6.66666667 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN,
+    );
+    log::warn!("bag_1_fe_20: {} MPG", bag_1_fe_20);
+    log::warn!("bag_2_fe_20: {} MPG", bag_2_fe_20);
+    log::warn!("bag_3_fe_20: {} MPG", bag_3_fe_20);
+    log::info!("FTP");
+    let (bag_1_fe_75, bag_2_fe_75, bag_3_fe_75) =
+        ftp(veh.clone(), (23.8889 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN);
+    log::warn!("bag_1_fe_75: {} MPG", bag_1_fe_75);
+    log::warn!("bag_2_fe_75: {} MPG", bag_2_fe_75);
+    log::warn!("bag_3_fe_75: {} MPG", bag_3_fe_75);
 
-    // // City label FE
-    // // https://www.law.cornell.edu/cfr/text/40/600.114-12#a
-    // let running_fc = 0.82 * (0.48 / bag_2_fe_75 + 0.41 / bag_3_fe_75 + 0.11 / us06_city_fe)
-    //     + 0.18 * (0.5 / bag_2_fe_20 + 0.5 / bag_3_fe_20)
-    //     + 0.133 * 1.083 * (1. / sc03_fe - (0.61 / bag_3_fe_75 + 0.39 / bag_2_fe_75));
-    // let start_fuel_20 = 3.6 * (1. / bag_1_fe_20 + 1. / bag_3_fe_20);
-    // let start_fuel_75 = 3.6 * (1. / bag_1_fe_75 + 1. / bag_3_fe_75);
-    // let start_fc = 0.33 * (0.76 * start_fuel_75 + 0.24 * start_fuel_20) / 4.1;
-    // let city_fe = 0.905 / (start_fc + running_fc);
-    // log::warn!("city_fe: {} MPG", city_fe);
+    // City label FE
+    // https://www.law.cornell.edu/cfr/text/40/600.114-12#a
+    let running_fc = 0.82 * (0.48 / bag_2_fe_75 + 0.41 / bag_3_fe_75 + 0.11 / us06_city_fe)
+        + 0.18 * (0.5 / bag_2_fe_20 + 0.5 / bag_3_fe_20)
+        + 0.133 * 1.083 * (1. / sc03_fe - (0.61 / bag_3_fe_75 + 0.39 / bag_2_fe_75));
+    let start_fuel_20 = 3.6 * (1. / bag_1_fe_20 + 1. / bag_3_fe_20);
+    let start_fuel_75 = 3.6 * (1. / bag_1_fe_75 + 1. / bag_3_fe_75);
+    let start_fc = 0.33 * (0.76 * start_fuel_75 + 0.24 * start_fuel_20) / 4.1;
+    let city_fe = 0.905 / (start_fc + running_fc);
+    log::warn!("city_fe: {} MPG", city_fe);
 
-    // // Highway label FE
-    // // https://www.law.cornell.edu/cfr/text/40/600.114-12#b
-    // let running_fc = 1.007 * (0.79 / us06_highway_fe + 0.21 / hfet_fe)
-    //     + 0.133 * 0.377 * (1. / sc03_fe - (0.61 / bag_3_fe_75 + 0.39 / bag_2_fe_75));
-    // let start_fuel_20 = 3.6 * (1. / bag_1_fe_20 + 1. / bag_3_fe_20);
-    // let start_fuel_75 = 3.6 * (1. / bag_1_fe_75 + 1. / bag_3_fe_75);
-    // let start_fc = 0.33 * (0.76 * start_fuel_75 + 0.24 * start_fuel_20) / 60.;
-    // let highway_fe = 0.905 / (start_fc + running_fc);
-    // log::warn!("highway_fe: {} MPG", highway_fe);
+    // Highway label FE
+    // https://www.law.cornell.edu/cfr/text/40/600.114-12#b
+    let running_fc = 1.007 * (0.79 / us06_highway_fe + 0.21 / hfet_fe)
+        + 0.133 * 0.377 * (1. / sc03_fe - (0.61 / bag_3_fe_75 + 0.39 / bag_2_fe_75));
+    let start_fuel_20 = 3.6 * (1. / bag_1_fe_20 + 1. / bag_3_fe_20);
+    let start_fuel_75 = 3.6 * (1. / bag_1_fe_75 + 1. / bag_3_fe_75);
+    let start_fc = 0.33 * (0.76 * start_fuel_75 + 0.24 * start_fuel_20) / 60.;
+    let highway_fe = 0.905 / (start_fc + running_fc);
+    log::warn!("highway_fe: {} MPG", highway_fe);
 
-    // let combined_fe = 1.0 / (0.55 / city_fe + 0.45 / highway_fe);
-    // log::warn!("combined_fe: {} MPG", combined_fe);
+    let combined_fe = 1.0 / (0.55 / city_fe + 0.45 / highway_fe);
+    log::warn!("combined_fe: {} MPG", combined_fe);
 
-    // let city_pct_error = pct_error(1. / city_fe, 1. / target_city_fe);
-    // let highway_pct_error = pct_error(1. / highway_fe, 1. / target_highway_fe);
-    // let combined_pct_error = pct_error(1. / combined_fe, 1. / target_combined_fe);
+    let city_pct_error = pct_error(1. / city_fe, 1. / target_city_fe);
+    let highway_pct_error = pct_error(1. / highway_fe, 1. / target_highway_fe);
+    let combined_pct_error = pct_error(1. / combined_fe, 1. / target_combined_fe);
 
-    // println!("Results:");
-    // println!(
-    //     "  City:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
-    //     city_fe,
-    //     1. / city_fe,
-    //     target_city_fe,
-    //     1. / target_city_fe,
-    //     city_pct_error
-    // );
-    // println!(
-    //     "  Highway:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
-    //     highway_fe,
-    //     1. / highway_fe,
-    //     target_highway_fe,
-    //     1. / target_highway_fe,
-    //     highway_pct_error
-    // );
-    // println!(
-    //     "  Combined:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
-    //     combined_fe,
-    //     1. / combined_fe,
-    //     target_combined_fe,
-    //     1. / target_combined_fe,
-    //     combined_pct_error
-    // );
+    println!("Five cycle results:");
+    println!(
+        "  City:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
+        city_fe,
+        1. / city_fe,
+        target_city_fe,
+        1. / target_city_fe,
+        city_pct_error
+    );
+    println!(
+        "  Highway:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
+        highway_fe,
+        1. / highway_fe,
+        target_highway_fe,
+        1. / target_highway_fe,
+        highway_pct_error
+    );
+    println!(
+        "  Combined:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
+        combined_fe,
+        1. / combined_fe,
+        target_combined_fe,
+        1. / target_combined_fe,
+        combined_pct_error
+    );
 
     let mut veh_no_thrml =
         Vehicle::from_resource("2026_Chrysler_Pacifica_Select_DFCO_StopStart.yaml", false).unwrap();
@@ -692,6 +697,7 @@ mod tests {
 
     #[test]
     fn test_hfet() {
+        init_logger(LevelFilter::Info).unwrap();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,
@@ -702,6 +708,7 @@ mod tests {
 
     #[test]
     fn test_us06() {
+        init_logger(LevelFilter::Info).unwrap();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,
@@ -712,6 +719,7 @@ mod tests {
 
     #[test]
     fn test_sc03() {
+        init_logger(LevelFilter::Info).unwrap();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,
@@ -722,6 +730,7 @@ mod tests {
 
     #[test]
     fn test_ftp_cold() {
+        init_logger(LevelFilter::Info).unwrap();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,
@@ -732,6 +741,7 @@ mod tests {
 
     #[test]
     fn test_ftp() {
+        init_logger(LevelFilter::Info).unwrap();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,

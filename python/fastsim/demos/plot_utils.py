@@ -91,7 +91,8 @@ def plot_bev_temperatures(
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BEV.res.thrml." + "RESLumpedThermal.history.temperature_kelvin"] - 273.15,
+        df["veh.pt_type.BEV.res.thrml." + "RESLumpedThermal.history.temperature_kelvin"]
+        - 273.15,
         label="res",
     )
     ax[0].plot(
@@ -124,7 +125,9 @@ def plot_bev_temperatures(
     return fig, ax
 
 
-def plot_bev_hvac_pwr(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tuple[Figure, Axes]:
+def plot_bev_hvac_pwr(
+    df: pd.DataFrame, save_figs: bool, show_plots: bool
+) -> tuple[Figure, Axes]:
     """Plot BEV HVAC power consumption over time."""
     fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Thermal Management Power Demand")
@@ -175,7 +178,9 @@ def plot_bev_hvac_pwr(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tu
     return fig, ax
 
 
-def plot_bev_res_pwr(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tuple[Figure, Axes]:
+def plot_bev_res_pwr(
+    df: pd.DataFrame, save_figs: bool, show_plots: bool
+) -> tuple[Figure, Axes]:
     """Plot BEV reversible energy storage power over time."""
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Reversible Energy Storage Power")
@@ -222,7 +227,9 @@ def plot_bev_res_pwr(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tup
     return fig, ax
 
 
-def plot_bev_res_energy(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> tuple[Figure, Axes]:
+def plot_bev_res_energy(
+    df: pd.DataFrame, save_figs: bool, show_plots: bool
+) -> tuple[Figure, Axes]:
     """Plot BEV reversible energy storage energy over time."""
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Reversible Energy Storage Energy")
@@ -230,7 +237,8 @@ def plot_bev_res_energy(df: pd.DataFrame, save_figs: bool, show_plots: bool) -> 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.BEV.res.history.energy_out_electrical_joules"] / 2.77778e-7, # J to kWh
+        df["veh.pt_type.BEV.res.history.energy_out_electrical_joules"]
+        / 2.77778e-7,  # J to kWh
         label="electrical out",
     )
     ax[0].set_ylabel("RES Energy [kWh]")
@@ -317,6 +325,159 @@ def plot_road_loads(
     return fig, ax
 
 
+def plot_conv_temperatures(
+    df: pd.DataFrame,
+    save_figs: bool,
+    show_plots: bool,
+) -> tuple[Figure, Axes]:
+    """Plot Conv component temperatures including battery, engine, and cabin."""
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
+    plt.suptitle("Component Temperatures")
+
+    ax[0].set_prop_cycle(get_uni_cycler())
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        df["cyc.temp_amb_air_kelvin"] - 273.15,
+        label="amb",
+    )
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        df["veh.cabin.LumpedCabin.history.temperature_kelvin"] - 273.15,
+        label="cabin",
+    )
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        df[
+            "veh.pt_type.Conv.fc.thrml."
+            + "FuelConverterThermal.history.temperature_kelvin"
+        ]
+        - 273.15,
+        label="fc",
+    )
+    ax[0].set_ylabel("Temperatures [°C]")
+    ax[0].legend()
+
+    ax[-1].set_prop_cycle(get_paired_cycler())
+    ax[-1].plot(
+        df["cyc.time_seconds"],
+        df["veh.history.speed_ach_meters_per_second"],
+        label="ach",
+    )
+    ax[-1].legend()
+    ax[-1].set_xlabel("Time [s]")
+    ax[-1].set_ylabel("Ach Speed [m/s]")
+    x_min, x_max = ax[-1].get_xlim()[0], ax[-1].get_xlim()[1]
+    x_max = (x_max - x_min) * 1.15
+    ax[-1].set_xlim([x_min, x_max])
+
+    plt.tight_layout()
+    if save_figs:
+        plt.savefig(Path("./plots/temps.svg"))
+    if show_plots:
+        plt.show()
+
+    return fig, ax
+
+
+def plot_conv_fc_pwr(
+    df: pd.DataFrame,
+    save_figs: bool,
+    show_plots: bool,
+) -> tuple[Figure, Axes]:
+    """Plot Conv fuel converter powers"""
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
+    plt.suptitle("Fuel Converter Power")
+
+    ax[0].set_prop_cycle(get_paired_cycler())
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        (
+            df["veh.pt_type.Conv.fc.history.pwr_prop_watts"]
+            + df["veh.pt_type.Conv.fc.history.pwr_aux_watts"]
+        )
+        / 1e3,
+        label="shaft",
+    )
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        df["veh.pt_type.Conv.fc.history.pwr_fuel_watts"] / 1e3,
+        label="fuel",
+    )
+    ax[0].set_ylabel("FC Power [kW]")
+    ax[0].legend()
+
+    ax[-1].set_prop_cycle(get_paired_cycler())
+    ax[-1].plot(
+        df["cyc.time_seconds"],
+        df["veh.history.speed_ach_meters_per_second"],
+        label="ach",
+    )
+    ax[-1].legend()
+    ax[-1].set_xlabel("Time [s]")
+    ax[-1].set_ylabel("Ach Speed [m/s]")
+    x_min, x_max = ax[-1].get_xlim()[0], ax[-1].get_xlim()[1]
+    x_max = (x_max - x_min) * 1.15
+    ax[-1].set_xlim([x_min, x_max])
+
+    plt.tight_layout()
+    if save_figs:
+        plt.savefig(Path("./plots/fc_pwr.svg"))
+    if show_plots:
+        plt.show()
+
+    return fig, ax
+
+
+def plot_conv_fc_energy(
+    df: pd.DataFrame,
+    save_figs: bool,
+    show_plots: bool,
+) -> tuple[Figure, Axes]:
+    """Plot Conv fuel converter energy consumption over time."""
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
+    plt.suptitle("Fuel Converter Energy")
+
+    ax[0].set_prop_cycle(get_paired_cycler())
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        (
+            df["veh.pt_type.Conv.fc.history.energy_prop_joules"]
+            + df["veh.pt_type.Conv.fc.history.energy_aux_joules"]
+        )
+        / 1e6,
+        label="shaft",
+    )
+    ax[0].plot(
+        df["cyc.time_seconds"],
+        df["veh.pt_type.Conv.fc.history.energy_fuel_joules"] / 1e6,
+        label="fuel",
+    )
+    ax[0].set_ylabel("FC Energy [MJ]")
+    ax[0].legend()
+
+    ax[-1].set_prop_cycle(get_paired_cycler())
+    ax[-1].plot(
+        df["cyc.time_seconds"],
+        df["veh.history.speed_ach_meters_per_second"],
+        label="ach",
+    )
+    ax[-1].legend()
+    ax[-1].set_xlabel("Time [s]")
+    ax[-1].set_ylabel("Ach Speed [m/s]")
+    x_min, x_max = ax[-1].get_xlim()[0], ax[-1].get_xlim()[1]
+    x_max = (x_max - x_min) * 1.15
+    ax[-1].set_xlim([x_min, x_max])
+
+    plt.tight_layout()
+
+    if save_figs:
+        plt.savefig(Path("./plots/fc_energy.svg"))
+    if show_plots:
+        plt.show()
+
+    return fig, ax
+
+
 def plot_hev_temperatures(
     df: pd.DataFrame,
     save_figs: bool,
@@ -339,12 +500,16 @@ def plot_hev_temperatures(
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.res.thrml." + "RESLumpedThermal.history.temperature_kelvin"] - 273.15,
+        df["veh.pt_type.HEV.res.thrml." + "RESLumpedThermal.history.temperature_kelvin"]
+        - 273.15,
         label="res",
     )
     ax[0].plot(
         df["cyc.time_seconds"],
-        df["veh.pt_type.HEV.fc.thrml." + "FuelConverterThermal.history.temperature_kelvin"]
+        df[
+            "veh.pt_type.HEV.fc.thrml."
+            + "FuelConverterThermal.history.temperature_kelvin"
+        ]
         - 273.15,
         label="fc",
     )

@@ -56,10 +56,10 @@ approx = "0.5.1"
 thiserror = { workspace = true }
 typenum = "1.18.0"
 num-traits = "0.2.19"
+log = "0.4.29"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
-log = "0.4.29"
 
 [features]
 default = ["resources", "serde-default", "simdrivelabel"]
