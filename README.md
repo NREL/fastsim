@@ -1,11 +1,11 @@
-<img src="https://raw.githubusercontent.com/NREL/fastsim/refs/heads/fastsim-2/docs/assets/fastsim-icon.svg" height="200">
+<img src="https://raw.githubusercontent.com/NatLabRockies/fastsim/refs/heads/fastsim-2/docs/assets/fastsim-icon.svg" height="200">
 
 [![homepage](https://img.shields.io/badge/homepage-fastsim-blue)](https://www.nrel.gov/transportation/fastsim.html)
-[![tests](https://github.com/NREL/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/tests.yaml)
-[![release](https://github.com/NREL/fastsim/actions/workflows/release.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/release.yaml?event=release)
+[![tests](https://github.com/NatLabRockies/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NatLabRockies/fastsim/actions/workflows/tests.yaml)
+[![release](https://github.com/NatLabRockies/fastsim/actions/workflows/release.yaml/badge.svg)](https://github.com/NatLabRockies/fastsim/actions/workflows/release.yaml?event=release)
 [![python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://pypi.org/project/fastsim/)
-[![documentation](https://img.shields.io/badge/documentation-book-blue.svg)](https://nrel.github.io/fastsim/)
-[![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NREL/fastsim)
+[![documentation](https://img.shields.io/badge/documentation-book-blue.svg)](https://natlabrockies.github.io/fastsim/)
+[![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NatLabRockies/fastsim)
 
 # Description
 This is the `fastsim-3` version of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html).
@@ -13,8 +13,8 @@ It introduces numerous new enhancements and features, including:
 - ~10x faster! -- when setting `save_interval` to `None`, which means only the state at the last 
   time step, which includes fuel consumption and/or battery depletion, among other useful 
   cumulative state variables.  
-- Roughly ~60% reduction in memory consumption (~160 mb in [`fastsim-2`](https://github.com/NREL/fastsim) 
-  v. 60 mb in [`fastsim-3`](https://github.com/NREL/fastsim/tree/fastsim-3)
+- Roughly ~60% reduction in memory consumption (~160 mb in [`fastsim-2`](https://github.com/NatLabRockies/fastsim) 
+  v. 60 mb in [`fastsim-3`](https://github.com/NatLabRockies/fastsim/tree/fastsim-3)
 - object-oriented, hierarchical model structure
 - ability to control granularity of time-resolved data -- e.g. save at every time step, save at 
   every _n_th time step, or never save at all (saving only cumulative trip-level results)
