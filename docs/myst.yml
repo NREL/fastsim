@@ -2,14 +2,33 @@
 version: 1
 project:
   id: 61560401-8f58-4c7f-b78b-4754d2b0d3ae
-  # title:
-  # description:
-  # keywords: []
-  # authors: []
+  title: FASTSim
   github: https://github.com/NatLabRockies/fastsim
-  # To autogenerate a Table of Contents, run "jupyter book init --write-toc"
+  toc:
+    - file: intro.md
+    - title: Documentation
+      children:
+        - file: fastsim-doc.md
+        - file: rust-doc.md
+        - file: developers.md
+    - file: cal_and_val.md
+    - title: Demos
+      children:
+        - file: _demo_notebooks/demo_conv.ipynb
+        - file: _demo_notebooks/demo_bev.ipynb
+        - file: _demo_notebooks/demo_hev.ipynb
+        - file: _demo_notebooks/demo_cavs.ipynb
+        - file: _demo_notebooks/demo_trace_miss.ipynb
+        - file: _demo_notebooks/demo_bev_thrml_cs_ca.ipynb
+        - file: _demo_notebooks/demo_bev_thrml_sweep.ipynb
+        - file: _demo_notebooks/demo_bev_thrml_ws_ca.ipynb
+        - file: _demo_notebooks/demo_bev_thrml_ws_wa.ipynb
+        - file: _demo_notebooks/demo_hev_thrml_cs_ca.ipynb
+        - file: _demo_notebooks/demo_hev_thrml_ws_ca.ipynb
+        - file: _demo_notebooks/demo_hev_thrml_ws_wa.ipynb
+    - file: release-notes.md
+    - file: how-to-update.md
 site:
   template: book-theme
   options:
-  #   favicon: favicon.ico
     logo: assets/fastsim-icon.svg
