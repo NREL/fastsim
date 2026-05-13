@@ -12,11 +12,11 @@ FASTSim powertrain models can have varying levels of calibration and resolution 
 
 Examples of calibration levels 0, 2, and 3 from the [FASTSim Validation Report](https://www.nrel.gov/docs/fy22osti/81097.pdf):
 
-![image](https://github.com/NREL/fastsim/assets/4818940/1b7dae5d-b328-406e-9e2c-07abadff7a3a)
+![Fuel Economy Validation](https://github.com/NatLabRockies/fastsim/assets/4818940/1b7dae5d-b328-406e-9e2c-07abadff7a3a)
 
-![image](https://github.com/NREL/fastsim/assets/4818940/530f6a15-8400-4618-a97a-da67609f6ecd)
+![Fuel Consumption Validation](https://github.com/NatLabRockies/fastsim/assets/4818940/530f6a15-8400-4618-a97a-da67609f6ecd)
 
-![image](https://github.com/NREL/fastsim/assets/4818940/8483661f-dee4-4d59-9d69-e6d54dae0100)
+![Battery Validation](https://github.com/NatLabRockies/fastsim/assets/4818940/8483661f-dee4-4d59-9d69-e6d54dae0100)
 
 ## Calibration Level 0 (Parameterization) Guidelines
 As noted in the table above, parameterization of a new FASTSim powertrain model is performed when little or no ground truth performance data is available for a specific vehicle. One example of this is if EPA window-sticker fuel economy is the only available performance data. In this situation, it is recommended to parameterize a FASTSim powertrain model using the most reliable vehicle parameters from available information (e.g., specification websites). This helps to avoid overfitting and relies on the robustness of the FASTSim approach to capture the most important powertrain dynamics and simulate energy consumption.
@@ -49,7 +49,7 @@ As noted in the table above, parameterization of a new FASTSim powertrain model 
 
 ## Calibration Level 2 Guidelines
 - Copy
-  [calibration_demo.py](https://github.com/NREL/fastsim/blob/fastsim-2/python/fastsim/demos/calibration_demo.py)
+  [calibration_demo.py](https://github.com/NatLabRockies/fastsim/blob/fastsim-2/python/fastsim/demos/calibration_demo.py)
   to your project directory and modify as needed.
 - By default, this script selects the model that minimizes the euclidean error across
   all objectives, which may not be the way that you want to select your final design.

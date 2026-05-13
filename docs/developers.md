@@ -61,8 +61,8 @@ might affect backwards compatibility / the API interface).
     (cd rust/fastsim-core/fastsim-proc-macros && cargo publish)
     (cd rust/fastsim-core && cargo publish)
     ```
-1. Start a new release at https://github.com/NREL/fastsim/releases/new, selecting `vX.X.X` as both the tag and the release name. Click "Generate release notes" to automatically create a detailed change log.
-1. Click "Publish release". Wheels will then be built for various platforms and automatically uploaded to the PyPI at https://pypi.org/project/fastsim/. **Check that the release workflow finished properly at https://github.com/NREL/fastsim/actions/workflows/release.yaml!**
+1. Start a new release at https://github.com/NatLabRockies/fastsim/releases/new, selecting `vX.X.X` as both the tag and the release name. Click "Generate release notes" to automatically create a detailed change log.
+1. Click "Publish release". Wheels will then be built for various platforms and automatically uploaded to the PyPI at https://pypi.org/project/fastsim/. **Check that the release workflow finished properly at https://github.com/NatLabRockies/fastsim/actions/workflows/release.yaml!**
 1. Synchronize changes to the internal GitHub repository:
     ```
     git pull external fastsim-2
