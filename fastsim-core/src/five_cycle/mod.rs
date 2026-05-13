@@ -35,8 +35,17 @@ pub fn pct_error(actual: f64, expected: f64) -> f64 {
     }
 }
 
-pub fn main(veh: &Vehicle) {
-    init_logger(LevelFilter::Info).unwrap();
+#[cfg(feature = "pyo3")]
+#[pyfunction(name = "five_cycle")]
+#[cfg_attr(
+    feature = "pyo3",
+    pyo3(signature = (
+        veh, logging=false))
+)]
+pub fn five_cycle(veh: &Vehicle, logging: bool) -> (f64, f64, f64) {
+    if logging {
+        init_logger(LevelFilter::Info).unwrap();
+    }
 
     // Pacifica FE targets
     // https://fueleconomy.gov/feg/Find.do?action=sbs&id=49434
@@ -47,30 +56,30 @@ pub fn main(veh: &Vehicle) {
     // label combined FE
     let target_combined_fe = 22.2452;
 
-    log::info!("HFET");
+    log::debug!("HFET");
     let hfet_fe = hfet(veh.clone());
-    log::warn!("hfet_fe: {} MPG", hfet_fe);
-    log::info!("US06");
+    log::info!("hfet_fe: {} MPG", hfet_fe);
+    log::debug!("US06");
     let (us06_city_fe, us06_highway_fe) = us06(veh.clone());
-    log::warn!("us06_city_fe: {} MPG", us06_city_fe);
-    log::warn!("us06_highway_fe: {} MPG", us06_highway_fe);
-    log::info!("SC03");
+    log::info!("us06_city_fe: {} MPG", us06_city_fe);
+    log::info!("us06_highway_fe: {} MPG", us06_highway_fe);
+    log::debug!("SC03");
     let sc03_fe = sc03(veh.clone());
-    log::warn!("sc03_fe: {} MPG", sc03_fe);
-    log::info!("FTP Cold");
+    log::info!("sc03_fe: {} MPG", sc03_fe);
+    log::debug!("FTP Cold");
     let (bag_1_fe_20, bag_2_fe_20, bag_3_fe_20) = ftp(
         veh.clone(),
         (-6.66666667 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN,
     );
-    log::warn!("bag_1_fe_20: {} MPG", bag_1_fe_20);
-    log::warn!("bag_2_fe_20: {} MPG", bag_2_fe_20);
-    log::warn!("bag_3_fe_20: {} MPG", bag_3_fe_20);
-    log::info!("FTP");
+    log::info!("bag_1_fe_20: {} MPG", bag_1_fe_20);
+    log::info!("bag_2_fe_20: {} MPG", bag_2_fe_20);
+    log::info!("bag_3_fe_20: {} MPG", bag_3_fe_20);
+    log::debug!("FTP");
     let (bag_1_fe_75, bag_2_fe_75, bag_3_fe_75) =
         ftp(veh.clone(), (23.8889 + uc::CELSIUS_TO_KELVIN) * uc::KELVIN);
-    log::warn!("bag_1_fe_75: {} MPG", bag_1_fe_75);
-    log::warn!("bag_2_fe_75: {} MPG", bag_2_fe_75);
-    log::warn!("bag_3_fe_75: {} MPG", bag_3_fe_75);
+    log::info!("bag_1_fe_75: {} MPG", bag_1_fe_75);
+    log::info!("bag_2_fe_75: {} MPG", bag_2_fe_75);
+    log::info!("bag_3_fe_75: {} MPG", bag_3_fe_75);
 
     // City label FE
     // https://www.law.cornell.edu/cfr/text/40/600.114-12#a
@@ -81,7 +90,7 @@ pub fn main(veh: &Vehicle) {
     let start_fuel_75 = 3.6 * (1. / bag_1_fe_75 + 1. / bag_3_fe_75);
     let start_fc = 0.33 * (0.76 * start_fuel_75 + 0.24 * start_fuel_20) / 4.1;
     let city_fe = 0.905 / (start_fc + running_fc);
-    log::warn!("city_fe: {} MPG", city_fe);
+    log::info!("city_fe: {} MPG", city_fe);
 
     // Highway label FE
     // https://www.law.cornell.edu/cfr/text/40/600.114-12#b
@@ -91,17 +100,17 @@ pub fn main(veh: &Vehicle) {
     let start_fuel_75 = 3.6 * (1. / bag_1_fe_75 + 1. / bag_3_fe_75);
     let start_fc = 0.33 * (0.76 * start_fuel_75 + 0.24 * start_fuel_20) / 60.;
     let highway_fe = 0.905 / (start_fc + running_fc);
-    log::warn!("highway_fe: {} MPG", highway_fe);
+    log::info!("highway_fe: {} MPG", highway_fe);
 
     let combined_fe = 1.0 / (0.55 / city_fe + 0.45 / highway_fe);
-    log::warn!("combined_fe: {} MPG", combined_fe);
+    log::info!("combined_fe: {} MPG", combined_fe);
 
     let city_pct_error = pct_error(1. / city_fe, 1. / target_city_fe);
     let highway_pct_error = pct_error(1. / highway_fe, 1. / target_highway_fe);
     let combined_pct_error = pct_error(1. / combined_fe, 1. / target_combined_fe);
 
-    println!("Five cycle results:");
-    println!(
+    log::info!("Five cycle results:");
+    log::info!(
         "  City:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
         city_fe,
         1. / city_fe,
@@ -109,7 +118,7 @@ pub fn main(veh: &Vehicle) {
         1. / target_city_fe,
         city_pct_error
     );
-    println!(
+    log::info!(
         "  Highway:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
         highway_fe,
         1. / highway_fe,
@@ -117,7 +126,7 @@ pub fn main(veh: &Vehicle) {
         1. / target_highway_fe,
         highway_pct_error
     );
-    println!(
+    log::info!(
         "  Combined:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
         combined_fe,
         1. / combined_fe,
@@ -137,8 +146,8 @@ pub fn main(veh: &Vehicle) {
     let combined_pct_error =
         pct_error(1. / sdlabel_results.adj_comb_mpgge, 1. / target_combined_fe);
 
-    println!("Simdrivelabel results:");
-    println!(
+    log::info!("Simdrivelabel results:");
+    log::info!(
         "  City:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
         sdlabel_results.adj_udds_mpgge,
         1. / sdlabel_results.adj_udds_mpgge,
@@ -146,7 +155,7 @@ pub fn main(veh: &Vehicle) {
         1. / target_city_fe,
         city_pct_error
     );
-    println!(
+    log::info!(
         "  Highway:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
         sdlabel_results.adj_hwy_mpgge,
         1. / sdlabel_results.adj_hwy_mpgge,
@@ -154,7 +163,7 @@ pub fn main(veh: &Vehicle) {
         1. / target_highway_fe,
         highway_pct_error
     );
-    println!(
+    log::info!(
         "  Combined:\n    sim:  {:.2} MPG ({:.4} gal/mi)\n    meas: {:.2} MPG ({:.4} gal/mi)\n    error: {:+.2}%",
         sdlabel_results.adj_comb_mpgge,
         1. / sdlabel_results.adj_comb_mpgge,
@@ -167,6 +176,8 @@ pub fn main(veh: &Vehicle) {
     // - [x] merge in start-stop and DFCO
     // - [x] run simdrivelabel on base (non-thermal) model
     // - [ ] manual tweaking of thermal parameters - likely increase engine thermal mass
+
+    (city_fe, highway_fe, combined_fe)
 }
 
 pub fn hfet(mut veh: Vehicle) -> f64 {
@@ -183,10 +194,10 @@ pub fn hfet(mut veh: Vehicle) -> f64 {
 
     // Set up first simulation (cold start)
     let mut sd0 = SimDrive::new(veh.clone(), hfet.clone(), None);
-    log::info!("Initial temperatures:");
+    log::debug!("Initial temperatures:");
     log_temperatures(&sd0.veh);
     sd0.walk().unwrap(); // simulate
-    log::info!("Temperatures after preconditioning:");
+    log::debug!("Temperatures after preconditioning:");
     log_temperatures(&sd0.veh);
 
     // Set up idle simulation (15 seconds idle)
@@ -208,7 +219,7 @@ pub fn hfet(mut veh: Vehicle) -> f64 {
         set_res_temperature(&mut sd_idle.veh, get_res_temperature(&sd0.veh).unwrap()).unwrap();
     }
     sd_idle.walk().unwrap(); // simulate
-    log::info!("Post-idle results:");
+    log::debug!("Post-idle results:");
     log_temperatures(&sd_idle.veh);
     output_energy(&sd_idle.veh);
 
@@ -223,7 +234,7 @@ pub fn hfet(mut veh: Vehicle) -> f64 {
         set_res_temperature(&mut sd1.veh, get_res_temperature(&sd_idle.veh).unwrap()).unwrap();
     }
     sd1.walk().unwrap(); // simulate
-    log::info!("Final results:");
+    log::debug!("Final results:");
     log_temperatures(&sd1.veh);
     output_energy(&sd1.veh);
 
@@ -250,10 +261,10 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
 
     // Set up first simulation (cold start)
     let mut sd0 = SimDrive::new(veh.clone(), us06.clone(), None);
-    log::info!("Initial temperatures:");
+    log::debug!("Initial temperatures:");
     log_temperatures(&sd0.veh);
     sd0.walk().unwrap(); // simulate
-    log::info!("Temperatures after preconditioning:");
+    log::debug!("Temperatures after preconditioning:");
     log_temperatures(&sd0.veh);
 
     // Set up idle simulation (1 to 2 minutes idle)
@@ -275,7 +286,7 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
         set_res_temperature(&mut sd_idle.veh, get_res_temperature(&sd0.veh).unwrap()).unwrap();
     }
     sd_idle.walk().unwrap(); // simulate
-    log::info!("Post-idle results:");
+    log::debug!("Post-idle results:");
     log_temperatures(&sd_idle.veh);
     output_energy(&sd_idle.veh);
 
@@ -290,7 +301,7 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
         set_res_temperature(&mut sd1.veh, get_res_temperature(&sd_idle.veh).unwrap()).unwrap();
     }
     sd1.walk().unwrap(); // simulate
-    log::info!("Phase 1 results (city 1):");
+    log::debug!("Phase 1 results (city 1):");
     log_temperatures(&sd1.veh);
     output_energy(&sd1.veh);
 
@@ -305,7 +316,7 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
         set_res_temperature(&mut sd2.veh, get_res_temperature(&sd1.veh).unwrap()).unwrap();
     }
     sd2.walk().unwrap(); // simulate
-    log::info!("Phase 2 results (highway):");
+    log::debug!("Phase 2 results (highway):");
     log_temperatures(&sd2.veh);
     output_energy(&sd2.veh);
 
@@ -320,7 +331,7 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
         set_res_temperature(&mut sd3.veh, get_res_temperature(&sd2.veh).unwrap()).unwrap();
     }
     sd3.walk().unwrap(); // simulate
-    log::info!("Phase 3 results (city 2):");
+    log::debug!("Phase 3 results (city 2):");
     log_temperatures(&sd3.veh);
     output_energy(&sd3.veh);
 
@@ -350,10 +361,10 @@ pub fn sc03(mut veh: Vehicle) -> f64 {
 
     // First simulation (UDDS cold start)
     let mut sd0 = SimDrive::new(veh.clone(), udds, None);
-    log::info!("Initial temperatures:");
+    log::debug!("Initial temperatures:");
     log_temperatures(&sd0.veh);
     sd0.walk().unwrap(); // simulate
-    log::info!("Temperatures after preconditioning:");
+    log::debug!("Temperatures after preconditioning:");
     log_temperatures(&sd0.veh);
 
     // Engine-off soak (10 minutes)
@@ -378,7 +389,7 @@ pub fn sc03(mut veh: Vehicle) -> f64 {
     }
     sd_soak.walk().unwrap(); // simulate
     assert!(output_energy(&sd_soak.veh).get::<si::joule>() == 0.0);
-    log::info!("Post-soak temperatures:");
+    log::debug!("Post-soak temperatures:");
     log_temperatures(&sd_soak.veh);
 
     // Second simulation
@@ -392,7 +403,7 @@ pub fn sc03(mut veh: Vehicle) -> f64 {
         set_res_temperature(&mut sd1.veh, get_res_temperature(&sd_soak.veh).unwrap()).unwrap();
     }
     sd1.walk().unwrap(); // simulate
-    log::info!("Final results:");
+    log::debug!("Final results:");
     log_temperatures(&sd1.veh);
     output_energy(&sd1.veh);
 
@@ -416,10 +427,10 @@ pub fn ftp(mut veh: Vehicle, ambient_temp: si::Temperature) -> (f64, f64, f64) {
 
     // First simulation (cold start transient)
     let mut sd0 = SimDrive::new(veh.clone(), ftp_transient.clone(), None);
-    log::info!("Initial temperatures:");
+    log::debug!("Initial temperatures:");
     log_temperatures(&sd0.veh);
     sd0.walk().unwrap(); // simulate
-    log::info!("Temperatures after cold start transient segment:");
+    log::debug!("Temperatures after cold start transient segment:");
     log_temperatures(&sd0.veh);
 
     // Second simulation (stabilized)
@@ -433,7 +444,7 @@ pub fn ftp(mut veh: Vehicle, ambient_temp: si::Temperature) -> (f64, f64, f64) {
         set_res_temperature(&mut sd1.veh, get_res_temperature(&sd0.veh).unwrap()).unwrap();
     }
     sd1.walk().unwrap(); // simulate
-    log::info!("Temperatures after stabilized segment:");
+    log::debug!("Temperatures after stabilized segment:");
     log_temperatures(&sd1.veh);
 
     // Engine-off soak (10 minutes)
@@ -458,7 +469,7 @@ pub fn ftp(mut veh: Vehicle, ambient_temp: si::Temperature) -> (f64, f64, f64) {
     }
     sd_soak.walk().unwrap(); // simulate
     assert!(output_energy(&sd_soak.veh).get::<si::joule>() == 0.0);
-    log::info!("Temperatures after 10 minute soak:");
+    log::debug!("Temperatures after 10 minute soak:");
     log_temperatures(&sd_soak.veh);
 
     // Second simulation (transient)
@@ -472,7 +483,7 @@ pub fn ftp(mut veh: Vehicle, ambient_temp: si::Temperature) -> (f64, f64, f64) {
         set_res_temperature(&mut sd2.veh, get_res_temperature(&sd_soak.veh).unwrap()).unwrap();
     }
     sd2.walk().unwrap(); // simulate
-    log::info!("Temperatures after hot start transient segment:");
+    log::debug!("Temperatures after hot start transient segment:");
     log_temperatures(&sd2.veh);
     output_energy(&sd2.veh);
 
@@ -615,19 +626,19 @@ fn set_res_temperature(veh: &mut Vehicle, new_temperature: si::Temperature) -> a
 
 fn log_temperatures(veh: &Vehicle) {
     if let Some(temp) = get_cabin_temperature(veh) {
-        log::info!(
+        log::debug!(
             "  cabin temperature: {} °C",
             temp.get::<si::degree_celsius>()
         );
     }
     if let Some(temp) = get_fc_temperature(veh) {
-        log::info!(
+        log::debug!(
             "  fuel converter temperature: {} °C",
             temp.get::<si::degree_celsius>()
         );
     }
     if let Some(temp) = get_res_temperature(veh) {
-        log::info!(
+        log::debug!(
             "  reversible energy storage temperature: {} °C",
             temp.get::<si::degree_celsius>()
         );
@@ -639,7 +650,7 @@ fn output_energy(veh: &Vehicle) -> si::Energy {
         .fc()
         .map(|fc| fc.state.energy_fuel.get_fresh(|| format_dbg!()).unwrap());
     if let Some(fc_energy) = fc_energy_opt {
-        log::info!(
+        log::debug!(
             "  total expended fuel converter energy: {} kWh",
             fc_energy.get::<si::joule>() / 3.6e6
         );
@@ -651,7 +662,7 @@ fn output_energy(veh: &Vehicle) -> si::Energy {
             .unwrap()
     });
     if let Some(res_energy) = res_energy_opt {
-        log::info!(
+        log::debug!(
             "  total expended battery energy (not including charger losses): {} kWh",
             res_energy.get::<si::joule>() / 3.6e6
         );
@@ -692,7 +703,7 @@ mod tests {
             false,
         )
         .unwrap();
-        main(&veh);
+        five_cycle(&veh, true);
     }
 
     #[test]
