@@ -26,7 +26,8 @@ project:
         - file: _demo_notebooks/demo_hev_thrml_cs_ca.ipynb
         - file: _demo_notebooks/demo_hev_thrml_ws_ca.ipynb
         - file: _demo_notebooks/demo_hev_thrml_ws_wa.ipynb
-    - file: release-notes.md
+    - url: https://github.com/NatLabRockies/fastsim/releases
+      title: Release Notes
     - file: how-to-update.md
 site:
   template: book-theme
