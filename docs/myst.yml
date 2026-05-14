@@ -14,18 +14,7 @@ project:
     - file: cal_and_val.md
     - title: Demos
       children:
-        - file: _demo_notebooks/demo_conv.ipynb
-        - file: _demo_notebooks/demo_bev.ipynb
-        - file: _demo_notebooks/demo_hev.ipynb
-        - file: _demo_notebooks/demo_cavs.ipynb
-        - file: _demo_notebooks/demo_trace_miss.ipynb
-        - file: _demo_notebooks/demo_bev_thrml_cs_ca.ipynb
-        - file: _demo_notebooks/demo_bev_thrml_sweep.ipynb
-        - file: _demo_notebooks/demo_bev_thrml_ws_ca.ipynb
-        - file: _demo_notebooks/demo_bev_thrml_ws_wa.ipynb
-        - file: _demo_notebooks/demo_hev_thrml_cs_ca.ipynb
-        - file: _demo_notebooks/demo_hev_thrml_ws_ca.ipynb
-        - file: _demo_notebooks/demo_hev_thrml_ws_wa.ipynb
+        - pattern: _demo_notebooks/*.ipynb
     - url: https://github.com/NatLabRockies/fastsim/releases
       title: Release Notes
     - file: how-to-update.md
