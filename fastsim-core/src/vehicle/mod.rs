@@ -9,6 +9,7 @@ pub use crate::prelude::*;
 pub mod bev;
 pub mod cabin;
 pub mod chassis;
+pub mod common;
 pub mod conv;
 pub mod hev;
 pub mod hvac;
