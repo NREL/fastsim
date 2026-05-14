@@ -3,7 +3,7 @@ name: Deploy Jupyter Book site to Pages
 on:
   # Runs on pushes targeting the default branch
   push:
-    branches: ["fastsim-3", "f3/jupyter-book"]
+    branches: ["fastsim-3"]
     paths:
       - "docs/**"
       - ".github/workflows/deploy_docs.yaml"
