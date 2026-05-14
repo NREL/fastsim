@@ -7,7 +7,7 @@ This documentation is built using [Jupyter Book v2](https://mystmd.org/) (MyST).
 Install the doc build dependencies:
 
 ```bash
-pip install jupyter-book>=2.0.0 pydoc-markdown nbformat
+pip install -r docs/requirements.txt
 ```
 
 ## Local Development

@@ -6,18 +6,19 @@ project:
   github: https://github.com/NatLabRockies/fastsim
   toc:
     - file: intro.md
-    - title: Documentation
-      children:
-        - file: fastsim-doc.md
-        - file: rust-doc.md
-        - file: developers.md
+    - url: https://docs.rs/fastsim-core/latest/fastsim_core/
+      title: Rust API Documentation
+    - file: python-doc.md
     - file: cal_and_val.md
     - title: Demos
       children:
         - pattern: _demo_notebooks/*.ipynb
+    - title: Developers
+      children:
+        - file: developers.md
+        - file: how-to-update.md
     - url: https://github.com/NatLabRockies/fastsim/releases
       title: Release Notes
-    - file: how-to-update.md
 site:
   template: book-theme
   options:
