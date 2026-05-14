@@ -17,28 +17,40 @@ def script_to_notebook(script_path: Path, notebook_path: Path) -> None:
     current_markdown_block: list[str] = []
 
     def add_code_cell(block: list[str]) -> None:
-        if block:
-            notebook.cells.append(nbformat.v4.new_code_cell("".join(block)))
+        if block and "".join(block).strip():
+            notebook.cells.append(nbformat.v4.new_code_cell("".join(block).strip()))
 
     def add_markdown_cell(block: list[str]) -> None:
         if block:
             notebook.cells.append(nbformat.v4.new_markdown_cell("".join(block).strip()))
 
-    # markdown cells will be enclosed in triple quotes
-    # the remaining cells will be code cells
     in_markdown = False
     for line in lines:
-        # strip any ipython code blocks
-        if line.strip().startswith("# %%"):
+        stripped = line.strip()
+
+        # Use # %% as a code cell boundary
+        if stripped.startswith("# %%"):
+            add_code_cell(current_code_block)
+            current_code_block = []
             continue
-        if line.strip().startswith('"""'):
-            in_markdown = not in_markdown
-            if in_markdown:
+
+        # Only treat """ as markdown delimiter at top level (not indented)
+        if stripped.startswith('"""') and not line[0].isspace():
+            # Single-line """text""" — emit as a one-shot markdown cell
+            if stripped.endswith('"""') and stripped != '"""':
                 add_code_cell(current_code_block)
                 current_code_block = []
+                content = stripped[3:-3]
+                if content:
+                    add_markdown_cell([content])
             else:
-                add_markdown_cell(current_markdown_block)
-                current_markdown_block = []
+                in_markdown = not in_markdown
+                if in_markdown:
+                    add_code_cell(current_code_block)
+                    current_code_block = []
+                else:
+                    add_markdown_cell(current_markdown_block)
+                    current_markdown_block = []
         elif in_markdown:
             current_markdown_block.append(line)
         else:
