@@ -131,7 +131,7 @@ impl Vehicle {
     }
 
     #[pyo3(name = "reset_py")]
-    /// Compines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
+    /// Combines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
     fn reset_py(&mut self) -> anyhow::Result<()> {
         self.reset_cumulative(|| format_dbg!())?;
         self.reset_step(|| format_dbg!())?;

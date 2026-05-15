@@ -122,9 +122,9 @@ def solve_row(iterrow: tuple[Hashable, pd.Series]) -> dict[str, Any]:
     veh_dict["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["state"][
         "temperature_kelvin"
     ] = te_init_k
-    veh_dict["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["state"]["temp_prev_kelvin"] = (
-        te_init_k
-    )
+    veh_dict["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["state"][
+        "temp_prev_kelvin"
+    ] = te_init_k
     veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = te_init_k
     veh_dict["cabin"]["LumpedCabin"]["state"]["temp_prev_kelvin"] = te_init_k
 
@@ -138,7 +138,9 @@ def solve_row(iterrow: tuple[Hashable, pd.Series]) -> dict[str, Any]:
         cyc_key: cyc_str,
         te_amb_key: te_amb_k - celsius_to_kelvin,
         te_init_key: te_init_k - celsius_to_kelvin,
-        ecr_key: veh_dict_solved["pt_type"]["BEV"]["res"]["state"]["energy_out_chemical_joules"]
+        ecr_key: veh_dict_solved["pt_type"]["BEV"]["res"]["state"][
+            "energy_out_chemical_joules"
+        ]
         / 1_000
         / 3_600
         / (veh_dict_solved["state"]["dist_meters"] / 1e3 / 1.61)
@@ -170,9 +172,9 @@ def plot_time_series(
         ax[0].plot(
             sd["cyc"]["time_seconds"],
             np.array(
-                sd["veh"]["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"]["history"][
-                    "temperature_kelvin"
-                ],
+                sd["veh"]["pt_type"]["BEV"]["res"]["thrml"]["RESLumpedThermal"][
+                    "history"
+                ]["temperature_kelvin"],
             )
             - celsius_to_kelvin,
             label="battery",
@@ -202,9 +204,7 @@ def plot_time_series(
         plt.tight_layout()
 
         if save_figs:
-            save_str = (
-                f"cyc - {row[cyc_key]}, te_init - {row[te_init_key]}, te_amb - {row[te_amb_key]}"
-            )
+            save_str = f"cyc - {row[cyc_key]}, te_init - {row[te_init_key]}, te_amb - {row[te_amb_key]}"
             fig.savefig(
                 Path(__file__).parent / f"{save_str}.svg",
             )
@@ -236,7 +236,9 @@ def plot_sweep(
     fig, ax = plt.subplots()
     if not (show_plots) and not (save_figs):
         return (fig, ax)
-    title_str = cyc.upper() + f" ECR v. {var_to_title[x_var]} and {var_to_title[par_var]} Temp."
+    title_str = (
+        cyc.upper() + f" ECR v. {var_to_title[x_var]} and {var_to_title[par_var]} Temp."
+    )
     fig.suptitle(
         title_str,
     )
@@ -312,7 +314,9 @@ def plot_sweep_cross_effects(
             (df_feasible[par_var] == par_var_val) & (df_feasible[cyc_key] == cyc)
         ]
         d_ecr_d_x_var = np.diff(df_fltrd[ecr_key]) / np.diff(df_fltrd[x_var])
-        d_ecr_d_x_var_feas = np.diff(df_feas_fltrd[ecr_key]) / np.diff(df_feas_fltrd[x_var])
+        d_ecr_d_x_var_feas = np.diff(df_feas_fltrd[ecr_key]) / np.diff(
+            df_feas_fltrd[x_var]
+        )
         line = ax.plot(
             df_feas_fltrd[x_var][1:],
             d_ecr_d_x_var_feas,
@@ -355,7 +359,9 @@ def print_cross_delta(df: pd.DataFrame, cycle: str, fixed_var: str) -> None:
     Print percent increase in ECR for one variable when the other is fixed
     between 22*C and 24*C
     """
-    ecr = df[((df[fixed_var] > 22.0) & (df[fixed_var] < 24.0)) & (df[cyc_key] == cycle)][ecr_key]
+    ecr = df[
+        ((df[fixed_var] > 22.0) & (df[fixed_var] < 24.0)) & (df[cyc_key] == cycle)
+    ][ecr_key]
     ecr_delta = (ecr.max() - ecr.min()) / ecr.min()
     print(
         f"Percent increase beween lowwest and highest ECR for {cycle} and fixed {fixed_var}:"
@@ -370,7 +376,9 @@ if __name__ == "__main__":
     )
     PYTEST = os.environ.get("PYTEST", "false").lower() == "true"
     def_len = 10 if PYTEST else 50
-    parser.add_argument("--proc", type=int, default=4, help="Number of parallel processes.")
+    parser.add_argument(
+        "--proc", type=int, default=4, help="Number of parallel processes."
+    )
     parser.add_argument("--show-plots", action="store_true", help="Show plots")
     parser.add_argument("--save-figs", action="store_true", help="Save figures")
     parser.add_argument(
@@ -404,20 +412,32 @@ if __name__ == "__main__":
 
     # plot ECR v. init for a sweep of amb
     te_amb_step = int(len(te_amb_arr_k) / 10) if len(te_amb_arr_k) > 10 else 1
-    te_amb_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k][::te_amb_step]
+    te_amb_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k][
+        ::te_amb_step
+    ]
 
     te_init_step = (
-        int(len(te_batt_and_cab_init_arr_k) / 10) if len(te_batt_and_cab_init_arr_k) > 10 else 1
+        int(len(te_batt_and_cab_init_arr_k) / 10)
+        if len(te_batt_and_cab_init_arr_k) > 10
+        else 1
     )
     te_init_short_deg_c = [
         te_init_k - celsius_to_kelvin for te_init_k in te_batt_and_cab_init_arr_k
     ][::te_init_step]
 
     print("\nPlotting sweep results")
-    fig0, ax0 = plot_sweep(df_res, udds, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-    fig1, ax1 = plot_sweep(df_res, udds, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-    fig2, ax2 = plot_sweep(df_res, hwfet, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-    fig3, ax3 = plot_sweep(df_res, hwfet, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    fig0, ax0 = plot_sweep(
+        df_res, udds, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS
+    )
+    fig1, ax1 = plot_sweep(
+        df_res, udds, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS
+    )
+    fig2, ax2 = plot_sweep(
+        df_res, hwfet, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS
+    )
+    fig3, ax3 = plot_sweep(
+        df_res, hwfet, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS
+    )
 
     print("\nPlotting sweep cross effects")
     fig0, ax0 = plot_sweep_cross_effects(
@@ -467,3 +487,5 @@ if __name__ == "__main__":
     print_cross_delta(df_feasible, udds, te_amb_key)
     print_cross_delta(df_feasible, hwfet, te_init_key)
     print_cross_delta(df_feasible, hwfet, te_amb_key)
+
+# %%
