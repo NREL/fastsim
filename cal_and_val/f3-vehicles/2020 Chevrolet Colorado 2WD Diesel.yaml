@@ -137,7 +137,7 @@ chassis:
   tire_code: ~
   cg_height_meters: 0.53
   wheel_fric_coef: 0.7
-  drive_type: FWD
+  drive_type: RWD
   drive_axle_weight_frac: 0.61
   wheel_base_meters: 3.26
   mass_kilograms: ~
