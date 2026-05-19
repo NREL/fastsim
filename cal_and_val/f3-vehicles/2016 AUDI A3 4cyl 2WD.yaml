@@ -14,7 +14,7 @@ pt_type:
       thrml: None
       mass_kilograms: ~
       specific_pwr_watts_per_kilogram: ~
-      pwr_out_max_watts: 112000.0
+      pwr_out_max_watts: 126000.0
       pwr_out_max_init_watts: 18666.666666666668
       pwr_ramp_lag_seconds: 6.0
       eff_interp_from_pwr_out:
