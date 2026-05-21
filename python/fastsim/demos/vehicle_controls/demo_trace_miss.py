@@ -1,4 +1,11 @@
-"""A module that demonstrates trace-miss correction."""
+"""
+---
+execute:
+  skip: true
+---
+
+A module that demonstrates trace-miss correction.
+"""
 
 import os
 

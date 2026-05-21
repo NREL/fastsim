@@ -12,7 +12,16 @@ project:
     - file: cal_and_val.md
     - title: Demos
       children:
-        - pattern: _demo_notebooks/*.ipynb
+        - pattern: _demo_notebooks/getting_started/*.ipynb
+        - title: Powertrains
+          children:
+            - pattern: _demo_notebooks/powertrains/*.ipynb
+        - title: Thermal
+          children:
+            - pattern: _demo_notebooks/thermal/*.ipynb
+        - title: Vehicle Controls
+          children:
+            - pattern: _demo_notebooks/vehicle_controls/*.ipynb
     - title: Developers
       children:
         - file: developers.md

@@ -1,4 +1,11 @@
-"""BEV thermal demo with cold start and cold ambient conditions."""
+"""
+---
+execute:
+  skip: true
+---
+
+BEV thermal demo with cold start and cold ambient conditions.
+"""
 
 # %%
 import argparse

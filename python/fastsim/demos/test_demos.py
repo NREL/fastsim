@@ -10,7 +10,7 @@ import pytest
 
 def demo_paths():
     """Get list of all demo script paths."""
-    demo_paths = list(Path(__file__).parent.glob("*demo*.py"))
+    demo_paths = list(Path(__file__).parent.rglob("demo*.py"))
     demo_paths.remove(Path(__file__).resolve())
     return demo_paths
 

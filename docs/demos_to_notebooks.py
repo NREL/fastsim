@@ -142,42 +142,49 @@ Examples:
             print(f"Error: File {input_file} does not exist")
             sys.exit(1)
 
+        rel_path = input_file.relative_to(args.dir)
+        out_path = args.out_dir / rel_path
+
         if args.to_script:
             if input_file.suffix != ".ipynb":
                 print(f"Error: {input_file} is not a notebook file")
                 sys.exit(1)
-            output_file = input_file.with_suffix(".py")
-            notebook_to_script(input_file, args.out_dir / output_file.name)
-            print(f"Converted {input_file} to {args.out_dir / output_file.name}")
+            out_path = out_path.with_suffix(".py")
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            notebook_to_script(input_file, out_path)
+            print(f"Converted {input_file} to {out_path}")
         else:
             if input_file.suffix != ".py":
                 print(f"Error: {input_file} is not a Python file")
                 sys.exit(1)
-            output_file = input_file.with_suffix(".ipynb")
-            script_to_notebook(input_file, args.out_dir / output_file.name)
-            print(f"Converted {input_file} to {args.out_dir / output_file.name}")
+            out_path = out_path.with_suffix(".ipynb")
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            script_to_notebook(input_file, out_path)
+            print(f"Converted {input_file} to {out_path}")
     else:
-        # Convert all example files
+        # Convert all example files (recursively through subdirectories)
         if args.to_script:
-            # Convert all notebooks to scripts
-            notebooks = args.dir.glob("demo*.ipynb")
+            notebooks = sorted(args.dir.rglob("demo*.ipynb"))
             converted_count = 0
             for notebook in notebooks:
-                script = notebook.with_suffix(".py")
-                notebook_to_script(notebook, args.out_dir / script.name)
-                print(f"Converted {notebook.name} to {args.out_dir / script.name}")
+                rel_path = notebook.relative_to(args.dir)
+                out_path = (args.out_dir / rel_path).with_suffix(".py")
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                notebook_to_script(notebook, out_path)
+                print(f"Converted {rel_path} to {out_path}")
                 converted_count += 1
 
             if converted_count == 0:
                 print("No example notebooks found to convert")
         else:
-            # Convert all scripts to notebooks (original behavior)
-            scripts = args.dir.glob("demo*.py")
+            scripts = sorted(args.dir.rglob("demo*.py"))
             converted_count = 0
             for script in scripts:
-                notebook = script.with_suffix(".ipynb")
-                script_to_notebook(script, args.out_dir / notebook.name)
-                print(f"Converted {script.name} to {args.out_dir / notebook.name}")
+                rel_path = script.relative_to(args.dir)
+                out_path = (args.out_dir / rel_path).with_suffix(".ipynb")
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                script_to_notebook(script, out_path)
+                print(f"Converted {rel_path} to {out_path}")
                 converted_count += 1
 
             if converted_count == 0:

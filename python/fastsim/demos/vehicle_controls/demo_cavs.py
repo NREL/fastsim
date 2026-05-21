@@ -1,4 +1,9 @@
 """
+---
+execute:
+  skip: true
+---
+
 Demonstration of Connected Automated Vehicle (CAV) Functionality in FASTSim
 
 This module demonstrates:

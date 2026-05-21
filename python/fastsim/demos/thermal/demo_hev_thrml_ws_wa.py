@@ -1,4 +1,11 @@
-"""HEV thermal demo with warm start and cold ambient conditions."""
+"""
+---
+execute:
+  skip: true
+---
+
+HEV thermal demo with warm start and warm ambient conditions.
+"""
 
 # %%
 import os
@@ -25,9 +32,8 @@ SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 
 celsius_to_kelvin = 273.15
-temp_amb = -6.7 + celsius_to_kelvin
-temp_init_bat_and_cab = 22.0 + celsius_to_kelvin
-temp_init_eng = 70.0 + celsius_to_kelvin
+temp_amb = 38.0 + celsius_to_kelvin
+temp_init = 45.0 + celsius_to_kelvin
 # `fastsim3` -- load vehicle and cycle, build simulation, and run
 # %%
 
@@ -35,17 +41,18 @@ temp_init_eng = 70.0 + celsius_to_kelvin
 veh_dict = fsim.Vehicle.from_resource(
     "2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml",
 ).to_pydict()
-veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_init_bat_and_cab
+veh_dict["cabin"]["LumpedCabin"]["state"]["temperature_kelvin"] = temp_init
 veh_dict["pt_type"]["HEV"]["res"]["thrml"]["RESLumpedThermal"]["state"]["temperature_kelvin"] = (
-    temp_init_bat_and_cab
+    temp_init
 )
 veh_dict["pt_type"]["HEV"]["fc"]["thrml"]["FuelConverterThermal"]["state"]["temperature_kelvin"] = (
-    temp_init_eng
+    temp_init
 )
 veh = fsim.Vehicle.from_pydict(veh_dict)
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
 veh.set_save_interval(1)
+
 
 # load cycle from file
 cyc_dict = fsim.Cycle.from_resource("udds.csv").to_pydict()
