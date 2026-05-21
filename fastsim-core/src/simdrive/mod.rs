@@ -645,7 +645,7 @@ impl SimDrive {
             || format_dbg!(),
         )?;
         self.veh.state.cyc_met_overall.update(
-            if !*self.veh.state.cyc_met.clone().get_fresh(|| format_dbg!())? {
+            if !*self.veh.state.cyc_met.get_fresh(|| format_dbg!())? {
                 // if current power demand is not met, then this becomes false for
                 // the rest of the cycle and should not be manipulated anywhere else
                 false
