@@ -13,11 +13,15 @@ at the same temperature as the surrounding air.
 
 # %%
 import os
+import sys
+from pathlib import Path
 
 import seaborn as sns
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import fastsim as fsim
-from fastsim.demos.plot_utils import (
+from plot_utils import (
     plot_bev_hvac_pwr,
     plot_bev_res_energy,
     plot_bev_res_pwr,

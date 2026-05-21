@@ -18,8 +18,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import fastsim as fsim
-import fastsim.demos.plot_utils as pu
+import plot_utils as pu
 
 sns.set_theme()
 

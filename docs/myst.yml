@@ -5,27 +5,27 @@ project:
   title: FASTSim
   github: https://github.com/NatLabRockies/fastsim
   toc:
-    - file: intro.md
+    - file: content/intro.md
     - url: https://docs.rs/fastsim-core/latest/fastsim_core/
       title: Rust API Documentation
-    - file: python-doc.md
-    - file: cal_and_val.md
+    - file: content/python-doc.md
+    - file: content/cal_and_val.md
     - title: Demos
       children:
-        - pattern: _demo_notebooks/getting_started/*.ipynb
+        - pattern: demo_notebooks/getting_started/*.ipynb
         - title: Powertrains
           children:
-            - pattern: _demo_notebooks/powertrains/*.ipynb
+            - pattern: demo_notebooks/powertrains/*.ipynb
         - title: Thermal
           children:
-            - pattern: _demo_notebooks/thermal/*.ipynb
+            - pattern: demo_notebooks/thermal/*.ipynb
         - title: Vehicle Controls
           children:
-            - pattern: _demo_notebooks/vehicle_controls/*.ipynb
+            - pattern: demo_notebooks/vehicle_controls/*.ipynb
     - title: Developers
       children:
-        - file: developers.md
-        - file: how-to-update.md
+        - file: content/developers.md
+        - file: content/how-to-update.md
     - url: https://github.com/NatLabRockies/fastsim/releases
       title: Release Notes
 site:

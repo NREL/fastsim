@@ -100,7 +100,7 @@ Examples:
   # Convert all example scripts to notebooks (default behavior)
   python demos_to_notebooks.py
 
-  # Convert all example notebooks back to scripts  
+  # Convert all example notebooks back to scripts
   python demos_to_notebooks.py --to-script
 
   # Convert specific file to notebook
@@ -120,14 +120,14 @@ Examples:
         "--file", type=Path, help="Convert a specific file instead of all examples"
     )
     parser.add_argument(
-        "--dir", type=Path, help="Find examples in this directory", default=Path(__file__).parent
+        "--dir", type=Path, help="Find examples in this directory", default=Path(__file__).parent/"demo_scripts"
     )
     parser.add_argument(
-        "--out-dir", type=Path, help="Output directory for converted files", default=Path(__file__).parent/"_demo_notebooks"
+        "--out-dir", type=Path, help="Output directory for converted files", default=Path(__file__).parent/"demo_notebooks"
     )
 
     args = parser.parse_args()
-    
+
     # Clear output directory
     shutil.rmtree(args.out_dir, ignore_errors=True)
     args.out_dir.mkdir()

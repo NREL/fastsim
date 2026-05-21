@@ -13,11 +13,15 @@ engine all begin hot and the surrounding air is also hot.
 
 # %%
 import os
+import sys
+from pathlib import Path
 
 import seaborn as sns
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import fastsim as fsim
-from fastsim.demos.plot_utils import (
+from plot_utils import (
     plot_hev_fc_energy,
     plot_hev_fc_pwr,
     plot_hev_res_energy,
