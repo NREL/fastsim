@@ -1,55 +1,90 @@
 """
 # Getting Started with FASTSim
 
-In this demo you'll learn about the FASTSim core workflow:
-load a vehicle, load a drive cycle, and then run a simulation, followed by
-inspecting the results.
+This demo walks through the core FASTSim workflow: loading a vehicle,
+loading a drive cycle, running a simulation, and inspecting the results.
 """
 
 # %%
+import os
+
 import matplotlib.pyplot as plt
+
 import fastsim as fsim
+
+# %%
+SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 
 """
 ## Setting Up a Simulation
 
-Every FASTSim simulation needs a vehicle, a drive cycle, and a `SimDrive`
-that ties them together.
+Every FASTSim simulation needs three things: a `Vehicle`, a `Cycle` (the
+speed-vs-time trace the vehicle will attempt to follow), and a `SimDrive`
+that ties them together and runs the physics.
 """
 
 """
-`Vehicle.from_resource` loads one of the vehicle YAML files bundled with
-FASTSim. Here we're loading a 2012 Ford Fusion, a conventional ICE vehicle.
-Other bundled vehicles include the 2016 Toyota Prius (HEV), 2016 Nissan Leaf
-(BEV), 2020 Chevrolet Bolt (BEV), 2021 Hyundai Sonata Hybrid (HEV),
-2022 Renault Zoe (BEV), and 2022 Tesla Model 3 (BEV). You can also load your
-own vehicle definitions from a YAML file with `Vehicle.from_file`.
+### Loading a Vehicle
 
-`save_interval` controls how often the vehicle saves its internal state to
-history. The bundled vehicles default to saving every time step, which is what
-we want here for plotting. If you don't need per-step data, you can set a
-larger interval to save less frequently, or pass `None` to disable history
-recording entirely.
+`Vehicle.from_resource` loads one of the sample vehicle YAML files bundled
+with FASTSim. Some examples of what is available:
+
+| File | Type |
+|------|------|
+| `2012_Ford_Fusion.yaml` | Conventional (ICE-only) |
+| `2016_TOYOTA_Prius_Two.yaml` | Hybrid Electric (HEV) |
+| `2022_Renault_Zoe_ZE50_R135.yaml` | Battery Electric (BEV) |
+| `2020 Chevrolet Bolt EV thrml.yaml` | BEV with thermal model |
+| `2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml` | HEV with thermal model |
+
+Vehicles with "thrml" in the filename include cabin, HVAC, and battery
+thermal models. The non-thermal vehicles are simpler and are a good
+starting point.
+
+You can also load your own vehicle definitions from a YAML file on disk
+with `Vehicle.from_file`.
 """
 
 # %%
 veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
+
+"""
+`save_interval` controls how often the vehicle records its internal state
+to history vectors. A value of 1 means every time step is recorded, which
+is what we need for per-step plotting. A larger value saves less
+frequently, and `None` disables history recording entirely. The bundled
+vehicles already default to a `save_interval` of 1, but we set it
+explicitly here to be clear about our intent.
+"""
+
+# %%
 veh.set_save_interval(1)
 
 """
-`Cycle.from_resource` loads a drive cycle the same way. We're using UDDS,
-the EPA Urban Dynamometer Driving Schedule, which represents city driving
-conditions. FASTSim also bundles HWFET for highway driving. Like vehicles,
-you can load custom cycles from CSV files with `Cycle.from_file`.
+### Loading a Drive Cycle
+
+`Cycle.from_resource` loads a bundled drive cycle the same way. FASTSim
+ships with sample cycles including `udds.csv` (city driving) and
+`hwfet.csv` (highway driving).
+
+You can also load custom cycles from CSV files on disk with
+`Cycle.from_file`. A cycle CSV needs at minimum `time_seconds` and
+`speed_meters_per_second` columns.
 """
 
 # %%
 cyc = fsim.Cycle.from_resource("udds.csv")
 
 """
-`SimDrive` is the simulation runner. It takes a vehicle and a cycle and
-computes the vehicle's powertrain response at each time step. Calling
-`walk()` executes the simulation to completion.
+### Running the Simulation
+
+`SimDrive` takes a vehicle and a cycle and computes the vehicle's
+powertrain response at each time step. Calling `walk()` runs the
+simulation from start to finish.
+
+For a conventional vehicle, `walk()` runs through the cycle once. For
+hybrid vehicles, it iterates until the battery state of charge is balanced
+between the start and end of the cycle.
 """
 
 # %%
@@ -57,14 +92,18 @@ sd = fsim.SimDrive(veh, cyc)
 sd.walk()
 
 """
-## Looking at Results
+## Inspecting Results
 
-There are two main ways to get data out of a completed simulation.
-`to_dataframe()` returns a Polars DataFrame by default (pass `pandas=True`
-for pandas) with one row per saved time step, useful for plotting time series.
-`to_pydict(flatten=True)` serializes the full simulation state into a flat
-dictionary with dot-separated keys, handy for pulling out specific values
-like total fuel consumed.
+There are two main ways to get data out of a completed simulation:
+
+- `to_dataframe()` returns a Polars DataFrame (or pandas if you pass
+  `pandas=True`) with one row per saved time step. Column names use
+  dot-separated paths like `veh.history.speed_ach_meters_per_second`.
+  This is the easiest way to plot time series.
+
+- `to_pydict(flatten=True)` serializes the full simulation state into a
+  flat Python dictionary with the same dot-separated keys. This is useful
+  for pulling out scalar values like total fuel energy consumed.
 """
 
 # %%
@@ -77,46 +116,74 @@ print(f"\nFirst 10 columns (of {len(df.columns)}):")
 print(df.columns.tolist()[:10])
 
 """
-This plot compares the target speed from the drive cycle against what the
-vehicle actually achieved. For a properly parameterized vehicle on UDDS,
-these should overlap almost exactly.
+## Visualizing Results
 """
 
-# %%
-fig, ax = plt.subplots(figsize=(10, 4))
-ax.plot(df["cyc.time_seconds"], df["cyc.speed_meters_per_second"], label="Target", alpha=0.7)
-ax.plot(df["cyc.time_seconds"], df["veh.history.speed_ach_meters_per_second"], label="Achieved", linestyle="--")
-ax.set_xlabel("Time [s]")
-ax.set_ylabel("Speed [m/s]")
-ax.set_title("UDDS Drive Cycle: Target vs. Achieved Speed")
-ax.legend()
-plt.tight_layout()
-plt.show()
-
 """
-Here we plot the fuel converter's total output power (propulsion + auxiliary)
-over time. You can see when the engine is active and how hard it's working.
-During vehicle stops the engine still runs to supply auxiliary loads, so
-power doesn't drop to zero.
+### Target vs. Achieved Speed
+
+This plot compares the drive cycle's target speed against what the vehicle
+actually achieved. For a vehicle with enough power to follow the trace,
+these two lines should overlap almost exactly.
 """
 
 # %%
 fig, ax = plt.subplots(figsize=(10, 4))
 ax.plot(
     df["cyc.time_seconds"],
-    (df["veh.pt_type.Conv.fc.history.pwr_prop_watts"] + df["veh.pt_type.Conv.fc.history.pwr_aux_watts"]) / 1e3,
+    df["cyc.speed_meters_per_second"],
+    label="Target",
+    alpha=0.7,
+)
+ax.plot(
+    df["cyc.time_seconds"],
+    df["veh.history.speed_ach_meters_per_second"],
+    label="Achieved",
+    linestyle="--",
+)
+ax.set_xlabel("Time [s]")
+ax.set_ylabel("Speed [m/s]")
+ax.set_title("UDDS Drive Cycle: Target vs. Achieved Speed")
+ax.legend()
+plt.tight_layout()
+if SHOW_PLOTS:
+    plt.show()
+
+"""
+### Fuel Converter Output Power
+
+This plot shows the fuel converter's total output shaft power (propulsion
+plus auxiliary) over time. The propulsion component drives the wheels,
+while the auxiliary component covers electrical loads like lights and
+climate control. The 2012 Ford Fusion has a baseline auxiliary load of
+700 W.
+"""
+
+# %%
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.plot(
+    df["cyc.time_seconds"],
+    (
+        df["veh.pt_type.Conv.fc.history.pwr_prop_watts"]
+        + df["veh.pt_type.Conv.fc.history.pwr_aux_watts"]
+    )
+    / 1e3,
 )
 ax.set_xlabel("Time [s]")
 ax.set_ylabel("FC Power [kW]")
 ax.set_title("Fuel Converter Output Power")
 plt.tight_layout()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 """
-Cumulative fuel energy shows the total fuel consumed up to each point in the
-cycle. The slope tells you the instantaneous rate of consumption: steeper
-during acceleration, shallower during idle (where the engine still consumes
-fuel to overcome internal friction and supply auxiliary loads).
+### Cumulative Fuel Energy
+
+Cumulative fuel energy shows the total chemical energy consumed from fuel
+up to each point in the cycle. The slope at any given moment reflects the
+instantaneous rate of fuel consumption: steeper during acceleration (when
+the engine works harder) and shallower at idle (when the engine only
+needs to supply auxiliary loads).
 """
 
 # %%
@@ -129,4 +196,5 @@ ax.set_xlabel("Time [s]")
 ax.set_ylabel("Cumulative Fuel Energy [MJ]")
 ax.set_title("Cumulative Fuel Consumption")
 plt.tight_layout()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
