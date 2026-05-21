@@ -362,8 +362,7 @@ impl Default for PhevUtilizationParams {
 }
 
 lazy_static! {
-    static ref PHEV_UTIL_PARAMS: String =
-        include_str!("./simdrivelabel/longparams.json").to_string();
+    static ref PHEV_UTIL_PARAMS: String = include_str!("longparams.json").to_string();
 }
 
 pub struct PhevVehicleInfo {
@@ -2022,7 +2021,7 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_conv_vs_fastsim2() {
-        let file_contents = include_str!("vehicle/fastsim-2_2012_Ford_Fusion.yaml");
+        let file_contents = include_str!("../vehicle/fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
@@ -2057,7 +2056,7 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_bev_vs_fastsim2() {
-        let file_contents = include_str!("vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
+        let file_contents = include_str!("../vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
@@ -2091,7 +2090,7 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_hev_vs_fastsim2() {
-        let file_contents = include_str!("vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
+        let file_contents = include_str!("../vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
@@ -2296,21 +2295,21 @@ mod tests {
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     pub fn test_label_fe_post_proc_calcs_for_conv() {
-        let file_contents = include_str!("vehicle/fastsim-2_2012_Ford_Fusion.yaml");
+        let file_contents = include_str!("../vehicle/fastsim-2_2012_Ford_Fusion.yaml");
         let tolerance = 1e-6;
         run_fe_label_comparison_for(file_contents, tolerance);
     }
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     pub fn test_label_fe_post_proc_calcs_for_hev() {
-        let file_contents = include_str!("vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
+        let file_contents = include_str!("../vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         let tolerance = 1e-6;
         run_fe_label_comparison_for(file_contents, tolerance);
     }
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     pub fn test_label_fe_post_proc_calcs_for_bev() {
-        let file_contents = include_str!("vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
+        let file_contents = include_str!("../vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
         use fastsim_2::traits::SerdeAPI;
         let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
 
