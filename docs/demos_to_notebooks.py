@@ -7,7 +7,7 @@ import shutil
 import sys
 
 
-def script_to_notebook(script_path: Path, notebook_path: Path) -> None:
+def script_to_notebook(script_path: Path, notebook_path: Path, script_rel=None) -> None:
     # Read the script
     with open(script_path, "r") as script_file:
         lines = script_file.readlines()
@@ -58,6 +58,12 @@ def script_to_notebook(script_path: Path, notebook_path: Path) -> None:
 
     add_code_cell(current_code_block)
     add_markdown_cell(current_markdown_block)
+
+    if script_rel is not None:
+        source_path = f"fastsim/docs/demo_scripts/{script_rel.as_posix()}"
+        notebook.cells.append(
+            nbformat.v4.new_markdown_cell(f"*Source: `{source_path}`*")
+        )
 
     with open(notebook_path, "w") as notebook_file:
         nbformat.write(notebook, notebook_file)
@@ -159,7 +165,7 @@ Examples:
                 sys.exit(1)
             out_path = out_path.with_suffix(".ipynb")
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            script_to_notebook(input_file, out_path)
+            script_to_notebook(input_file, out_path, rel_path)
             print(f"Converted {input_file} to {out_path}")
     else:
         # Convert all example files (recursively through subdirectories)
@@ -183,7 +189,7 @@ Examples:
                 rel_path = script.relative_to(args.dir)
                 out_path = (args.out_dir / rel_path).with_suffix(".ipynb")
                 out_path.parent.mkdir(parents=True, exist_ok=True)
-                script_to_notebook(script, out_path)
+                script_to_notebook(script, out_path, rel_path)
                 print(f"Converted {rel_path} to {out_path}")
                 converted_count += 1
 
