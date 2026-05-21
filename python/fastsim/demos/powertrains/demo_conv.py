@@ -1,7 +1,8 @@
 """
 # Conventional Vehicle Demo
 
-TODO: overview of what this demo covers
+This demo simulates a conventional (ICE-only) vehicle over a drive cycle and
+visualizes the fuel converter and road load behavior.
 """
 
 # %%
@@ -24,7 +25,8 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 """
 ## Setup and Simulation
 
-TODO: describe loading vehicle and cycle, configuring save_interval, running simulation
+Load a vehicle and drive cycle, configure per-step state recording, run the
+simulation, and extract the results.
 """
 
 # %%
@@ -48,7 +50,8 @@ sd_dict = sd.to_pydict(flatten=True)
 """
 ## Visualize Results
 
-TODO: describe what these plots show for a conventional vehicle
+The following plots show fuel converter and road load behavior over the
+drive cycle.
 """
 
 
@@ -92,7 +95,8 @@ def plot_fc_pwr():
 
 
 """
-TODO: describe fuel converter power plot
+Fuel converter output power (drivetrain + auxiliary) and fuel input power over
+the drive cycle.
 """
 
 # %%
@@ -139,7 +143,8 @@ def plot_fc_energy():
 
 
 """
-TODO: describe fuel converter energy plot
+Cumulative fuel converter output energy (drivetrain + auxiliary) and fuel input
+energy over the drive cycle.
 """
 
 # %%
@@ -182,7 +187,7 @@ def plot_road_loads():
 
 
 """
-TODO: describe road loads plot
+Aerodynamic drag power and rolling resistance power over the drive cycle.
 """
 
 # %%

@@ -6,7 +6,8 @@ execute:
 
 # Battery Electric Vehicle Demo
 
-TODO: overview of what this demo covers
+This demo simulates a battery electric vehicle over a drive cycle and
+visualizes the battery and road load behavior.
 """
 
 # %%
@@ -29,7 +30,8 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 """
 ## Setup and Simulation
 
-TODO: describe loading vehicle and cycle, configuring save_interval, running simulation
+Load a vehicle and drive cycle, configure per-step state recording, run the
+simulation, and extract the results.
 """
 
 # %%
@@ -53,7 +55,7 @@ sd_dict = sd.to_pydict(flatten=True)
 """
 ## Visualize Results
 
-TODO: describe what these plots show for a battery electric vehicle
+The following plots show battery and road load behavior over the drive cycle.
 """
 
 
@@ -94,7 +96,7 @@ def plot_res_pwr():
 
 
 """
-TODO: describe reversible energy storage power plot
+Battery electrical output power and state of charge over the drive cycle.
 """
 
 # %%
@@ -138,7 +140,8 @@ def plot_res_energy():
 
 
 """
-TODO: describe reversible energy storage energy plot
+Cumulative battery electrical output energy and state of charge over the
+drive cycle.
 """
 
 # %%
@@ -181,7 +184,7 @@ def plot_road_loads():
 
 
 """
-TODO: describe road loads plot
+Aerodynamic drag power and rolling resistance power over the drive cycle.
 """
 
 # %%

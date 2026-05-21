@@ -6,7 +6,8 @@ execute:
 
 # Hybrid Electric Vehicle Demo
 
-TODO: overview of what this demo covers
+This demo simulates a hybrid electric vehicle over a drive cycle and
+visualizes the fuel converter, battery, and road load behavior.
 """
 
 # %%
@@ -29,7 +30,8 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 """
 ## Setup and Simulation
 
-TODO: describe loading vehicle and cycle, configuring save_interval, running simulation
+Load a vehicle and drive cycle, configure per-step state recording, run the
+simulation, and extract the results.
 """
 
 # %%
@@ -53,7 +55,8 @@ sd_dict = sd.to_pydict(flatten=True)
 """
 ## Visualize Results
 
-TODO: describe what these plots show for a hybrid electric vehicle
+The following plots show fuel converter, battery, and road load behavior over
+the drive cycle.
 """
 
 
@@ -103,7 +106,8 @@ def plot_fc_pwr():
 
 
 """
-TODO: describe fuel converter power plot
+Fuel converter output power (drivetrain + auxiliary) and fuel input power,
+with battery state of charge for context.
 """
 
 # %%
@@ -156,7 +160,8 @@ def plot_fc_energy():
 
 
 """
-TODO: describe fuel converter energy plot
+Cumulative fuel converter output energy (drivetrain + auxiliary) and fuel
+input energy, with battery state of charge for context.
 """
 
 # %%
@@ -217,7 +222,8 @@ def plot_res_pwr():
 
 
 """
-TODO: describe battery power plot
+Battery electrical and chemical output power, with state of charge, discharge
+buffer, regen buffer, and min/max SOC limits.
 """
 
 # %%
@@ -276,7 +282,8 @@ def plot_res_energy():
 
 
 """
-TODO: describe battery energy plot
+Cumulative battery electrical and chemical output energy, with state of
+charge and SOC buffers.
 """
 
 # %%
@@ -319,7 +326,7 @@ def plot_road_loads():
 
 
 """
-TODO: describe road loads plot
+Aerodynamic drag power and rolling resistance power over the drive cycle.
 """
 
 # %%

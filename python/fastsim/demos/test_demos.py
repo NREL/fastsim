@@ -10,9 +10,7 @@ import pytest
 
 def demo_paths():
     """Get list of all demo script paths."""
-    demo_paths = list(Path(__file__).parent.rglob("demo*.py"))
-    demo_paths.remove(Path(__file__).resolve())
-    return demo_paths
+    return list(Path(__file__).parent.rglob("demo*.py"))
 
 
 @pytest.mark.parametrize("demo_path", demo_paths(), ids=[dp.name for dp in demo_paths()])
