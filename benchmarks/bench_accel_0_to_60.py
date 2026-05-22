@@ -54,15 +54,6 @@ VEHICLES: dict[str, tuple[float, str]] = {
     "2012 Ford Fusion":                         (8.6,  "SE 2.5L FWD"), # 8.9s according to a couple sources
     "2016 AUDI A3 4cyl 2WD":                    (7.2,  "A3 1.8T FWD"),
     "2016 BMW 328d 4cyl 2WD":                   (7.2,  "328d sedan diesel"),
-<<<<<<< HEAD
-    "2016 CHEVROLET Malibu 4cyl 2WD":           (7.8,  "1.5T LT"),
-    "2016 FORD Escape 4cyl 2WD":                (9.0,  "2.5L S FWD"),
-    "2016 FORD Explorer 4cyl 2WD":              (7.0,  "2.3L EcoBoost FWD"),
-    "2016 HYUNDAI Elantra 4cyl 2WD":            (9.0,  "2.0L SE"),
-    "2016 TOYOTA Camry 4cyl 2WD":               (7.9,  "LE 2.5L"),
-    "2016 TOYOTA Corolla 4cyl 2WD":             (9.2,  "LE 1.8L"),
-    "2017 Toyota Highlander 3.5 L":             (7.0,  "LE V6 FWD"),
-=======
     "2016 CHEVROLET Malibu 4cyl 2WD":           (8.5,  "1.5T LT"),
     "2016 FORD Escape 4cyl 2WD":                (9.0,  "2.5L S FWD"),
     "2016 FORD Explorer 4cyl 2WD":              (8.2,  "2.3L EcoBoost FWD"),
@@ -70,7 +61,6 @@ VEHICLES: dict[str, tuple[float, str]] = {
     "2016 TOYOTA Camry 4cyl 2WD":               (7.9,  "LE 2.5L"),
     "2016 TOYOTA Corolla 4cyl 2WD":             (9.2,  "LE 1.8L"),
     "2017 Toyota Highlander 3.5 L":             (7.3,  "LE V6 FWD"),
->>>>>>> 6c8b6543c7eec18cc7d5aeb27293bf0529aa0abf
     "2020 Chevrolet Colorado 2WD Diesel":       (9.5,  "2.8L Duramax 2WD"),
     # --- HEV ---
     "2016 FORD C-MAX HEV":                      (8.4,  "C-Max Hybrid SE"),
