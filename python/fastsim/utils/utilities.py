@@ -22,14 +22,11 @@ def copy_demo_files(path_for_copies: Path = Path("demos")):
     make sure any files with changes you'd like to keep are renamed.
     """
     v = f"v{fsim.__version__}"
-    current_demo_path = fsim.package_root() / "demos"
+    current_demo_path = fsim.package_root().parent.parent / "docs" / "demo_scripts"
     assert Path(path_for_copies).resolve() != Path(current_demo_path), (
         "Can't copy demos inside site-packages"
     )
-    demo_files = list(current_demo_path.glob("*demo*.py"))
-    test_demo_files = list(current_demo_path.glob("*test*.py"))
-    for file in test_demo_files:
-        demo_files.remove(file)
+    demo_files = list(current_demo_path.rglob("demo*.py"))
     for file in demo_files:
         if os.path.exists(path_for_copies):
             dest_file = Path(path_for_copies) / file.name
