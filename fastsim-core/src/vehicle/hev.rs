@@ -396,9 +396,13 @@ impl Powertrain for Box<HybridElectricVehicle> {
             })?
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         // TODO: `res_pwr_out_req` probably does not include charging from the engine
-        self.res
-            .solve(res_pwr_out_req, dt)
-            .with_context(|| format_dbg!())?;
+        self.res.solve(res_pwr_out_req, dt).map_err(|err| {
+            anyhow!(format!(
+                "res.solve failed at line {} with originating error [{}]",
+                format_dbg!(),
+                err
+            ))
+        })?;
         Ok(None)
     }
 
