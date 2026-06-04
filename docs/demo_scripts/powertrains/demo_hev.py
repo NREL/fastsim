@@ -6,7 +6,7 @@ execute:
 
 # Hybrid Electric Vehicle Demo
 
-This demo simulates a hybrid electric vehicle over a drive cycle and
+This demo simulates a Hybrid Electric Vehicle (HEV) over a drive cycle and
 visualizes the fuel converter, battery, and road load behavior.
 """
 

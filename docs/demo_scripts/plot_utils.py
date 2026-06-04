@@ -552,6 +552,92 @@ def plot_hev_res_pwr(
     return fig, ax
 
 
+def plot_speed_by_time(df, c0, is_coast=None, save_interval=1, title=None, with_elevation=False,
+                       save_figs=False, show_plots=True):
+    """Plot original vs. modified speed traces over time."""
+    fig, ax = plt.subplots()
+    ax2 = None if not with_elevation else ax.twinx()
+    ax.plot(
+        np.array(c0["time_seconds"]),
+        np.array(c0["speed_meters_per_second"]),
+        "k-", label="original")
+    if with_elevation:
+        ax2.plot(
+            np.array(c0["time_seconds"]),
+            np.array(c0["elev_meters"]),
+            "r.", label="original (elev)")
+        ax2.set_ylabel("Elevation [m]")
+    ax.plot(
+        np.array(df["cyc.time_seconds"])[::save_interval],
+        np.array(df["veh.history.speed_ach_meters_per_second"]),
+        "b:", label="modified")
+    if with_elevation:
+        ax2.plot(
+            np.array(df["cyc.time_seconds"])[::save_interval],
+            np.array(df["cyc.elev_meters"])[::save_interval],
+            "g.", label="modified (elev)")
+        ax2.grid(False)
+    if is_coast is not None:
+        ax.plot(
+            np.array(c0["time_seconds"]),
+            np.array(is_coast),
+            "r:", label="coast-mode")
+    if title is not None:
+        ax.set_title(title)
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Speed [m/s]")
+    ax.legend()
+    fig.tight_layout()
+    if save_figs:
+        plt.savefig(Path(f"./plots/{title or 'speed_by_time'}.svg"))
+    if show_plots:
+        plt.show()
+    return fig, ax
+
+
+def plot_speed_by_dist(df, c0, is_coast=None, save_interval=1, title=None, with_elevation=False,
+                       save_figs=False, show_plots=True):
+    """Plot original vs. modified speed traces over distance."""
+    fig, ax = plt.subplots()
+    ax2 = None if not with_elevation else ax.twinx()
+    ax.plot(
+        np.array(c0["dist_meters"]),
+        np.array(c0["speed_meters_per_second"]),
+        "k-", label="original")
+    if with_elevation:
+        ax2.plot(
+            np.array(c0["dist_meters"]),
+            np.array(c0["elev_meters"]),
+            "r.", label="original (elev)")
+        ax2.set_ylabel("Elevation [m]")
+    ax.plot(
+        np.array(df["cyc.dist_meters"])[::save_interval],
+        np.array(df["veh.history.speed_ach_meters_per_second"]),
+        "b:", label="modified")
+    if with_elevation:
+        ax2.plot(
+            np.array(df["cyc.dist_meters"])[::save_interval],
+            np.array(df["cyc.elev_meters"])[::save_interval],
+            "g.", label="modified (elev)")
+        ax2.grid(False)
+    if is_coast is not None:
+        ax.plot(
+            np.array(df["cyc.dist_meters"])[::save_interval],
+            np.array(is_coast),
+            "r:", label="coast-mode")
+    if title is not None:
+        ax.set_title(title)
+    ax.set_xlabel("Distance [m]")
+    ax.set_ylabel("Speed [m/s]")
+    ax.legend()
+    fig.tight_layout()
+    if save_figs:
+        plt.savefig(Path(f"./plots/{title or 'speed_by_dist'}.svg"))
+    if show_plots:
+        plt.show()
+    return fig, ax
+
+
 def plot_hev_res_energy(
     df: pd.DataFrame,
     save_figs: bool,

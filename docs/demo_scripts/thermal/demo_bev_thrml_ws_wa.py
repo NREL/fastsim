@@ -6,7 +6,7 @@ execute:
 
 # BEV Thermal Demo: Warm Start, Warm Ambient
 
-This demo simulates a battery electric vehicle with thermal modeling under
+This demo simulates a Battery Electric Vehicle (BEV) with thermal modeling under
 warm start and warm ambient conditions, where the cabin and battery begin
 hot and the surrounding air is also hot.
 """
@@ -75,8 +75,9 @@ sd_dict = sd.to_pydict(flatten=True)
 """
 ## Visualize Results
 
-Battery power, energy, component temperatures, HVAC power demand, and road
-loads under warm start, warm ambient conditions.
+Battery power, energy, component temperatures, Heating, Ventilation, and
+Air Conditioning (HVAC) power demand, and road loads under warm start,
+warm ambient conditions.
 """
 
 # %%

@@ -36,7 +36,7 @@ def script_to_notebook(script_path: Path, notebook_path: Path, script_rel=None) 
 
         # Only treat """ as markdown delimiter at top level (not indented)
         if stripped.startswith('"""') and not line[0].isspace():
-            # Single-line """text""" — emit as a one-shot markdown cell
+            # Single-line """text""" emit as a one-shot markdown cell
             if stripped.endswith('"""') and stripped != '"""':
                 add_code_cell(current_code_block)
                 current_code_block = []

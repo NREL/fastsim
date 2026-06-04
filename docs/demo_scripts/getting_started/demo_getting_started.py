@@ -31,13 +31,13 @@ with FASTSim. Some examples of what is available:
 
 | File | Type |
 |------|------|
-| `2012_Ford_Fusion.yaml` | Conventional (ICE-only) |
+| `2012_Ford_Fusion.yaml` | Conventional |
 | `2016_TOYOTA_Prius_Two.yaml` | Hybrid Electric (HEV) |
 | `2022_Renault_Zoe_ZE50_R135.yaml` | Battery Electric (BEV) |
 | `2020 Chevrolet Bolt EV thrml.yaml` | BEV with thermal model |
 | `2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml` | HEV with thermal model |
 
-Vehicles with "thrml" in the filename include cabin, HVAC, and battery
+Vehicles with "thrml" in the filename include cabin, Heating, Ventilation, and Air Conditioning (HVAC), and battery
 thermal models. The non-thermal vehicles are simpler and are a good
 starting point.
 
@@ -64,8 +64,8 @@ veh.set_save_interval(1)
 ### Loading a Drive Cycle
 
 `Cycle.from_resource` loads a bundled drive cycle the same way. FASTSim
-ships with sample cycles including `udds.csv` (city driving) and
-`hwfet.csv` (highway driving).
+ships with sample cycles including `udds.csv` (Urban Dynamometer
+Driving Schedule) and `hwfet.csv` (Highway Fuel Economy Test).
 
 You can also load custom cycles from CSV files on disk with
 `Cycle.from_file`. A cycle CSV needs at minimum `time_seconds` and
@@ -152,11 +152,9 @@ if SHOW_PLOTS:
 """
 ### Fuel Converter Output Power
 
-This plot shows the fuel converter's total output shaft power (propulsion
-plus auxiliary) over time. The propulsion component drives the wheels,
-while the auxiliary component covers electrical loads like lights and
-climate control. The 2012 Ford Fusion has a baseline auxiliary load of
-700 W.
+This plot shows the fuel converter's total output power (propulsion plus
+auxiliary) over time. The 2012 Ford Fusion has a baseline auxiliary power
+of 700 W (`pwr_aux_base_watts` in the vehicle YAML).
 """
 
 # %%
@@ -179,11 +177,7 @@ if SHOW_PLOTS:
 """
 ### Cumulative Fuel Energy
 
-Cumulative fuel energy shows the total chemical energy consumed from fuel
-up to each point in the cycle. The slope at any given moment reflects the
-instantaneous rate of fuel consumption: steeper during acceleration (when
-the engine works harder) and shallower at idle (when the engine only
-needs to supply auxiliary loads).
+Cumulative fuel energy consumed over the drive cycle.
 """
 
 # %%

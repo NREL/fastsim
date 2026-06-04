@@ -6,7 +6,7 @@ execute:
 
 # Battery Electric Vehicle Demo
 
-This demo simulates a battery electric vehicle over a drive cycle and
+This demo simulates a Battery Electric Vehicle (BEV) over a drive cycle and
 visualizes the battery and road load behavior.
 """
 

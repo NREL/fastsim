@@ -1,7 +1,7 @@
 """
 # Conventional Vehicle Demo
 
-This demo simulates a conventional (ICE-only) vehicle over a drive cycle and
+This demo simulates a conventional vehicle over a drive cycle and
 visualizes the fuel converter and road load behavior.
 """
 

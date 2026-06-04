@@ -6,7 +6,7 @@ execute:
 
 # HEV Thermal Demo: Warm Start, Warm Ambient
 
-This demo simulates a hybrid electric vehicle with thermal modeling under
+This demo simulates a Hybrid Electric Vehicle (HEV) with thermal modeling under
 warm start and warm ambient conditions, where the cabin, battery, and
 engine all begin hot and the surrounding air is also hot.
 """
