@@ -16,13 +16,22 @@ def script_to_notebook(script_path: Path, notebook_path: Path, script_rel=None) 
     current_code_block: list[str] = []
     current_markdown_block: list[str] = []
 
+    def next_cell_id() -> str:
+        # deterministic ids keep regenerated notebooks byte-identical so git
+        # only shows diffs when the source script actually changes
+        return f"cell-{len(notebook.cells)}"
+
     def add_code_cell(block: list[str]) -> None:
         if block and "".join(block).strip():
-            notebook.cells.append(nbformat.v4.new_code_cell("".join(block).strip()))
+            notebook.cells.append(
+                nbformat.v4.new_code_cell("".join(block).strip(), id=next_cell_id()),
+            )
 
     def add_markdown_cell(block: list[str]) -> None:
         if block:
-            notebook.cells.append(nbformat.v4.new_markdown_cell("".join(block).strip()))
+            notebook.cells.append(
+                nbformat.v4.new_markdown_cell("".join(block).strip(), id=next_cell_id()),
+            )
 
     in_markdown = False
     for line in lines:
@@ -62,7 +71,7 @@ def script_to_notebook(script_path: Path, notebook_path: Path, script_rel=None) 
     if script_rel is not None:
         source_path = f"fastsim/docs/demo_scripts/{script_rel.as_posix()}"
         notebook.cells.append(
-            nbformat.v4.new_markdown_cell(f"*Source: `{source_path}`*")
+            nbformat.v4.new_markdown_cell(f"*Source: `{source_path}`*", id=next_cell_id())
         )
 
     with open(notebook_path, "w") as notebook_file:
