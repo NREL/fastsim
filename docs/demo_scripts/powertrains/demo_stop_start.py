@@ -1,7 +1,22 @@
-"""Demonstrate using and activating stop/start."""
+"""
+---
+execute:
+  skip: true
+---
 
+# Engine Stop/Start Demo
+
+This demo simulates a conventional vehicle over a drive cycle with and
+without engine stop/start, which turns the engine off while the vehicle
+is stopped, and compares the resulting fuel economy. It then converts
+the vehicle to a micro hybrid electric vehicle (uHEV) with a small
+battery and electric machine that supplies auxiliary loads when
+feasible, including while the engine is off.
+"""
+
+# %%
 import os
-import time
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -10,20 +25,13 @@ import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import fastsim as fsim
-from fastsim.demos.plot_utils import (
-    figsize_3_stacked,
-    get_paired_cycler,
-    get_uni_cycler,
-)
+from plot_utils import get_paired_cycler, get_uni_cycler
 
+# %%
 sns.set_theme()
-
-# Plot Related Data
-baselinestyles = [
-    "--",
-    "-.",
-]
 
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
@@ -33,9 +41,17 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 METERS_PER_MILE = 1609.34
 MJ_PER_GGE = 125.0
 
-# `fastsim3` -- load vehicle and cycle, build simulation, and run
-# %%
+"""
+## Setup and Simulation
 
+Run the same vehicle and drive cycle twice: first with the default
+powertrain controller, then with the stop/start controller enabled via
+`use_stop_start_controller`. The stop/start controller turns the engine
+off while the vehicle is stopped, subject to conditions such as a
+minimum engine on time and engine warm-up temperature.
+"""
+
+# %%
 # load 2026 Chrysler Pacifica Select
 veh = fsim.Vehicle.from_resource("2026_Chrysler_Pacifica_Select.yaml")
 veh.set_save_interval(1)
@@ -43,37 +59,36 @@ veh.set_save_interval(1)
 # load cycle from file
 cyc = fsim.Cycle.from_resource("udds.csv")
 
-# Instantiate `SimDrive` simulation object
+# instantiate `SimDrive` simulation object and run
 sd = fsim.SimDrive(veh, cyc)
-t0 = time.perf_counter()
 sd.walk()
-t1 = time.perf_counter()
-dt_fsim3_conv = t1 - t0
-print(f"NORMAL: fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{dt_fsim3_conv} s")
 df = sd.to_dataframe()
 
-# Load 2026 Chrysler Pacifica Select with Stop/Start
+# %%
+# load 2026 Chrysler Pacifica Select with stop/start
 veh_ss = fsim.Vehicle.from_resource("2026_Chrysler_Pacifica_Select.yaml")
 veh_ss.use_stop_start_controller()
 veh_ss.set_save_interval(1)
 
 sd_ss = fsim.SimDrive(veh_ss, cyc)
-t0 = time.perf_counter()
 sd_ss.walk()
-t1 = time.perf_counter()
-dt_fsim3_conv_ss = t1 - t0
-print(
-    "STOP/START: fastsim-3 `sd.walk()` elapsed time "
-    + f"with `save_interval` of 1:\n{dt_fsim3_conv_ss} s",
-)
 df_ss = sd_ss.to_dataframe()
 
-# Determine miles per gallon
+"""
+## Fuel Economy Comparison
+
+Compute fuel economy for both runs from cumulative fuel energy and cycle
+distance, then print the percent reduction in fuel use from stop/start.
+"""
+
+# %%
 cyc_dict = cyc.to_pydict()
 distance_m = cyc_dict["dist_meters"][-1]
 distance_mi = distance_m / METERS_PER_MILE
+
 fuel_mj = df["veh.pt_type.Conv.fc.history.energy_fuel_joules"][-1] / 1e6
 fuel_ss_mj = df_ss["veh.pt_type.Conv.fc.history.energy_fuel_joules"][-1] / 1e6
+
 gge_gal = fuel_mj / MJ_PER_GGE
 gge_ss_gal = fuel_ss_mj / MJ_PER_GGE
 fuel_economy_mpg = distance_mi / gge_gal
@@ -85,7 +100,22 @@ print(f"Conventional Vehicle Fuel Economy: {fuel_economy_mpg} mpg")
 print(f"Conventional w/ Stop/Start       : {fuel_economy_ss_mpg} mpg")
 print(f"Stop/Start Reduction in Fuel Usage (Conv): {percent_reduction} %")
 
+"""
+## Micro Hybrid Conversion
 
+The following function converts the conventional vehicle into a micro
+hybrid electric vehicle (uHEV): a vehicle with a small battery and
+electric machine that support engine stop/start. The conversion keeps
+the original fuel converter, fuel storage, and transmission, adds a
+battery and a constant-efficiency electric machine, supplies auxiliary
+loads from the battery when feasible (`AuxOnResPriority`), and uses the
+hybrid stop/start powertrain controller with optional regenerative
+braking. The dictionaries are written out in full to show the fields
+available for tweaking.
+"""
+
+
+# %%
 def conv_to_micro_hybrid(
     veh: fsim.Vehicle,
     res_eff: float | None = None,
@@ -307,19 +337,13 @@ def conv_to_micro_hybrid(
     return veh_uhev
 
 
-# Now, let's look at a micro-hybrid version
+# %%
 veh_uhev = conv_to_micro_hybrid(veh)
 sd_uhev = fsim.SimDrive(veh_uhev, cyc)
-t0 = time.perf_counter()
 sd_uhev.walk()
-t1 = time.perf_counter()
-dt_fsim3_uhev_ss = t1 - t0
-print(
-    "STOP/START uHEV: fastsim-3 `sd.walk()` elapsed time "
-    + f"with `save_interval` of 1:\n{dt_fsim3_uhev_ss} s",
-)
 df_uhev = sd_uhev.to_dataframe()
 
+# %%
 # uHEV reduction in fuel usage
 fuel_uhev_mj = df_uhev["veh.pt_type.HEV.fc.history.energy_fuel_joules"][-1] / 1e6
 gge_uhev_gal = fuel_uhev_mj / MJ_PER_GGE
@@ -331,11 +355,18 @@ print(f"Conventional Vehicle Fuel Economy: {fuel_economy_mpg} mpg")
 print(f"Micro HEV Fuel Economy           : {fuel_economy_uhev_mpg} mpg")
 print(f"Stop/Start Reduction in Fuel Usage (uHEV): {percent_reduction} %")
 
+"""
+## Visualize Results
 
+The following plots compare fuel converter behavior between the runs.
+"""
+
+
+# %%
 def plot_fc_pwr(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False) -> tuple[Figure, Axes]:
     """Plot fuel converter powers."""
     num_subplots = 4 if is_hev else 3
-    fig, ax = plt.subplots(num_subplots, 1, sharex=True, figsize=figsize_3_stacked)
+    fig, ax = plt.subplots(num_subplots, 1, sharex=True, figsize=(10, 9))
     title_postfix = " (uHEV)" if is_hev else ""
     plt.suptitle("Fuel Converter Power" + title_postfix)
     tag = "HEV" if is_hev else "Conv"
@@ -417,11 +448,30 @@ def plot_fc_pwr(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False) -> 
     return fig, ax
 
 
+"""
+Fuel converter shaft power, fuel power, and achieved speed for the
+baseline and stop/start runs. During stops, the stop/start run's fuel
+power drops to zero while the baseline continues to use idle fuel.
+"""
+
+# %%
+fig, ax = plot_fc_pwr(df, df_ss)
+
+"""
+The same comparison for the micro hybrid, with battery state of charge
+in the fourth panel.
+"""
+
+# %%
+fig2, ax2 = plot_fc_pwr(df, df_uhev, is_hev=True)
+
+
+# %%
 def plot_engine_on_flags(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False):
     """Plot engine flags."""
     if not is_hev:
         return
-    fig, ax = plt.subplots(2, 1, sharex=True, figsize=figsize_3_stacked)
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 9))
     plt.suptitle("Fuel Converter On Logic")
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
@@ -458,8 +508,10 @@ def plot_engine_on_flags(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = F
     return fig, ax
 
 
-fig, ax = plot_fc_pwr(df, df_ss)
+"""
+The micro hybrid stop/start controller's `vehicle_not_stopped` flag, one
+of the conditions that forces the engine on, plotted with achieved speed.
+"""
 
-fig2, ax2 = plot_fc_pwr(df, df_uhev, is_hev=True)
-
+# %%
 fig3, ax3 = plot_engine_on_flags(df, df_uhev, is_hev=True)
