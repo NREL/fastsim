@@ -1,29 +1,35 @@
-"""Demonstrate using and activating decel fuel cut-off (DFCO)."""
+"""
+---
+execute:
+  skip: true
+---
 
+# Deceleration Fuel Cut-Off Demo
+
+This demo simulates a conventional vehicle over a drive cycle with and
+without Deceleration Fuel Cut-Off (DFCO), a feature that cuts off fuel
+flow while the vehicle is decelerating, and compares the resulting
+fuel economy.
+"""
+
+# %%
 import os
-import time
+import sys
 from pathlib import Path
 
-# import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import fastsim as fsim
-from fastsim.demos.plot_utils import (
-    figsize_3_stacked,
-    get_paired_cycler,
-)
+from plot_utils import get_paired_cycler
 
+# %%
 sns.set_theme()
-
-# Plot Related Data
-baselinestyles = [
-    "--",
-    "-.",
-]
 
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
@@ -33,10 +39,17 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 METERS_PER_MILE = 1609.34
 MJ_PER_GGE = 125.0
 
-# `fastsim3` -- load vehicle and cycle, build simulation, and run
-# %%
+"""
+## Setup and Simulation
 
-# load 2026 Chrysler Pacifica Select -- No DFCO
+Run the same vehicle and drive cycle twice: once with DFCO disabled and
+once with DFCO enabled. The `set_dfco_params` method controls whether
+DFCO is enabled, the minimum speed at or above which it can activate,
+and the deceleration threshold required for it to activate.
+"""
+
+# %%
+# load 2026 Chrysler Pacifica Select with DFCO disabled
 veh = fsim.Vehicle.from_resource("2026_Chrysler_Pacifica_Select.yaml")
 veh.set_dfco_params(enabled=False, min_dfco_speed_m_per_s=0.0, max_accel_for_dfco_m_per_s2=0.0)
 veh.set_save_interval(1)
@@ -44,45 +57,42 @@ veh.set_save_interval(1)
 # load cycle from file
 cyc = fsim.Cycle.from_resource("udds.csv")
 
-# Instantiate `SimDrive` simulation object
+# instantiate `SimDrive` simulation object and run
 sd = fsim.SimDrive(veh, cyc)
-t0 = time.perf_counter()
 sd.walk()
-t1 = time.perf_counter()
-dt_fsim3_conv = t1 - t0
-print(f"NORMAL: fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{dt_fsim3_conv} s")
 df = sd.to_dataframe()
 
-# load 2026 Chrysler Pacifica Select -- Include DFCO
+# %%
+# load 2026 Chrysler Pacifica Select with DFCO enabled
 veh_dfco = fsim.Vehicle.from_resource("2026_Chrysler_Pacifica_Select.yaml")
 veh_dfco.set_dfco_params(
     enabled=True,
+    # DFCO can activate at or above 11.176 m/s (25 mph)
     min_dfco_speed_m_per_s=11.176,
+    # DFCO can activate when decelerating at 0.2 m/s^2 or more
     max_accel_for_dfco_m_per_s2=-0.2,
 )
 veh_dfco.set_save_interval(1)
 
-# load cycle from file
-cyc_dfco = fsim.Cycle.from_resource("udds.csv")
-
-# Instantiate `SimDrive` simulation object
-sd_dfco = fsim.SimDrive(veh_dfco, cyc_dfco)
-t0 = time.perf_counter()
+sd_dfco = fsim.SimDrive(veh_dfco, cyc)
 sd_dfco.walk()
-t1 = time.perf_counter()
-dt_fsim3_conv_dfco = t1 - t0
-print(
-    "DFCO: fastsim-3 `sd.walk()` elapsed time with `save_interval` "
-    + f"of 1:\n{dt_fsim3_conv_dfco} s",
-)
 df_dfco = sd_dfco.to_dataframe()
 
-# Determine miles per gallon
+"""
+## Fuel Economy Comparison
+
+Compute fuel economy for both runs from cumulative fuel energy and cycle
+distance, then print the percent reduction in fuel use from DFCO.
+"""
+
+# %%
 cyc_dict = cyc.to_pydict()
 distance_m = cyc_dict["dist_meters"][-1]
 distance_mi = distance_m / METERS_PER_MILE
+
 fuel_mj = df["veh.pt_type.Conv.fc.history.energy_fuel_joules"][-1] / 1e6
 fuel_dfco_mj = df_dfco["veh.pt_type.Conv.fc.history.energy_fuel_joules"][-1] / 1e6
+
 gge_gal = fuel_mj / MJ_PER_GGE
 gge_dfco_gal = fuel_dfco_mj / MJ_PER_GGE
 fuel_economy_mpg = distance_mi / gge_gal
@@ -94,13 +104,18 @@ print(f"Conventional Vehicle Fuel Economy: {fuel_economy_mpg} mpg")
 print(f"Conventional w/ DFCO             : {fuel_economy_dfco_mpg} mpg")
 print(f"DFCO Reduction in Fuel Use (Conv): {percent_reduction} %")
 
+"""
+## Visualize Results
 
-def plot_fc_pwr(df: pd.DataFrame, df_dfco: pd.DataFrame) -> tuple[Figure, Axes]:
-    """Plot fuel converter powers."""
-    num_subplots = 3
-    fig, ax = plt.subplots(num_subplots, 1, sharex=True, figsize=figsize_3_stacked)
+The following plot compares fuel converter behavior between the two runs.
+"""
+
+
+# %%
+def plot_fc_pwr(df: pd.DataFrame, df_dfco: pd.DataFrame, tag: str = "Conv") -> tuple[Figure, Axes]:
+    """Plot fuel converter powers"""
+    fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 8))
     plt.suptitle("Fuel Converter Power")
-    tag = "Conv"
 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
@@ -152,9 +167,6 @@ def plot_fc_pwr(df: pd.DataFrame, df_dfco: pd.DataFrame) -> tuple[Figure, Axes]:
     ax[2].legend()
     ax[2].set_xlabel("Time [s]")
     ax[2].set_ylabel("Ach Speed [m/s]")
-    x_min, x_max = ax[2].get_xlim()[0], ax[2].get_xlim()[1]
-    x_max = (x_max - x_min) * 1.15
-    ax[2].set_xlim([x_min, x_max])
 
     plt.tight_layout()
     if SAVE_FIGS:
@@ -165,4 +177,11 @@ def plot_fc_pwr(df: pd.DataFrame, df_dfco: pd.DataFrame) -> tuple[Figure, Axes]:
     return fig, ax
 
 
+"""
+Fuel converter shaft power, fuel power, and achieved speed for the baseline
+and DFCO runs. During decelerations above the minimum DFCO speed, the DFCO
+run's fuel power drops to zero while the baseline continues to use idle fuel.
+"""
+
+# %%
 fig, ax = plot_fc_pwr(df, df_dfco)
