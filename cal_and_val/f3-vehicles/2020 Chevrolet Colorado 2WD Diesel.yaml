@@ -113,6 +113,18 @@ pt_type:
         pwr_loss_watts: []
         energy_loss_joules: []
       save_interval: 1
+    pt_cntrl: Normal
+    dfco_cntrl:
+      dfco_enabled: false
+      minimum_dfco_speed_meters_per_second: 0.0
+      minimum_dfco_deceleration_meters_per_second_squared: 0.0
+      save_interval: ~
+      state:
+        i: 0
+        vehicle_dynamics_prevent_dfco: false
+      history:
+        i: []
+        vehicle_dynamics_prevent_dfco: []
     mass_kilograms: ~
     alt_eff: 1.0
 chassis:
@@ -125,7 +137,7 @@ chassis:
   tire_code: ~
   cg_height_meters: 0.53
   wheel_fric_coef: 0.7
-  drive_type: FWD
+  drive_type: RWD
   drive_axle_weight_frac: 0.61
   wheel_base_meters: 3.26
   mass_kilograms: ~
