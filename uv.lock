@@ -336,7 +336,7 @@ requires-dist = [
     { name = "memory-profiler", marker = "extra == 'dev'", specifier = "~=0.61.0" },
     { name = "msgpack", specifier = "==1.1.0" },
     { name = "numpy", specifier = ">=1.18,<=2.3.2" },
-    { name = "pandas", specifier = ">=2.1.2" },
+    { name = "pandas", specifier = ">=2.1.2,<=2.3.2" },
     { name = "pip" },
     { name = "plotly", marker = "extra == 'dev'", specifier = "~=6.0" },
     { name = "polars", specifier = "~=1.4" },
