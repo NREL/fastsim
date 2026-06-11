@@ -8,7 +8,6 @@ project:
     - file: content/intro.md
     - url: https://docs.rs/fastsim-core/latest/fastsim_core/
       title: Rust API Documentation
-    - file: content/python-doc.md
     - file: content/cal_and_val.md
     - title: Demos
       children:

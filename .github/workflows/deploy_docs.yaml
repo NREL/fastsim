@@ -37,10 +37,6 @@ jobs:
           pip install -U pip
           pip install -r docs/requirements.txt
 
-      - name: Generate Python docs
-        working-directory: ${{runner.workspace}}/fastsim/
-        run: pydoc-markdown -I python/ --render-toc > docs/content/python-doc.md
-
       - name: Convert demos to notebooks
         working-directory: ${{runner.workspace}}/fastsim/
         run: python docs/demos_to_notebooks.py
