@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # Trace Miss Correction
 
 This demo shows how `SimParams` can be configured to handle trace miss

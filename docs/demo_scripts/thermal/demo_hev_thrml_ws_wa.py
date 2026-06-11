@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # HEV Thermal Demo: Warm Start, Warm Ambient
 
 This demo simulates a Hybrid Electric Vehicle (HEV) with thermal modeling under

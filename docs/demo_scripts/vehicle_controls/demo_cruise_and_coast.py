@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # CAVS: Combined Cruise and Coast
 
 This Connected Automated Vehicle (CAV) demo enables both IDM eco-cruise

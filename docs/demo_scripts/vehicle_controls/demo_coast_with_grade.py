@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # CAVS: Coasting with Grade
 
 This Connected Automated Vehicle (CAV) demo configures coasting on a

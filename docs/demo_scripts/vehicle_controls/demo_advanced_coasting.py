@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # CAVS: Advanced Coasting
 
 This Connected Automated Vehicle (CAV) demo configures coasting with

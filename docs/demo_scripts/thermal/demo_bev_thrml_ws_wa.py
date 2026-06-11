@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # BEV Thermal Demo: Warm Start, Warm Ambient
 
 This demo simulates a Battery Electric Vehicle (BEV) with thermal modeling under

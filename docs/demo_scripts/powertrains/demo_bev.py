@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # Battery Electric Vehicle Demo
 
 This demo simulates a Battery Electric Vehicle (BEV) over a drive cycle and

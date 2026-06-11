@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # CAVS: Cycle Microtrips
 
 This Connected Automated Vehicle (CAV) demo extracts and plots individual

@@ -24,12 +24,19 @@ python demos_to_notebooks.py
 jupyter book start
 ```
 
+The `--execute` flag runs the demo notebooks and populates their
+outputs, so plots appear in the rendered pages:
+
+```bash
+jupyter book start --execute
+```
+
 The site will be available at `http://localhost:3000`.
 
 ## Building Static HTML
 
 ```bash
-jupyter book build --html
+jupyter book build --html --execute
 ```
 
 Output is written to `docs/_build/html/`.

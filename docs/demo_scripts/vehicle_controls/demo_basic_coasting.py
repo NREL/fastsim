@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # CAVS: Basic Coasting
 
 This Connected Automated Vehicle (CAV) demo shows coasting behavior using

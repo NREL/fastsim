@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # Hybrid Electric Vehicle Demo
 
 This demo simulates a Hybrid Electric Vehicle (HEV) over a drive cycle and

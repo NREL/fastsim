@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # Deceleration Fuel Cut-Off Demo
 
 This demo simulates a conventional vehicle over a drive cycle with and

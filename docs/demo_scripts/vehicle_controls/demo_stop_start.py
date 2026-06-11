@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # Engine Stop/Start Demo
 
 This demo simulates a conventional vehicle over a drive cycle with and

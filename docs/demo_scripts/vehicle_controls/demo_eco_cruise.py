@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # CAVS: Eco-Cruise (IDM)
 
 This Connected Automated Vehicle (CAV) demo uses the Intelligent Driver

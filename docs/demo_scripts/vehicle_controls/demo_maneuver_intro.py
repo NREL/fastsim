@@ -1,9 +1,4 @@
 """
----
-execute:
-  skip: true
----
-
 # CAVS: Intro to Maneuvers
 
 The `Maneuver` struct applies Connected Automated Vehicle (CAV) maneuvers

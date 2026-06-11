@@ -37,6 +37,16 @@ def script_to_notebook(script_path: Path, notebook_path: Path, script_rel=None) 
     for line in lines:
         stripped = line.strip()
 
+        # notebooks have no __file__, and the kernel's working directory varies
+        # (MyST starts kernels at the server root, Jupyter Lab at the notebook
+        # dir), so walk up from cwd until demo_scripts/ is found
+        if stripped == "sys.path.insert(0, str(Path(__file__).resolve().parent.parent))":
+            line = (
+                "sys.path.insert(0, str(next(p / \"demo_scripts\" "
+                "for p in (Path.cwd(), *Path.cwd().parents) "
+                "if (p / \"demo_scripts\").is_dir())))\n"
+            )
+
         # Use # %% as a code cell boundary
         if stripped.startswith("# %%"):
             add_code_cell(current_code_block)
@@ -73,6 +83,14 @@ def script_to_notebook(script_path: Path, notebook_path: Path, script_rel=None) 
         notebook.cells.append(
             nbformat.v4.new_markdown_cell(f"*Source: `{source_path}`*", id=next_cell_id())
         )
+
+    # kernelspec metadata is required for MyST to execute notebooks
+    notebook.metadata["kernelspec"] = {
+        "display_name": "Python 3",
+        "language": "python",
+        "name": "python3",
+    }
+    notebook.metadata["language_info"] = {"name": "python"}
 
     with open(notebook_path, "w") as notebook_file:
         nbformat.write(notebook, notebook_file)
