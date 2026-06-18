@@ -27,7 +27,11 @@ that ties them together and runs the physics.
 ### Loading a Vehicle
 
 `Vehicle.from_resource` loads one of the sample vehicle YAML files bundled
-with FASTSim. Some examples of what is available:
+with FASTSim. `Vehicle.list_resources()` returns the full list of bundled
+vehicles (and `Cycle.list_resources()` does the same for drive cycles). The
+resource files themselves live in the
+[fastsim-core resource directory](https://github.com/NatLabRockies/fastsim/tree/fastsim-3/fastsim-core/resources).
+A few examples:
 
 | File | Type |
 |------|------|
@@ -37,16 +41,18 @@ with FASTSim. Some examples of what is available:
 | `2020 Chevrolet Bolt EV thrml.yaml` | BEV with thermal model |
 | `2021_Hyundai_Sonata_Hybrid_Blue_thrml.yaml` | HEV with thermal model |
 
-Vehicles with "thrml" in the filename include cabin, Heating, Ventilation, and Air Conditioning (HVAC), and battery
-thermal models. The non-thermal vehicles are simpler and are a good
-starting point.
-
-You can also load your own vehicle definitions from a YAML file on disk
-with `Vehicle.from_file`.
+Vehicles with "thrml" in the filename include cabin, Heating, Ventilation,
+and Air Conditioning (HVAC), and battery thermal models. The non-thermal
+vehicles are simpler and are a good starting point.
 """
 
 # %%
 veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
+
+"""
+To use your own vehicle definition instead of a bundled one, load it from a
+YAML file on disk with `Vehicle.from_file`.
+"""
 
 """
 `save_interval` controls how often the vehicle records its internal state
