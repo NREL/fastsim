@@ -2,6 +2,10 @@ name: Build and Test
 
 on: [push]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     name: build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
@@ -75,6 +79,7 @@ jobs:
         run: python -m pip install -e .[dev]
 
       - name: run pytest
+        timeout-minutes: 20
         run: pytest -v
 
       - name: build ${{ matrix.platform || matrix.os.base }} binaries

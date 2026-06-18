@@ -177,10 +177,6 @@ def sweep(df: pd.DataFrame, n_proc: int | None) -> tuple[pd.DataFrame, pd.DataFr
     return df_res, df_feasible
 
 
-# %%
-df_doe = setup_sweep()
-df_res, df_feasible = sweep(df_doe, n_proc)
-
 """
 ## Plot ECR Sweep Results
 
@@ -243,22 +239,6 @@ def plot_sweep(
 
     return fig, ax
 
-
-# %%
-te_amb_step = int(len(te_amb_arr_k) / 10) if len(te_amb_arr_k) > 10 else 1
-te_amb_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k][::te_amb_step]
-
-te_init_step = (
-    int(len(te_batt_and_cab_init_arr_k) / 10) if len(te_batt_and_cab_init_arr_k) > 10 else 1
-)
-te_init_short_deg_c = [
-    te_init_k - celsius_to_kelvin for te_init_k in te_batt_and_cab_init_arr_k
-][::te_init_step]
-
-plot_sweep(df_res, df_feasible, udds, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-plot_sweep(df_res, df_feasible, udds, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-plot_sweep(df_res, df_feasible, hwfet, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-plot_sweep(df_res, df_feasible, hwfet, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
 
 """
 ## Plot Cross Effects
@@ -324,16 +304,6 @@ def plot_sweep_cross_effects(
     return fig, ax
 
 
-# %%
-plot_sweep_cross_effects(
-    df_res, df_feasible, udds, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-plot_sweep_cross_effects(
-    df_res, df_feasible, udds, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-plot_sweep_cross_effects(
-    df_res, df_feasible, hwfet, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-plot_sweep_cross_effects(
-    df_res, df_feasible, hwfet, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
-
 """
 ## Cross-Effect Deltas
 
@@ -354,14 +324,42 @@ def print_cross_delta(df: pd.DataFrame, cycle: str, fixed_var: str) -> None:
 
 
 # %%
-print("Cross-effect deltas w.r.t. full dataframe")
-print_cross_delta(df_res, udds, te_init_key)
-print_cross_delta(df_res, udds, te_amb_key)
-print_cross_delta(df_res, hwfet, te_init_key)
-print_cross_delta(df_res, hwfet, te_amb_key)
+if __name__ == "__main__":
+    df_doe = setup_sweep()
+    df_res, df_feasible = sweep(df_doe, n_proc)
 
-print("\nCross-effect deltas w.r.t. feasible dataframe")
-print_cross_delta(df_feasible, udds, te_init_key)
-print_cross_delta(df_feasible, udds, te_amb_key)
-print_cross_delta(df_feasible, hwfet, te_init_key)
-print_cross_delta(df_feasible, hwfet, te_amb_key)
+    te_amb_step = int(len(te_amb_arr_k) / 10) if len(te_amb_arr_k) > 10 else 1
+    te_amb_short_deg_c = [te_amb_k - celsius_to_kelvin for te_amb_k in te_amb_arr_k][::te_amb_step]
+
+    te_init_step = (
+        int(len(te_batt_and_cab_init_arr_k) / 10) if len(te_batt_and_cab_init_arr_k) > 10 else 1
+    )
+    te_init_short_deg_c = [
+        te_init_k - celsius_to_kelvin for te_init_k in te_batt_and_cab_init_arr_k
+    ][::te_init_step]
+
+    plot_sweep(df_res, df_feasible, udds, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    plot_sweep(df_res, df_feasible, udds, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    plot_sweep(df_res, df_feasible, hwfet, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    plot_sweep(df_res, df_feasible, hwfet, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+
+    plot_sweep_cross_effects(
+        df_res, df_feasible, udds, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    plot_sweep_cross_effects(
+        df_res, df_feasible, udds, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    plot_sweep_cross_effects(
+        df_res, df_feasible, hwfet, te_init_key, te_amb_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+    plot_sweep_cross_effects(
+        df_res, df_feasible, hwfet, te_amb_key, te_init_short_deg_c, SHOW_PLOTS, SAVE_FIGS)
+
+    print("Cross-effect deltas w.r.t. full dataframe")
+    print_cross_delta(df_res, udds, te_init_key)
+    print_cross_delta(df_res, udds, te_amb_key)
+    print_cross_delta(df_res, hwfet, te_init_key)
+    print_cross_delta(df_res, hwfet, te_amb_key)
+
+    print("\nCross-effect deltas w.r.t. feasible dataframe")
+    print_cross_delta(df_feasible, udds, te_init_key)
+    print_cross_delta(df_feasible, udds, te_amb_key)
+    print_cross_delta(df_feasible, hwfet, te_init_key)
+    print_cross_delta(df_feasible, hwfet, te_amb_key)
