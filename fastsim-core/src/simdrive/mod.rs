@@ -155,20 +155,10 @@ impl SimDrive {
                         ))
                     })?;
                     // final SOC, to use as starting SOC for next iteration (if needed)
-                    let soc_final = self
-                        .veh
-                        .res()
-                        .with_context(|| format_dbg!())?
-                        .state
-                        .soc
-                        .clone();
+                    let soc_final = self.veh.res().with_context(|| format_dbg!())?.state.soc;
                     // current iteration number, to use as counter for next iteration (if needed)
-                    let soc_bal_iters = self
-                        .veh
-                        .hev()
-                        .with_context(|| format_dbg!())?
-                        .soc_bal_iters
-                        .clone();
+                    let soc_bal_iters =
+                        self.veh.hev().with_context(|| format_dbg!())?.soc_bal_iters;
                     let res_per_fuel = *self
                         .veh
                         .res()
