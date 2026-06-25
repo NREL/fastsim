@@ -8,7 +8,6 @@ on:
       - "docs/**"
       - ".github/workflows/deploy_docs.yaml"
       - "README.md"
-      - "python/**"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -30,26 +29,46 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Install Jupyter Book and other dependencies
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Cache the cargo registry and compiled Rust artifacts so docs deploys
+      # don't recompile the core from scratch every run.
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # FASTSim must be importable so the demo notebooks can be executed during
+      # the build. This compiles the Rust core, so it is the slow step.
+      - name: Install FASTSim and doc dependencies
         run: |
           pip install -U pip
+          pip install .
           pip install -r docs/requirements.txt
 
+      # Register the python3 kernel that the generated notebooks request.
+      - name: Register Jupyter kernel
+        run: python -m ipykernel install --user --name python3
+
       - name: Convert demos to notebooks
-        working-directory: ${{runner.workspace}}/fastsim/
         run: python docs/demos_to_notebooks.py
 
       - name: Setup Pages
         id: pages
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v5
 
       - name: Build with Jupyter Book
-        working-directory: ${{runner.workspace}}/fastsim/docs/
-        # TODO: fix errors to allow strict build
-        # run: jupyter book build --html --strict
-        run: jupyter book build --html
+        working-directory: docs
+        # TODO: consider adding --strict once a strict + execute build is
+        # confirmed clean, so broken links/refs and execution errors fail the
+        # deploy instead of silently publishing.
+        run: jupyter book build --html --execute
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
