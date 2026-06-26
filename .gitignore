@@ -12,6 +12,7 @@ dist
 *.zip
 *.so
 *.pyd
+*.pdb
 *pymoo_res*
 *env*/
 rust/
