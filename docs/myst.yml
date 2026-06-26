@@ -62,3 +62,4 @@ site:
   template: book-theme
   options:
     logo: assets/fastsim-icon.svg
+    favicon: assets/fastsim-icon.ico
