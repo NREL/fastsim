@@ -76,12 +76,15 @@ include = [
     { format = "sdist", path = "fastsim-core/proc-macros/src/*" },
 ]
 
-[tool.pixi.project]
+[tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["osx-64", "osx-arm64", "linux-64", "win-64"]
 
 [tool.pixi.pypi-dependencies]
 fastsim = { path = ".", editable = true }
+
+[tool.pixi.feature.dev.dependencies]
+rust = ">=1.47.0"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
