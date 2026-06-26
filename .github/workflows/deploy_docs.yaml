@@ -27,6 +27,10 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
+    env:
+      # Disable HTTP/2 multiplexing to avoid intermittent crates.io download
+      # failures
+      CARGO_HTTP_MULTIPLEXING: "false"
     steps:
       - uses: actions/checkout@v4
 
@@ -64,6 +68,10 @@ jobs:
 
       - name: Build with Jupyter Book
         working-directory: docs
+        # GitHub Pages serves this project site under /<repo>, so MyST needs the
+        # base path to build correct links to its static assets.
+        env:
+          BASE_URL: "/${{ github.event.repository.name }}"
         # TODO: consider adding --strict once a strict + execute build is
         # confirmed clean, so broken links/refs and execution errors fail the
         # deploy instead of silently publishing.
