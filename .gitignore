@@ -12,6 +12,7 @@ dist
 *.zip
 *.so
 *.pyd
+*.pdb
 *pymoo_res*
 *env*/
 rust/
@@ -23,3 +24,6 @@ activate.sh
 # pixi environments
 .pixi
 *.egg-info
+*.code-workspace
+*.png
+.github/copilot-instructions.md

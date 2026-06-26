@@ -1,0 +1,64 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 61560401-8f58-4c7f-b78b-4754d2b0d3ae
+  title: FASTSim
+  github: https://github.com/NatLabRockies/fastsim
+  toc:
+    - file: content/intro.md
+    - title: What is FASTSim?
+      children:
+        - file: content/what-is-fastsim.md
+        - file: content/vehicle-model.md
+    - file: content/installation.md
+    - title: Getting Started
+      children:
+        - file: demo_notebooks/getting_started/demo_getting_started.ipynb
+        - file: content/editing-sim-params.md
+        - file: content/custom-vehicles.md
+        - file: content/custom-cycles.md
+        - file: content/label-fe.md
+    - title: Demos
+      children:
+        - file: demo_notebooks/powertrains/demo_conv.ipynb
+        - file: demo_notebooks/powertrains/demo_bev.ipynb
+        - file: demo_notebooks/powertrains/demo_hev.ipynb
+    - title: Advanced Demos
+      children:
+        - title: Thermal Simulation
+          children:
+            - file: demo_notebooks/thermal/demo_bev_thrml_cs_ca.ipynb
+            - file: demo_notebooks/thermal/demo_bev_thrml_ws_ca.ipynb
+            - file: demo_notebooks/thermal/demo_bev_thrml_ws_wa.ipynb
+            - file: demo_notebooks/thermal/demo_hev_thrml_cs_ca.ipynb
+            - file: demo_notebooks/thermal/demo_hev_thrml_ws_ca.ipynb
+            - file: demo_notebooks/thermal/demo_hev_thrml_ws_wa.ipynb
+            - file: demo_notebooks/thermal/demo_bev_thrml_sweep.ipynb
+        - title: Vehicle Controls
+          children:
+            - file: demo_notebooks/vehicle_controls/demo_trace_miss.ipynb
+            - file: demo_notebooks/vehicle_controls/demo_stop_start.ipynb
+            - file: demo_notebooks/vehicle_controls/demo_dfco.ipynb
+        - file: content/migration-guide.md
+    - title: Connected and Automated Vehicles (CAVS)
+      children:
+        - file: demo_notebooks/vehicle_controls/demo_maneuver_intro.ipynb
+        - file: demo_notebooks/vehicle_controls/demo_microtrips.ipynb
+        - file: demo_notebooks/vehicle_controls/demo_basic_coasting.ipynb
+        - file: demo_notebooks/vehicle_controls/demo_coast_with_grade.ipynb
+        - file: demo_notebooks/vehicle_controls/demo_advanced_coasting.ipynb
+        - file: demo_notebooks/vehicle_controls/demo_eco_cruise.ipynb
+        - file: demo_notebooks/vehicle_controls/demo_cruise_and_coast.ipynb
+    - title: Developers
+      children:
+        - file: content/compilation-from-source.md
+        - file: content/release-process.md
+        - file: content/how-to-update.md
+    - url: https://docs.rs/fastsim-core/latest/fastsim_core/
+      title: Rust API Documentation
+    - url: https://github.com/NatLabRockies/fastsim/releases
+      title: Release Notes
+site:
+  template: book-theme
+  options:
+    logo: assets/fastsim-icon.svg

@@ -54,6 +54,12 @@ pub struct TrackedState<T>(
     StateStatus,
 );
 
+impl<T: std::fmt::Display> std::fmt::Display for TrackedState<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// Provides methods to guarantee that states are updated once and only once per time step
 impl<T> TrackedState<T>
 where

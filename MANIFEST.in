@@ -5,4 +5,3 @@ recursive-include fastsim-core/proc-macros/src *
 recursive-include fastsim-py/src *
 recursive-include fastsim-cli/src *
 recursive-include python/fastsim/resources *
-recursive-include python/fastsim/demos *
