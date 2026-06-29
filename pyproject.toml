@@ -5,11 +5,11 @@ build-backend = "maturin"
 [project]
 name = "fastsim"
 version = "3.0.6"
-authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
+authors = [{ name = "NLR/BEST/CIMS/TETA Group", email = "fastsim@nlr.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
 license = { file = "LICENSE.md" }
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.15"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: Other/Proprietary License",
@@ -33,24 +33,43 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://www.nrel.gov/transportation/fastsim.html"
+Homepage = "https://www.nlr.gov/transportation/fastsim"
 
 [project.optional-dependencies]
+# User-facing feature extras only
+# NOTE: consider adding this as a user-facing optional feature
+# pymoo = [
+#     "pymoo~=0.6",
+# ]
+
+[dependency-groups]
+# Internal groups for development, CI/CD, testing, documentation purposes
+build = [
+    "maturin~=1.8",
+]
+test = [
+    {include-group = "build"},
+    "pytest~=8.3",
+]
+lint = [
+    "ruff>=0.11.9",
+]
+docs = [
+    "jupyter-book>=2.0.0",
+    "nbformat",
+]
 dev = [
+    {include-group = "build"},
+    {include-group = "test"},
+    {include-group = "lint"},
+    {include-group = "docs"},
     "pylsp-mypy>=0.7.0",
     "pylsp-rope>=0.1.17",
-    "ruff>=0.11.9",
-    "pytest~=8.3",
-    "maturin~=1.8",
     "python-lsp-server~=1.10",
     "memory_profiler~=0.61.0",
-    "pymoo~=0.6",
     "plotly~=6.0",
     "deepdiff>=8.4.2",
 ]
-
-[dependency-groups]
-dev = ["fastsim[dev]"]
 
 [tool.setuptools]
 zip-safe = false
@@ -83,17 +102,44 @@ platforms = ["osx-64", "osx-arm64", "linux-64", "win-64"]
 [tool.pixi.pypi-dependencies]
 fastsim = { path = ".", editable = true }
 
-[tool.pixi.feature.dev.dependencies]
+[tool.pixi.feature.docs.dependencies]
+nodejs = "26.4.*"
+
+[tool.pixi.feature.build.dependencies]
 rust = ">=1.47.0"
+
+# Python versions for CI/CD testing matrix
+# https://devguide.python.org/versions/#status-of-python-versions
+[tool.pixi.feature.py310.dependencies]
+python = "3.10.*"
+[tool.pixi.feature.py311.dependencies]
+python = "3.11.*"
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
+[tool.pixi.feature.py313.dependencies]
+python = "3.13.*"
+[tool.pixi.feature.py314.dependencies]
+python = "3.14.*"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
-dev = { features = ["dev"], solve-group = "default" }
+build = { features = ["build"], solve-group = "default" }
+test = { features = ["test", "build"], solve-group = "default" }
+lint = { features = ["lint"], solve-group = "default" }
+docs = { features = ["docs", "build"], solve-group = "default" }
+dev = { features = ["dev", "docs", "build"], solve-group = "default" }
+# Environments for specific Python versions with CI/CD
+# https://devguide.python.org/versions/#status-of-python-versions
+py310 = { features = ["py310", "test"], solve-group = "default" }
+py311 = { features = ["py311", "test"], solve-group = "default" }
+py312 = { features = ["py312", "test"], solve-group = "default" }
+py313 = { features = ["py313", "test"], solve-group = "default" }
+py314 = { features = ["py314", "test"], solve-group = "default" }
 
 [tool.pixi.tasks]
 cargo_test = "cargo test --release"
 py_build = "maturin develop --release"
-py_test = { cmd = "pixi run -e dev pytest -v", depends-on = ["py_build"] }
+py_test = { cmd = "pixi run -e test pytest -v", depends-on = ["py_build"] }
 build_and_test = { depends-on = ["cargo_test", "py_test"] }
 fmt = "ruff format"
 lint = "pylint"
