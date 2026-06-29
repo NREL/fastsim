@@ -120,9 +120,6 @@ impl Vehicle {
         Self::from_f2_file(file)
     }
 
-    // Note: intentionally no Python-level FASTSim-2 object interop here.
-    // File-based FASTSim-2 loading remains supported via from_f2_file_py.
-
     #[pyo3(name = "reset_py")]
     /// Combines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
     fn reset_py(&mut self) -> anyhow::Result<()> {

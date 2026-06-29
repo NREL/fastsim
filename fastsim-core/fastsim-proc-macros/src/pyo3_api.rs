@@ -91,7 +91,7 @@ fn add_serde_methods(py_impl_block: &mut TokenStream2) {
         ///
         #[pyo3(name = "to_file")]
         pub fn to_file_py(&self, filepath: &Bound<PyAny>) -> PyResult<()> {
-              self.to_file(filepath.extract::<PathBuf>()?).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
+            self.to_file(filepath.extract::<PathBuf>()?).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
 
         /// Read (deserialize) an object from a file.
