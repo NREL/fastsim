@@ -63,7 +63,7 @@ pretty_assertions = "1.4.1"
 [features]
 default = ["resources", "serde-default", "simdrivelabel"]
 ## Enables `pyo3` to provide fastsim-3 structs, methods, and functions to Python
-pyo3 = ["dep:pyo3", "fastsim-2/pyo3"]
+pyo3 = ["dep:pyo3"]
 ## Compiles external resources (e.g. vehicle files or cycle files) to be
 ## available in the binary
 resources = ["dep:include_dir"]

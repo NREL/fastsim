@@ -53,7 +53,7 @@ fn add_serde_methods(py_impl_block: &mut TokenStream2) {
         #[pyo3(signature = (filepath, skip_init=None))]
         pub fn from_resource_py(filepath: &Bound<PyAny>, skip_init: Option<bool>) -> PyResult<Self> {
             Self::from_resource(
-                PathBuf::extract_bound(filepath)?,
+                filepath.extract::<PathBuf>()?,
                 skip_init.unwrap_or_default()
             ).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
@@ -91,7 +91,7 @@ fn add_serde_methods(py_impl_block: &mut TokenStream2) {
         ///
         #[pyo3(name = "to_file")]
         pub fn to_file_py(&self, filepath: &Bound<PyAny>) -> PyResult<()> {
-           self.to_file(PathBuf::extract_bound(filepath)?).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
+              self.to_file(filepath.extract::<PathBuf>()?).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
 
         /// Read (deserialize) an object from a file.
@@ -105,7 +105,7 @@ fn add_serde_methods(py_impl_block: &mut TokenStream2) {
         #[pyo3(name = "from_file")]
         #[pyo3(signature = (filepath, skip_init=None))]
         pub fn from_file_py(filepath: &Bound<PyAny>, skip_init: Option<bool>) -> PyResult<Self> {
-            Self::from_file(PathBuf::extract_bound(filepath)?, skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
+            Self::from_file(filepath.extract::<PathBuf>()?, skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
 
         /// Write (serialize) an object into a string

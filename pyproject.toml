@@ -9,8 +9,7 @@ authors = [{ name = "NLR/BEST/CIMS/TETA Group", email = "fastsim@nlr.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
 license = { file = "LICENSE.md" }
-requires-python = ">=3.10,<3.14"
-# requires-python = ">=3.10,<3.15"  # Re-enable when PyO3/maturin supports 3.14 in this project
+requires-python = ">=3.10,<3.16"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: Other/Proprietary License",
@@ -119,8 +118,10 @@ python = "3.11.*"
 python = "3.12.*"
 [tool.pixi.feature.py313.dependencies]
 python = "3.13.*"
-# [tool.pixi.feature.py314.dependencies]
-# python = "3.14.*"
+[tool.pixi.feature.py314.dependencies]
+python = "3.14.*"
+# [tool.pixi.feature.py315.dependencies]
+# python = "3.15.*"  # Re-enable when pixi/conda-forge provides python 3.15 for all workspace platforms
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
@@ -135,7 +136,8 @@ py310 = { features = ["py310", "test"], solve-group = "py310" }
 py311 = { features = ["py311", "test"], solve-group = "py311" }
 py312 = { features = ["py312", "test"], solve-group = "py312" }
 py313 = { features = ["py313", "test"], solve-group = "py313" }
-# py314 = { features = ["py314", "test"], solve-group = "py314" }
+py314 = { features = ["py314", "test"], solve-group = "py314" }
+# py315 = { features = ["py315", "test"], solve-group = "py315" }
 
 [tool.pixi.tasks]
 cargo_test = "cargo test --release"

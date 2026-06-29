@@ -69,11 +69,6 @@ pub struct Vehicle {
 
 #[pyo3_api]
 impl Vehicle {
-    #[staticmethod]
-    fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {
-        Ok(Self::try_from(veh.clone())?)
-    }
-
     #[pyo3(name = "set_save_interval")]
     #[pyo3(signature = (save_interval=None))]
     /// Set save interval and cascade to nested components.
@@ -125,10 +120,8 @@ impl Vehicle {
         Self::from_f2_file(file)
     }
 
-    #[pyo3(name = "to_fastsim2")]
-    fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
-        self.to_fastsim2()
-    }
+    // Note: intentionally no Python-level FASTSim-2 object interop here.
+    // File-based FASTSim-2 loading remains supported via from_f2_file_py.
 
     #[pyo3(name = "reset_py")]
     /// Combines [Self::reset_cumulative], [Self::reset_step], [Self::clear]

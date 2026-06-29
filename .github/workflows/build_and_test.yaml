@@ -31,7 +31,8 @@ jobs:
           - "11"
           - "12"
           - "13"
-          # - "14"  # Re-enable when PyO3/maturin supports 3.14 in this project
+          - "14"
+          # - "15"  # Re-enable when py315 pixi environment can be solved across platforms
         include:
           - os:
               base: ubuntu
