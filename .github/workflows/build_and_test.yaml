@@ -31,7 +31,7 @@ jobs:
           - "11"
           - "12"
           - "13"
-          - "14"
+          # - "14"  # Re-enable when PyO3/maturin supports 3.14 in this project
         include:
           - os:
               base: ubuntu
