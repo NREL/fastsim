@@ -58,14 +58,21 @@ jobs:
         if: matrix.os.base == 'ubuntu' && matrix.python-version == '11'
         run: python python/fastsim/check_versions.py
 
-      # - run: ruff check .
+      # - name: Check Python formatting
+      #   run: ruff check .
 
-      - run: cargo fmt --check
+      - name: Check Rust formatting
+        run: cargo fmt --check
 
-      # - run: cargo clippy -- -D warnings
+      # - name: Check Rust linting
+      #   run: cargo clippy -- -D warnings
 
-      - name: cargo test --release
+      - name: Run Rust tests
         run: cargo test --release
+
+      - name: Run Python tests
+        timeout-minutes: 20
+        run: pytest -v
 
       - name: Install Python dependencies
         run: python -m pip install --upgrade pip setuptools wheel twine cibuildwheel
@@ -79,10 +86,6 @@ jobs:
         run: |
           python -m pip install -U setuptools-rust
           python -c "import setuptools; setuptools.setup()" sdist
-
-      - name: pytest -v
-        timeout-minutes: 20
-        run: pytest -v
 
       # NOTE: parts inspired by https://cibuildwheel.pypa.io/en/stable/setup/
       - name: Build ${{ matrix.platform || matrix.os.base }} binaries
