@@ -1,5 +1,6 @@
 python python/fastsim/check_versions.py && \
-# ruff check . && \
+cargo fmt --check && \
 cargo test && \
-pip install --group test --group lint -e . && \
+pip install --group test -e . && \
+# ruff check . && \
 pytest -v

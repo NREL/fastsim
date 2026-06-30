@@ -562,7 +562,11 @@ impl Mass for ElectricMachine {
                 )
             }
         };
-        ensure!(self.mass > Some(0.0 * uc::KG), "{} mass must be positive", stringify!(ElectricMachine));
+        ensure!(
+            self.mass > Some(0.0 * uc::KG),
+            "{} mass must be positive",
+            stringify!(ElectricMachine)
+        );
         Ok(())
     }
 

@@ -53,11 +53,9 @@ release = [
 ]
 test = [
     {include-group = "build"},
+    "ruff>=0.11.9",
     "pytest~=8.3",
     "memory_profiler~=0.61.0",
-]
-lint = [
-    "ruff>=0.11.9",
 ]
 docs = [
     "jupyter-book>=2.0.0",
@@ -66,7 +64,6 @@ docs = [
 dev = [
     {include-group = "build"},
     {include-group = "test"},
-    {include-group = "lint"},
     {include-group = "docs"},
     "pylsp-mypy>=0.7.0",
     "pylsp-rope>=0.1.17",
@@ -132,9 +129,8 @@ default = { solve-group = "default" }
 build = { features = ["build"], solve-group = "default" }
 release = { features = ["release", "build"], solve-group = "default" }
 test = { features = ["test", "build"], solve-group = "default" }
-lint = { features = ["lint"], solve-group = "default" }
 docs = { features = ["docs", "build"], solve-group = "default" }
-dev = { features = ["dev", "docs", "build"], solve-group = "default" }
+dev = { features = ["dev", "build", "test", "docs"], solve-group = "default" }
 # Environments for specific Python versions with CI/CD
 # https://devguide.python.org/versions/#status-of-python-versions
 py310 = { features = ["py310", "test"], solve-group = "py310" }
@@ -150,8 +146,8 @@ py_build = "maturin develop --release"
 py_test = { cmd = "pixi run -e test pytest -v", depends-on = ["py_build"] }
 build_and_test = { depends-on = ["cargo_test", "py_test"] }
 fmt = "ruff format"
-lint = "pylint"
-style = { depends-on = ["fmt", "lint"] }
+# lint = "pylint"
+# style = { depends-on = ["fmt", "lint"] }
 
 [tool.ruff]
 # Specify Python version
