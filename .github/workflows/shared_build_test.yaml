@@ -63,6 +63,9 @@ jobs:
               version: latest
             ls: dir
     runs-on: ${{ format('{0}-{1}', matrix.os.base, matrix.os.version) }}
+    defaults:
+      run:
+        shell: pixi run -e py3${{ matrix.python-version }} bash -e {0}
     env:
       # Disable HTTP/2 multiplexing to avoid intermittent crates.io download failures
       CARGO_HTTP_MULTIPLEXING: "false"
@@ -77,31 +80,31 @@ jobs:
 
       - name: Check version consistency
         if: matrix.os.base == 'ubuntu' && matrix.python-version == '11'
-        run: pixi run -e py3${{ matrix.python-version }} python python/fastsim/check_versions.py
+        run: python python/fastsim/check_versions.py
 
       - name: Update minimum supported MacOS for Wheels for MacOS 15-intel (Intel Mac)
         run: echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
         if: matrix.os.base == 'macos' && matrix.os.version == '15-intel'
 
       - name: cargo test --release
-        run: pixi run -e py3${{ matrix.python-version }} cargo test --release
+        run: cargo test --release
 
       - name: Install Python dependencies
-        run: pixi run -e py3${{ matrix.python-version }} python -m pip install --upgrade pip setuptools wheel twine cibuildwheel
+        run: python -m pip install --upgrade pip setuptools wheel twine cibuildwheel
 
       - name: Build source distribution
         if: matrix.os.base == 'ubuntu' && matrix.python-version == '10'
         run: |
-          pixi run -e py3${{ matrix.python-version }} python -m pip install -U setuptools-rust
-          pixi run -e py3${{ matrix.python-version }} python -c "import setuptools; setuptools.setup()" sdist
+          python -m pip install -U setuptools-rust
+          python -c "import setuptools; setuptools.setup()" sdist
 
       - name: pytest -v
         timeout-minutes: 20
-        run: pixi run -e py3${{ matrix.python-version }} pytest -v
+        run: pytest -v
 
       # NOTE: parts inspired by https://cibuildwheel.pypa.io/en/stable/setup/
       - name: Build ${{ matrix.platform || matrix.os.base }} binaries
-        run: pixi run -e py3${{ matrix.python-version }} cibuildwheel --output-dir dist
+        run: cibuildwheel --output-dir dist
         env:
           CIBW_BUILD: "cp3${{ matrix.python-version }}-*"
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
