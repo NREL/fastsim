@@ -7,6 +7,12 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pixi run -e test bash -e {0}
+    env:
+      # Disable HTTP/2 multiplexing to avoid intermittent crates.io download failures
+      CARGO_HTTP_MULTIPLEXING: "false"
     steps:
       - uses: actions/checkout@v4
 
@@ -15,11 +21,11 @@ jobs:
         with:
           environments: test
 
-      # - name: ruff check .
-      #   run: pixi run -e test ruff check .
+      # - run: pixi run -e test ruff check .
 
-      - name: cargo fmt --check
-        run: pixi run -e test cargo fmt --check
+      - run: cargo fmt --check
+
+      # - run: cargo clippy -- -D warnings
 
   build:
     name: Build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
@@ -58,6 +64,7 @@ jobs:
             ls: dir
     runs-on: ${{ format('{0}-{1}', matrix.os.base, matrix.os.version) }}
     env:
+      # Disable HTTP/2 multiplexing to avoid intermittent crates.io download failures
       CARGO_HTTP_MULTIPLEXING: "false"
       FASTSIM_DISABLE_NETWORK_TESTS: 1
     steps:
