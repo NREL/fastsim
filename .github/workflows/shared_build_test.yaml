@@ -23,6 +23,7 @@ jobs:
 
   build:
     name: Build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
+    needs: lint
     strategy:
       fail-fast: true
       matrix:
