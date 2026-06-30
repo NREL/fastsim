@@ -4,7 +4,7 @@ veh_pt_type: Conv
 drag_coef: 0.4
 frontal_area_m2: 2.88
 glider_kg: 1250.0
-veh_cg_m: 0.53
+veh_cg_m: -0.53
 drive_axle_weight_frac: 0.61
 wheel_base_m: 3.26
 cargo_kg: 136.8
