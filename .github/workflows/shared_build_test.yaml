@@ -1,0 +1,123 @@
+name: Reusable build + test + wheel matrix to call from multiple workflows
+
+on:
+  workflow_call:
+
+jobs:
+  # lint:
+  #   name: Lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Set up Pixi
+  #       uses: prefix-dev/setup-pixi@v0.8.14
+  #       with:
+  #         environments: lint
+
+  #     - name: ruff check .
+  #       run: pixi run -e lint ruff check .
+
+  build:
+    name: Build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - base: ubuntu
+            version: latest
+          - base: macos
+            version: "15-intel"
+            arch: "x86_64"
+          - base: macos
+            version: "latest"
+            arch: "arm64"
+          - base: windows
+            version: latest
+            arch: "amd64"
+        python-version:
+          # https://devguide.python.org/versions/#status-of-python-versions
+          - "10"
+          - "11"
+          - "12"
+          - "13"
+          - "14"
+          # - "15"  # Re-enable when py315 pixi environment can be solved across platforms
+        include:
+          - os:
+              base: ubuntu
+              version: latest
+            platform: linux
+          - os:
+              base: windows
+              version: latest
+            ls: dir
+    runs-on: ${{ format('{0}-{1}', matrix.os.base, matrix.os.version) }}
+    env:
+      CARGO_HTTP_MULTIPLEXING: "false"
+      FASTSIM_DISABLE_NETWORK_TESTS: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@v0.8.14
+        with:
+          environments: py3${{ matrix.python-version }}
+
+      - name: Check version consistency
+        if: matrix.os.base == 'ubuntu' && matrix.python-version == '11'
+        run: pixi run -e py3${{ matrix.python-version }} python python/fastsim/check_versions.py
+
+      - name: Update minimum supported MacOS for Wheels for MacOS 15-intel (Intel Mac)
+        run: echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
+        if: matrix.os.base == 'macos' && matrix.os.version == '15-intel'
+
+      - name: cargo test --release
+        run: pixi run -e py3${{ matrix.python-version }} cargo test --release
+
+      - name: Install Python dependencies
+        run: pixi run -e py3${{ matrix.python-version }} python -m pip install --upgrade pip setuptools wheel twine cibuildwheel
+
+      - name: Build source distribution
+        if: matrix.os.base == 'ubuntu' && matrix.python-version == '10'
+        run: |
+          pixi run -e py3${{ matrix.python-version }} python -m pip install -U setuptools-rust
+          pixi run -e py3${{ matrix.python-version }} python -c "import setuptools; setuptools.setup()" sdist
+
+      - name: pytest -v
+        timeout-minutes: 20
+        run: pixi run -e py3${{ matrix.python-version }} pytest -v
+
+      # NOTE: parts inspired by https://cibuildwheel.pypa.io/en/stable/setup/
+      - name: Build ${{ matrix.platform || matrix.os.base }} binaries
+        run: pixi run -e py3${{ matrix.python-version }} cibuildwheel --output-dir dist
+        env:
+          CIBW_BUILD: "cp3${{ matrix.python-version }}-*"
+          CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
+          CIBW_PLATFORM: ${{ matrix.platform || matrix.os.base }}
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: "pytest {project}/python/fastsim/tests"
+          CIBW_ARCHS_MACOS: "${{ matrix.os.arch }}"
+          # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2
+          CIBW_TEST_SKIP: "*_universal2:arm64"
+          CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
+          CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux2014"
+          CIBW_MANYLINUX_I686_IMAGE: "manylinux2014"
+          CIBW_BEFORE_BUILD: >
+            pip install -U setuptools-rust &&
+            rustup default stable &&
+            rustup show
+          CIBW_BEFORE_BUILD_LINUX: >
+            yum -y install openssl openssl-devel &&
+            pip install -U setuptools-rust &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
+            rustup show
+
+      - name: List dist files
+        run: ${{ matrix.ls || 'ls -lh' }} dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastsim-${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}-py3.${{ matrix.python-version }}-${{ strategy.job-index }}
+          path: ./dist/*

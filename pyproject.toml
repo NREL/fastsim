@@ -47,6 +47,10 @@ Homepage = "https://www.nlr.gov/transportation/fastsim"
 build = [
     "maturin~=1.8",
 ]
+release = [
+    {include-group = "build"},
+    "twine",
+]
 test = [
     {include-group = "build"},
     "pytest~=8.3",
@@ -126,6 +130,7 @@ python = "3.14.*"
 [tool.pixi.environments]
 default = { solve-group = "default" }
 build = { features = ["build"], solve-group = "default" }
+release = { features = ["release", "build"], solve-group = "default" }
 test = { features = ["test", "build"], solve-group = "default" }
 lint = { features = ["lint"], solve-group = "default" }
 docs = { features = ["docs", "build"], solve-group = "default" }

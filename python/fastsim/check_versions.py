@@ -84,7 +84,7 @@ def check_fastsim_proc_macros_dependency(repo_root: pathlib.Path, expected_versi
 
 
 def main() -> int:
-    repo_root = pathlib.Path(__file__).resolve().parents[3]
+    repo_root = pathlib.Path(__file__).resolve().parents[2]
     pyproject_path = repo_root / "pyproject.toml"
     expected_version = load_pyproject_version(pyproject_path)
     _workspace_root, package_versions = load_workspace_packages(repo_root)
