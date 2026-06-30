@@ -2,10 +2,9 @@
 
 members = [
     "fastsim-core",                     # pure rust core with optional pyo3 feature
+    "fastsim-core/fastsim-proc-macros",
     "fastsim-py",                       # python module exposing fastsim-core
     "fastsim-cli",                      # CLI apps
-    "fastsim-core/fastsim-proc-macros",
-    "fastsim-cli",
 ]
 resolver = "2"
 

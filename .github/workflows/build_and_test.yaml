@@ -53,6 +53,10 @@ jobs:
         with:
           environments: py3${{ matrix.python-version }}
 
+      - name: Check version consistency
+        if: matrix.os.base == 'ubuntu' && matrix.python-version == '11'
+        run: pixi run -e py3${{ matrix.python-version }} python python/fastsim/utils/check_versions.py
+
       - name: Update minimum supported MacOS for Wheels for MacOS 15-intel (Intel Mac)
         run: echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
         if: matrix.os.base == 'macos' && matrix.os.version == '15-intel'

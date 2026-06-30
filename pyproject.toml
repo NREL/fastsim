@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fastsim"
-version = "3.0.6"
+version = "3.1.0"
 authors = [{ name = "NLR/BEST/CIMS/TETA Group", email = "fastsim@nlr.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"

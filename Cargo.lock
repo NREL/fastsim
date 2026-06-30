@@ -535,9 +535,9 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "fastsim-cli"
-version = "1.0.0"
+version = "3.1.0"
 dependencies = [
- "fastsim-core 1.0.4",
+ "fastsim-core 3.1.0",
 ]
 
 [[package]]
@@ -574,7 +574,7 @@ dependencies = [
 
 [[package]]
 name = "fastsim-core"
-version = "1.0.4"
+version = "3.1.0"
 dependencies = [
  "anyhow",
  "approx",
@@ -585,7 +585,7 @@ dependencies = [
  "easy-ext",
  "eng_fmt",
  "fastsim-core 0.1.11",
- "fastsim-proc-macros 1.0.4",
+ "fastsim-proc-macros 3.1.0",
  "include_dir",
  "itertools 0.12.1",
  "lazy_static",
@@ -628,7 +628,7 @@ dependencies = [
 
 [[package]]
 name = "fastsim-proc-macros"
-version = "1.0.4"
+version = "3.1.0"
 dependencies = [
  "lazy_static",
  "proc-macro-error",
@@ -641,9 +641,9 @@ dependencies = [
 
 [[package]]
 name = "fastsim-py"
-version = "1.0.0"
+version = "3.1.0"
 dependencies = [
- "fastsim-core 1.0.4",
+ "fastsim-core 3.1.0",
  "ninterp",
  "pyo3",
 ]
