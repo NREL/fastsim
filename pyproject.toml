@@ -142,6 +142,7 @@ cargo_test = "cargo test --release"
 py_build = "maturin develop --release"
 py_test = { cmd = "pixi run -e test pytest -v", depends-on = ["py_build"] }
 build_and_test = { depends-on = ["cargo_test", "py_test"] }
+docs = { cmd = "python demos_to_notebooks.py && jupyter book start --execute", cwd = "docs", default-environment = "docs" }
 fmt = "ruff format"
 lint = "pylint"
 style = { depends-on = ["fmt", "lint"] }
