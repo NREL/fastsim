@@ -70,19 +70,20 @@ hide_env_diff = true
 
 Anaconda users can easily install Rust using the conda-forge `rust` package
 
-1. Create a new environment with Python and Rust
+1. Create a new environment with Python and Rust (e.g. named `fastsim`)
     ```
     conda create -n fastsim python=3.12 rust -c conda-forge
     ```
 
 2. Activate the new environment
     ```
-    conda activate
+    conda activate fastsim
     ```
 
 2. From the repository root, install FASTSim and development dependencies:
 
     ```sh
+    pip install --upgrade pip
     pip install --group dev -e .
     ```
 
