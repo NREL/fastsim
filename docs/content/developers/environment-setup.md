@@ -72,7 +72,7 @@ Anaconda users can easily install Rust using the conda-forge `rust` package
 
 1. Create a new environment with Python and Rust (e.g. named `fastsim`)
     ```
-    conda create -n fastsim python=3.12 rust -c conda-forge
+    conda create --name fastsim python=3.12 rust -c conda-forge
     ```
 
 2. Activate the new environment
@@ -86,6 +86,33 @@ Anaconda users can easily install Rust using the conda-forge `rust` package
     pip install --upgrade pip
     pip install --group dev -e .
     ```
+
+:::{note}
+This section suggests dependencies independent of the `pyproject.toml`, so may become outdated.
+
+As of writing, a way to build an Anaconda environment from `pixi.lock` using
+the [`conda-lockfiles` plugin](https://github.com/conda/conda-lockfiles) is nearly supported:
+
+```console
+conda install --name base conda-forge::conda-lockfiles
+```
+
+```
+conda env create --name fastsim --file pixi.lock
+```
+
+However, this plugin only supports `pixi.lock` version 6, while version 7 released in [May 2026](https://pixi.prefix.dev/latest/CHANGELOG/#0680-2026-05-07).
+
+Output:
+```
+PluginError: Failed to parse environment specification from file: field 'version': Input should be less than or equal to 6
+```
+
+Relevant links:
+- https://github.com/conda/conda-lockfiles/pull/143
+- https://github.com/conda/conda-lockfiles/issues/44
+:::
+
 
 ## 3. Custom
 
