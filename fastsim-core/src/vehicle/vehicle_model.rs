@@ -5,6 +5,8 @@ use crate::{
 };
 pub mod fastsim2_interface;
 
+use semver::Version;
+
 /// Possible aux load power sources
 #[derive(
     Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
@@ -30,10 +32,17 @@ impl Init for AuxSource {}
 pub struct Vehicle {
     /// Vehicle name
     pub name: String,
-    /// Documentation (e.g. how this file was generated, calibration details)]
+    /// Minimum FASTSim version required
+    pub min_fastsim_version: Version,
+    /// Documentation (e.g. how this file was generated, calibration details)
     pub doc: Option<String>,
-    /// Year manufactured
-    pub year: u32,
+    /// Vehicle year (e.g. 2020, 2025)
+    pub year: Option<String>,
+    /// Vehicle make (e.g. Toyota, Ford)
+    pub make: Option<String>,
+    /// Vehicle model (e.g. Camry, F-150)
+    pub model: Option<String>,
+
     #[has_state]
     /// type of vehicle powertrain including contained type-specific parameters and variables
     pub pt_type: PowertrainType,
@@ -153,10 +162,10 @@ impl Vehicle {
                         let save_interval = veh.save_interval().unwrap_or(Option::None);
                         veh.pt_cntrl =
                             ConvPowertrainControls::StopStart(Box::new(ConvStopStartControl::new(
-                                Option::None, // fc_min_time_on
-                                Option::None, // temp_fc_forced_on
-                                Option::None, // temp_fc_allowed_off
-                                Option::None, // time_delay_after_stop_until_fc_can_turn_off
+                                None, // fc_min_time_on
+                                None, // temp_fc_forced_on
+                                None, // temp_fc_allowed_off
+                                None, // time_delay_after_stop_until_fc_can_turn_off
                                 save_interval,
                             )?));
                     }
@@ -168,13 +177,13 @@ impl Vehicle {
                     let save_interval = veh.save_interval().unwrap_or(Option::None);
                     veh.pt_cntrl =
                         HEVPowertrainControls::StopStart(Box::new(HEVStopStartControl::new(
-                            Option::None, // fc_min_time_on
-                            Option::None, // soc_fc_forced_on
-                            Option::None, // frac_of_most_eff_pwr_to_run_fc
-                            Option::None, // temp_fc_forced_on
-                            Option::None, // temp_fc_allowed_off
-                            Option::None, // time_delay_after_stop_until_fc_can_turn_off
-                            Option::None, // em_can_regen
+                            None, // fc_min_time_on
+                            None, // soc_fc_forced_on
+                            None, // frac_of_most_eff_pwr_to_run_fc
+                            None, // temp_fc_forced_on
+                            None, // temp_fc_allowed_off
+                            None, // time_delay_after_stop_until_fc_can_turn_off
+                            None, // em_can_regen
                             save_interval,
                         )?));
                 }
@@ -200,18 +209,18 @@ impl Vehicle {
                     HEVPowertrainControls::StopStart(_) => {
                         hev.pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(
                             RESGreedyWithDynamicBuffers::new(
-                                Option::None, // speed_soc_disch_buffer
-                                Option::None, // speed_soc_disch_buffer_coeff
-                                Option::None, // speed_soc_fc_on_buffer
-                                Option::None, // speed_soc_fc_on_buffer_coeff
-                                Option::None, // speed_soc_regen_buffer
-                                Option::None, // speed_soc_regen_buffer_coeff
-                                Option::None, // fc_min_time_on
-                                Option::None, // speed_fc_forced_on
-                                Option::None, // frac_pwr_demand_fc_forced_on
-                                Option::None, // frac_of_most_eff_pwr_to_run_fc
-                                Option::None, // temp_fc_forced_on
-                                Option::None, // temp_fc_allowed_off
+                                None, // speed_soc_disch_buffer
+                                None, // speed_soc_disch_buffer_coeff
+                                None, // speed_soc_fc_on_buffer
+                                None, // speed_soc_fc_on_buffer_coeff
+                                None, // speed_soc_regen_buffer
+                                None, // speed_soc_regen_buffer_coeff
+                                None, // fc_min_time_on
+                                None, // speed_fc_forced_on
+                                None, // frac_pwr_demand_fc_forced_on
+                                None, // frac_of_most_eff_pwr_to_run_fc
+                                None, // temp_fc_forced_on
+                                None, // temp_fc_allowed_off
                                 save_interval,
                             )?,
                         ))
@@ -252,7 +261,9 @@ impl Vehicle {
     pub fn new(
         name: String,
         doc: Option<String>,
-        year: u32,
+        year: Option<String>,
+        make: Option<String>,
+        model: Option<String>,
         pt_type: PowertrainType,
         chassis: Chassis,
         cabin: CabinOption,
@@ -263,8 +274,11 @@ impl Vehicle {
     ) -> anyhow::Result<Self> {
         let mut veh = Self {
             name,
+            min_fastsim_version: Version::parse(crate::FASTSIM_VERSION)?,
             doc,
             year,
+            make,
+            model,
             pt_type,
             chassis,
             cabin,
@@ -1210,13 +1224,13 @@ pub(crate) mod tests {
             2000000.0 * uc::W,
             1.1 * uc::S,
             2305080000.0 * uc::J,
-            Option::None,
-            Option::None,
+            None,
+            None,
         )?;
         let fc = FuelConverter::new(
             FuelConverterThermalOption::None, // thrml
-            Option::None,                     // mass
-            Option::None,                     // specific_pwr
+            None,                     // mass
+            None,                     // specific_pwr
             211088.0 * uc::W,                 // pwr_out_max
             34604.59016393443 * uc::W,        // pwr_out_max_init
             6.1 * uc::S,                      // pwr_ramp_lag
@@ -1245,21 +1259,21 @@ pub(crate) mod tests {
             )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
-            Option::None,
+            None,
         )?;
         let tx = Transmission::new(
-            Option::None,                   // mass
+            None,                   // mass
             InterpolatorEnum::new_0d(0.95), // eff_interp
-            Option::None,                   // save_interval
+            None,                   // save_interval
         )?;
         let pt_controls = {
             if with_conv_stop_start {
                 let ctrl = ConvStopStartControl::new(
-                    Option::None, // fc_min_time_on
-                    Option::None, // temp_fc_forced_on
-                    Option::None, // temp_fc_allowed_off
-                    Option::None, // time_delay_after_stop_until_fc_can_turn_off
-                    Option::None, // save_interval
+                    None, // fc_min_time_on
+                    None, // temp_fc_forced_on
+                    None, // temp_fc_allowed_off
+                    None, // time_delay_after_stop_until_fc_can_turn_off
+                    None, // save_interval
                 )
                 .map_err(|err| {
                     assert!(
@@ -1278,13 +1292,13 @@ pub(crate) mod tests {
             with_dfco,       // dfco_enabled
             25.0 * uc::MPH,  // minimum_dfco_speed
             -0.2 * uc::MPS2, // minimum_dfco_deceleration
-            Option::None,    // save_interval
+            None,    // save_interval
         )?;
         let conv = ConventionalVehicle::new(
             fs,            // fs
             fc,            // fc
             tx,            // transmission
-            Option::None,  // mass
+            None,  // mass
             pt_controls,   // powertrain control
             dfco_controls, // dfco_cntrl
             1.0 * uc::R,   // alt_eff
@@ -1295,29 +1309,31 @@ pub(crate) mod tests {
             wheel_rr_coef: 0.0064798953284486704 * uc::R,
             wheel_inertia: 0.815 * uc::KGM2,
             num_wheels: 4,
-            wheel_radius: Option::Some(0.36865 * uc::M),
-            tire_code: Option::None,
+            wheel_radius: Some(0.36865 * uc::M),
+            tire_code: None,
             cg_height: 0.53 * uc::M,
             wheel_fric_coef: 0.8 * uc::R,
             drive_type: chassis::DriveTypes::FWD,
             drive_axle_weight_frac: 0.61 * uc::R,
             wheel_base: 3.08864 * uc::M,
-            mass: Option::None,
-            glider_mass: Option::None,
-            cargo_mass: Option::None,
+            mass: None,
+            glider_mass: None,
+            cargo_mass: None,
         };
         let boxed_conv = Box::new(conv);
         let mut veh = Vehicle::new(
             String::from("2026 Chrysler Pacifica Select"),   // name
-            Option::None,                                    // doc
-            2026,                                            // year
-            PowertrainType::ConventionalVehicle(boxed_conv), // pt_type
-            chassis,                                         // chassis
-            CabinOption::None,                               // cabin
-            HVACOption::None,                                // hvac
-            Option::Some(2154.564 * uc::KG),                 // mass
-            700.0 * uc::W,                                   // pwr_aux_base
-            Option::None,                                    // save_interval
+            None,
+            Some(String::from("2026")),
+            Some(String::from("Chrysler")),
+            Some(String::from("Pacifica Select")),
+            PowertrainType::ConventionalVehicle(boxed_conv),
+            chassis,
+            CabinOption::None,
+            HVACOption::None,
+            Some(2154.564 * uc::KG),
+            700.0 * uc::W,
+            None,
         )?;
         veh.set_save_interval(Option::Some(1))?;
         Ok(veh)
@@ -1326,26 +1342,26 @@ pub(crate) mod tests {
     fn make_microhybrid_pacifica() -> anyhow::Result<Vehicle> {
         let res = ReversibleEnergyStorage::new(
             RESThermalOption::None,             // thrml
-            Option::None,                       // mass
-            Option::None,                       // specific_energy
+            None,                       // mass
+            None,                       // specific_energy
             5.0 * uc::KW,                       // pwr_out_max
             1.0 * uc::KWH,                      // energy_capacity
             EffInterp::Constant(Interp0D(0.9)), // eff_interp
             0.0 * uc::R,                        // min_soc
             1.0 * uc::R,                        // max_soc
-            Option::None,
+            None,
         )?;
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
             2305080000.0 * uc::J,
-            Option::None,
-            Option::None,
+            None,
+            None,
         )?;
         let fc = FuelConverter::new(
             FuelConverterThermalOption::None, // thrml
-            Option::None,                     // mass
-            Option::None,                     // specific_pwr
+            None,                     // mass
+            None,                     // specific_pwr
             211088.0 * uc::W,                 // pwr_out_max
             34604.59016393443 * uc::W,        // pwr_out_max_init
             6.1 * uc::S,                      // pwr_ramp_lag
@@ -1374,7 +1390,7 @@ pub(crate) mod tests {
             )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
-            Option::None,
+            None,
         )?;
         let em = ElectricMachine::new(
             InterpolatorEnum::new_1d(
@@ -1383,26 +1399,26 @@ pub(crate) mod tests {
                 strategy::Linear,
                 Extrapolate::Error,
             )?, // eff_interp_achieved
-            Option::None, // eff_interp_at_max_input
+            None, // eff_interp_at_max_input
             5.0 * uc::KW, // pwr_out_max
-            Option::None, // specific_pwr
-            Option::None, // mass
-            Option::None, // save_interval
+            None, // specific_pwr
+            None, // mass
+            None, // save_interval
         )?;
         let tx = Transmission::new(
-            Option::None,                   // mass
+            None,                   // mass
             InterpolatorEnum::new_0d(0.95), // eff_interp
-            Option::None,                   // save_interval
+            None,                   // save_interval
         )?;
         let ctrl = HEVStopStartControl::new(
-            Option::None, // fc_min_time_on
-            Option::None, // soc_fc_forced_on
-            Option::None, // frac_of_most_eff_pwr_to_run_fc
-            Option::None, // temp_fc_forced_on
-            Option::None, // temp_fc_allowed_off
-            Option::None, // time_delay_after_stop_until_fc_can_turn_off
-            Option::None, // em_can_regen
-            Option::None, // save_interval
+            None, // fc_min_time_on
+            None, // soc_fc_forced_on
+            None, // frac_of_most_eff_pwr_to_run_fc
+            None, // temp_fc_forced_on
+            None, // temp_fc_allowed_off
+            None, // time_delay_after_stop_until_fc_can_turn_off
+            None, // em_can_regen
+            None, // save_interval
         )?;
         let pt_ctrl = HEVPowertrainControls::StopStart(Box::new(ctrl));
         let aux_ctrl = HEVAuxControls::AuxOnResPriority;
@@ -1420,7 +1436,7 @@ pub(crate) mod tests {
             tx,           // transmission
             pt_ctrl,      // pt_cntrl
             aux_ctrl,     // aux_cntrl
-            Option::None, // mass
+            None, // mass
             sim_params,   // sim_params
         )?;
         let chassis = Chassis {
@@ -1429,29 +1445,31 @@ pub(crate) mod tests {
             wheel_rr_coef: 0.0064798953284486704 * uc::R,
             wheel_inertia: 0.815 * uc::KGM2,
             num_wheels: 4,
-            wheel_radius: Option::Some(0.36865 * uc::M),
-            tire_code: Option::None,
+            wheel_radius: Some(0.36865 * uc::M),
+            tire_code: None,
             cg_height: 0.53 * uc::M,
             wheel_fric_coef: 0.8 * uc::R,
             drive_type: chassis::DriveTypes::FWD,
             drive_axle_weight_frac: 0.61 * uc::R,
             wheel_base: 3.08864 * uc::M,
-            mass: Option::None,
-            glider_mass: Option::None,
-            cargo_mass: Option::None,
+            mass: None,
+            glider_mass: None,
+            cargo_mass: None,
         };
         let boxed_hev = Box::new(hev);
         let mut veh = Vehicle::new(
-            String::from("2026 Chrysler Pacifica Select (uHEV Test)"), // name
-            Option::None,                                              // doc
-            2026,                                                      // year
-            PowertrainType::HybridElectricVehicle(boxed_hev),          // pt_type
-            chassis,                                                   // chassis
-            CabinOption::None,                                         // cabin
-            HVACOption::None,                                          // hvac
-            Option::Some(2154.564 * uc::KG),                           // mass
-            700.0 * uc::W,                                             // pwr_aux_base
-            Option::None,                                              // save_interval
+            String::from("2026 Chrysler Pacifica Select (uHEV Test)"),
+            None,
+            Some(String::from("2026")),
+            Some(String::from("Chrysler")),
+            Some(String::from("Pacifica Select")),
+            PowertrainType::HybridElectricVehicle(boxed_hev),
+            chassis,
+            CabinOption::None,
+            HVACOption::None,
+            Some(2154.564 * uc::KG),
+            700.0 * uc::W,
+            None,
         )?;
         veh.set_save_interval(Option::Some(1))?;
         Ok(veh)

@@ -36,6 +36,9 @@ pub mod uc;
 pub mod utils;
 pub mod vehicle;
 
+/// Current version of FASTSim as specified in Cargo.toml
+pub const FASTSIM_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// List enabled features
 #[cfg_attr(feature = "pyo3", imports::pyfunction)]
 pub fn enabled_features() -> Vec<String> {
