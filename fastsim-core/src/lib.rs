@@ -36,8 +36,21 @@ pub mod uc;
 pub mod utils;
 pub mod vehicle;
 
+use semver::Version;
+use std::sync::LazyLock;
+
 /// Current version of FASTSim as specified in Cargo.toml
-pub const FASTSIM_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub static FASTSIM_VERSION: LazyLock<Version> = LazyLock::new(|| {
+    Version::parse(env!("CARGO_PKG_VERSION"))
+        .expect("CARGO_PKG_VERSION should always be valid semver")
+});
+/// Function to provide the current FASTSim version for Serde defaults.
+///
+/// Use with:
+/// `#[serde(default = "crate::current_fastsim_version")]`
+pub(crate) fn current_fastsim_version() -> Version {
+    FASTSIM_VERSION.clone()
+}
 
 /// List enabled features
 #[cfg_attr(feature = "pyo3", imports::pyfunction)]

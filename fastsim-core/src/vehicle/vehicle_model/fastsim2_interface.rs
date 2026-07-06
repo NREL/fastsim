@@ -1,5 +1,5 @@
 use super::*;
-use crate::{vehicle::powertrain::reversible_energy_storage::EffInterp as ResEffInterp};
+use crate::vehicle::powertrain::reversible_energy_storage::EffInterp as ResEffInterp;
 
 impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
@@ -387,7 +387,12 @@ impl Vehicle {
                 PowertrainType::PlugInHybridElectricVehicle(_) => "PHEV".into(),
                 PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
             },
-            veh_year: self.year.as_ref().map(|y| y.parse::<u32>()).transpose()?.with_context(|| anyhow!(format_dbg!()))?,
+            veh_year: self
+                .year
+                .as_ref()
+                .map(|y| y.parse::<u32>())
+                .transpose()?
+                .with_context(|| anyhow!(format_dbg!()))?,
             wheel_base_m: self.chassis.wheel_base.get::<si::meter>(),
             wheel_base_m_doc: None,
             wheel_coef_of_fric: self.chassis.wheel_fric_coef.get::<si::ratio>(),

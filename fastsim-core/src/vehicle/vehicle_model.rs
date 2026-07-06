@@ -33,6 +33,7 @@ pub struct Vehicle {
     /// Vehicle name
     pub name: String,
     /// Minimum FASTSim version required
+    #[serde(default = "crate::current_fastsim_version")]
     pub min_fastsim_version: Version,
     /// Documentation (e.g. how this file was generated, calibration details)
     pub doc: Option<String>,
@@ -274,7 +275,7 @@ impl Vehicle {
     ) -> anyhow::Result<Self> {
         let mut veh = Self {
             name,
-            min_fastsim_version: Version::parse(crate::FASTSIM_VERSION)?,
+            min_fastsim_version: crate::FASTSIM_VERSION.clone(),
             doc,
             year,
             make,
@@ -388,6 +389,13 @@ impl SerdeAPI for Vehicle {
 }
 impl Init for Vehicle {
     fn init(&mut self) -> Result<(), Error> {
+        if self.min_fastsim_version > *crate::FASTSIM_VERSION {
+            return Err(Error::InitError(format_dbg!(format!(
+                "Vehicle requires FASTSim version {} but current version is {}",
+                self.min_fastsim_version,
+                *crate::FASTSIM_VERSION
+            ))));
+        }
         let _mass = self
             .mass()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
@@ -1229,8 +1237,8 @@ pub(crate) mod tests {
         )?;
         let fc = FuelConverter::new(
             FuelConverterThermalOption::None, // thrml
-            None,                     // mass
-            None,                     // specific_pwr
+            None,                             // mass
+            None,                             // specific_pwr
             211088.0 * uc::W,                 // pwr_out_max
             34604.59016393443 * uc::W,        // pwr_out_max_init
             6.1 * uc::S,                      // pwr_ramp_lag
@@ -1262,9 +1270,9 @@ pub(crate) mod tests {
             None,
         )?;
         let tx = Transmission::new(
-            None,                   // mass
+            None,                           // mass
             InterpolatorEnum::new_0d(0.95), // eff_interp
-            None,                   // save_interval
+            None,                           // save_interval
         )?;
         let pt_controls = {
             if with_conv_stop_start {
@@ -1292,13 +1300,13 @@ pub(crate) mod tests {
             with_dfco,       // dfco_enabled
             25.0 * uc::MPH,  // minimum_dfco_speed
             -0.2 * uc::MPS2, // minimum_dfco_deceleration
-            None,    // save_interval
+            None,            // save_interval
         )?;
         let conv = ConventionalVehicle::new(
             fs,            // fs
             fc,            // fc
             tx,            // transmission
-            None,  // mass
+            None,          // mass
             pt_controls,   // powertrain control
             dfco_controls, // dfco_cntrl
             1.0 * uc::R,   // alt_eff
@@ -1322,7 +1330,7 @@ pub(crate) mod tests {
         };
         let boxed_conv = Box::new(conv);
         let mut veh = Vehicle::new(
-            String::from("2026 Chrysler Pacifica Select"),   // name
+            String::from("2026 Chrysler Pacifica Select"), // name
             None,
             Some(String::from("2026")),
             Some(String::from("Chrysler")),
@@ -1342,8 +1350,8 @@ pub(crate) mod tests {
     fn make_microhybrid_pacifica() -> anyhow::Result<Vehicle> {
         let res = ReversibleEnergyStorage::new(
             RESThermalOption::None,             // thrml
-            None,                       // mass
-            None,                       // specific_energy
+            None,                               // mass
+            None,                               // specific_energy
             5.0 * uc::KW,                       // pwr_out_max
             1.0 * uc::KWH,                      // energy_capacity
             EffInterp::Constant(Interp0D(0.9)), // eff_interp
@@ -1360,8 +1368,8 @@ pub(crate) mod tests {
         )?;
         let fc = FuelConverter::new(
             FuelConverterThermalOption::None, // thrml
-            None,                     // mass
-            None,                     // specific_pwr
+            None,                             // mass
+            None,                             // specific_pwr
             211088.0 * uc::W,                 // pwr_out_max
             34604.59016393443 * uc::W,        // pwr_out_max_init
             6.1 * uc::S,                      // pwr_ramp_lag
@@ -1399,16 +1407,16 @@ pub(crate) mod tests {
                 strategy::Linear,
                 Extrapolate::Error,
             )?, // eff_interp_achieved
-            None, // eff_interp_at_max_input
+            None,         // eff_interp_at_max_input
             5.0 * uc::KW, // pwr_out_max
-            None, // specific_pwr
-            None, // mass
-            None, // save_interval
+            None,         // specific_pwr
+            None,         // mass
+            None,         // save_interval
         )?;
         let tx = Transmission::new(
-            None,                   // mass
+            None,                           // mass
             InterpolatorEnum::new_0d(0.95), // eff_interp
-            None,                   // save_interval
+            None,                           // save_interval
         )?;
         let ctrl = HEVStopStartControl::new(
             None, // fc_min_time_on
@@ -1429,15 +1437,15 @@ pub(crate) mod tests {
             false,        // save_soc_bal_iters
         )?;
         let hev = HybridElectricVehicle::new(
-            res,          // res
-            fs,           // fs
-            fc,           // fc
-            em,           // em
-            tx,           // transmission
-            pt_ctrl,      // pt_cntrl
-            aux_ctrl,     // aux_cntrl
-            None, // mass
-            sim_params,   // sim_params
+            res,        // res
+            fs,         // fs
+            fc,         // fc
+            em,         // em
+            tx,         // transmission
+            pt_ctrl,    // pt_cntrl
+            aux_ctrl,   // aux_cntrl
+            None,       // mass
+            sim_params, // sim_params
         )?;
         let chassis = Chassis {
             drag_coef: 0.3303036837542712 * uc::R,
@@ -1473,6 +1481,26 @@ pub(crate) mod tests {
         )?;
         veh.set_save_interval(Option::Some(1))?;
         Ok(veh)
+    }
+
+    #[test]
+    fn vehicle_init_fails_when_min_version_exceeds_current_version() {
+        let mut veh = make_conv_pacifica(false, false).unwrap();
+        let mut too_new = crate::current_fastsim_version();
+        too_new.major += 1;
+        too_new.minor = 0;
+        too_new.patch = 0;
+
+        veh.min_fastsim_version = too_new;
+
+        let err = veh
+            .init()
+            .expect_err("Expected init failure when vehicle min version is too high");
+        let err_msg = err.to_string();
+        assert!(
+            err_msg.contains("Vehicle requires FASTSim version"),
+            "Unexpected error: {err_msg}"
+        );
     }
 
     #[test]
