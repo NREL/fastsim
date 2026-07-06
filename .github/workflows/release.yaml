@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    uses: ./.github/workflows/reusable_build.yaml
+    uses: ./.github/workflows/shared_build_test.yaml
 
   release:
     needs: build
