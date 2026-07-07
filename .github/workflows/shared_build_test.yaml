@@ -157,7 +157,7 @@ jobs:
           CIBW_BUILD: ${{ needs.versions.outputs.cibw-build }}
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
           CIBW_PLATFORM: ${{ matrix.platform || matrix.os.base }}
-          CIBW_TEST_REQUIRES: pytest
+          CIBW_BEFORE_TEST: python -m pip install --group test # install test dependencies, not the package itself
           CIBW_TEST_COMMAND: "pytest -v {project}"
           CIBW_ARCHS_MACOS: "${{ matrix.os.arch }}"
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
@@ -167,6 +167,7 @@ jobs:
           # Linux builds run in an isolated container with no Rust preinstalled,
           # so it needs its own toolchain install.
           CIBW_BEFORE_BUILD_LINUX: >
+            yum -y install openssl openssl-devel &&
             curl https://sh.rustup.rs -sSf | sh -s -- --profile=minimal -y &&
             rustup show
 
