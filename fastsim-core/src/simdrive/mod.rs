@@ -187,19 +187,9 @@ impl SimDrive {
                             .soc_balance_iter_err
                     {
                         bail!(
-                            "{}",
-                            format_dbg!((
-                                self.veh
-                                    .hev()
-                                    .with_context(|| format_dbg!())?
-                                    .soc_bal_iters
-                                    .clone(),
-                                self.veh
-                                    .hev()
-                                    .with_context(|| format_dbg!())?
-                                    .sim_params
-                                    .soc_balance_iter_err
-                            ))
+                            "{}\nSOC balancing surpassed sim_params.soc_balance_iter_err = {} iterations",
+                            format_dbg!(),
+                            self.veh.hev().with_context(|| format_dbg!())?.sim_params.soc_balance_iter_err,
                         );
                     }
                     if res_per_fuel.abs()
