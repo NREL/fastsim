@@ -57,13 +57,21 @@ test = [
     "pytest~=8.3",
     "memory_profiler~=0.61.0",
 ]
+wheels = [
+    {include-group = "build"},
+    {include-group = "test"},
+    "build",
+    "cibuildwheel",
+]
 docs = [
     "jupyter-book>=2.0.0",
     "nbformat",
 ]
 dev = [
     {include-group = "build"},
+    {include-group = "release"},
     {include-group = "test"},
+    {include-group = "wheels"},
     {include-group = "docs"},
     "pylsp-mypy>=0.7.0",
     "pylsp-rope>=0.1.17",
@@ -109,36 +117,14 @@ nodejs = "26.4.*"
 [tool.pixi.feature.build.dependencies]
 rust = ">=1.47.0"
 
-# Python versions for CI/CD testing matrix
-# https://devguide.python.org/versions/#status-of-python-versions
-[tool.pixi.feature.py310.dependencies]
-python = "3.10.*"
-[tool.pixi.feature.py311.dependencies]
-python = "3.11.*"
-[tool.pixi.feature.py312.dependencies]
-python = "3.12.*"
-[tool.pixi.feature.py313.dependencies]
-python = "3.13.*"
-[tool.pixi.feature.py314.dependencies]
-python = "3.14.*"
-# [tool.pixi.feature.py315.dependencies]
-# python = "3.15.*"  # Re-enable when pixi/conda-forge provides python 3.15 for all workspace platforms
-
 [tool.pixi.environments]
 default = { solve-group = "default" }
 build = { features = ["build"], solve-group = "default" }
 release = { features = ["release", "build"], solve-group = "default" }
 test = { features = ["test", "build"], solve-group = "default" }
+wheels = { features = ["wheels", "test", "build"], solve-group = "default" }
 docs = { features = ["docs", "build"], solve-group = "default" }
 dev = { features = ["dev", "build", "test", "docs"], solve-group = "default" }
-# Environments for specific Python versions with CI/CD
-# https://devguide.python.org/versions/#status-of-python-versions
-py310 = { features = ["py310", "test"], solve-group = "py310" }
-py311 = { features = ["py311", "test"], solve-group = "py311" }
-py312 = { features = ["py312", "test"], solve-group = "py312" }
-py313 = { features = ["py313", "test"], solve-group = "py313" }
-py314 = { features = ["py314", "test"], solve-group = "py314" }
-# py315 = { features = ["py315", "test"], solve-group = "py315" }
 
 [tool.pixi.tasks]
 cargo_test = "cargo test --release"
