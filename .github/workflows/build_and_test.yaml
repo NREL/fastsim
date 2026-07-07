@@ -2,6 +2,10 @@ name: Build and Test
 
 on: [push]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     name: build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
@@ -35,6 +39,8 @@ jobs:
               version: latest
             ls: dir
     runs-on: ${{ format('{0}-{1}', matrix.os.base, matrix.os.version) }}
+    env:
+      CARGO_HTTP_MULTIPLEXING: "false"
     steps:
       - uses: actions/checkout@v4
 
@@ -75,6 +81,7 @@ jobs:
         run: python -m pip install -e .[dev]
 
       - name: run pytest
+        timeout-minutes: 20
         run: pytest -v
 
       - name: build ${{ matrix.platform || matrix.os.base }} binaries
@@ -83,9 +90,8 @@ jobs:
           CIBW_BUILD: "cp3${{ matrix.python-version }}-*"
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
           CIBW_PLATFORM: ${{ matrix.platform || matrix.os.base }}
-          # TODO: why doesn't pytest work with cibuildwheel?
-          # CIBW_TEST_COMMAND: "pytest -v {project}/python/fastsim/tests"
-          CIBW_TEST_COMMAND: "python -m unittest discover {project}/python/fastsim/tests"
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: "pytest {project}/python/fastsim/tests"
           CIBW_ARCHS_MACOS: "${{ matrix.os.arch }}"
           # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2
           CIBW_TEST_SKIP: "*_universal2:arm64"
