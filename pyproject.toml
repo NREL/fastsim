@@ -117,6 +117,9 @@ nodejs = "26.4.*"
 [tool.pixi.feature.build.dependencies]
 rust = ">=1.47.0"
 
+[tool.pixi.feature.wheels.dependencies]
+zlib = "*"
+
 [tool.pixi.environments]
 default = { solve-group = "default" }
 build = { features = ["build"], solve-group = "default" }
