@@ -22,6 +22,8 @@ def test_demo(demo_path: Path):
     """Test that each demo script runs successfully without errors."""
     os.environ["SHOW_PLOTS"] = "false"
     os.environ["PYTEST"] = "true"
+    # render plotly figures to JSON instead of opening browser tabs
+    os.environ["PLOTLY_RENDERER"] = "json"
     try:
         rslt = subprocess.run(
             [sys.executable, demo_path],
