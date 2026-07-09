@@ -15,7 +15,7 @@ project:
       children:
         - title: Modeling a Vehicle
           children:
-            - file: demo_notebooks/demo_vehicle.ipynb
+            - file: content/vehicle.md
             - file: content/custom-vehicles.md
         - title: Drive Cycles
           children:
