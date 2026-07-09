@@ -11,6 +11,9 @@ import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
 import polars as pl
 
+import plotly.graph_objs as go
+import plotly.express as px
+
 import fastsim
 
 from . import utils  # type: ignore[attr-defined]  # noqa: F401
@@ -269,9 +272,51 @@ def to_dataframe(
     return df
 
 
+def plot(self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True) -> go._figure.Figure:
+    """
+    Plot a drive cycle (default: speed vs. time) with Plotly.
+
+    x-axis options: ["time_seconds", "dist_meters"]
+    y-axis options: ["speed_meters_per_second", "grade"]
+    """
+    if x not in self.to_pydict():
+        raise ValueError(f"Column '{x}' not found in the drive cycle data")
+    if y not in self.to_pydict():
+        raise ValueError(f"Column '{y}' not found in the drive cycle data")
+
+    if x == "time_seconds":
+        x_label = "Time [s]"
+    elif x == "dist_meters":
+        x_label = "Distance [m]"
+    else:
+        x_label = x
+
+    if y == "speed_meters_per_second":
+        y_label = "Speed [m/s]"
+    elif y == "grade":
+        y_label = "Road Grade [-]"
+    else:
+        y_label = y
+
+    cyc_dict = self.to_pydict()
+    x_values = np.asarray(cyc_dict[x])
+    y_values = np.asarray(cyc_dict[y])
+    fig = px.line(
+        x=x_values,
+        y=y_values,
+        labels={"x": x, "y": y},
+    )
+    fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
+    if show:
+        fig.show()
+    return fig
+
+
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
 for item in ACCEPTED_RUST_STRUCTS:
     setattr(getattr(fastsim, item), "to_pydict", to_pydict)
     setattr(getattr(fastsim, item), "from_pydict", from_pydict)
     setattr(getattr(fastsim, item), "to_dataframe", to_dataframe)
+
+setattr(Cycle, "plot", plot)

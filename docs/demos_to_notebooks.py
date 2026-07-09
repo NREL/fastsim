@@ -7,6 +7,48 @@ import shutil
 import sys
 
 
+NOTEBOOK_TAG_DIRECTIVES = {
+    "hide-input": "hide-input",
+    "remove-input": "remove-input",
+    "hide-output": "hide-output",
+    "remove-output": "remove-output",
+    "hide-cell": "hide-cell",
+    "remove-cell": "remove-cell",
+}
+
+
+def extract_notebook_tags(block: list[str]) -> tuple[list[str], list[str]]:
+    """Extract notebook tags from inline directives and return cleaned code lines.
+
+    Supported directives in code cells:
+    - # notebook: hide-input
+    - # notebook: remove-input
+    - # notebook: hide-output
+    - # notebook: remove-output
+    - # notebook: hide-cell
+    - # notebook: remove-cell
+
+    Multiple tags may be comma-separated, e.g.
+    # notebook: hide-input, hide-output
+    """
+    tags: list[str] = []
+    cleaned_block: list[str] = []
+
+    for line in block:
+        stripped = line.strip()
+        if stripped.startswith("# notebook:"):
+            directive_values = stripped.split(":", maxsplit=1)[1]
+            for raw_tag in directive_values.split(","):
+                tag = raw_tag.strip().lower().replace("_", "-").replace(" ", "-")
+                mapped = NOTEBOOK_TAG_DIRECTIVES.get(tag)
+                if mapped and mapped not in tags:
+                    tags.append(mapped)
+            continue
+        cleaned_block.append(line)
+
+    return cleaned_block, tags
+
+
 def script_to_notebook(script_path: Path, notebook_path: Path, script_rel=None) -> None:
     # Read the script
     with open(script_path, "r") as script_file:
@@ -23,9 +65,14 @@ def script_to_notebook(script_path: Path, notebook_path: Path, script_rel=None) 
 
     def add_code_cell(block: list[str]) -> None:
         if block and "".join(block).strip():
-            notebook.cells.append(
-                nbformat.v4.new_code_cell("".join(block).strip(), id=next_cell_id()),
-            )
+            cleaned_block, tags = extract_notebook_tags(block)
+            if not "".join(cleaned_block).strip():
+                return
+
+            code_cell = nbformat.v4.new_code_cell("".join(cleaned_block).strip(), id=next_cell_id())
+            if tags:
+                code_cell.metadata["tags"] = tags
+            notebook.cells.append(code_cell)
 
     def add_markdown_cell(block: list[str]) -> None:
         if block:

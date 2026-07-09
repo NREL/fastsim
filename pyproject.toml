@@ -21,6 +21,7 @@ dependencies = [
     "pandas>=2.1.2, <=2.3.2",
     "polars~=1.4",
     "matplotlib~=3.3",
+    "plotly~=6.0",
     "numpy>=1.18, <=2.3.2",
     "seaborn>=0.11.0,<13.2",
     "typing_extensions~=4.12",
@@ -76,7 +77,6 @@ dev = [
     "pylsp-mypy>=0.7.0",
     "pylsp-rope>=0.1.17",
     "python-lsp-server~=1.10",
-    "plotly~=6.0",
     "deepdiff>=8.4.2",
 ]
 

@@ -9,8 +9,6 @@ from cycler import cycler
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-import fastsim as fsim
-
 figsize_3_stacked = (10, 9)
 
 # set up cycling of colors and linestyles

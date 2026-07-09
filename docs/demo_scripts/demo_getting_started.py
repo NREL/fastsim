@@ -1,5 +1,5 @@
 """
-# Getting Started with FASTSim
+# Getting Started
 
 This demo walks through the core FASTSim workflow: loading a vehicle,
 loading a drive cycle, running a simulation, and inspecting the results.
