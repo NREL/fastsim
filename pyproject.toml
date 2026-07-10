@@ -57,6 +57,7 @@ test = [
     "ruff>=0.11.9",
     "pytest~=8.3",
     "memory_profiler~=0.61.0",
+    "nbformat>=4.2.0",
 ]
 wheels = [
     {include-group = "build"},
@@ -66,7 +67,7 @@ wheels = [
 ]
 docs = [
     "jupyter-book>=2.0.0",
-    "nbformat",
+    "nbformat>=4.2.0",
 ]
 dev = [
     {include-group = "build"},
