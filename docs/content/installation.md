@@ -32,12 +32,11 @@ toolchain is the only prerequisite you need to set up yourself.
    pip install .
    ```
 
-For an editable install that also includes the development dependencies, run
-`pip install -e ".[dev]"` from the repository root instead. Source changes are
-then picked up the next time FASTSim is imported.
+   - Add the editable `-e` flag to detect source changes each time FASTSim is imported.
+   - Add the `--group dev` flag to install optional developer dependencies.
 
 Building from source is not necessary for most use cases. For more detail on
-the developer build, see [Compilation from Source](compilation-from-source.md).
+the developer build, see [Compilation from Source](developers/compilation-from-source.md).
 
 ## Next Steps
 
