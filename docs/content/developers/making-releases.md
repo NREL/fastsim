@@ -10,6 +10,8 @@
     - `fastsim-core/fastsim-proc-macros/Cargo.toml`
     - `fastsim-py/Cargo.toml`
 
+    Commit these changes via git
+
 1. Tag the latest commit with your version number and push
 
     ```
