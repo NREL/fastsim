@@ -13,7 +13,7 @@ project:
     - file: demo_notebooks/demo_getting_started.ipynb
     - title: User Guide
       children:
-        - title: Modeling a Vehicle
+        - title: Vehicle Models
           children:
             - file: content/vehicle.md
             - file: content/custom-vehicles.md
