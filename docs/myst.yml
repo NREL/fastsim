@@ -61,9 +61,9 @@ project:
     - title: Developers
       children:
         - file: content/developers/environment-setup.md
-        - file: content/developers/compilation-from-source.md
-        - file: content/developers/release-process.md
-        - file: content/developers/how-to-update.md
+        - file: content/developers/compiling-from-source.md
+        - file: content/developers/making-releases.md
+        - file: content/developers/updating-docs.md
     - url: https://docs.rs/fastsim-core/latest/fastsim_core/
       title: Rust API Documentation
     - url: https://github.com/NatLabRockies/fastsim/releases

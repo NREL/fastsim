@@ -1,6 +1,8 @@
-# FASTSim Release Process
+# Making Releases
 
-1. Update FASTSim version (with a consistent version number) in the following locations:
+1. Determine new version number according to [semantic versioning conventions](https://semver.org/)
+
+1. Update FASTSim version in the following locations:
     - `pyproject.toml`
     - `fastsim-core/Cargo.toml`
       - package version
