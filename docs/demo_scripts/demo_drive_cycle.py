@@ -18,6 +18,9 @@ cycle used to evaluate highway fuel economy.
 
 For more information on HWFET and other regulatory drive cycles, see:  
 https://www.epa.gov/vehicle-and-fuel-emissions-testing/dynamometer-drive-schedules
+
+The NLR DriveCAT page has a variety of cycles available for download as well:  
+https://www.nlr.gov/transportation/drive-cycle-tool
 """
 # %%
 import fastsim
