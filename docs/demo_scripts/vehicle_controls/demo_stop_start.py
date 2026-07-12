@@ -324,6 +324,7 @@ def conv_to_micro_hybrid(
             "transmission": veh_dict["pt_type"]["Conv"]["transmission"],
             "pt_cntrl": pt_cntrl,
             "aux_cntrl": "AuxOnResPriority",
+            "alt_eff": veh_dict["pt_type"]["Conv"]["alt_eff"],
             "mass_kilograms": None,
             "sim_params": sim_params,
         },

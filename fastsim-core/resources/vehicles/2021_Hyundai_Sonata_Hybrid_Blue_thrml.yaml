@@ -278,6 +278,7 @@ pt_type:
         temp_fc_forced_on_kelvin: 335.15
         temp_fc_allowed_off_kelvin: 338.15
     aux_cntrl: AuxOnResPriority
+    alt_eff: 1.0
     mass_kilograms: ~
     sim_params:
       res_per_fuel_lim: 0.005

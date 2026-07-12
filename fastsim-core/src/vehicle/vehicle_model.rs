@@ -1418,6 +1418,7 @@ pub(crate) mod tests {
         )?;
         let pt_ctrl = HEVPowertrainControls::StopStart(Box::new(ctrl));
         let aux_ctrl = HEVAuxControls::AuxOnResPriority;
+        let alt_eff = 1.0 * uc::R;
         let sim_params = HEVSimulationParams::new(
             0.05 * uc::R, // res_per_fuel_lim
             5,            // soc_balance_iter_err
@@ -1432,6 +1433,7 @@ pub(crate) mod tests {
             tx,           // transmission
             pt_ctrl,      // pt_cntrl
             aux_ctrl,     // aux_cntrl
+            alt_eff,
             Option::None, // mass
             sim_params,   // sim_params
         )?;

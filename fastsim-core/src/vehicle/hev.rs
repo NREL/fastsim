@@ -25,6 +25,9 @@ pub struct HybridElectricVehicle {
     /// control strategy for distributing aux power demand between `fc` and `res`
     #[serde(default)]
     pub aux_cntrl: HEVAuxControls,
+    /// Alternator efficiency used to calculate aux mechanical power demand on fuel converter.
+    /// Only affects aux power loads supplied by the fuel converter.
+    pub alt_eff: si::Ratio,
     /// hybrid powertrain mass
     pub(crate) mass: Option<si::Mass>,
     #[serde(default)]
@@ -139,6 +142,7 @@ impl HybridElectricVehicle {
         transmission: Transmission,
         pt_cntrl: HEVPowertrainControls,
         aux_cntrl: HEVAuxControls,
+        alt_eff: si::Ratio,
         mass: Option<si::Mass>,
         sim_params: HEVSimulationParams,
     ) -> anyhow::Result<Self> {
@@ -150,6 +154,7 @@ impl HybridElectricVehicle {
             transmission,
             pt_cntrl,
             aux_cntrl,
+            alt_eff,
             mass,
             sim_params,
             soc_bal_iter_history: Default::default(),
@@ -297,7 +302,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
         // set max propulsion powers
         self.fc
-            .set_curr_pwr_prop_max(pwr_aux_fc)
+            .set_curr_pwr_prop_max(pwr_aux_fc / self.alt_eff)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.res
             .set_curr_pwr_prop_max(pwr_aux_res)
@@ -489,6 +494,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for HybridElectricVehicle {
             mass: None,
             sim_params: Default::default(),
             aux_cntrl: Default::default(),
+            alt_eff: f2veh.alt_eff * uc::R,
             soc_bal_iter_history: Default::default(),
             soc_bal_iters: Default::default(),
         };
