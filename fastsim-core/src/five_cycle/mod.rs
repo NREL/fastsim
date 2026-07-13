@@ -44,7 +44,7 @@ pub fn pct_error(actual: f64, expected: f64) -> f64 {
 )]
 pub fn five_cycle(veh: &Vehicle, logging: bool) -> (f64, f64, f64) {
     if logging {
-        init_logger(LevelFilter::Info).unwrap();
+        let _ = init_logger(LevelFilter::Debug);
     }
 
     // Pacifica FE targets
@@ -81,25 +81,46 @@ pub fn five_cycle(veh: &Vehicle, logging: bool) -> (f64, f64, f64) {
     log::info!("bag_2_fe_75: {} MPG", bag_2_fe_75);
     log::info!("bag_3_fe_75: {} MPG", bag_3_fe_75);
 
+    let start_fuel_20 = 3.6 * (1. / bag_1_fe_20 - 1. / bag_3_fe_20);
+    let start_fuel_75 = 3.6 * (1. / bag_1_fe_75 - 1. / bag_3_fe_75);
+
     // City label FE
     // https://www.law.cornell.edu/cfr/text/40/600.114-12#a
     let running_fc = 0.82 * (0.48 / bag_2_fe_75 + 0.41 / bag_3_fe_75 + 0.11 / us06_city_fe)
         + 0.18 * (0.5 / bag_2_fe_20 + 0.5 / bag_3_fe_20)
         + 0.133 * 1.083 * (1. / sc03_fe - (0.61 / bag_3_fe_75 + 0.39 / bag_2_fe_75));
-    let start_fuel_20 = 3.6 * (1. / bag_1_fe_20 + 1. / bag_3_fe_20);
-    let start_fuel_75 = 3.6 * (1. / bag_1_fe_75 + 1. / bag_3_fe_75);
     let start_fc = 0.33 * (0.76 * start_fuel_75 + 0.24 * start_fuel_20) / 4.1;
+    let city_total_fc = start_fc + running_fc;
     let city_fe = 0.905 / (start_fc + running_fc);
+    let target_city_total_fc = 0.905 / target_city_fe;
+    log::info!(
+        "city_fc_breakdown: start_fc={:.6}, running_fc={:.6}, total_fc={:.6}, target_total_fc={:.6}, start_share={:.1}%, running_share={:.1}%",
+        start_fc,
+        running_fc,
+        city_total_fc,
+        target_city_total_fc,
+        100. * start_fc / city_total_fc,
+        100. * running_fc / city_total_fc,
+    );
     log::info!("city_fe: {} MPG", city_fe);
 
     // Highway label FE
     // https://www.law.cornell.edu/cfr/text/40/600.114-12#b
     let running_fc = 1.007 * (0.79 / us06_highway_fe + 0.21 / hfet_fe)
         + 0.133 * 0.377 * (1. / sc03_fe - (0.61 / bag_3_fe_75 + 0.39 / bag_2_fe_75));
-    let start_fuel_20 = 3.6 * (1. / bag_1_fe_20 + 1. / bag_3_fe_20);
-    let start_fuel_75 = 3.6 * (1. / bag_1_fe_75 + 1. / bag_3_fe_75);
     let start_fc = 0.33 * (0.76 * start_fuel_75 + 0.24 * start_fuel_20) / 60.;
+    let highway_total_fc = start_fc + running_fc;
     let highway_fe = 0.905 / (start_fc + running_fc);
+    let target_highway_total_fc = 0.905 / target_highway_fe;
+    log::info!(
+        "highway_fc_breakdown: start_fc={:.6}, running_fc={:.6}, total_fc={:.6}, target_total_fc={:.6}, start_share={:.1}%, running_share={:.1}%",
+        start_fc,
+        running_fc,
+        highway_total_fc,
+        target_highway_total_fc,
+        100. * start_fc / highway_total_fc,
+        100. * running_fc / highway_total_fc,
+    );
     log::info!("highway_fe: {} MPG", highway_fe);
 
     let combined_fe = 1.0 / (0.55 / city_fe + 0.45 / highway_fe);
@@ -181,6 +202,9 @@ pub fn five_cycle(veh: &Vehicle, logging: bool) -> (f64, f64, f64) {
 }
 
 pub fn hfet(mut veh: Vehicle) -> f64 {
+    let mut sim_params = SimParams::default();
+    sim_params.trace_miss_opts = TraceMissOptions::AllowChecked;
+
     let ambient_temp = (25. + uc::CELSIUS_TO_KELVIN) * uc::KELVIN;
     // Set initial temperatures to ambient
     set_cabin_temperature(&mut veh, ambient_temp).unwrap();
@@ -193,7 +217,7 @@ pub fn hfet(mut veh: Vehicle) -> f64 {
     let hfet = Cycle::from_resource("hwfet.csv", false).unwrap();
 
     // Set up first simulation (cold start)
-    let mut sd0 = SimDrive::new(veh.clone(), hfet.clone(), None);
+    let mut sd0 = SimDrive::new(veh.clone(), hfet.clone(), Some(sim_params.clone()));
     log::debug!("Initial temperatures:");
     log_temperatures(&sd0.veh);
     sd0.walk().unwrap(); // simulate
@@ -202,14 +226,15 @@ pub fn hfet(mut veh: Vehicle) -> f64 {
 
     // Set up idle simulation (15 seconds idle)
     let idle = Cycle::try_from(crate::drive_cycle::CycleBuilder {
-        name: String::from("idle"),
+        name: String::from("idle").into(),
         time: (0..15)
             .map(|t| (t as f64) * uc::S)
-            .collect::<Vec<si::Time>>(),
-        speed: vec![0.0 * uc::MPS; 15],
+            .collect::<Vec<si::Time>>()
+            .into(),
+        speed: vec![0.0 * uc::MPS; 15].into(),
     })
     .unwrap();
-    let mut sd_idle = SimDrive::new(veh.clone(), idle, None);
+    let mut sd_idle = SimDrive::new(veh.clone(), idle, Some(sim_params.clone()));
     // Set temperatures
     set_cabin_temperature(&mut sd_idle.veh, get_cabin_temperature(&sd0.veh).unwrap()).unwrap();
     if veh.fc().is_some() {
@@ -224,7 +249,7 @@ pub fn hfet(mut veh: Vehicle) -> f64 {
     output_energy(&sd_idle.veh);
 
     // Set up second simulation
-    let mut sd1 = SimDrive::new(veh.clone(), hfet, None);
+    let mut sd1 = SimDrive::new(veh.clone(), hfet, Some(sim_params.clone()));
     // Set temperatures
     set_cabin_temperature(&mut sd1.veh, get_cabin_temperature(&sd_idle.veh).unwrap()).unwrap();
     if veh.fc().is_some() {
@@ -244,6 +269,9 @@ pub fn hfet(mut veh: Vehicle) -> f64 {
 }
 
 pub fn us06(mut veh: Vehicle) -> (f64, f64) {
+    let mut sim_params = SimParams::default();
+    sim_params.trace_miss_opts = TraceMissOptions::AllowChecked;
+
     let ambient_temp = (25. + uc::CELSIUS_TO_KELVIN) * uc::KELVIN;
     // Set initial temperatures to ambient
     set_cabin_temperature(&mut veh, ambient_temp).unwrap();
@@ -260,7 +288,7 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
     let us06_city_2 = Cycle::from_resource("us06_city_2.csv", false).unwrap();
 
     // Set up first simulation (cold start)
-    let mut sd0 = SimDrive::new(veh.clone(), us06.clone(), None);
+    let mut sd0 = SimDrive::new(veh.clone(), us06.clone(), Some(sim_params.clone()));
     log::debug!("Initial temperatures:");
     log_temperatures(&sd0.veh);
     sd0.walk().unwrap(); // simulate
@@ -269,14 +297,15 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
 
     // Set up idle simulation (1 to 2 minutes idle)
     let idle = Cycle::try_from(crate::drive_cycle::CycleBuilder {
-        name: String::from("idle"),
+        name: String::from("idle").into(),
         time: (0..90)
             .map(|t| (t as f64) * uc::S)
-            .collect::<Vec<si::Time>>(),
-        speed: vec![0.0 * uc::MPS; 90],
+            .collect::<Vec<si::Time>>()
+            .into(),
+        speed: vec![0.0 * uc::MPS; 90].into(),
     })
     .unwrap();
-    let mut sd_idle = SimDrive::new(veh.clone(), idle, None);
+    let mut sd_idle = SimDrive::new(veh.clone(), idle, Some(sim_params.clone()));
     // Set temperatures
     set_cabin_temperature(&mut sd_idle.veh, get_cabin_temperature(&sd0.veh).unwrap()).unwrap();
     if veh.fc().is_some() {
@@ -291,7 +320,7 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
     output_energy(&sd_idle.veh);
 
     // Set up second simulation, US06 first 'city' portion (1-130 sec)
-    let mut sd1 = SimDrive::new(veh.clone(), us06_city_1, None);
+    let mut sd1 = SimDrive::new(veh.clone(), us06_city_1, Some(sim_params.clone()));
     // Set temperatures
     set_cabin_temperature(&mut sd1.veh, get_cabin_temperature(&sd_idle.veh).unwrap()).unwrap();
     if veh.fc().is_some() {
@@ -306,7 +335,7 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
     output_energy(&sd1.veh);
 
     // Set up third simulation, US06 'highway' portion (130-495 sec)
-    let mut sd2 = SimDrive::new(veh.clone(), us06_highway, None);
+    let mut sd2 = SimDrive::new(veh.clone(), us06_highway, Some(sim_params.clone()));
     // Set temperatures
     set_cabin_temperature(&mut sd2.veh, get_cabin_temperature(&sd1.veh).unwrap()).unwrap();
     if veh.fc().is_some() {
@@ -321,7 +350,7 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
     output_energy(&sd2.veh);
 
     // Set up fourth simulation, US06 'city' portion (495-600 sec)
-    let mut sd3 = SimDrive::new(veh.clone(), us06_city_2, None);
+    let mut sd3 = SimDrive::new(veh.clone(), us06_city_2, Some(sim_params.clone()));
     // Set temperatures
     set_cabin_temperature(&mut sd3.veh, get_cabin_temperature(&sd2.veh).unwrap()).unwrap();
     if veh.fc().is_some() {
@@ -346,6 +375,9 @@ pub fn us06(mut veh: Vehicle) -> (f64, f64) {
 }
 
 pub fn sc03(mut veh: Vehicle) -> f64 {
+    let mut sim_params = SimParams::default();
+    sim_params.trace_miss_opts = TraceMissOptions::AllowChecked;
+
     let ambient_temp = (35. + uc::CELSIUS_TO_KELVIN) * uc::KELVIN;
     // Set initial temperatures to ambient
     set_cabin_temperature(&mut veh, ambient_temp).unwrap();
@@ -360,7 +392,7 @@ pub fn sc03(mut veh: Vehicle) -> f64 {
     let sc03 = Cycle::from_resource("sc03.csv", false).unwrap();
 
     // First simulation (UDDS cold start)
-    let mut sd0 = SimDrive::new(veh.clone(), udds, None);
+    let mut sd0 = SimDrive::new(veh.clone(), udds, Some(sim_params.clone()));
     log::debug!("Initial temperatures:");
     log_temperatures(&sd0.veh);
     sd0.walk().unwrap(); // simulate
@@ -369,15 +401,18 @@ pub fn sc03(mut veh: Vehicle) -> f64 {
 
     // Engine-off soak (10 minutes)
     let soak = Cycle::try_from(crate::drive_cycle::CycleBuilder {
-        name: String::from("soak"),
+        name: String::from("soak").into(),
         time: (0..600)
             .map(|t| (t as f64) * uc::S)
-            .collect::<Vec<si::Time>>(),
-        speed: vec![0.0 * uc::MPS; 600],
+            .collect::<Vec<si::Time>>()
+            .into(),
+        speed: vec![0.0 * uc::MPS; 600].into(),
     })
     .unwrap();
-    let mut sd_soak = SimDrive::new(veh.clone(), soak, None);
-    // Zero out aux load
+    let mut soak_params = sim_params.clone();
+    soak_params.ambient_thermal_soak = true;
+    let mut sd_soak = SimDrive::new(veh.clone(), soak, Some(soak_params));
+    // Emulate key-off soak: no base aux draw.
     sd_soak.veh.pwr_aux_base = 0.0 * uc::W;
     // Set temperatures
     set_cabin_temperature(&mut sd_soak.veh, get_cabin_temperature(&sd0.veh).unwrap()).unwrap();
@@ -387,13 +422,15 @@ pub fn sc03(mut veh: Vehicle) -> f64 {
     if veh.res().is_some() {
         set_res_temperature(&mut sd_soak.veh, get_res_temperature(&sd0.veh).unwrap()).unwrap();
     }
-    sd_soak.walk().unwrap(); // simulate
+    sd_soak
+        .walk()
+        .unwrap_or_else(|e| panic!("{e:#}")); // simulate
     assert!(output_energy(&sd_soak.veh).get::<si::joule>() == 0.0);
     log::debug!("Post-soak temperatures:");
     log_temperatures(&sd_soak.veh);
 
     // Second simulation
-    let mut sd1 = SimDrive::new(veh.clone(), sc03.clone(), None);
+    let mut sd1 = SimDrive::new(veh.clone(), sc03.clone(), Some(sim_params.clone()));
     // Set temperatures
     set_cabin_temperature(&mut sd1.veh, get_cabin_temperature(&sd_soak.veh).unwrap()).unwrap();
     if veh.fc().is_some() {
@@ -411,6 +448,9 @@ pub fn sc03(mut veh: Vehicle) -> f64 {
 }
 
 pub fn ftp(mut veh: Vehicle, ambient_temp: si::Temperature) -> (f64, f64, f64) {
+    let mut sim_params = SimParams::default();
+    sim_params.trace_miss_opts = TraceMissOptions::AllowChecked;
+
     // Set initial temperatures to ambient
     set_cabin_temperature(&mut veh, ambient_temp).unwrap();
     if veh.fc().is_some() {
@@ -426,7 +466,7 @@ pub fn ftp(mut veh: Vehicle, ambient_temp: si::Temperature) -> (f64, f64, f64) {
     ftp_stabilized.temp_amb_air = vec![ambient_temp; ftp_stabilized.time.len()];
 
     // First simulation (cold start transient)
-    let mut sd0 = SimDrive::new(veh.clone(), ftp_transient.clone(), None);
+    let mut sd0 = SimDrive::new(veh.clone(), ftp_transient.clone(), Some(sim_params.clone()));
     log::debug!("Initial temperatures:");
     log_temperatures(&sd0.veh);
     sd0.walk().unwrap(); // simulate
@@ -434,7 +474,11 @@ pub fn ftp(mut veh: Vehicle, ambient_temp: si::Temperature) -> (f64, f64, f64) {
     log_temperatures(&sd0.veh);
 
     // Second simulation (stabilized)
-    let mut sd1 = SimDrive::new(veh.clone(), ftp_stabilized.clone(), None);
+    let mut sd1 = SimDrive::new(
+        veh.clone(),
+        ftp_stabilized.clone(),
+        Some(sim_params.clone()),
+    );
     // Set temperatures
     set_cabin_temperature(&mut sd1.veh, get_cabin_temperature(&sd0.veh).unwrap()).unwrap();
     if veh.fc().is_some() {
@@ -449,15 +493,18 @@ pub fn ftp(mut veh: Vehicle, ambient_temp: si::Temperature) -> (f64, f64, f64) {
 
     // Engine-off soak (10 minutes)
     let soak = Cycle::try_from(crate::drive_cycle::CycleBuilder {
-        name: String::from("soak"),
+        name: String::from("soak").into(),
         time: (0..600)
             .map(|t| (t as f64) * uc::S)
-            .collect::<Vec<si::Time>>(),
-        speed: vec![0.0 * uc::MPS; 600],
+            .collect::<Vec<si::Time>>()
+            .into(),
+        speed: vec![0.0 * uc::MPS; 600].into(),
     })
     .unwrap();
-    let mut sd_soak = SimDrive::new(veh.clone(), soak, None);
-    // Zero out aux load
+    let mut soak_params = sim_params.clone();
+    soak_params.ambient_thermal_soak = true;
+    let mut sd_soak = SimDrive::new(veh.clone(), soak, Some(soak_params));
+    // Emulate key-off soak: no base aux draw.
     sd_soak.veh.pwr_aux_base = 0.0 * uc::W;
     // Set temperatures
     set_cabin_temperature(&mut sd_soak.veh, get_cabin_temperature(&sd1.veh).unwrap()).unwrap();
@@ -467,13 +514,15 @@ pub fn ftp(mut veh: Vehicle, ambient_temp: si::Temperature) -> (f64, f64, f64) {
     if veh.res().is_some() {
         set_res_temperature(&mut sd_soak.veh, get_res_temperature(&sd1.veh).unwrap()).unwrap();
     }
-    sd_soak.walk().unwrap(); // simulate
+    sd_soak
+        .walk()
+        .unwrap_or_else(|e| panic!("{e:#}")); // simulate
     assert!(output_energy(&sd_soak.veh).get::<si::joule>() == 0.0);
     log::debug!("Temperatures after 10 minute soak:");
     log_temperatures(&sd_soak.veh);
 
     // Second simulation (transient)
-    let mut sd2 = SimDrive::new(veh.clone(), ftp_transient.clone(), None);
+    let mut sd2 = SimDrive::new(veh.clone(), ftp_transient.clone(), Some(sim_params.clone()));
     // Set temperatures
     set_cabin_temperature(&mut sd2.veh, get_cabin_temperature(&sd_soak.veh).unwrap()).unwrap();
     if veh.fc().is_some() {
@@ -695,6 +744,14 @@ fn get_mpg(veh: &Vehicle) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::OnceLock;
+
+    fn init_test_logger() {
+        static LOGGER_INIT: OnceLock<()> = OnceLock::new();
+        LOGGER_INIT.get_or_init(|| {
+            let _ = init_logger(LevelFilter::Info);
+        });
+    }
 
     #[test]
     fn test_main() {
@@ -708,7 +765,7 @@ mod tests {
 
     #[test]
     fn test_hfet() {
-        init_logger(LevelFilter::Info).unwrap();
+        init_test_logger();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,
@@ -719,7 +776,7 @@ mod tests {
 
     #[test]
     fn test_us06() {
-        init_logger(LevelFilter::Info).unwrap();
+        init_test_logger();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,
@@ -730,7 +787,7 @@ mod tests {
 
     #[test]
     fn test_sc03() {
-        init_logger(LevelFilter::Info).unwrap();
+        init_test_logger();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,
@@ -741,7 +798,7 @@ mod tests {
 
     #[test]
     fn test_ftp_cold() {
-        init_logger(LevelFilter::Info).unwrap();
+        init_test_logger();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,
@@ -752,7 +809,7 @@ mod tests {
 
     #[test]
     fn test_ftp() {
-        init_logger(LevelFilter::Info).unwrap();
+        init_test_logger();
         let veh = Vehicle::from_resource(
             "2026_Chrysler_Pacifica_Select_Thermal_DFCO_StopStart.yaml",
             false,
