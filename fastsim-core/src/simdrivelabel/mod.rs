@@ -1,13 +1,11 @@
 //! Module containing classes and methods for calculating label fuel economy.
 
 use std::collections::HashMap;
-use std::hash::Hash;
 
 // crate local
 use crate::drive_cycle::{Cycle, CYC_ACCEL};
 use crate::imports::*;
-use crate::prelude::SimParams;
-use crate::simdrive::SimDrive;
+use crate::simdrive::{params::SimParams, SimDrive};
 use crate::vehicle::{PowertrainType, Vehicle};
 
 /// Return first index of `arr` greater than `cut`
@@ -58,7 +56,7 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Resul
 /// Run the acceleration test and return the time/speed trace.
 pub fn run_accel(
     veh: &Vehicle,
-    sim_params: &HashMap<&str, SimParams>,
+    sim_params: &HashMap<&'static str, SimParams>,
 ) -> anyhow::Result<AccelData> {
     let mut sd_accel = SimDrive::new(
         veh.clone(),
@@ -1009,13 +1007,13 @@ fn run_simdrive_with_init_soc(
 /// Runs the appropriate simulations required for calculating
 /// the label fuel economy for the given vehicle.
 /// NOTE: does not run the acceleration test.
-pub fn run_label_simulations<'a>(
-    veh: &'a mut Vehicle,
+pub fn run_label_simulations(
+    veh: &mut Vehicle,
     // max_epa_adj: Option<f64>,
     fuel_props: Option<FuelProperties>,
     phev_utilization_params: Option<PhevUtilizationParams>,
-    sim_params: &HashMap<&'a str, SimParams>,
-) -> anyhow::Result<(SimulationDataForLabel, HashMap<&'a str, SimDrive>)> {
+    sim_params: &HashMap<&'static str, SimParams>,
+) -> anyhow::Result<(SimulationDataForLabel, HashMap<&'static str, SimDrive>)> {
     // let max_epa_adj = max_epa_adj.unwrap_or(0.3);
     let phev_utilization_params = &phev_utilization_params.unwrap_or_default();
     let fuel_props = fuel_props.unwrap_or_default();
@@ -1326,15 +1324,15 @@ pub fn run_label_simulations<'a>(
 ///
 /// Returns label fuel economy values as a struct and (optionally)
 /// simdrive::SimDrive objects.
-pub fn get_label_fe<'a>(
-    veh: &'a mut Vehicle,
+pub fn get_label_fe(
+    veh: &mut Vehicle,
     max_epa_adj: Option<f64>,
     full_detail: bool,
     fuel_props: Option<FuelProperties>,
     phev_utilization_params: Option<PhevUtilizationParams>,
-    sim_params: Option<HashMap<&'a str, SimParams>>,
+    sim_params: Option<HashMap<&'static str, SimParams>>,
     verbose: bool,
-) -> anyhow::Result<(LabelFe, Option<HashMap<&'a str, SimDrive>>)> {
+) -> anyhow::Result<(LabelFe, Option<HashMap<&'static str, SimDrive>>)> {
     let max_epa_adj = max_epa_adj.unwrap_or(0.3);
     let phev_utilization_params = &phev_utilization_params.unwrap_or_default();
     let fuel_props = fuel_props.unwrap_or_default();
@@ -1376,7 +1374,7 @@ pub fn get_label_fe<'a>(
 #[cfg_attr(
     feature = "pyo3",
     pyo3(signature = (
-        veh, max_epa_adj=None, full_detail=None, fuel_props=None, phev_utilization_params=None, verbose=None))
+        veh, max_epa_adj=None, full_detail=None, fuel_props=None, phev_utilization_params=None, sim_params=None, verbose=None))
 )]
 /// pyo3 version of [get_label_fe]
 pub fn get_label_fe_py(
@@ -1385,6 +1383,7 @@ pub fn get_label_fe_py(
     full_detail: Option<bool>,
     fuel_props: Option<FuelProperties>,
     phev_utilization_params: Option<PhevUtilizationParams>,
+    sim_params: Option<HashMap<String, SimParams>>,
     verbose: Option<bool>,
 ) -> anyhow::Result<LabelFe> {
     let (label_fe, _) = get_label_fe(
@@ -1393,7 +1392,21 @@ pub fn get_label_fe_py(
         full_detail.unwrap_or_default(),
         fuel_props,
         phev_utilization_params,
-        None, // TODO: allow sim_params input from Python when SimParams has a better Python interface
+        sim_params
+            .map(|m| {
+                m.into_iter()
+                    .map(|(k, v)| -> anyhow::Result<(&'static str, SimParams)> {
+                        let key = match k.as_str() {
+                            "udds" => "udds",
+                            "hwy" => "hwy",
+                            "accel" => "accel",
+                            other => bail!("Unknown sim_params key: {other:?}"),
+                        };
+                        Ok((key, v))
+                    })
+                    .collect()
+            })
+            .transpose()?,
         verbose.unwrap_or_default(),
     )?;
     Ok(label_fe)
