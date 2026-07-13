@@ -14,7 +14,7 @@ pt_type:
       thrml: None
       mass_kilograms: ~
       specific_pwr_watts_per_kilogram: ~
-      pwr_out_max_watts: 112000.0
+      pwr_out_max_watts: 126000.0
       pwr_out_max_init_watts: 18666.666666666668
       pwr_ramp_lag_seconds: 6.0
       eff_interp_from_pwr_out:
@@ -136,9 +136,9 @@ chassis:
   wheel_radius_meters: 0.336
   tire_code: ~
   cg_height_meters: 0.53
-  wheel_fric_coef: 0.7
+  wheel_fric_coef: 0.8
   drive_type: FWD
-  drive_axle_weight_frac: 0.59
+  drive_axle_weight_frac: 0.61
   wheel_base_meters: 2.6
   mass_kilograms: ~
   glider_mass_kilograms: ~

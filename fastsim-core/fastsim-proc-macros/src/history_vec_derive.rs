@@ -55,6 +55,7 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
     generated.append_all(quote! {
         #[serde_api]
         #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+        #[serde(default)]
         #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
         #struct_doc
         pub struct #new_name {

@@ -1,20 +1,20 @@
-<img src="https://raw.githubusercontent.com/NREL/fastsim/refs/heads/fastsim-2/docs/assets/fastsim-icon.svg" height="200">
+<img src="https://raw.githubusercontent.com/NatLabRockies/fastsim/refs/heads/fastsim-2/docs/assets/fastsim-icon.svg" height="200">
 
-[![homepage](https://img.shields.io/badge/homepage-fastsim-blue)](https://www.nrel.gov/transportation/fastsim.html)
-[![tests](https://github.com/NREL/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/tests.yaml)
-[![release](https://github.com/NREL/fastsim/actions/workflows/release.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/release.yaml?event=release)
+[![homepage](https://img.shields.io/badge/homepage-fastsim-blue)](https://www.nlr.gov/transportation/fastsim.html)
+[![tests](https://github.com/NatLabRockies/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NatLabRockies/fastsim/actions/workflows/tests.yaml)
+[![release](https://github.com/NatLabRockies/fastsim/actions/workflows/release.yaml/badge.svg)](https://github.com/NatLabRockies/fastsim/actions/workflows/release.yaml?event=release)
 [![python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://pypi.org/project/fastsim/)
-[![documentation](https://img.shields.io/badge/documentation-book-blue.svg)](https://nrel.github.io/fastsim/)
-[![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NREL/fastsim)
+[![documentation](https://img.shields.io/badge/documentation-book-blue.svg)](https://natlabrockies.github.io/fastsim/)
+[![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NatLabRockies/fastsim)
 
 # Description
-This is the `fastsim-3` version of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html).
+This is the `fastsim-3` version of [NLR's FASTSim](https://www.nlr.gov/transportation/fastsim.html).
 It introduces numerous new enhancements and features, including:
 - ~10x faster! -- when setting `save_interval` to `None`, which means only the state at the last 
   time step, which includes fuel consumption and/or battery depletion, among other useful 
   cumulative state variables.  
-- Roughly ~60% reduction in memory consumption (~160 mb in [`fastsim-2`](https://github.com/NREL/fastsim) 
-  v. 60 mb in [`fastsim-3`](https://github.com/NREL/fastsim/tree/fastsim-3)
+- Roughly ~60% reduction in memory consumption (~160 mb in [`fastsim-2`](https://github.com/NatLabRockies/fastsim) 
+  v. 60 mb in [`fastsim-3`](https://github.com/NatLabRockies/fastsim/tree/fastsim-3)
 - object-oriented, hierarchical model structure
 - ability to control granularity of time-resolved data -- e.g. save at every time step, save at 
   every _n_th time step, or never save at all (saving only cumulative trip-level results)
@@ -72,15 +72,6 @@ this, you'll need to have the [Rust toolchain](https://www.rust-lang.org/tools/i
     Optional testing steps:
     1. Run `cargo test`
     1. Run `pytest -v python/fastsim/tests/`
-
-<!-- TODO: fix this code and uncomment -->
-<!-- # Usage -->
-<!-- To see and run examples, download the `fastsim-3` demo files using the following code (with your Python environment activated and `fastsim-3` installed): -->
-<!-- ```python -->
-<!-- from fastsim import utils -->  
-<!-- utils.copy_demo_files() -->
-<!-- ``` -->
-<!-- This code downloads demo files into a specified local directory (if no directory is specified, it will create a `\demos` folder in the current working directory). WARNING: If you download the demo files to a location where files of the same name already exist, the original files will be overwritten. --> 
 
 
 # Contributors  

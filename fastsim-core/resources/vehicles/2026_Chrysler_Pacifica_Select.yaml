@@ -16,7 +16,7 @@ pt_type:
       specific_pwr_watts_per_kilogram: ~
       pwr_out_max_watts: 211088.0
       pwr_out_max_init_watts: 34604.59016393443
-      pwr_ramp_lag_seconds: 6.1
+      pwr_ramp_lag_seconds: 4
       eff_interp_from_pwr_out:
         data:
           grid:
@@ -40,22 +40,22 @@ pt_type:
             v: 1
             dim:
               - 12
-            data:
-              - 0.0
-              - 0.0875106035
-              - 0.143482108
-              - 0.216273855
-              - 0.252599848
-              - 0.301508117
-              - 0.33
-              - 0.34
-              - 0.35
-              - 0.34
-              - 0.32
-              - 0.3
+            data: # "[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]"
+              - 0
+              - 0.09338201
+              - 0.1379206
+              - 0.2211109
+              - 0.2799027
+              - 0.3063719
+              - 0.3152537
+              - 0.3073243
+              - 0.3039319
+              - 0.2905037  # repeated from here on
+              - 0.2905037
+              - 0.2905037
         strategy: Linear
         extrapolate: Error
-      pwr_idle_fuel_watts: 0.0
+      pwr_idle_fuel_watts: 13000  # matches meas. idle power
       state:
         i: 0
         pwr_out_max_watts: 0.0
@@ -113,6 +113,40 @@ pt_type:
         pwr_loss_watts: []
         energy_loss_joules: []
       save_interval: 1
+    pt_cntrl:
+      StopStart:
+        fc_min_time_on_seconds: 5.0
+        temp_fc_forced_on_kelvin: ~
+        temp_fc_allowed_off_kelvin: ~
+        time_delay_after_stop_until_fc_can_turn_off_seconds: 1.0
+        save_interval: 1
+        state:
+          i: 0
+          fc_temperature_too_low: false
+          vehicle_not_stopped: false
+          on_time_too_short: false
+          time_vehicle_stopped_seconds: 0.0
+          vehicle_not_stopped_long_enough: false
+          has_traction_power_request: false
+        history:
+          i: []
+          fc_temperature_too_low: []
+          vehicle_not_stopped: []
+          on_time_too_short: []
+          time_vehicle_stopped_seconds: []
+          vehicle_not_stopped_long_enough: []
+          has_traction_power_request: []
+    dfco_cntrl:
+      dfco_enabled: true
+      minimum_dfco_speed_meters_per_second: 10
+      minimum_dfco_deceleration_meters_per_second_squared: -0.3
+      save_interval: 1
+      state:
+        i: 0
+        vehicle_dynamics_prevent_dfco: false
+      history:
+        i: []
+        vehicle_dynamics_prevent_dfco: []
     mass_kilograms: ~
     alt_eff: 1.0
 chassis:
@@ -133,7 +167,7 @@ chassis:
   cargo_mass_kilograms: ~
 cabin: None
 hvac: None
-mass_kilograms: 2154.564
+mass_kilograms: 2398.14286  # 4987lb + 300lb
 pwr_aux_base_watts: 700.0
 save_interval: 1
 state:

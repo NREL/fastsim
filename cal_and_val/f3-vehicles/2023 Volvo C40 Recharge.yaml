@@ -208,9 +208,9 @@ chassis:
   wheel_radius_meters: 0.356
   tire_code: ~
   cg_height_meters: 0.53
-  wheel_fric_coef: 0.8
-  drive_type: FWD
-  drive_axle_weight_frac: 0.61
+  wheel_fric_coef: 0.7
+  drive_type: AWD
+  drive_axle_weight_frac: 1.0
   wheel_base_meters: 2.702
   mass_kilograms: ~
   glider_mass_kilograms: ~
