@@ -213,23 +213,22 @@ impl Vehicle {
             PowertrainType::ConventionalVehicle(veh) => match veh.pt_cntrl {
                 ConvPowertrainControls::Normal => {
                     let save_interval = veh.save_interval().unwrap_or(Option::None);
-                    veh.pt_cntrl = ConvPowertrainControls::StopStart(Box::new(
-                        ConvStopStartControl::new(
+                    veh.pt_cntrl =
+                        ConvPowertrainControls::StopStart(Box::new(ConvStopStartControl::new(
                             Option::None, // fc_min_time_on
                             Option::None, // temp_fc_forced_on
                             Option::None, // temp_fc_allowed_off
                             Option::None, // time_delay_after_stop_until_fc_can_turn_off
                             save_interval,
-                        )?,
-                    ));
+                        )?));
                 }
                 ConvPowertrainControls::StopStart(_) => (),
             },
             PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
                 HEVPowertrainControls::RGWDB(_) => {
                     let save_interval = veh.save_interval().unwrap_or(Option::None);
-                    veh.pt_cntrl = HEVPowertrainControls::StopStart(Box::new(
-                        HEVStopStartControl::new(
+                    veh.pt_cntrl =
+                        HEVPowertrainControls::StopStart(Box::new(HEVStopStartControl::new(
                             Option::None, // fc_min_time_on
                             Option::None, // soc_fc_forced_on
                             Option::None, // frac_of_most_eff_pwr_to_run_fc
@@ -238,8 +237,7 @@ impl Vehicle {
                             Option::None, // time_delay_after_stop_until_fc_can_turn_off
                             Option::None, // em_can_regen
                             save_interval,
-                        )?,
-                    ));
+                        )?));
                 }
                 HEVPowertrainControls::StopStart(_) => (),
             },
@@ -259,8 +257,8 @@ impl Vehicle {
             },
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
                 HEVPowertrainControls::StopStart(_) => {
-                    hev.pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(
-                        RESGreedyWithDynamicBuffers::new(
+                    hev.pt_cntrl =
+                        HEVPowertrainControls::RGWDB(Box::new(RESGreedyWithDynamicBuffers::new(
                             Option::None, // speed_soc_disch_buffer
                             Option::None, // speed_soc_disch_buffer_coeff
                             Option::None, // speed_soc_fc_on_buffer
@@ -274,8 +272,7 @@ impl Vehicle {
                             Option::None, // temp_fc_forced_on
                             Option::None, // temp_fc_allowed_off
                             save_interval,
-                        )?,
-                    ))
+                        )?))
                 }
                 HEVPowertrainControls::RGWDB(_) => (),
             },
@@ -641,17 +638,15 @@ impl Vehicle {
         //   AWD/4WD: both axles drive, weight transfer doesn't reduce total drive grip
         let cg_height_abs = self.chassis.cg_height.abs();
         let weight_transfer_sign: f64 = match self.chassis.drive_type {
-            chassis::DriveTypes::FWD => 1.0,    // weight shifts away from front drive axle → reduces traction
-            chassis::DriveTypes::RWD => -1.0,   // weight shifts toward rear drive axle → increases traction
-            chassis::DriveTypes::AWD
-            | chassis::DriveTypes::FourWD => 0.0, // net zero effect on total drive traction
+            chassis::DriveTypes::FWD => 1.0, // weight shifts away from front drive axle → reduces traction
+            chassis::DriveTypes::RWD => -1.0, // weight shifts toward rear drive axle → increases traction
+            chassis::DriveTypes::AWD | chassis::DriveTypes::FourWD => 0.0, // net zero effect on total drive traction
         };
-        let max_trac_accel = self.chassis.wheel_fric_coef
-            * self.chassis.drive_axle_weight_frac
-            * uc::ACC_GRAV
-            / (1.0 * uc::R
-                + weight_transfer_sign * cg_height_abs * self.chassis.wheel_fric_coef
-                    / self.chassis.wheel_base);
+        let max_trac_accel =
+            self.chassis.wheel_fric_coef * self.chassis.drive_axle_weight_frac * uc::ACC_GRAV
+                / (1.0 * uc::R
+                    + weight_transfer_sign * cg_height_abs * self.chassis.wheel_fric_coef
+                        / self.chassis.wheel_base);
         let prev_speed = *self.state.speed_ach.get_stale(|| format_dbg!())?;
         let max_trac_speed = prev_speed + (max_trac_accel * dt);
         self.state

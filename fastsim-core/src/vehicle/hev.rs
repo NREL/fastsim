@@ -361,9 +361,9 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .pt_cntrl
             .get_pwr_fc_and_em(pwr_in_transmission, &self.fc, &self.em.state, &self.res)
             .with_context(|| format_dbg!())?;
-        let fc_on: bool = self.pt_cntrl.engine_on().map_err(|err| {
+        let fc_on: bool = self.pt_cntrl.fc_on().map_err(|err| {
             anyhow::anyhow!(
-                "self.pt_cntrl.engine_on() failed at line {} with \
+                "self.pt_cntrl.fc_on() failed at line {} with \
                 originating error [{}]",
                 format_dbg!(),
                 err
@@ -628,7 +628,7 @@ impl Init for RGWDBState {}
 
 impl RGWDBState {
     /// If any of the causes are true, engine must be on
-    fn engine_on(&self) -> anyhow::Result<bool> {
+    fn fc_on(&self) -> anyhow::Result<bool> {
         Ok(*self.fc_temperature_too_low.get_fresh(|| format_dbg!())?
             || *self.vehicle_speed_too_high.get_fresh(|| format_dbg!())?
             || *self.on_time_too_short.get_fresh(|| format_dbg!())?
@@ -876,18 +876,19 @@ impl HEVPowertrainControls {
         }
     }
 
-    pub fn engine_on(&self) -> anyhow::Result<bool> {
+    pub fn fc_on(&self) -> anyhow::Result<bool> {
         match self {
-            Self::RGWDB(rgwdb) => rgwdb.state.engine_on(),
-            Self::StopStart(ctrl) => ctrl.state.engine_on(),
+            Self::RGWDB(rgwdb) => rgwdb.state.fc_on(),
+            Self::StopStart(ctrl) => ctrl.state.fc_on(),
         }
     }
 
     pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
         match self {
-            Self::StopStart(ctrl) => {
-                HEVStopStartControl::handle_fc_on_causes_for_speed(&mut ctrl.state.vehicle_not_stopped, speed)?
-            }
+            Self::StopStart(ctrl) => HEVStopStartControl::handle_fc_on_causes_for_speed(
+                &mut ctrl.state.vehicle_not_stopped,
+                speed,
+            )?,
             _ => (),
         }
         Ok(())
@@ -1044,7 +1045,7 @@ impl RESGreedyWithDynamicBuffers {
             .min(*em_state.pwr_mech_fwd_out_max.get_fresh(|| format_dbg!())?)
             .max(-*em_state.pwr_mech_regen_max.get_fresh(|| format_dbg!())?);
         // tractive power handled by fc
-        let (fc_pwr, em_pwr) = if !self.state.engine_on()? {
+        let (fc_pwr, em_pwr) = if !self.state.fc_on()? {
             // engine is off, and `em_pwr` has already been limited within bounds
             (si::Power::ZERO, em_pwr)
         } else {
@@ -1285,7 +1286,7 @@ pub struct StopStartState {
 
 impl StopStartState {
     /// If any of the causes are true, engine must be on
-    fn engine_on(&self) -> anyhow::Result<bool> {
+    fn fc_on(&self) -> anyhow::Result<bool> {
         Ok(*self.fc_temperature_too_low.get_fresh(|| format_dbg!())?
             || *self.vehicle_not_stopped.get_fresh(|| format_dbg!())?
             || *self.on_time_too_short.get_fresh(|| format_dbg!())?

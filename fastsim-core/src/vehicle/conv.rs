@@ -28,6 +28,36 @@ pub struct DfcoControls {
 #[pyo3_api]
 impl DfcoControls {}
 
+impl DfcoControls {
+    /// Determine if decel fuel cut-off (DFCO) is disabled based on vehicle
+    /// dynamics considerations (i.e., speed, acceleration). Note: considerations
+    /// related to whether the engine is too cold and such would be handled
+    /// elsewhere.
+    pub fn is_dfco_disabled_due_to_veh_dynamics(
+        prev_speed: si::Velocity,
+        speed: si::Velocity,
+        dt: si::Time,
+        dfco_allowed: bool,
+        minimum_dfco_speed: si::Velocity,
+        minimum_dfco_deceleration: si::Acceleration,
+    ) -> bool {
+        let decel = (speed - prev_speed) / dt;
+        let is_accel = decel > si::Acceleration::ZERO;
+        if !dfco_allowed {
+            true
+        } else if speed < minimum_dfco_speed {
+            true
+        } else if speed <= 1e-6 * uc::MPS {
+            true
+        } else if is_accel || decel > minimum_dfco_deceleration {
+            true
+        } else {
+            // NOTE: we **can** apply DFCO
+            false
+        }
+    }
+}
+
 impl HistoryMethods for DfcoControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
@@ -266,7 +296,7 @@ impl Powertrain for Box<ConventionalVehicle> {
             }
         }
         let fc_on: bool = {
-            let fc_on = self.pt_cntrl.engine_on()?;
+            let fc_on = self.pt_cntrl.fc_on()?;
             let fc_on_dfco = *self
                 .dfco_cntrl
                 .state
@@ -536,19 +566,20 @@ impl Init for ConvPowertrainControls {
 }
 
 impl ConvPowertrainControls {
-    pub fn engine_on(&self) -> anyhow::Result<bool> {
+    pub fn fc_on(&self) -> anyhow::Result<bool> {
         match self {
             Self::Normal => Ok(true),
-            Self::StopStart(ctrl) => ctrl.state.engine_on(),
+            Self::StopStart(ctrl) => ctrl.state.fc_on(),
         }
     }
 
     pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => {
-                ConvStopStartControl::handle_fc_on_causes_for_speed(&mut ctrl.state.vehicle_not_stopped, speed)
-            }
+            Self::StopStart(ctrl) => ConvStopStartControl::handle_fc_on_causes_for_speed(
+                &mut ctrl.state.vehicle_not_stopped,
+                speed,
+            ),
         }
     }
 }
@@ -702,7 +733,7 @@ pub struct ConvStopStartState {
 
 impl ConvStopStartState {
     /// If any of the causes are true, engine must be on
-    fn engine_on(&self) -> anyhow::Result<bool> {
+    fn fc_on(&self) -> anyhow::Result<bool> {
         let c1 = *self.fc_temperature_too_low.get_fresh(|| format_dbg!())?;
         let c2 = *self.vehicle_not_stopped.get_fresh(|| format_dbg!())?;
         let c3 = *self.on_time_too_short.get_fresh(|| format_dbg!())?;
@@ -713,5 +744,92 @@ impl ConvStopStartState {
             .has_traction_power_request
             .get_fresh(|| format_dbg!())?;
         Ok(c1 || c2 || c3 || c4 || c5)
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+
+    fn make_favorable_dfco_conditions() -> (
+        si::Velocity,     // prev_speed
+        si::Velocity,     // speed
+        si::Time,         // dt
+        bool,             // dfco_allowed
+        si::Velocity,     // minimum_dfco_speed
+        si::Acceleration, // minimum_dfco_deceleration
+    ) {
+        (
+            40.0 * uc::MPH,
+            36.0 * uc::MPH,
+            1.0 * uc::S,
+            true,
+            20.0 * uc::MPH,
+            0.0 * uc::MPS2,
+        )
+    }
+
+    #[test]
+    fn dfco_activates_when_all_conditions_are_good() {
+        let (prev_speed, speed, dt, dfco_allowed, minimum_dfco_speed, minimum_dfco_deceleration) =
+            make_favorable_dfco_conditions();
+        let result = DfcoControls::is_dfco_disabled_due_to_veh_dynamics(
+            prev_speed,
+            speed,
+            dt,
+            dfco_allowed,
+            minimum_dfco_speed,
+            minimum_dfco_deceleration,
+        );
+        assert_eq!(false, result);
+    }
+
+    #[test]
+    fn dfco_cannot_be_active_if_speed_too_low() {
+        let (_prev_speed, _speed, dt, dfco_allowed, minimum_dfco_speed, minimum_dfco_deceleration) =
+            make_favorable_dfco_conditions();
+        let prev_speed = 10.0 * uc::MPH;
+        let speed = 8.0 * uc::MPH;
+        let result = DfcoControls::is_dfco_disabled_due_to_veh_dynamics(
+            prev_speed,
+            speed,
+            dt,
+            dfco_allowed,
+            minimum_dfco_speed,
+            minimum_dfco_deceleration,
+        );
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn dfco_cannot_be_active_if_not_decelerating() {
+        let (prev_speed, _speed, dt, dfco_allowed, minimum_dfco_speed, minimum_dfco_deceleration) =
+            make_favorable_dfco_conditions();
+        let speed = prev_speed + 2.0 * uc::MPH;
+        let result = DfcoControls::is_dfco_disabled_due_to_veh_dynamics(
+            prev_speed,
+            speed,
+            dt,
+            dfco_allowed,
+            minimum_dfco_speed,
+            minimum_dfco_deceleration,
+        );
+        assert_eq!(true, result);
+    }
+
+    #[test]
+    fn dfco_cannot_be_active_if_not_allowed() {
+        let (prev_speed, speed, dt, _dfco_allowed, minimum_dfco_speed, minimum_dfco_deceleration) =
+            make_favorable_dfco_conditions();
+        let dfco_allowed = false;
+        let result = DfcoControls::is_dfco_disabled_due_to_veh_dynamics(
+            prev_speed,
+            speed,
+            dt,
+            dfco_allowed,
+            minimum_dfco_speed,
+            minimum_dfco_deceleration,
+        );
+        assert_eq!(true, result);
     }
 }

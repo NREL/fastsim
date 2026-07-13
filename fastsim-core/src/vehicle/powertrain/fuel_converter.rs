@@ -1387,7 +1387,7 @@ mod tests {
     }
 
     #[test]
-    fn calling_solve_with_aux_load_and_engine_on() {
+    fn calling_solve_with_aux_load_and_fc_on() {
         let peak_pwr = PEAK_POWER_KW * uc::KW;
         let aux_pwr = 2.0 * uc::KW;
         let idle_pwr = 1.0 * uc::KW;
@@ -1412,7 +1412,7 @@ mod tests {
     }
 
     #[test]
-    fn calling_solve_with_no_aux_load_but_engine_on_causes_idle_fuel_use() {
+    fn calling_solve_with_no_aux_load_but_fc_on_causes_idle_fuel_use() {
         let aux_pwr = 0.0 * uc::KW;
         let idle_pwr = 1.0 * uc::KW;
         let fc_is_on = true;

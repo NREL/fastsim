@@ -792,7 +792,7 @@ impl Mass for ReversibleEnergyStorage {
                     }
                 }
                 Some(new_mass)
-            },
+            }
             (Some(new_mass), None) => Some(new_mass),
             (None, Some(dm)) => Some(dm),
             (None, None) => bail!(
