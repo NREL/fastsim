@@ -1,6 +1,11 @@
 use super::{vehicle_model::VehicleState, *};
 use crate::{prelude::ElectricMachineState, vehicle::common::*};
 
+// TODO: Remove this fallback at the next planned file-format breaking release.
+fn default_hev_alt_eff() -> si::Ratio {
+    1.0 * uc::R
+}
+
 #[serde_api]
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
 #[non_exhaustive]
@@ -27,6 +32,11 @@ pub struct HybridElectricVehicle {
     pub aux_cntrl: HEVAuxControls,
     /// Alternator efficiency used to calculate aux mechanical power demand on fuel converter.
     /// Only affects aux power loads supplied by the fuel converter.
+    //
+    // TEMP backward-compatibility behavior for legacy F3 files that omitted this field.
+    // Missing values default to 1.0 to preserve historical simulation behavior.
+    // TODO: Remove serde default on next format break.
+    #[serde(default = "default_hev_alt_eff")]
     pub alt_eff: si::Ratio,
     /// hybrid powertrain mass
     pub(crate) mass: Option<si::Mass>,
@@ -1524,5 +1534,19 @@ impl HEVStopStartControl {
             || format_dbg!(),
         )?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::traits::SerdeAPI;
+
+    #[test]
+    #[cfg(feature = "yaml")]
+    fn test_alt_eff_field_compatibility() {
+        use crate::vehicle::hev::default_hev_alt_eff;
+
+        let veh = crate::vehicle::Vehicle::from_yaml(include_str!("2021_Hyundai_Sonata_Hybrid_Blue.yaml"), false).unwrap();
+        assert_eq!(veh.hev().unwrap().alt_eff, default_hev_alt_eff())
     }
 }
