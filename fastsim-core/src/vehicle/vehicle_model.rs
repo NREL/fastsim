@@ -859,6 +859,21 @@ impl Vehicle {
                     .update(self.pwr_aux_base, || format_dbg!())?;
                 (None, None, Some(te_cab))
             }
+            (CabinOption::LumpedCabin(cab), HVACOption::None, None) => {
+                let te_cab = cab
+                    .solve(
+                        te_amb_air,
+                        &self.state,
+                        si::Power::ZERO,
+                        si::Power::ZERO,
+                        dt,
+                    )
+                    .with_context(|| format_dbg!())?;
+                self.state
+                    .pwr_aux
+                    .update(self.pwr_aux_base, || format_dbg!())?;
+                (None, None, Some(te_cab))
+            }
             (_, _, _) => {
                 bail!(
                     "{}\nCabin, HVAC, and RESThermal configuration is either invalid or not yet implemented.\n{} - {} - {}",
@@ -933,6 +948,15 @@ impl Vehicle {
             trans.state.energy_out.mark_stale();
             trans.state.energy_in.mark_stale();
             trans.state.energy_loss.mark_stale();
+        }
+        if let PowertrainType::ConventionalVehicle(conv) = &mut self.pt_type {
+            match &mut conv.pt_cntrl {
+                ConvPowertrainControls::StopStart(ctrl) => ctrl.state.i.mark_stale(),
+                ConvPowertrainControls::Normal => {}
+            }
+            conv.pt_cntrl.mark_fresh(|| format_dbg!())?;
+            conv.dfco_cntrl.state.i.mark_stale();
+            conv.dfco_cntrl.mark_fresh(|| format_dbg!())?;
         }
         if let PowertrainType::HybridElectricVehicle(hev) = &mut self.pt_type {
             match &mut hev.pt_cntrl {
