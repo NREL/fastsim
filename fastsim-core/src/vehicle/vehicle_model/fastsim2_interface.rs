@@ -234,7 +234,7 @@ impl Vehicle {
                         .with_context(|| format_dbg!("Expected `Some`."))?
                         * (hev.fc.pwr_out_max + hev.res.pwr_out_max.min(hev.em.pwr_out_max)))
                     .get::<si::kilowatt>(),
-                    HEVPowertrainControls::StopStart(_) => 0.0,
+                    HEVPowertrainControls::StartStop(_) => 0.0,
                 },
                 _ => 0.0,
             },
@@ -319,7 +319,7 @@ impl Vehicle {
                         .speed_fc_forced_on
                         .with_context(|| format_dbg!("Expected Some"))?
                         .get::<si::mile_per_hour>(),
-                    HEVPowertrainControls::StopStart(_) => 0.0,
+                    HEVPowertrainControls::StartStop(_) => 0.0,
                 },
                 _ => 0.0,
             },
@@ -337,7 +337,7 @@ impl Vehicle {
             scenario_name: self.name.clone(),
             selection: 0, // there is no equivalent in fastsim-3
             small_motor_power_kw: 7.5,
-            stop_start: false, // TODO: revisit when implemementing mild hybrids and stop/start vehicles
+            stop_start: false,
             stop_start_doc: None,
             trans_eff: {
                 match self

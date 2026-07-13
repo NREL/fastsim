@@ -3,7 +3,7 @@ use crate::vehicle::powertrain::FuelConverter;
 use crate::vehicle::vehicle_model::VehicleState;
 use crate::{si, utils::TrackedState};
 
-pub trait StopStartControl {
+pub trait StartStopControl {
     fn handle_fc_on_causes_for_propulsion_request(
         has_traction_power_request: &mut TrackedState<bool>,
         pwr_in_transmission: si::Power,

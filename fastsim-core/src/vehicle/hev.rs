@@ -86,7 +86,7 @@ impl HybridElectricVehicle {
 
                 (disch_buffer, chrg_buffer, fc_on_soc)
             }
-            HEVPowertrainControls::StopStart(_) => {
+            HEVPowertrainControls::StartStop(_) => {
                 let fc_on_soc = 0.10 * (self.res.max_soc - self.res.min_soc) + self.res.min_soc;
                 let chrg_buffer = self.res.energy_capacity_usable();
                 let disch_buffer = self.res.energy_capacity_usable();
@@ -251,7 +251,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
                 (disch_buffer, chrg_buffer)
             }
-            HEVPowertrainControls::StopStart(ctrl) => {
+            HEVPowertrainControls::StartStop(ctrl) => {
                 ctrl.handle_fc_on_causes(&self.fc, veh_state, &self.res, dt)?;
 
                 let disch_buffer = 0.0 * uc::J;
@@ -288,7 +288,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     .aux_power_demand
                     .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
             }
-            HEVPowertrainControls::StopStart(ctrl) => {
+            HEVPowertrainControls::StartStop(ctrl) => {
                 ctrl.state
                     .aux_power_demand
                     .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
@@ -704,7 +704,7 @@ pub enum HEVPowertrainControls {
     RGWDB(Box<RESGreedyWithDynamicBuffers>),
     /// Uses the [ReversibleEnergyStorage] only for supplying auxiliary power.
     /// Also, includes logic for when the [FuelConverter] must be on.
-    StopStart(Box<HEVStopStartControl>),
+    StartStop(Box<HEVStartStopControl>),
 }
 
 impl Default for HEVPowertrainControls {
@@ -719,7 +719,7 @@ impl SetCumulative for HEVPowertrainControls {
             Self::RGWDB(rgwdb) => {
                 rgwdb.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
             }
-            Self::StopStart(ctrl) => {
+            Self::StartStop(ctrl) => {
                 ctrl.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?
             }
         }
@@ -731,7 +731,7 @@ impl SetCumulative for HEVPowertrainControls {
             Self::RGWDB(rgwdb) => {
                 rgwdb.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
-            Self::StopStart(ctrl) => {
+            Self::StartStop(ctrl) => {
                 ctrl.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?
             }
         }
@@ -742,7 +742,7 @@ impl Step for HEVPowertrainControls {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.step(loc)?,
-            HEVPowertrainControls::StopStart(ctrls) => ctrls.step(loc)?,
+            HEVPowertrainControls::StartStop(ctrls) => ctrls.step(loc)?,
         }
         Ok(())
     }
@@ -750,7 +750,7 @@ impl Step for HEVPowertrainControls {
     fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.reset_step(loc)?,
-            HEVPowertrainControls::StopStart(ctrls) => ctrls.reset_step(loc)?,
+            HEVPowertrainControls::StartStop(ctrls) => ctrls.reset_step(loc)?,
         }
         Ok(())
     }
@@ -762,7 +762,7 @@ impl SaveState for HEVPowertrainControls {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_state(loc)?,
-            HEVPowertrainControls::StopStart(ctrl) => ctrl.save_state(loc)?,
+            HEVPowertrainControls::StartStop(ctrl) => ctrl.save_state(loc)?,
         }
         Ok(())
     }
@@ -771,7 +771,7 @@ impl TrackedStateMethods for HEVPowertrainControls {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.check_and_reset(loc)?,
-            HEVPowertrainControls::StopStart(ctrl) => ctrl.check_and_reset(loc)?,
+            HEVPowertrainControls::StartStop(ctrl) => ctrl.check_and_reset(loc)?,
         }
         Ok(())
     }
@@ -779,7 +779,7 @@ impl TrackedStateMethods for HEVPowertrainControls {
     fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.mark_fresh(loc)?,
-            HEVPowertrainControls::StopStart(ctrl) => ctrl.mark_fresh(loc)?,
+            HEVPowertrainControls::StartStop(ctrl) => ctrl.mark_fresh(loc)?,
         }
         Ok(())
     }
@@ -788,20 +788,20 @@ impl HistoryMethods for HEVPowertrainControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => Ok(rgwdb.set_save_interval(save_interval)?),
-            HEVPowertrainControls::StopStart(ctrl) => Ok(ctrl.set_save_interval(save_interval)?),
+            HEVPowertrainControls::StartStop(ctrl) => Ok(ctrl.set_save_interval(save_interval)?),
         }
     }
 
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.save_interval(),
-            HEVPowertrainControls::StopStart(ctrl) => ctrl.save_interval(),
+            HEVPowertrainControls::StartStop(ctrl) => ctrl.save_interval(),
         }
     }
     fn clear(&mut self) {
         match self {
             HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.clear(),
-            HEVPowertrainControls::StopStart(ctrl) => ctrl.clear(),
+            HEVPowertrainControls::StartStop(ctrl) => ctrl.clear(),
         }
     }
 }
@@ -810,7 +810,7 @@ impl Init for HEVPowertrainControls {
     fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::RGWDB(rgwb) => rgwb.init()?,
-            Self::StopStart(ctrl) => ctrl.init()?,
+            Self::StartStop(ctrl) => ctrl.init()?,
         }
         Ok(())
     }
@@ -872,20 +872,20 @@ impl HEVPowertrainControls {
 
         match self {
             Self::RGWDB(rgwdb) => rgwdb.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
-            Self::StopStart(ctrl) => ctrl.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
+            Self::StartStop(ctrl) => ctrl.get_pwr_fc_and_em(fc, pwr_prop_req, em_state),
         }
     }
 
     pub fn fc_on(&self) -> anyhow::Result<bool> {
         match self {
             Self::RGWDB(rgwdb) => rgwdb.state.fc_on(),
-            Self::StopStart(ctrl) => ctrl.state.fc_on(),
+            Self::StartStop(ctrl) => ctrl.state.fc_on(),
         }
     }
 
     pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
         match self {
-            Self::StopStart(ctrl) => HEVStopStartControl::handle_fc_on_causes_for_speed(
+            Self::StartStop(ctrl) => HEVStartStopControl::handle_fc_on_causes_for_speed(
                 &mut ctrl.state.vehicle_not_stopped,
                 speed,
             )?,
@@ -1263,12 +1263,12 @@ for an HEV equipped with thermal models or superfluous otherwise",
 )]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
-pub struct StopStartState {
+pub struct StartStopState {
     /// time step index
     pub i: TrackedState<usize>,
     /// Engine must be on to self heat if thermal model is enabled
     pub fc_temperature_too_low: TrackedState<bool>,
-    /// Engine stop/start can only happen while vehicle is stopped
+    /// Engine start-stop can only happen while vehicle is stopped
     pub vehicle_not_stopped: TrackedState<bool>,
     /// Engine has not been on long enough (usually 30 s)
     pub on_time_too_short: TrackedState<bool>,
@@ -1284,7 +1284,7 @@ pub struct StopStartState {
     pub has_traction_power_request: TrackedState<bool>,
 }
 
-impl StopStartState {
+impl StartStopState {
     /// If any of the causes are true, engine must be on
     fn fc_on(&self) -> anyhow::Result<bool> {
         Ok(*self.fc_temperature_too_low.get_fresh(|| format_dbg!())?
@@ -1306,7 +1306,7 @@ impl StopStartState {
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
-pub struct HEVStopStartControl {
+pub struct HEVStartStopControl {
     /// Minimum time engine must remain on if it was on during the previous
     /// simulation time step.
     pub fc_min_time_on: Option<si::Time>,
@@ -1336,15 +1336,15 @@ pub struct HEVStopStartControl {
     pub save_interval: Option<usize>,
     /// current state of control variables
     #[serde(default)]
-    pub state: StopStartState,
+    pub state: StartStopState,
     /// history of current state
-    pub history: StopStartStateHistoryVec,
+    pub history: StartStopStateHistoryVec,
 }
 
 #[pyo3_api]
-impl HEVStopStartControl {}
+impl HEVStartStopControl {}
 
-impl HistoryMethods for HEVStopStartControl {
+impl HistoryMethods for HEVStartStopControl {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
@@ -1359,7 +1359,7 @@ impl HistoryMethods for HEVStopStartControl {
     }
 }
 
-impl Init for HEVStopStartControl {
+impl Init for HEVStartStopControl {
     fn init(&mut self) -> Result<(), Error> {
         init_opt_default!(self, fc_min_time_on, 5.0 * uc::S);
         init_opt_default!(self, soc_fc_forced_on, 0.1 * uc::R);
@@ -1373,11 +1373,11 @@ impl Init for HEVStopStartControl {
     }
 }
 
-impl SerdeAPI for HEVStopStartControl {}
+impl SerdeAPI for HEVStartStopControl {}
 
-impl StopStartControl for HEVStopStartControl {}
+impl StartStopControl for HEVStartStopControl {}
 
-impl HEVStopStartControl {
+impl HEVStartStopControl {
     pub fn new(
         fc_min_time_on: Option<si::Time>,
         soc_fc_forced_on: Option<si::Ratio>,
@@ -1397,8 +1397,8 @@ impl HEVStopStartControl {
             time_delay_after_stop_until_fc_can_turn_off,
             em_can_regen,
             save_interval,
-            state: StopStartState::default(),
-            history: StopStartStateHistoryVec::default(),
+            state: StartStopState::default(),
+            history: StartStopStateHistoryVec::default(),
         };
         result.init()?;
         Ok(result)

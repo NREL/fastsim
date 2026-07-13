@@ -1,7 +1,7 @@
-use super::{hev::HEVPowertrainControls, hev::HEVStopStartControl, *};
+use super::{hev::HEVPowertrainControls, hev::HEVStartStopControl, *};
 use crate::{
     prelude::*,
-    vehicle::conv::{ConvPowertrainControls, ConvStopStartControl},
+    vehicle::conv::{ConvPowertrainControls, ConvStartStopControl},
 };
 pub mod fastsim2_interface;
 
@@ -154,9 +154,9 @@ impl Vehicle {
         self.reset_cumulative(|| format_dbg!())
     }
 
-    #[pyo3(name = "use_stop_start_controller")]
-    fn use_stop_start_controller_py(&mut self) -> anyhow::Result<()> {
-        self.use_stop_start_controller()
+    #[pyo3(name = "use_start_stop_controller")]
+    fn use_start_stop_controller_py(&mut self) -> anyhow::Result<()> {
+        self.use_start_stop_controller()
     }
 
     #[pyo3(name = "use_normal_controller")]
@@ -208,13 +208,13 @@ impl Vehicle {
         Ok(veh)
     }
 
-    pub fn use_stop_start_controller(&mut self) -> anyhow::Result<()> {
+    pub fn use_start_stop_controller(&mut self) -> anyhow::Result<()> {
         match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(veh) => match veh.pt_cntrl {
                 ConvPowertrainControls::Normal => {
                     let save_interval = veh.save_interval().unwrap_or(Option::None);
                     veh.pt_cntrl =
-                        ConvPowertrainControls::StopStart(Box::new(ConvStopStartControl::new(
+                        ConvPowertrainControls::StartStop(Box::new(ConvStartStopControl::new(
                             Option::None, // fc_min_time_on
                             Option::None, // temp_fc_forced_on
                             Option::None, // temp_fc_allowed_off
@@ -222,13 +222,13 @@ impl Vehicle {
                             save_interval,
                         )?));
                 }
-                ConvPowertrainControls::StopStart(_) => (),
+                ConvPowertrainControls::StartStop(_) => (),
             },
             PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
                 HEVPowertrainControls::RGWDB(_) => {
                     let save_interval = veh.save_interval().unwrap_or(Option::None);
                     veh.pt_cntrl =
-                        HEVPowertrainControls::StopStart(Box::new(HEVStopStartControl::new(
+                        HEVPowertrainControls::StartStop(Box::new(HEVStartStopControl::new(
                             Option::None, // fc_min_time_on
                             Option::None, // soc_fc_forced_on
                             Option::None, // frac_of_most_eff_pwr_to_run_fc
@@ -239,7 +239,7 @@ impl Vehicle {
                             save_interval,
                         )?));
                 }
-                HEVPowertrainControls::StopStart(_) => (),
+                HEVPowertrainControls::StartStop(_) => (),
             },
             _ => (),
         }
@@ -250,13 +250,13 @@ impl Vehicle {
         let save_interval = self.save_interval().unwrap_or(Option::None);
         match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match &conv.pt_cntrl {
-                ConvPowertrainControls::StopStart(_) => {
+                ConvPowertrainControls::StartStop(_) => {
                     conv.pt_cntrl = ConvPowertrainControls::Normal;
                 }
                 ConvPowertrainControls::Normal => (),
             },
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
-                HEVPowertrainControls::StopStart(_) => {
+                HEVPowertrainControls::StartStop(_) => {
                     hev.pt_cntrl =
                         HEVPowertrainControls::RGWDB(Box::new(RESGreedyWithDynamicBuffers::new(
                             Option::None, // speed_soc_disch_buffer
@@ -946,7 +946,7 @@ impl Vehicle {
         }
         if let PowertrainType::ConventionalVehicle(conv) = &mut self.pt_type {
             match &mut conv.pt_cntrl {
-                ConvPowertrainControls::StopStart(ctrl) => ctrl.state.i.mark_stale(),
+                ConvPowertrainControls::StartStop(ctrl) => ctrl.state.i.mark_stale(),
                 ConvPowertrainControls::Normal => {}
             }
             conv.pt_cntrl.mark_fresh(|| format_dbg!())?;
@@ -956,7 +956,7 @@ impl Vehicle {
         if let PowertrainType::HybridElectricVehicle(hev) = &mut self.pt_type {
             match &mut hev.pt_cntrl {
                 HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
-                HEVPowertrainControls::StopStart(ctrl) => ctrl.state.i.mark_stale(),
+                HEVPowertrainControls::StartStop(ctrl) => ctrl.state.i.mark_stale(),
             }
             hev.pt_cntrl.mark_fresh(|| format_dbg!())?
         }
@@ -1087,8 +1087,8 @@ impl Default for VehicleState {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::vehicle::conv::{ConvPowertrainControls, ConvStopStartControl};
-    use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, HEVStopStartControl};
+    use crate::vehicle::conv::{ConvPowertrainControls, ConvStartStopControl};
+    use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, HEVStartStopControl};
     use crate::vehicle::powertrain::reversible_energy_storage::EffInterp;
 
     use super::*;
@@ -1251,7 +1251,7 @@ pub(crate) mod tests {
         }
     }
 
-    fn make_conv_pacifica(with_conv_stop_start: bool, with_dfco: bool) -> anyhow::Result<Vehicle> {
+    fn make_conv_pacifica(with_conv_start_stop: bool, with_dfco: bool) -> anyhow::Result<Vehicle> {
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
@@ -1299,8 +1299,8 @@ pub(crate) mod tests {
             Option::None,                   // save_interval
         )?;
         let pt_controls = {
-            if with_conv_stop_start {
-                let ctrl = ConvStopStartControl::new(
+            if with_conv_start_stop {
+                let ctrl = ConvStartStopControl::new(
                     Option::None, // fc_min_time_on
                     Option::None, // temp_fc_forced_on
                     Option::None, // temp_fc_allowed_off
@@ -1310,12 +1310,12 @@ pub(crate) mod tests {
                 .map_err(|err| {
                     assert!(
                         false,
-                        "Unable to create stop/start control for conv: {}",
+                        "Unable to create start-stop control for conv: {}",
                         err
                     );
                 });
                 let ctrl = ctrl.ok().unwrap();
-                ConvPowertrainControls::StopStart(Box::new(ctrl))
+                ConvPowertrainControls::StartStop(Box::new(ctrl))
             } else {
                 ConvPowertrainControls::Normal
             }
@@ -1440,7 +1440,7 @@ pub(crate) mod tests {
             InterpolatorEnum::new_0d(0.95), // eff_interp
             Option::None,                   // save_interval
         )?;
-        let ctrl = HEVStopStartControl::new(
+        let ctrl = HEVStartStopControl::new(
             Option::None, // fc_min_time_on
             Option::None, // soc_fc_forced_on
             Option::None, // frac_of_most_eff_pwr_to_run_fc
@@ -1450,7 +1450,7 @@ pub(crate) mod tests {
             Option::None, // em_can_regen
             Option::None, // save_interval
         )?;
-        let pt_ctrl = HEVPowertrainControls::StopStart(Box::new(ctrl));
+        let pt_ctrl = HEVPowertrainControls::StartStop(Box::new(ctrl));
         let aux_ctrl = HEVAuxControls::AuxOnResPriority;
         let sim_params = HEVSimulationParams::new(
             0.05 * uc::R, // res_per_fuel_lim
@@ -1586,7 +1586,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn stop_start_conv_saves_more_fuel_than_normal_conventional() {
+    fn start_stop_conv_saves_more_fuel_than_normal_conventional() {
         let veh_ss_result = make_conv_pacifica(true, false);
         assert!(veh_ss_result.is_ok());
         let veh_ss = veh_ss_result.unwrap();
@@ -1643,11 +1643,11 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn that_use_stop_start_switches_the_conv_controller() {
+    fn that_use_start_stop_switches_the_conv_controller() {
         let veh_result = make_conv_pacifica(false, false);
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
-        let use_result = veh.use_stop_start_controller();
+        let use_result = veh.use_start_stop_controller();
         assert!(use_result.is_ok());
         match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
@@ -1664,7 +1664,7 @@ pub(crate) mod tests {
         assert!(normal_result.is_ok());
         match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
-                ConvPowertrainControls::StopStart(_) => {
+                ConvPowertrainControls::StartStop(_) => {
                     assert!(false, "Powertrain controls didn't change");
                 }
                 _ => (),
@@ -1676,7 +1676,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn that_use_stop_start_switches_the_hev_controller() {
+    fn that_use_start_stop_switches_the_hev_controller() {
         let veh_result = make_microhybrid_pacifica();
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
@@ -1684,7 +1684,7 @@ pub(crate) mod tests {
         assert!(use_result.is_ok());
         match &veh.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
-                HEVPowertrainControls::StopStart(_) => {
+                HEVPowertrainControls::StartStop(_) => {
                     assert!(false, "Powertrain controls didn't change");
                 }
                 HEVPowertrainControls::RGWDB(_) => (),
@@ -1693,17 +1693,17 @@ pub(crate) mod tests {
                 assert!(false, "Unexpected powertrain type");
             }
         }
-        let use_ss_result = veh.use_stop_start_controller();
+        let use_ss_result = veh.use_start_stop_controller();
         assert!(use_ss_result.is_ok());
         match &veh.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
                 HEVPowertrainControls::RGWDB(_) => {
                     assert!(
                         false,
-                        "Powertrain controls didn't change: RGWDB => StopStart"
+                        "Powertrain controls didn't change: RGWDB => StartStop"
                     );
                 }
-                HEVPowertrainControls::StopStart(_) => (),
+                HEVPowertrainControls::StartStop(_) => (),
             },
             _ => {
                 assert!(false, "Unexpected powertrain type");
