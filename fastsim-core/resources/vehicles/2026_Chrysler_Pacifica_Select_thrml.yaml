@@ -11,12 +11,75 @@ pt_type:
       specific_energy_joules_per_kilogram: ~
       mass_kilograms: ~
     fc:
-      thrml: None
+      thrml:
+        FuelConverterThermal:
+          heat_capacitance_joules_per_kelvin: 106945.6945704609
+          length_for_convection_meters: 0.7
+          htc_to_amb_stop_watts_per_square_meter_kelvin: 29.0097189980751
+          conductance_from_comb_watts_per_kelvin: 9.697846392415613
+          max_frac_from_comb: 0.5
+          tstat_te_sto_kelvin: 358.15
+          tstat_te_delta_kelvin: 5.0
+          tstat_interp:
+            data:
+              grid:
+                - v: 1
+                  dim:
+                    - 2
+                  data:
+                    - 85.0
+                    - 90.0
+              values:
+                v: 1
+                dim:
+                  - 2
+                data:
+                  - 0.0
+                  - 1.0
+            strategy: Linear
+            extrapolate: Clamp
+          radiator_effectiveness: 299.7806081069566
+          fc_eff_model:
+            Exponential:
+              offset: 220.00504683063838
+              lag: 53.18792888916873
+              minimum: 0.23930542861720155
+          state:
+            i: 0
+            te_adiabatic_kelvin: 3153.8328742654194
+            temperature_kelvin: 295.15
+            tstat_open_frac: 0.0
+            htc_to_amb_watts_per_square_meter_kelvin: 0.0
+            pwr_thrml_to_amb_watts: 0.0
+            energy_thrml_to_amb_joules: 0.0
+            eff_coeff: 1.0
+            pwr_thrml_fc_to_cab_watts: 0.0
+            energy_thrml_fc_to_cab_joules: 0.0
+            pwr_fuel_as_heat_watts: 0.0
+            energy_fuel_as_heat_joules: 0.0
+            pwr_thrml_to_tm_watts: 0.0
+            energy_thrml_to_tm_joules: 0.0
+          history:
+            i: []
+            te_adiabatic_kelvin: []
+            temperature_kelvin: []
+            tstat_open_frac: []
+            htc_to_amb_watts_per_square_meter_kelvin: []
+            pwr_thrml_to_amb_watts: []
+            energy_thrml_to_amb_joules: []
+            eff_coeff: []
+            pwr_thrml_fc_to_cab_watts: []
+            energy_thrml_fc_to_cab_joules: []
+            pwr_fuel_as_heat_watts: []
+            energy_fuel_as_heat_joules: []
+            pwr_thrml_to_tm_watts: []
+            energy_thrml_to_tm_joules: []
+          save_interval: 1
       mass_kilograms: ~
       specific_pwr_watts_per_kilogram: ~
       pwr_out_max_watts: 211088.0
       pwr_out_max_init_watts: 34604.59016393443
-      pwr_ramp_lag_seconds: 4
+      pwr_ramp_lag_seconds: 4.0
       eff_interp_from_pwr_out:
         data:
           grid:
@@ -40,8 +103,8 @@ pt_type:
             v: 1
             dim:
               - 12
-            data: # "[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]"
-              - 0
+            data:
+              - 0.0
               - 0.09338201
               - 0.1379206
               - 0.2211109
@@ -50,12 +113,12 @@ pt_type:
               - 0.3152537
               - 0.3073243
               - 0.3039319
-              - 0.2905037  # repeated from here on
+              - 0.2905037
               - 0.2905037
               - 0.2905037
         strategy: Linear
         extrapolate: Error
-      pwr_idle_fuel_watts: 13000  # matches meas. idle power
+      pwr_idle_fuel_watts: 13000.0
       state:
         i: 0
         pwr_out_max_watts: 0.0
@@ -116,8 +179,8 @@ pt_type:
     pt_cntrl:
       StopStart:
         fc_min_time_on_seconds: 5.0
-        temp_fc_forced_on_kelvin: ~
-        temp_fc_allowed_off_kelvin: ~
+        temp_fc_forced_on_kelvin: 333.15
+        temp_fc_allowed_off_kelvin: 348.15
         time_delay_after_stop_until_fc_can_turn_off_seconds: 1.0
         save_interval: 1
         state:
@@ -138,7 +201,7 @@ pt_type:
           has_traction_power_request: []
     dfco_cntrl:
       dfco_enabled: true
-      minimum_dfco_speed_meters_per_second: 10
+      minimum_dfco_speed_meters_per_second: 10.0
       minimum_dfco_deceleration_meters_per_second_squared: -0.3
       save_interval: 1
       state:
@@ -165,9 +228,80 @@ chassis:
   mass_kilograms: ~
   glider_mass_kilograms: ~
   cargo_mass_kilograms: ~
-cabin: None
-hvac: None
-mass_kilograms: 2398.14286  # 4987lb + 300lb
+cabin:
+  LumpedCabin:
+    cab_shell_htc_to_amb_watts_per_square_meter_kelvin: 10.035413059694008
+    cab_htc_to_amb_stop_watts_per_square_meter_kelvin: 153.22457193685642
+    heat_capacitance_joules_per_kelvin: 250000.0
+    length_meters: 3.302
+    width_meters: 2.02184
+    state:
+      i: 0
+      temperature_kelvin: 295.15
+      temp_prev_kelvin: 295.15
+      pwr_thrml_from_hvac_watts: 0.0
+      energy_thrml_from_hvac_joules: 0.0
+      pwr_thrml_from_amb_watts: 0.0
+      energy_thrml_from_amb_joules: 0.0
+      pwr_thrml_to_res_watts: 0.0
+      energy_thrml_to_res_joules: 0.0
+      reynolds_for_plate: 0.0
+    history:
+      i: []
+      temperature_kelvin: []
+      temp_prev_kelvin: []
+      pwr_thrml_from_hvac_watts: []
+      energy_thrml_from_hvac_joules: []
+      pwr_thrml_from_amb_watts: []
+      energy_thrml_from_amb_joules: []
+      pwr_thrml_to_res_watts: []
+      energy_thrml_to_res_joules: []
+      reynolds_for_plate: []
+    save_interval: 1
+hvac:
+  LumpedCabin:
+    te_set_kelvin: 295.15
+    te_deadband_kelvin: 0.5
+    p_watts_per_kelvin: 489.34499608760177
+    i: 36.77964270414921
+    pwr_i_max_watts: 10000.0
+    d: 5.0
+    pwr_thrml_max_watts: 15000.0
+    frac_of_ideal_cop: 0.3325268657401115
+    heat_source: FuelConverter
+    pwr_aux_for_hvac_max_watts: 8000.0
+    state:
+      i: 0
+      pwr_p_watts: 0.0
+      energy_p_joules: 0.0
+      pwr_i_watts: 0.0
+      energy_i_joules: 0.0
+      pwr_d_watts: 0.0
+      energy_d_joules: 0.0
+      cop: ~
+      pwr_aux_for_hvac_watts: 0.0
+      energy_aux_for_hvac_joules: 0.0
+      pwr_thrml_hvac_to_cabin_watts: 0.0
+      energy_thrml_hvac_to_cabin_joules: 0.0
+      pwr_thrml_fc_to_cabin_watts: 0.0
+      energy_thrml_fc_to_cabin_joules: 0.0
+    history:
+      i: []
+      pwr_p_watts: []
+      energy_p_joules: []
+      pwr_i_watts: []
+      energy_i_joules: []
+      pwr_d_watts: []
+      energy_d_joules: []
+      cop: []
+      pwr_aux_for_hvac_watts: []
+      energy_aux_for_hvac_joules: []
+      pwr_thrml_hvac_to_cabin_watts: []
+      energy_thrml_hvac_to_cabin_joules: []
+      pwr_thrml_fc_to_cabin_watts: []
+      energy_thrml_fc_to_cabin_joules: []
+    save_interval: 1
+mass_kilograms: 2398.14286
 pwr_aux_base_watts: 700.0
 save_interval: 1
 state:
