@@ -886,7 +886,7 @@ impl HEVPowertrainControls {
     pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
         match self {
             Self::StopStart(ctrl) => {
-                handle_fc_on_causes_for_speed(&mut ctrl.state.vehicle_not_stopped, speed)?
+                HEVStopStartControl::handle_fc_on_causes_for_speed(&mut ctrl.state.vehicle_not_stopped, speed)?
             }
             _ => (),
         }
@@ -1374,6 +1374,8 @@ impl Init for HEVStopStartControl {
 
 impl SerdeAPI for HEVStopStartControl {}
 
+impl StopStartControl for HEVStopStartControl {}
+
 impl HEVStopStartControl {
     pub fn new(
         fc_min_time_on: Option<si::Time>,
@@ -1466,7 +1468,7 @@ impl HEVStopStartControl {
             });
             (fc_pwr, em_pwr_corrected)
         };
-        handle_fc_on_causes_for_propulsion_request(
+        Self::handle_fc_on_causes_for_propulsion_request(
             &mut self.state.has_traction_power_request,
             fc_pwr,
         )?;
@@ -1481,14 +1483,14 @@ impl HEVStopStartControl {
         dt: si::Time,
     ) -> Result<(), anyhow::Error> {
         // NOTE: handle_fc_on_causes_for_propulsion_request called elsewhere
-        handle_fc_on_causes_for_stopped_time(
+        Self::handle_fc_on_causes_for_stopped_time(
             &mut self.state.time_vehicle_stopped,
             &mut self.state.vehicle_not_stopped_long_enough,
             veh_state,
             dt,
             self.time_delay_after_stop_until_fc_can_turn_off,
         )?;
-        handle_fc_on_causes_for_temp(
+        Self::handle_fc_on_causes_for_temp(
             fc,
             self.temp_fc_forced_on,
             self.temp_fc_allowed_off,
@@ -1496,7 +1498,7 @@ impl HEVStopStartControl {
         )?;
         // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
         self.handle_fc_on_causes_for_low_soc(res)?;
-        handle_fc_on_causes_for_on_time(
+        Self::handle_fc_on_causes_for_on_time(
             fc,
             self.fc_min_time_on,
             &mut self.state.on_time_too_short,

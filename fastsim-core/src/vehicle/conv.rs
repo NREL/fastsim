@@ -1,8 +1,4 @@
-use crate::vehicle::common::{
-    handle_fc_on_causes_for_on_time, handle_fc_on_causes_for_propulsion_request,
-    handle_fc_on_causes_for_speed, handle_fc_on_causes_for_stopped_time,
-    handle_fc_on_causes_for_temp,
-};
+use crate::vehicle::common::StopStartControl;
 
 use super::*;
 
@@ -263,7 +259,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         match &mut self.pt_cntrl {
             ConvPowertrainControls::Normal => (),
             ConvPowertrainControls::StopStart(ss) => {
-                handle_fc_on_causes_for_propulsion_request(
+                ConvStopStartControl::handle_fc_on_causes_for_propulsion_request(
                     &mut ss.state.has_traction_power_request,
                     pwr_in_transmission,
                 )?;
@@ -551,7 +547,7 @@ impl ConvPowertrainControls {
         match self {
             Self::Normal => Ok(()),
             Self::StopStart(ctrl) => {
-                handle_fc_on_causes_for_speed(&mut ctrl.state.vehicle_not_stopped, speed)
+                ConvStopStartControl::handle_fc_on_causes_for_speed(&mut ctrl.state.vehicle_not_stopped, speed)
             }
         }
     }
@@ -590,6 +586,8 @@ pub struct ConvStopStartControl {
 
 #[pyo3_api]
 impl ConvStopStartControl {}
+
+impl StopStartControl for ConvStopStartControl {}
 
 impl HistoryMethods for ConvStopStartControl {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
@@ -648,21 +646,21 @@ impl ConvStopStartControl {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // NOTE: handle_fc_on_causes_for_propulsion_request called elsewhere
-        handle_fc_on_causes_for_stopped_time(
+        Self::handle_fc_on_causes_for_stopped_time(
             &mut self.state.time_vehicle_stopped,
             &mut self.state.vehicle_not_stopped_long_enough,
             veh_state,
             dt,
             self.time_delay_after_stop_until_fc_can_turn_off,
         )?;
-        handle_fc_on_causes_for_temp(
+        Self::handle_fc_on_causes_for_temp(
             fc,
             self.temp_fc_forced_on,
             self.temp_fc_allowed_off,
             &mut self.state.fc_temperature_too_low,
         )?;
         // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
-        handle_fc_on_causes_for_on_time(
+        Self::handle_fc_on_causes_for_on_time(
             fc,
             self.fc_min_time_on,
             &mut self.state.on_time_too_short,
