@@ -444,6 +444,7 @@ impl SimDrive {
                                 conv.dfco_cntrl.dfco_enabled,
                                 conv.dfco_cntrl.minimum_dfco_speed,
                                 conv.dfco_cntrl.minimum_dfco_deceleration,
+                                conv.dfco_cntrl.stopped_speed_threshold,
                             ),
                             || format_dbg!(),
                         )?;

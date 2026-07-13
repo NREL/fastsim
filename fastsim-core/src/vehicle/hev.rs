@@ -888,6 +888,7 @@ impl HEVPowertrainControls {
             Self::StartStop(cntrl) => HEVStartStopControl::handle_fc_on_causes_for_speed(
                 &mut cntrl.state.vehicle_not_stopped,
                 speed,
+                cntrl.stopped_speed_threshold,
             )?,
             _ => (),
         }
@@ -1329,6 +1330,9 @@ pub struct HEVStartStopControl {
     /// stop is only momentary.
     #[serde(default)]
     pub time_delay_after_stop_until_fc_can_turn_off: Option<si::Time>,
+    /// Speed threshold at or below which vehicle is considered stopped for start-stop logic.
+    #[serde(default = "HEVStartStopControl::def_stopped_speed_threshold")]
+    pub stopped_speed_threshold: si::Velocity,
     /// If true, the electric machine can recharge from regenerative braking
     pub em_can_regen: Option<bool>,
     #[serde(default)]
@@ -1378,6 +1382,10 @@ impl SerdeAPI for HEVStartStopControl {}
 impl StartStopControl for HEVStartStopControl {}
 
 impl HEVStartStopControl {
+    fn def_stopped_speed_threshold() -> si::Velocity {
+        0.05 * uc::MPS
+    }
+
     pub fn new(
         fc_min_time_on: Option<si::Time>,
         soc_fc_forced_on: Option<si::Ratio>,
@@ -1395,6 +1403,7 @@ impl HEVStartStopControl {
             temp_fc_forced_on,
             temp_fc_allowed_off,
             time_delay_after_stop_until_fc_can_turn_off,
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
             em_can_regen,
             save_interval,
             state: StartStopState::default(),
@@ -1490,6 +1499,7 @@ impl HEVStartStopControl {
             veh_state,
             dt,
             self.time_delay_after_stop_until_fc_can_turn_off,
+            self.stopped_speed_threshold,
         )?;
         Self::handle_fc_on_causes_for_temp(
             fc,

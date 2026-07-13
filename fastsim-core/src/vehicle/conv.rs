@@ -15,6 +15,9 @@ pub struct DfcoControls {
     /// The minimum vehicle acceleration required for
     /// DFCO to be able to activate.
     pub minimum_dfco_deceleration: si::Acceleration,
+    /// Speed threshold at or below which DFCO is considered unavailable due to near-stop operation.
+    #[serde(default = "DfcoControls::def_stopped_speed_threshold")]
+    pub stopped_speed_threshold: si::Velocity,
     #[serde(default)]
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
@@ -29,6 +32,10 @@ pub struct DfcoControls {
 impl DfcoControls {}
 
 impl DfcoControls {
+    fn def_stopped_speed_threshold() -> si::Velocity {
+        0.05 * uc::MPS
+    }
+
     /// Determine if decel fuel cut-off (DFCO) is disabled based on vehicle
     /// dynamics considerations (i.e., speed, acceleration). Note: considerations
     /// related to whether the engine is too cold and such would be handled
@@ -40,6 +47,7 @@ impl DfcoControls {
         dfco_allowed: bool,
         minimum_dfco_speed: si::Velocity,
         minimum_dfco_deceleration: si::Acceleration,
+        stopped_speed_threshold: si::Velocity,
     ) -> bool {
         let decel = (speed - prev_speed) / dt;
         let is_accel = decel > si::Acceleration::ZERO;
@@ -47,7 +55,7 @@ impl DfcoControls {
             true
         } else if speed < minimum_dfco_speed {
             true
-        } else if speed <= 1e-6 * uc::MPS {
+        } else if speed <= stopped_speed_threshold {
             true
         } else if is_accel || decel > minimum_dfco_deceleration {
             true
@@ -102,6 +110,7 @@ impl DfcoControls {
             dfco_enabled,
             minimum_dfco_speed,
             minimum_dfco_deceleration,
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
             save_interval,
             state: DfcoState::default(),
             history: DfcoStateHistoryVec::default(),
@@ -580,6 +589,7 @@ impl ConvPowertrainControls {
             Self::StartStop(cntrl) => ConvStartStopControl::handle_fc_on_causes_for_speed(
                 &mut cntrl.state.vehicle_not_stopped,
                 speed,
+                cntrl.stopped_speed_threshold,
             ),
         }
     }
@@ -606,6 +616,9 @@ pub struct ConvStartStopControl {
     /// stop is only momentary.
     #[serde(default)]
     pub time_delay_after_stop_until_fc_can_turn_off: Option<si::Time>,
+    /// Speed threshold at or below which vehicle is considered stopped for start-stop logic.
+    #[serde(default = "ConvStartStopControl::def_stopped_speed_threshold")]
+    pub stopped_speed_threshold: si::Velocity,
     #[serde(default)]
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
@@ -651,6 +664,10 @@ impl Init for ConvStartStopControl {
 impl SerdeAPI for ConvStartStopControl {}
 
 impl ConvStartStopControl {
+    fn def_stopped_speed_threshold() -> si::Velocity {
+        0.05 * uc::MPS
+    }
+
     pub fn new(
         fc_min_time_on: Option<si::Time>,
         temp_fc_forced_on: Option<si::Temperature>,
@@ -663,6 +680,7 @@ impl ConvStartStopControl {
             temp_fc_forced_on,
             temp_fc_allowed_off,
             time_delay_after_stop_until_fc_can_turn_off,
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
             save_interval,
             state: ConvStartStopState::default(),
             history: ConvStartStopStateHistoryVec::default(),
@@ -684,6 +702,7 @@ impl ConvStartStopControl {
             veh_state,
             dt,
             self.time_delay_after_stop_until_fc_can_turn_off,
+            self.stopped_speed_threshold,
         )?;
         Self::handle_fc_on_causes_for_temp(
             fc,
@@ -781,6 +800,7 @@ pub(crate) mod tests {
             dfco_allowed,
             minimum_dfco_speed,
             minimum_dfco_deceleration,
+            0.05 * uc::MPS,
         );
         assert_eq!(false, result);
     }
@@ -798,6 +818,7 @@ pub(crate) mod tests {
             dfco_allowed,
             minimum_dfco_speed,
             minimum_dfco_deceleration,
+            0.05 * uc::MPS,
         );
         assert_eq!(result, true);
     }
@@ -814,6 +835,7 @@ pub(crate) mod tests {
             dfco_allowed,
             minimum_dfco_speed,
             minimum_dfco_deceleration,
+            0.05 * uc::MPS,
         );
         assert_eq!(true, result);
     }
@@ -830,6 +852,7 @@ pub(crate) mod tests {
             dfco_allowed,
             minimum_dfco_speed,
             minimum_dfco_deceleration,
+            0.05 * uc::MPS,
         );
         assert_eq!(true, result);
     }

@@ -1,8 +1,8 @@
 """
-# Engine Stop/Start Demo
+# Engine Start-Stop Demo
 
 This demo simulates a conventional vehicle over a drive cycle with and
-without engine stop/start, which turns the engine off while the vehicle
+without engine start-stop, which turns the engine off while the vehicle
 is stopped, and compares the resulting fuel economy. It then converts
 the vehicle to a micro hybrid electric vehicle (uHEV) with a small
 battery and electric machine that supplies auxiliary loads when
@@ -40,8 +40,8 @@ MJ_PER_GGE = 125.0
 ## Setup and Simulation
 
 Run the same vehicle and drive cycle twice: first with the default
-powertrain controller, then with the stop/start controller enabled via
-`use_stop_start_controller`. The stop/start controller turns the engine
+powertrain controller, then with the start-stop controller enabled via
+`use_start_stop_controller`. The start-stop controller turns the engine
 off while the vehicle is stopped, subject to conditions such as a
 minimum engine on time and engine warm-up temperature.
 """
@@ -60,9 +60,9 @@ sd.walk()
 df = sd.to_dataframe()
 
 # %%
-# load 2026 Chrysler Pacifica Select with stop/start
+# load 2026 Chrysler Pacifica Select with start-stop
 veh_ss = fsim.Vehicle.from_resource("2026_Chrysler_Pacifica_Select.yaml")
-veh_ss.use_stop_start_controller()
+veh_ss.use_start_stop_controller()
 veh_ss.set_save_interval(1)
 
 sd_ss = fsim.SimDrive(veh_ss, cyc)
@@ -73,7 +73,7 @@ df_ss = sd_ss.to_dataframe()
 ## Fuel Economy Comparison
 
 Compute fuel economy for both runs from cumulative fuel energy and cycle
-distance, then print the percent reduction in fuel use from stop/start.
+distance, then print the percent reduction in fuel use from start-stop.
 """
 
 # %%
@@ -92,19 +92,19 @@ fuel_economy_ss_mpg = distance_mi / gge_ss_gal
 percent_reduction = (fuel_mj - fuel_ss_mj) * 100.0 / fuel_mj
 
 print(f"Conventional Vehicle Fuel Economy: {fuel_economy_mpg} mpg")
-print(f"Conventional w/ Stop/Start       : {fuel_economy_ss_mpg} mpg")
-print(f"Stop/Start Reduction in Fuel Usage (Conv): {percent_reduction} %")
+print(f"Conventional w/ Start-Stop       : {fuel_economy_ss_mpg} mpg")
+print(f"Start-Stop Reduction in Fuel Usage (Conv): {percent_reduction} %")
 
 """
 ## Micro Hybrid Conversion
 
 The following function converts the conventional vehicle into a micro
 hybrid electric vehicle (uHEV): a vehicle with a small battery and
-electric machine that support engine stop/start. The conversion keeps
+electric machine that support engine start-stop. The conversion keeps
 the original fuel converter, fuel storage, and transmission, adds a
 battery and a constant-efficiency electric machine, supplies auxiliary
 loads from the battery when feasible (`AuxOnResPriority`), and uses the
-hybrid stop/start powertrain controller with optional regenerative
+hybrid start-stop powertrain controller with optional regenerative
 braking. The dictionaries are written out in full to show the fields
 available for tweaking.
 """
@@ -269,7 +269,7 @@ def conv_to_micro_hybrid(
         },
     }
     pt_cntrl = {
-        "StopStart": {
+        "StartStop": {
             "fc_min_time_on_seconds": None,
             "soc_fc_forced_on": None,
             "frac_of_most_eff_pwr_to_run_fc": None,
@@ -348,7 +348,7 @@ percent_reduction = (fuel_mj - fuel_uhev_mj) * 100.0 / fuel_mj
 
 print(f"Conventional Vehicle Fuel Economy: {fuel_economy_mpg} mpg")
 print(f"Micro HEV Fuel Economy           : {fuel_economy_uhev_mpg} mpg")
-print(f"Stop/Start Reduction in Fuel Usage (uHEV): {percent_reduction} %")
+print(f"Start-Stop Reduction in Fuel Usage (uHEV): {percent_reduction} %")
 
 """
 ## Visualize Results
@@ -445,7 +445,7 @@ def plot_fc_pwr(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = False) -> 
 
 """
 Fuel converter shaft power, fuel power, and achieved speed for the
-baseline and stop/start runs. During stops, the stop/start run's fuel
+baseline and start-stop runs. During stops, the start-stop run's fuel
 power drops to zero while the baseline continues to use idle fuel.
 """
 
@@ -471,7 +471,7 @@ def plot_engine_on_flags(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = F
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         df_ss["cyc.time_seconds"],
-        df_ss["veh.pt_type.HEV.pt_cntrl.StopStart.history.vehicle_not_stopped"],
+        df_ss["veh.pt_type.HEV.pt_cntrl.StartStop.history.vehicle_not_stopped"],
         label="not stopped",
     )
     ax[0].legend()
@@ -504,7 +504,7 @@ def plot_engine_on_flags(df: pd.DataFrame, df_ss: pd.DataFrame, is_hev: bool = F
 
 
 """
-The micro hybrid stop/start controller's `vehicle_not_stopped` flag, one
+The micro hybrid start-stop controller's `vehicle_not_stopped` flag, one
 of the conditions that forces the engine on, plotted with achieved speed.
 """
 

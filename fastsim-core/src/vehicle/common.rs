@@ -19,10 +19,11 @@ pub trait StartStopControl {
         veh_state: &VehicleState,
         dt: si::Time,
         time_delay_after_stop_until_fc_can_turn_off: Option<si::Time>,
+        stopped_speed_threshold: si::Velocity,
     ) -> anyhow::Result<()> {
         let v_prev = *veh_state.speed_ach.get_stale(|| format_dbg!())?;
         let dt_stopped = *time_vehicle_stopped.get_stale(|| format_dbg!())?;
-        let new_dt_stopped = if v_prev == si::Velocity::ZERO {
+        let new_dt_stopped = if v_prev <= stopped_speed_threshold {
             dt_stopped + dt
         } else {
             0.0 * uc::S
@@ -96,8 +97,9 @@ pub trait StartStopControl {
     fn handle_fc_on_causes_for_speed(
         vehicle_not_stopped: &mut TrackedState<bool>,
         speed: si::Velocity,
+        stopped_speed_threshold: si::Velocity,
     ) -> anyhow::Result<()> {
-        vehicle_not_stopped.update(speed.get::<si::meter_per_second>() > 1e-6, || format_dbg!())?;
+        vehicle_not_stopped.update(speed > stopped_speed_threshold, || format_dbg!())?;
         Ok(())
     }
 }
