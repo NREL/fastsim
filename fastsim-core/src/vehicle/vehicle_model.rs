@@ -946,7 +946,7 @@ impl Vehicle {
         }
         if let PowertrainType::ConventionalVehicle(conv) = &mut self.pt_type {
             match &mut conv.pt_cntrl {
-                ConvPowertrainControls::StartStop(ctrl) => ctrl.state.i.mark_stale(),
+                ConvPowertrainControls::StartStop(cntrl) => cntrl.state.i.mark_stale(),
                 ConvPowertrainControls::Normal => {}
             }
             conv.pt_cntrl.mark_fresh(|| format_dbg!())?;
@@ -956,7 +956,7 @@ impl Vehicle {
         if let PowertrainType::HybridElectricVehicle(hev) = &mut self.pt_type {
             match &mut hev.pt_cntrl {
                 HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
-                HEVPowertrainControls::StartStop(ctrl) => ctrl.state.i.mark_stale(),
+                HEVPowertrainControls::StartStop(cntrl) => cntrl.state.i.mark_stale(),
             }
             hev.pt_cntrl.mark_fresh(|| format_dbg!())?
         }
@@ -1300,7 +1300,7 @@ pub(crate) mod tests {
         )?;
         let pt_controls = {
             if with_conv_start_stop {
-                let ctrl = ConvStartStopControl::new(
+                let cntrl = ConvStartStopControl::new(
                     Option::None, // fc_min_time_on
                     Option::None, // temp_fc_forced_on
                     Option::None, // temp_fc_allowed_off
@@ -1314,8 +1314,8 @@ pub(crate) mod tests {
                         err
                     );
                 });
-                let ctrl = ctrl.ok().unwrap();
-                ConvPowertrainControls::StartStop(Box::new(ctrl))
+                let cntrl = cntrl.ok().unwrap();
+                ConvPowertrainControls::StartStop(Box::new(cntrl))
             } else {
                 ConvPowertrainControls::Normal
             }
@@ -1440,7 +1440,7 @@ pub(crate) mod tests {
             InterpolatorEnum::new_0d(0.95), // eff_interp
             Option::None,                   // save_interval
         )?;
-        let ctrl = HEVStartStopControl::new(
+        let cntrl = HEVStartStopControl::new(
             Option::None, // fc_min_time_on
             Option::None, // soc_fc_forced_on
             Option::None, // frac_of_most_eff_pwr_to_run_fc
@@ -1450,8 +1450,8 @@ pub(crate) mod tests {
             Option::None, // em_can_regen
             Option::None, // save_interval
         )?;
-        let pt_ctrl = HEVPowertrainControls::StartStop(Box::new(ctrl));
-        let aux_ctrl = HEVAuxControls::AuxOnResPriority;
+        let pt_cntrl = HEVPowertrainControls::StartStop(Box::new(cntrl));
+        let aux_cntrl = HEVAuxControls::AuxOnResPriority;
         let sim_params = HEVSimulationParams::new(
             0.05 * uc::R, // res_per_fuel_lim
             5,            // soc_balance_iter_err
@@ -1464,8 +1464,8 @@ pub(crate) mod tests {
             fc,           // fc
             em,           // em
             tx,           // transmission
-            pt_ctrl,      // pt_cntrl
-            aux_ctrl,     // aux_cntrl
+            pt_cntrl,      // pt_cntrl
+            aux_cntrl,     // aux_cntrl
             Option::None, // mass
             sim_params,   // sim_params
         )?;

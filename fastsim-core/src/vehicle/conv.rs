@@ -473,8 +473,8 @@ impl SetCumulative for ConvPowertrainControls {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrl) => {
-                ctrl.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+            Self::StartStop(cntrl) => {
+                cntrl.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
                 Ok(())
             }
         }
@@ -483,8 +483,8 @@ impl SetCumulative for ConvPowertrainControls {
     fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrl) => {
-                ctrl.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+            Self::StartStop(cntrl) => {
+                cntrl.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
                 Ok(())
             }
         }
@@ -495,14 +495,14 @@ impl Step for ConvPowertrainControls {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrl) => ctrl.step(loc),
+            Self::StartStop(cntrl) => cntrl.step(loc),
         }
     }
 
     fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrls) => ctrls.reset_step(loc),
+            Self::StartStop(cntrls) => cntrls.reset_step(loc),
         }
     }
 }
@@ -513,7 +513,7 @@ impl SaveState for ConvPowertrainControls {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrl) => ctrl.save_state(loc),
+            Self::StartStop(cntrl) => cntrl.save_state(loc),
         }
     }
 }
@@ -522,14 +522,14 @@ impl TrackedStateMethods for ConvPowertrainControls {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrl) => ctrl.check_and_reset(loc),
+            Self::StartStop(cntrl) => cntrl.check_and_reset(loc),
         }
     }
 
     fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrl) => ctrl.mark_fresh(loc),
+            Self::StartStop(cntrl) => cntrl.mark_fresh(loc),
         }
     }
 }
@@ -538,21 +538,21 @@ impl HistoryMethods for ConvPowertrainControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrl) => Ok(ctrl.set_save_interval(save_interval)?),
+            Self::StartStop(cntrl) => Ok(cntrl.set_save_interval(save_interval)?),
         }
     }
 
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             Self::Normal => Ok(Option::None),
-            Self::StartStop(ctrl) => ctrl.save_interval(),
+            Self::StartStop(cntrl) => cntrl.save_interval(),
         }
     }
 
     fn clear(&mut self) {
         match self {
             Self::Normal => (),
-            Self::StartStop(ctrl) => ctrl.clear(),
+            Self::StartStop(cntrl) => cntrl.clear(),
         }
     }
 }
@@ -561,7 +561,7 @@ impl Init for ConvPowertrainControls {
     fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrl) => ctrl.init(),
+            Self::StartStop(cntrl) => cntrl.init(),
         }
     }
 }
@@ -570,15 +570,15 @@ impl ConvPowertrainControls {
     pub fn fc_on(&self) -> anyhow::Result<bool> {
         match self {
             Self::Normal => Ok(true),
-            Self::StartStop(ctrl) => ctrl.state.fc_on(),
+            Self::StartStop(cntrl) => cntrl.state.fc_on(),
         }
     }
 
     pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StartStop(ctrl) => ConvStartStopControl::handle_fc_on_causes_for_speed(
-                &mut ctrl.state.vehicle_not_stopped,
+            Self::StartStop(cntrl) => ConvStartStopControl::handle_fc_on_causes_for_speed(
+                &mut cntrl.state.vehicle_not_stopped,
                 speed,
             ),
         }
