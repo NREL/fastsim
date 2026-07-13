@@ -156,82 +156,12 @@ impl Vehicle {
 
     #[pyo3(name = "use_stop_start_controller")]
     fn use_stop_start_controller_py(&mut self) -> anyhow::Result<()> {
-        match &mut self.pt_type {
-            PowertrainType::ConventionalVehicle(veh) => {
-                match veh.pt_cntrl {
-                    ConvPowertrainControls::Normal => {
-                        let save_interval = veh.save_interval().unwrap_or(Option::None);
-                        veh.pt_cntrl =
-                            ConvPowertrainControls::StopStart(Box::new(ConvStopStartControl::new(
-                                Option::None, // fc_min_time_on
-                                Option::None, // temp_fc_forced_on
-                                Option::None, // temp_fc_allowed_off
-                                Option::None, // time_delay_after_stop_until_fc_can_turn_off
-                                save_interval,
-                            )?));
-                    }
-                    ConvPowertrainControls::StopStart(_) => (),
-                }
-            }
-            PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
-                HEVPowertrainControls::RGWDB(_) => {
-                    let save_interval = veh.save_interval().unwrap_or(Option::None);
-                    veh.pt_cntrl =
-                        HEVPowertrainControls::StopStart(Box::new(HEVStopStartControl::new(
-                            Option::None, // fc_min_time_on
-                            Option::None, // soc_fc_forced_on
-                            Option::None, // frac_of_most_eff_pwr_to_run_fc
-                            Option::None, // temp_fc_forced_on
-                            Option::None, // temp_fc_allowed_off
-                            Option::None, // time_delay_after_stop_until_fc_can_turn_off
-                            Option::None, // em_can_regen
-                            save_interval,
-                        )?));
-                }
-                HEVPowertrainControls::StopStart(_) => (),
-            },
-            _ => (),
-        }
-        Ok(())
+        self.use_stop_start_controller()
     }
 
     #[pyo3(name = "use_normal_controller")]
     fn use_normal_controller_py(&mut self) -> anyhow::Result<()> {
-        let save_interval = self.save_interval().unwrap_or(Option::None);
-        match &mut self.pt_type {
-            PowertrainType::ConventionalVehicle(conv) => match &conv.pt_cntrl {
-                ConvPowertrainControls::StopStart(_) => {
-                    conv.pt_cntrl = ConvPowertrainControls::Normal;
-                }
-                ConvPowertrainControls::Normal => (),
-            },
-            PowertrainType::HybridElectricVehicle(hev) => {
-                match &hev.pt_cntrl {
-                    HEVPowertrainControls::StopStart(_) => {
-                        hev.pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(
-                            RESGreedyWithDynamicBuffers::new(
-                                Option::None, // speed_soc_disch_buffer
-                                Option::None, // speed_soc_disch_buffer_coeff
-                                Option::None, // speed_soc_fc_on_buffer
-                                Option::None, // speed_soc_fc_on_buffer_coeff
-                                Option::None, // speed_soc_regen_buffer
-                                Option::None, // speed_soc_regen_buffer_coeff
-                                Option::None, // fc_min_time_on
-                                Option::None, // speed_fc_forced_on
-                                Option::None, // frac_pwr_demand_fc_forced_on
-                                Option::None, // frac_of_most_eff_pwr_to_run_fc
-                                Option::None, // temp_fc_forced_on
-                                Option::None, // temp_fc_allowed_off
-                                save_interval,
-                            )?,
-                        ))
-                    }
-                    HEVPowertrainControls::RGWDB(_) => (),
-                }
-            }
-            _ => (),
-        }
-        Ok(())
+        self.use_normal_controller()
     }
 
     #[pyo3(name = "set_dfco_params")]
@@ -241,18 +171,7 @@ impl Vehicle {
         min_dfco_speed_m_per_s: f64,
         max_accel_for_dfco_m_per_s2: f64,
     ) -> anyhow::Result<()> {
-        let min_dfco_speed_m_per_s = min_dfco_speed_m_per_s.max(0.0);
-        let max_accel_for_dfco_m_per_s2 = max_accel_for_dfco_m_per_s2.min(0.0);
-        match &mut self.pt_type {
-            PowertrainType::ConventionalVehicle(conv) => {
-                conv.dfco_cntrl.dfco_enabled = enabled;
-                conv.dfco_cntrl.minimum_dfco_speed = min_dfco_speed_m_per_s * uc::MPS;
-                conv.dfco_cntrl.minimum_dfco_deceleration = max_accel_for_dfco_m_per_s2 * uc::MPS2;
-                conv.dfco_cntrl.save_interval = self.save_interval;
-            }
-            _ => (),
-        }
-        Ok(())
+        self.set_dfco_params(enabled, min_dfco_speed_m_per_s, max_accel_for_dfco_m_per_s2)
     }
 }
 
@@ -287,6 +206,102 @@ impl Vehicle {
         };
         veh.init()?;
         Ok(veh)
+    }
+
+    pub fn use_stop_start_controller(&mut self) -> anyhow::Result<()> {
+        match &mut self.pt_type {
+            PowertrainType::ConventionalVehicle(veh) => match veh.pt_cntrl {
+                ConvPowertrainControls::Normal => {
+                    let save_interval = veh.save_interval().unwrap_or(Option::None);
+                    veh.pt_cntrl = ConvPowertrainControls::StopStart(Box::new(
+                        ConvStopStartControl::new(
+                            Option::None, // fc_min_time_on
+                            Option::None, // temp_fc_forced_on
+                            Option::None, // temp_fc_allowed_off
+                            Option::None, // time_delay_after_stop_until_fc_can_turn_off
+                            save_interval,
+                        )?,
+                    ));
+                }
+                ConvPowertrainControls::StopStart(_) => (),
+            },
+            PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
+                HEVPowertrainControls::RGWDB(_) => {
+                    let save_interval = veh.save_interval().unwrap_or(Option::None);
+                    veh.pt_cntrl = HEVPowertrainControls::StopStart(Box::new(
+                        HEVStopStartControl::new(
+                            Option::None, // fc_min_time_on
+                            Option::None, // soc_fc_forced_on
+                            Option::None, // frac_of_most_eff_pwr_to_run_fc
+                            Option::None, // temp_fc_forced_on
+                            Option::None, // temp_fc_allowed_off
+                            Option::None, // time_delay_after_stop_until_fc_can_turn_off
+                            Option::None, // em_can_regen
+                            save_interval,
+                        )?,
+                    ));
+                }
+                HEVPowertrainControls::StopStart(_) => (),
+            },
+            _ => (),
+        }
+        Ok(())
+    }
+
+    pub fn use_normal_controller(&mut self) -> anyhow::Result<()> {
+        let save_interval = self.save_interval().unwrap_or(Option::None);
+        match &mut self.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => match &conv.pt_cntrl {
+                ConvPowertrainControls::StopStart(_) => {
+                    conv.pt_cntrl = ConvPowertrainControls::Normal;
+                }
+                ConvPowertrainControls::Normal => (),
+            },
+            PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
+                HEVPowertrainControls::StopStart(_) => {
+                    hev.pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(
+                        RESGreedyWithDynamicBuffers::new(
+                            Option::None, // speed_soc_disch_buffer
+                            Option::None, // speed_soc_disch_buffer_coeff
+                            Option::None, // speed_soc_fc_on_buffer
+                            Option::None, // speed_soc_fc_on_buffer_coeff
+                            Option::None, // speed_soc_regen_buffer
+                            Option::None, // speed_soc_regen_buffer_coeff
+                            Option::None, // fc_min_time_on
+                            Option::None, // speed_fc_forced_on
+                            Option::None, // frac_pwr_demand_fc_forced_on
+                            Option::None, // frac_of_most_eff_pwr_to_run_fc
+                            Option::None, // temp_fc_forced_on
+                            Option::None, // temp_fc_allowed_off
+                            save_interval,
+                        )?,
+                    ))
+                }
+                HEVPowertrainControls::RGWDB(_) => (),
+            },
+            _ => (),
+        }
+        Ok(())
+    }
+
+    pub fn set_dfco_params(
+        &mut self,
+        enabled: bool,
+        min_dfco_speed_m_per_s: f64,
+        max_accel_for_dfco_m_per_s2: f64,
+    ) -> anyhow::Result<()> {
+        let min_dfco_speed_m_per_s = min_dfco_speed_m_per_s.max(0.0);
+        let max_accel_for_dfco_m_per_s2 = max_accel_for_dfco_m_per_s2.min(0.0);
+        match &mut self.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => {
+                conv.dfco_cntrl.dfco_enabled = enabled;
+                conv.dfco_cntrl.minimum_dfco_speed = min_dfco_speed_m_per_s * uc::MPS;
+                conv.dfco_cntrl.minimum_dfco_deceleration = max_accel_for_dfco_m_per_s2 * uc::MPS2;
+                conv.dfco_cntrl.save_interval = self.save_interval;
+            }
+            _ => (),
+        }
+        Ok(())
     }
 }
 
@@ -1613,7 +1628,7 @@ pub(crate) mod tests {
         let veh_result = make_conv_pacifica(false, false);
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
-        let use_result = veh.use_stop_start_controller_py();
+        let use_result = veh.use_stop_start_controller();
         assert!(use_result.is_ok());
         match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
@@ -1626,7 +1641,7 @@ pub(crate) mod tests {
                 assert!(false, "Unexpected powertrain type");
             }
         }
-        let normal_result = veh.use_normal_controller_py();
+        let normal_result = veh.use_normal_controller();
         assert!(normal_result.is_ok());
         match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
@@ -1646,7 +1661,7 @@ pub(crate) mod tests {
         let veh_result = make_microhybrid_pacifica();
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
-        let use_result = veh.use_normal_controller_py();
+        let use_result = veh.use_normal_controller();
         assert!(use_result.is_ok());
         match &veh.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
@@ -1659,7 +1674,7 @@ pub(crate) mod tests {
                 assert!(false, "Unexpected powertrain type");
             }
         }
-        let use_ss_result = veh.use_stop_start_controller_py();
+        let use_ss_result = veh.use_stop_start_controller();
         assert!(use_ss_result.is_ok());
         match &veh.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
