@@ -16,7 +16,7 @@ project:
         - title: Vehicle Models
           children:
             - file: content/user-guide/vehicle-models/vehicle.md
-            - file: content/user-guide/vehicle-models/custom-vehicles.md
+            - file: content/user-guide/vehicle-models/modeling-vehicles.ipynb
         - title: Drive Cycles
           children:
             - file: content/user-guide/drive-cycles/drive-cycle.ipynb
