@@ -12,12 +12,15 @@ with the results.
 
 A FASTSim simulation is built on three main components:
 
-- Vehicle (`veh`): A Python object defining the powertrain (e.g.,
-  Conventional, HEV, EV), mass, drag, and component efficiencies.
-- Drive Cycle (`cyc`): A velocity vs. time profile (standard EPA cycles like
-  UDDS/HWFET or custom GPS data).
-- Simulation (`SimDrive`): The solver that calculates the power balance and
-  energy consumption at every time step.
+- `fastsim.Vehicle`: An object defining the vehicle's physical specifications,
+  including the powertrain configuration, mass, aerodynamic drag, component efficiencies, and more.
+- `fastsim.Cycle`: A drive cycle, essentially a velocity vs. time profile
+  (e.g. EPA regulatory cycles such as UDDS/HWFET, or custom telematics-derived data).
+  Drive cycles define how the vehicle moves and the conditions under which it operates.
+- `fastsim.SimDrive`: The solver that combines a `Vehicle` and a `Cycle`,
+  calculating the flow of power and energy consumption at every time step.
+
+The line below imports FASTSim in Python:
 """
 
 # %%
@@ -171,7 +174,7 @@ on a chassis dynamometer in a laboratory setting under controlled conditions,
 which is how vehicles are actually tested to measure fuel economy. The EPA
 applies a set of "downward adjustments" (often around 10-30%) to laboratory
 results to better reflect real-world driving for the window sticker. See
-[Comparing Simulations to Label Fuel Economy](../content/label-fuel-economy.md)
+[Comparing Simulations to Label Fuel Economy](../demo_notebooks/demo_label_fe.ipynb)
 for how FASTSim reproduces window sticker values.
 
 ## Modifying Vehicle Parameters

@@ -25,7 +25,7 @@ project:
           children:
             - file: content/simdrive.md
             - file: content/editing-sim-params.md
-            - file: content/label-fuel-economy.md
+            - file: demo_notebooks/demo_label_fe.ipynb
     # - file: content/label-fe.md
     # - title: Demos
     #   children:
