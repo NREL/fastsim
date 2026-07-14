@@ -27,38 +27,12 @@ project:
             - file: content/user-guide/running-simulations/editing-sim-params.ipynb
             - file: content/user-guide/running-simulations/trace-miss.ipynb
             - file: content/user-guide/running-simulations/label-fe.ipynb
-    # - file: content/label-fe.md
-    # - title: Demos
-    #   children:
-    #     - file: content/conv.ipynb
-    #     - file: content/bev.ipynb
-    #     - file: content/hev.ipynb
-    # - title: Advanced Demos
-    #   children:
-    #     - title: Thermal Simulation
-    #       children:
-    #         - file: content/bev_thrml_cs_ca.ipynb
-    #         - file: content/bev_thrml_ws_ca.ipynb
-    #         - file: content/bev_thrml_ws_wa.ipynb
-    #         - file: content/hev_thrml_cs_ca.ipynb
-    #         - file: content/hev_thrml_ws_ca.ipynb
-    #         - file: content/hev_thrml_ws_wa.ipynb
-    #         - file: content/bev_thrml_sweep.ipynb
-    #     - title: Vehicle Controls
-    #       children:
-    #         - file: content/trace_miss.ipynb
-    #         - file: content/stop_start.ipynb
-    #         - file: content/dfco.ipynb
-    #     - file: content/migration-guide.md
-    # - title: Connected and Automated Vehicles (CAVS)
-    #   children:
-    #     - file: content/maneuver_intro.ipynb
-    #     - file: content/microtrips.ipynb
-    #     - file: content/basic_coasting.ipynb
-    #     - file: content/coast_with_grade.ipynb
-    #     - file: content/advanced_coasting.ipynb
-    #     - file: content/eco_cruise.ipynb
-    #     - file: content/cruise_and_coast.ipynb
+            - title: Advanced
+              children:
+                - file: content/user-guide/running-simulations/advanced/start-stop.ipynb
+                - file: content/user-guide/running-simulations/advanced/dfco.ipynb
+                - file: content/user-guide/running-simulations/advanced/cavs.ipynb
+                - file: content/user-guide/running-simulations/advanced/thermal-simulations.ipynb
     - title: Developers
       children:
         - file: content/developers/environment-setup.md
@@ -69,6 +43,7 @@ project:
       title: Rust API Documentation
     - url: https://github.com/NatLabRockies/fastsim/releases
       title: Release Notes
+    # - file: content/migration-guide.md
 site:
   template: book-theme
   options:
