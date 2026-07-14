@@ -58,6 +58,8 @@ test = [
     "pytest~=8.3",
     "memory_profiler~=0.61.0",
     "nbformat>=4.2.0",
+    "nbmake",
+    "pytest-xdist",
 ]
 wheels = [
     {include-group = "build"},
@@ -133,12 +135,16 @@ dev = { features = ["dev", "build", "release", "test", "wheels", "docs"], solve-
 [tool.pixi.tasks]
 cargo_test = "cargo test --release"
 py_build = "maturin develop --release"
-py_test = { cmd = "pixi run -e test pytest -v", depends-on = ["py_build"] }
-build_and_test = { depends-on = ["cargo_test", "py_test"] }
-docs = { cmd = "python demos_to_notebooks.py && jupyter book start --execute", cwd = "docs", default-environment = "docs" }
+py_test = { cmd = "pixi run -e test pytest -v" }
+build_and_test = { depends-on = ["cargo_test", "py_build", "py_test"] }
+docs = { cmd = "jupyter book start --execute", cwd = "docs", default-environment = "docs" }
 fmt = "ruff format"
 # lint = "pylint"
 # style = { depends-on = ["fmt", "lint"] }
+
+[tool.pytest.ini_options]
+# Pytest configuration for running notebook tests with nbmake and parallel execution
+addopts = "--nbmake --nbmake-timeout=600 -n auto"
 
 [tool.ruff]
 # Specify Python version

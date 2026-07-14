@@ -10,7 +10,7 @@ project:
       children:
         - file: content/what-is-fastsim.md
     - file: content/installation.md
-    - file: demo_notebooks/demo_getting_started.ipynb
+    - file: content/getting_started.ipynb
     - title: User Guide
       children:
         - title: Vehicle Models
@@ -19,45 +19,45 @@ project:
             - file: content/custom-vehicles.md
         - title: Drive Cycles
           children:
-            - file: demo_notebooks/demo_drive_cycle.ipynb
+            - file: content/drive_cycle.ipynb
             - file: content/telematics.md
         - title: Running Simulations
           children:
             - file: content/simdrive.md
             - file: content/editing-sim-params.md
-            - file: demo_notebooks/demo_label_fe.ipynb
+            - file: content/label_fe.ipynb
     # - file: content/label-fe.md
     # - title: Demos
     #   children:
-    #     - file: demo_notebooks/demo_conv.ipynb
-    #     - file: demo_notebooks/demo_bev.ipynb
-    #     - file: demo_notebooks/demo_hev.ipynb
+    #     - file: content/conv.ipynb
+    #     - file: content/bev.ipynb
+    #     - file: content/hev.ipynb
     # - title: Advanced Demos
     #   children:
     #     - title: Thermal Simulation
     #       children:
-    #         - file: demo_notebooks/demo_bev_thrml_cs_ca.ipynb
-    #         - file: demo_notebooks/demo_bev_thrml_ws_ca.ipynb
-    #         - file: demo_notebooks/demo_bev_thrml_ws_wa.ipynb
-    #         - file: demo_notebooks/demo_hev_thrml_cs_ca.ipynb
-    #         - file: demo_notebooks/demo_hev_thrml_ws_ca.ipynb
-    #         - file: demo_notebooks/demo_hev_thrml_ws_wa.ipynb
-    #         - file: demo_notebooks/demo_bev_thrml_sweep.ipynb
+    #         - file: content/bev_thrml_cs_ca.ipynb
+    #         - file: content/bev_thrml_ws_ca.ipynb
+    #         - file: content/bev_thrml_ws_wa.ipynb
+    #         - file: content/hev_thrml_cs_ca.ipynb
+    #         - file: content/hev_thrml_ws_ca.ipynb
+    #         - file: content/hev_thrml_ws_wa.ipynb
+    #         - file: content/bev_thrml_sweep.ipynb
     #     - title: Vehicle Controls
     #       children:
-    #         - file: demo_notebooks/demo_trace_miss.ipynb
-    #         - file: demo_notebooks/demo_stop_start.ipynb
-    #         - file: demo_notebooks/demo_dfco.ipynb
+    #         - file: content/trace_miss.ipynb
+    #         - file: content/stop_start.ipynb
+    #         - file: content/dfco.ipynb
     #     - file: content/migration-guide.md
     # - title: Connected and Automated Vehicles (CAVS)
     #   children:
-    #     - file: demo_notebooks/demo_maneuver_intro.ipynb
-    #     - file: demo_notebooks/demo_microtrips.ipynb
-    #     - file: demo_notebooks/demo_basic_coasting.ipynb
-    #     - file: demo_notebooks/demo_coast_with_grade.ipynb
-    #     - file: demo_notebooks/demo_advanced_coasting.ipynb
-    #     - file: demo_notebooks/demo_eco_cruise.ipynb
-    #     - file: demo_notebooks/demo_cruise_and_coast.ipynb
+    #     - file: content/maneuver_intro.ipynb
+    #     - file: content/microtrips.ipynb
+    #     - file: content/basic_coasting.ipynb
+    #     - file: content/coast_with_grade.ipynb
+    #     - file: content/advanced_coasting.ipynb
+    #     - file: content/eco_cruise.ipynb
+    #     - file: content/cruise_and_coast.ipynb
     - title: Developers
       children:
         - file: content/developers/environment-setup.md
