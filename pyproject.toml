@@ -138,6 +138,7 @@ py_build = "maturin develop --release"
 py_test = { cmd = "pixi run -e test pytest -v" }
 build_and_test = { depends-on = ["cargo_test", "py_build", "py_test"] }
 docs = { cmd = "jupyter book start --execute", cwd = "docs", default-environment = "docs" }
+build-docs = { cmd = "jupyter book build --strict --html --execute", cwd = "docs", default-environment = "docs" }
 fmt = "ruff format"
 # lint = "pylint"
 # style = { depends-on = ["fmt", "lint"] }

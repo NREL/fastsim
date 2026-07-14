@@ -10,7 +10,7 @@ project:
       children:
         - file: content/overview/what-is-fastsim.md
     - file: content/installation.md
-    - file: content/getting_started.ipynb
+    - file: content/getting-started.ipynb
     - title: User Guide
       children:
         - title: Vehicle Models
@@ -19,13 +19,14 @@ project:
             - file: content/user-guide/vehicle-models/custom-vehicles.md
         - title: Drive Cycles
           children:
-            - file: content/user-guide/drive-cycles/drive_cycle.ipynb
+            - file: content/user-guide/drive-cycles/drive-cycle.ipynb
             - file: content/user-guide/drive-cycles/telematics.md
         - title: Running Simulations
           children:
             - file: content/user-guide/running-simulations/simdrive.md
             - file: content/user-guide/running-simulations/editing-sim-params.md
-            - file: content/user-guide/running-simulations/label_fe.ipynb
+            - file: content/user-guide/running-simulations/trace-miss.ipynb
+            - file: content/user-guide/running-simulations/label-fe.ipynb
     # - file: content/label-fe.md
     # - title: Demos
     #   children:

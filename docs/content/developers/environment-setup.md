@@ -5,6 +5,7 @@ A few options exist for environment setup:
 2. [Anaconda](#2-anaconda)
 2. [Custom](#3-custom)
 
+(1-pixi)=
 ## 1. Pixi
 [Pixi](https://pixi.prefix.dev/latest/) is a tool that ensures environment hygiene and reproducibility. FASTSim has an established setup for 
 Pixi that you can take advantage of to quickly get started.
@@ -66,6 +67,7 @@ After that, entering the directory will auto-activate the pixi `dev` environment
 hide_env_diff = true
 ```
 
+(2-anaconda)=
 ## 2. Anaconda
 
 Anaconda users can easily install Rust using the conda-forge `rust` package
@@ -114,6 +116,7 @@ Relevant links:
 :::
 
 
+(3-custom)=
 ## 3. Custom
 
 If you do not want to use Pixi or Anaconda, install Rust and Python dependencies manually.

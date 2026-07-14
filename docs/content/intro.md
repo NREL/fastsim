@@ -30,9 +30,9 @@ with a Python interface).
 
 ## Get Started
 
-- [What is FASTSim?](what-is-fastsim.md): what the tool is and how it models vehicles
+- [What is FASTSim?](overview/what-is-fastsim.md): what the tool is and how it models vehicles
 - [Installation](installation.md): install with pip or build from source
-- [Getting Started](../demo_notebooks/getting_started/demo_getting_started.ipynb): load a vehicle, run a simulation, inspect results
+- [Getting Started](getting-started.ipynb): load a vehicle, run a simulation, inspect results
 
 ## Learn More and Get in Touch
 

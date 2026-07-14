@@ -38,5 +38,5 @@ quickest start, or build it from source for the latest development version.
 ## Next Steps
 
 With FASTSim installed, head to
-[Getting Started](../demo_notebooks/demo_getting_started.ipynb)
+[Getting Started](getting-started.ipynb)
 to load a vehicle, run a simulation, and inspect the results.
