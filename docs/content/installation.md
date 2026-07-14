@@ -33,10 +33,9 @@ quickest start, or build it from source for the latest development version.
          - Add the `--group dev` flag to install optional developer dependencies.
 
       Building from source is not necessary for most use cases. For more detail on
-      the developer build, see [Compiling from Source](developers/compiling-from-source.md).
+      the developer build, see [](developers/compiling-from-source.md).
 
 ## Next Steps
 
-With FASTSim installed, head to
-[Getting Started](getting-started.ipynb)
+With FASTSim installed, head to [](getting-started.ipynb)
 to load a vehicle, run a simulation, and inspect the results.
