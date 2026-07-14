@@ -23,8 +23,8 @@ project:
             - file: content/user-guide/drive-cycles/telematics.md
         - title: Running Simulations
           children:
-            - file: content/user-guide/running-simulations/simdrive.md
-            - file: content/user-guide/running-simulations/editing-sim-params.md
+            - file: content/user-guide/running-simulations/simdrive.ipynb
+            - file: content/user-guide/running-simulations/editing-sim-params.ipynb
             - file: content/user-guide/running-simulations/trace-miss.ipynb
             - file: content/user-guide/running-simulations/label-fe.ipynb
     # - file: content/label-fe.md
