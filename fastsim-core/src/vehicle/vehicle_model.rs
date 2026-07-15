@@ -386,16 +386,103 @@ impl Mass for Vehicle {
 impl SerdeAPI for Vehicle {
     #[cfg(feature = "resources")]
     const RESOURCES_SUBDIR: &'static str = "vehicles";
+
+    /// Deserialize a [`Vehicle`] from a reader, emitting a warning if
+    /// [`Vehicle::min_fastsim_version`] exceeds the installed version before attempting full
+    /// deserialization. This ensures version incompatibilities produce a clear diagnostic even
+    /// when the full parse would fail due to unrecognized fields added in a newer release.
+    fn from_reader<R: std::io::Read>(
+        rdr: &mut R,
+        format: &str,
+        skip_init: bool,
+    ) -> Result<Self, crate::error::Error> {
+        // Minimal struct used only for the version pre-check. No
+        // `deny_unknown_fields` so it tolerates any extra vehicle fields.
+        #[derive(Deserialize)]
+        struct VersionCheck {
+            #[serde(default = "crate::current_fastsim_version")]
+            min_fastsim_version: semver::Version,
+        }
+
+        let mut buf = Vec::new();
+        rdr.read_to_end(&mut buf)
+            .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?;
+
+        // Try to extract `min_fastsim_version` from the raw buffer before the
+        // full deserialization so that a version mismatch is reported even when
+        // the full parse would fail due to fields added in a newer release.
+        let fmt = format.trim_start_matches('.').to_lowercase();
+        let min_ver: Option<semver::Version> = match fmt.as_str() {
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => serde_yaml::from_slice::<VersionCheck>(&buf)
+                .ok()
+                .map(|v| v.min_fastsim_version),
+            #[cfg(feature = "json")]
+            "json" => serde_json::from_slice::<VersionCheck>(&buf)
+                .ok()
+                .map(|v| v.min_fastsim_version),
+            #[cfg(feature = "msgpack")]
+            "msgpack" => rmp_serde::decode::from_slice::<VersionCheck>(&buf)
+                .ok()
+                .map(|v| v.min_fastsim_version),
+            #[cfg(feature = "toml")]
+            "toml" => std::str::from_utf8(&buf)
+                .ok()
+                .and_then(|s| toml::from_str::<VersionCheck>(s).ok())
+                .map(|v| v.min_fastsim_version),
+            _ => None,
+        };
+        if let Some(min_ver) = min_ver {
+            if min_ver > *crate::FASTSIM_VERSION {
+                eprintln!(
+                    "WARNING: vehicle file requires FASTSim >= {min_ver} but the installed \
+                    version is {}. Loading will be attempted but may fail or produce \
+                    unexpected results. Please update FASTSim.",
+                    *crate::FASTSIM_VERSION
+                );
+            } else if min_ver.major < crate::FASTSIM_VERSION.major {
+                eprintln!(
+                    "WARNING: vehicle file has min_fastsim_version {min_ver}, which is from \
+                    an older major version than the installed FASTSim {}. Major-version \
+                    upgrades may introduce breaking changes; loading will be attempted.",
+                    *crate::FASTSIM_VERSION
+                );
+            }
+        }
+
+        // Full deserialization from the buffered content
+        let mut deserialized: Self = match fmt.as_str() {
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => serde_yaml::from_slice(&buf)
+                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "json")]
+            "json" => serde_json::from_slice(&buf)
+                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "msgpack")]
+            "msgpack" => rmp_serde::decode::from_slice(&buf)
+                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "toml")]
+            "toml" => {
+                let s = String::from_utf8(buf)
+                    .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?;
+                toml::from_str(&s)
+                    .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?
+            }
+            _ => {
+                return Err(crate::error::Error::SerdeError(format!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_BYTE_FORMATS,
+                )))
+            }
+        };
+        if !skip_init {
+            deserialized.init()?;
+        }
+        Ok(deserialized)
+    }
 }
 impl Init for Vehicle {
     fn init(&mut self) -> Result<(), Error> {
-        if self.min_fastsim_version > *crate::FASTSIM_VERSION {
-            return Err(Error::InitError(format_dbg!(format!(
-                "Vehicle requires FASTSim version {} but current version is {}",
-                self.min_fastsim_version,
-                *crate::FASTSIM_VERSION
-            ))));
-        }
         let _mass = self
             .mass()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
@@ -1481,26 +1568,6 @@ pub(crate) mod tests {
         )?;
         veh.set_save_interval(Option::Some(1))?;
         Ok(veh)
-    }
-
-    #[test]
-    fn vehicle_init_fails_when_min_version_exceeds_current_version() {
-        let mut veh = make_conv_pacifica(false, false).unwrap();
-        let mut too_new = crate::current_fastsim_version();
-        too_new.major += 1;
-        too_new.minor = 0;
-        too_new.patch = 0;
-
-        veh.min_fastsim_version = too_new;
-
-        let err = veh
-            .init()
-            .expect_err("Expected init failure when vehicle min version is too high");
-        let err_msg = err.to_string();
-        assert!(
-            err_msg.contains("Vehicle requires FASTSim version"),
-            "Unexpected error: {err_msg}"
-        );
     }
 
     #[test]
