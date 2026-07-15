@@ -1,5 +1,5 @@
 use super::*;
-use crate::vehicle::powertrain::reversible_energy_storage::EffInterp as ResEffInterp;
+use crate::vehicle::powertrain::reversible_energy_storage::RESEfficiency;
 
 impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
@@ -127,7 +127,7 @@ impl Vehicle {
             ess_round_trip_eff: self
                 .res()
                 .map(|res| {
-                    if let ResEffInterp::Constant(Interp0D(eff)) = res.eff_interp {
+                    if let RESEfficiency::Constant(Interp0D(eff)) = res.eff_interp {
                         Ok(eff.powi(2))
                     } else {
                         bail!("`to_fastsim2` is not implemented for non-0D `res.eff_interp`")
