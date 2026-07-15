@@ -1,6 +1,6 @@
 ---
 name: 2016 Toyota Prius Two FWD
-min_fastsim_version: 1.0.4
+min_fastsim_version: 3.1.0
 doc: ~
 year: "2016"
 make: ~
