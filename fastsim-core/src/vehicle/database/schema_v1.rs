@@ -11,19 +11,22 @@ pub struct DatabaseSchemaV1 {
     pub model: String,
     /// Vehicle model year.
     pub year: String,
+    /// Vehicle variant (describes what modeling features are active, etc).
+    pub variant: String,
     /// Model revision/version for correcting model-level issues over time.
-    pub model_version: u32,
+    pub revision: u32,
 }
 
 impl DatabaseSchemaV1 {
     fn relative_segments(&self, extension: &str) -> Vec<String> {
         vec![
             "v1".to_string(),
-            format!("fastsim-v{}", self.fastsim_version),
+            format!("fastsim-{}", self.fastsim_version),
             self.make.clone(),
             self.model.clone(),
             self.year.clone(),
-            format!("v{}.{}", self.model_version, extension),
+            self.variant.clone(),
+            format!("v{}.{}", self.revision, extension),
         ]
     }
 
@@ -53,6 +56,7 @@ impl Vehicle {
         make: &str,
         model: &str,
         year: &str,
+        variant: &str,
         model_version: u32,
         skip_init: bool,
     ) -> anyhow::Result<Vehicle> {
@@ -61,7 +65,8 @@ impl Vehicle {
             make: make.to_string(),
             model: model.to_string(),
             year: year.to_string(),
-            model_version,
+            variant: variant.to_string(),
+            revision: model_version,
         };
         let path = schema.build_filepath(base_dir, "yaml")?;
         let mut veh = Self::from_file(path.clone(), false).map_err(|err| {
@@ -84,6 +89,7 @@ impl Vehicle {
         make: &str,
         model: &str,
         year: &str,
+        variant: &str,
         model_version: u32,
         skip_init: bool,
     ) -> anyhow::Result<Vehicle> {
@@ -92,7 +98,8 @@ impl Vehicle {
             make: make.to_string(),
             model: model.to_string(),
             year: year.to_string(),
-            model_version,
+            variant: variant.to_string(),
+            revision: model_version,
         };
         let resolved_url = schema.build_url(url.unwrap_or(DEFAULT_DB_URL), "yaml")?;
         let mut veh = Self::from_url(resolved_url.clone(), false).map_err(|err| {
@@ -119,7 +126,8 @@ mod tests {
             make: "Ford".to_string(),
             model: "F-150".to_string(),
             year: "2022".to_string(),
-            model_version: 1,
+            variant: "base".to_string(),
+            revision: 1,
         }
     }
 
@@ -147,7 +155,7 @@ mod tests {
             .build_url("https://example.com/fastsim-vehicles/", "yaml")
             .unwrap();
         let expected =
-            "https://example.com/fastsim-vehicles/v1/fastsim-v3/Ford/F-150/2022/v1.yaml"
+            "https://example.com/fastsim-vehicles/v1/fastsim-v3/Ford/F-150/2022/base/v1.yaml"
                 .to_string();
 
         eprintln!("build_url output: {actual}");
@@ -164,7 +172,8 @@ mod tests {
             &schema.make,
             &schema.model,
             &schema.year,
-            schema.model_version,
+            &schema.variant,
+            schema.revision,
             false,
         )
         .unwrap_err();
@@ -172,7 +181,7 @@ mod tests {
 
         eprintln!("from_db_local output: {output}");
         assert!(
-            output.contains("/tmp/vehicles-db/v1/fastsim-v3/Ford/F-150/2022/v1.yaml"),
+            output.contains("/tmp/vehicles-db/v1/fastsim-v3/Ford/F-150/2022/base/v1.yaml"),
             "unexpected output: {output}"
         );
     }
@@ -187,7 +196,8 @@ mod tests {
             &schema.make,
             &schema.model,
             &schema.year,
-            schema.model_version,
+            &schema.variant,
+            schema.revision,
             false,
         )
         .unwrap_err();
@@ -196,7 +206,7 @@ mod tests {
         eprintln!("from_db_remote output: {output}");
         assert!(
             output.contains(
-                "https://example.com/fastsim-vehicles/v1/fastsim-v3/Ford/F-150/2022/v1.yaml"
+                "https://example.com/fastsim-vehicles/v1/fastsim-v3/Ford/F-150/2022/base/v1.yaml"
             ),
             "unexpected output: {output}"
         );

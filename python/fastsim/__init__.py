@@ -273,12 +273,6 @@ def to_dataframe(
 
 
 def _plot_cycle(self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True) -> go._figure.Figure:
-    """
-    Plot a drive cycle (default: speed vs. time) with Plotly.
-
-    x-axis options: ["time_seconds", "dist_meters"]
-    y-axis options: ["speed_meters_per_second", "grade"]
-    """
     if x not in self.to_pydict():
         raise ValueError(f"Column '{x}' not found in the drive cycle data")
     if y not in self.to_pydict():
@@ -319,44 +313,11 @@ def _vehicle_from_db(
     schema: int = 1,
     **kwargs: Any,
 ) -> Self:
-    """Load a vehicle from a schema-versioned FASTSim vehicle database.
-
-    Parameters
-    ----------
-    db_path_or_url : str | None, default None
-        Database source selector.
-
-        - ``None``: use the schema-specific default remote database URL.
-        - ``"http://..."`` or ``"https://..."``: use remote database loading.
-        - any other string: treat as a local filesystem database path.
-
-    schema : int, default 1
-        Database schema version used for dispatch. Currently only ``schema=1``
-        is supported.
-
-    **kwargs
-        Arguments forwarded to the schema-specific loader.
-
-        Valid kwargs for ``schema=1``:
-        - ``make`` (str): vehicle make, e.g. ``"Ford"``
-        - ``model`` (str): vehicle model, e.g. ``"F-150"``
-        - ``year`` (str): vehicle model year, e.g. ``"2022"``
-                - ``model_version`` (int): model revision, e.g. ``1``
-                - ``fastsim_version`` (int, optional): FASTSim version namespace.
-                    Defaults to the installed FASTSim major version (e.g. ``3``).
-        - ``skip_init`` (bool, optional): forwarded to Rust loader, defaults to
-          ``False``.
-
-    Returns
-    -------
-    Vehicle
-        Loaded vehicle instance.
-    """
     if schema != 1:
         raise ValueError(f"Unsupported schema: {schema}. Only schema=1 is currently supported.")
 
     if schema == 1:
-        required = ("make", "model", "year", "model_version")
+        required = ("make", "model", "year", "revision")
         missing = [key for key in required if key not in kwargs]
         if missing:
             raise TypeError(f"Missing required kwargs: {', '.join(missing)}")
@@ -366,7 +327,8 @@ def _vehicle_from_db(
         make = kwargs["make"]
         model = kwargs["model"]
         year = kwargs["year"]
-        model_version = int(str(kwargs["model_version"]).strip().removeprefix("v").removeprefix("V"))
+        variant = str(kwargs.get("variant", "base"))
+        revision = int(str(kwargs["revision"]).strip().removeprefix("v").removeprefix("V"))
 
         if not hasattr(cls, "from_db_remote_v1") and (
             db_path_or_url is None
@@ -382,7 +344,8 @@ def _vehicle_from_db(
                 make,
                 model,
                 year,
-                model_version,
+                variant,
+                revision,
                 skip_init,
             )
         elif db_path_or_url.startswith("http://") or db_path_or_url.startswith("https://"):
@@ -392,7 +355,8 @@ def _vehicle_from_db(
                 make,
                 model,
                 year,
-                model_version,
+                variant,
+                revision,
                 skip_init,
             )
         else:
@@ -403,7 +367,8 @@ def _vehicle_from_db(
                 make,
                 model,
                 year,
-                model_version,
+                variant,
+                revision,
                 skip_init,
             )
 

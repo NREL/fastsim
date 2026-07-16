@@ -108,8 +108,14 @@ class Cycle(SerdeAPI):
     @classmethod
     def list_resources(cls) -> list[str]: ...
     def len(self) -> int: ...
-    def plot_speed(self, x="time_seconds", show=True) -> Any | None: ...
-    def plot_grade(self, x="time_seconds", show=True) -> Any | None: ...
+    def plot(self, x="time_seconds", y="speed_meters_per_second", show=True) -> Any | None:
+        """
+        Plot a drive cycle (default: speed vs. time) with Plotly.
+
+        x-axis options: ["time_seconds", "dist_meters"]  
+        y-axis options: ["speed_meters_per_second", "grade"]
+        """
+        ...
 
 class CycleElement(SerdeAPI): ...
 
@@ -143,6 +149,7 @@ class Vehicle(SerdeAPI):
         make: str,
         model: str,
         year: str,
+        variant: str,
         model_version: int,
         skip_init: bool = False,
     ) -> Vehicle: ...
@@ -154,6 +161,7 @@ class Vehicle(SerdeAPI):
         make: str,
         model: str,
         year: str,
+        variant: str,
         model_version: int,
         skip_init: bool = False,
     ) -> Vehicle: ...
@@ -163,7 +171,41 @@ class Vehicle(SerdeAPI):
         db_path_or_url: str | None = None,
         schema: int = 1,
         **kwargs: Any,
-    ) -> Vehicle: ...
+    ) -> Vehicle:
+        """
+        Load a vehicle from a schema-versioned FASTSim vehicle database.
+
+        Parameters
+        ----------
+        db_path_or_url : str | None, default None
+            Database source selector.
+
+            - ``None``: load vehicle from https://github.com/NatLabRockies/fastsim-vehicles.
+            - ``"http://..."`` or ``"https://..."``: use remote database loading,
+              e.g. "https://raw.githubusercontent.com/...".
+            - any other string: treat as a local filesystem database path.
+
+        schema : int, default 1
+            Database schema version. Currently only ``schema=1`` is supported.
+
+        **kwargs
+            Valid kwargs for ``schema=1``:
+            - ``make`` (str): vehicle make, e.g. ``"Ford"``
+            - ``model`` (str): vehicle model, e.g. ``"F-150"``
+            - ``year`` (str): vehicle model year, e.g. ``"2022"``
+            - ``variant`` (str, optional): vehicle variant, e.g. ``"base"``. Defaults to ``"base"``.
+            - ``revision`` (int): model revision, e.g. ``1``
+            - ``fastsim_version`` (int, optional): FASTSim version namespace.
+                Defaults to the installed FASTSim major version (e.g. ``3``).
+            - ``skip_init`` (bool, optional): forwarded to Rust loader, defaults to
+              ``False``.
+
+        Returns
+        -------
+        Vehicle
+            Loaded vehicle instance.
+        """
+        ...
     def clear(self) -> None: ...
     def reset(self) -> None: ...
     def reset_cumulative(self) -> None: ...

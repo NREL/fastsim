@@ -138,7 +138,8 @@ impl Vehicle {
         make,
         model,
         year,
-        model_version,
+        variant,
+        revision,
         skip_init=false,
     ))]
     fn from_db_local_v1_py(
@@ -147,7 +148,8 @@ impl Vehicle {
         make: &str,
         model: &str,
         year: &str,
-        model_version: u32,
+        variant: &str,
+        revision: u32,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
         Self::from_db_local_v1(
@@ -156,7 +158,8 @@ impl Vehicle {
             make,
             model,
             year,
-            model_version,
+            variant,
+            revision,
             skip_init,
         )
     }
@@ -170,7 +173,8 @@ impl Vehicle {
         make,
         model,
         year,
-        model_version,
+        variant,
+        revision,
         skip_init=false,
     ))]
     fn from_db_remote_v1_py(
@@ -179,7 +183,8 @@ impl Vehicle {
         make: &str,
         model: &str,
         year: &str,
-        model_version: u32,
+        variant: &str,
+        revision: u32,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
         Self::from_db_remote_v1(
@@ -188,7 +193,8 @@ impl Vehicle {
             make,
             model,
             year,
-            model_version,
+            variant,
+            revision,
             skip_init,
         )
     }
