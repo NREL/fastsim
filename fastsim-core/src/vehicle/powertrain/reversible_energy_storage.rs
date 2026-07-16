@@ -40,7 +40,10 @@ pub struct ReversibleEnergyStorage {
     #[serde(default)]
     pub state: ReversibleEnergyStorageState,
     /// Custom vector of [Self::state]
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "ReversibleEnergyStorageStateHistoryVec::is_empty"
+    )]
     pub history: ReversibleEnergyStorageStateHistoryVec,
     /// Time step interval at which history is saved
     pub save_interval: Option<usize>,
@@ -792,7 +795,7 @@ impl Mass for ReversibleEnergyStorage {
                     }
                 }
                 Some(new_mass)
-            },
+            }
             (Some(new_mass), None) => Some(new_mass),
             (None, Some(dm)) => Some(dm),
             (None, None) => bail!(
@@ -1146,7 +1149,10 @@ pub struct RESLumpedThermal {
     #[serde(default)]
     pub state: RESLumpedThermalState,
     /// history of state
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "RESLumpedThermalStateHistoryVec::is_empty"
+    )]
     pub history: RESLumpedThermalStateHistoryVec,
     pub save_interval: Option<usize>,
 }

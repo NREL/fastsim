@@ -63,7 +63,7 @@ pub struct Vehicle {
     #[serde(default)]
     pub state: VehicleState,
     /// Vector-like history of [Self::state]
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
     pub history: VehicleStateHistoryVec,
 }
 
@@ -626,17 +626,15 @@ impl Vehicle {
         //   AWD/4WD: both axles drive, weight transfer doesn't reduce total drive grip
         let cg_height_abs = self.chassis.cg_height.abs();
         let weight_transfer_sign: f64 = match self.chassis.drive_type {
-            chassis::DriveTypes::FWD => 1.0,    // weight shifts away from front drive axle → reduces traction
-            chassis::DriveTypes::RWD => -1.0,   // weight shifts toward rear drive axle → increases traction
-            chassis::DriveTypes::AWD
-            | chassis::DriveTypes::FourWD => 0.0, // net zero effect on total drive traction
+            chassis::DriveTypes::FWD => 1.0, // weight shifts away from front drive axle → reduces traction
+            chassis::DriveTypes::RWD => -1.0, // weight shifts toward rear drive axle → increases traction
+            chassis::DriveTypes::AWD | chassis::DriveTypes::FourWD => 0.0, // net zero effect on total drive traction
         };
-        let max_trac_accel = self.chassis.wheel_fric_coef
-            * self.chassis.drive_axle_weight_frac
-            * uc::ACC_GRAV
-            / (1.0 * uc::R
-                + weight_transfer_sign * cg_height_abs * self.chassis.wheel_fric_coef
-                    / self.chassis.wheel_base);
+        let max_trac_accel =
+            self.chassis.wheel_fric_coef * self.chassis.drive_axle_weight_frac * uc::ACC_GRAV
+                / (1.0 * uc::R
+                    + weight_transfer_sign * cg_height_abs * self.chassis.wheel_fric_coef
+                        / self.chassis.wheel_base);
         let prev_speed = *self.state.speed_ach.get_stale(|| format_dbg!())?;
         let max_trac_speed = prev_speed + (max_trac_accel * dt);
         self.state

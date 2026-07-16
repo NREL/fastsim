@@ -39,7 +39,10 @@ pub struct ElectricMachine {
     #[serde(default)]
     pub state: ElectricMachineState,
     /// Custom vector of [Self::state]
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty"
+    )]
     pub history: ElectricMachineStateHistoryVec,
 }
 
@@ -562,7 +565,11 @@ impl Mass for ElectricMachine {
                 )
             }
         };
-        ensure!(self.mass > Some(0.0 * uc::KG), "{} mass must be positive", stringify!(ElectricMachine));
+        ensure!(
+            self.mass > Some(0.0 * uc::KG),
+            "{} mass must be positive",
+            stringify!(ElectricMachine)
+        );
         Ok(())
     }
 

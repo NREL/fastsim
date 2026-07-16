@@ -16,7 +16,7 @@ pub struct Transmission {
     #[serde(default)]
     pub state: TransmissionState,
     /// Custom vector of [Self::state]
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "TransmissionStateHistoryVec::is_empty")]
     pub history: TransmissionStateHistoryVec,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
@@ -176,7 +176,11 @@ impl Mass for Transmission {
     ) -> anyhow::Result<()> {
         match new_mass {
             Some(_) => {
-                ensure!(new_mass > Some(0.0 * uc::KG), "{} mass must be positive", stringify!(Transmission));
+                ensure!(
+                    new_mass > Some(0.0 * uc::KG),
+                    "{} mass must be positive",
+                    stringify!(Transmission)
+                );
                 self.mass = new_mass;
             }
             None => {
