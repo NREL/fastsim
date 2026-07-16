@@ -272,7 +272,7 @@ def to_dataframe(
     return df
 
 
-def plot(self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True) -> go._figure.Figure:
+def _plot_cycle(self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True) -> go._figure.Figure:
     """
     Plot a drive cycle (default: speed vs. time) with Plotly.
 
@@ -312,6 +312,101 @@ def plot(self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True) 
     return fig
 
 
+@classmethod
+def _vehicle_from_db(
+    cls,
+    db_path_or_url: str | None = None,
+    schema: int = 1,
+    **kwargs: Any,
+) -> Self:
+    """Load a vehicle from a schema-versioned FASTSim vehicle database.
+
+    Parameters
+    ----------
+    db_path_or_url : str | None, default None
+        Database source selector.
+
+        - ``None``: use the schema-specific default remote database URL.
+        - ``"http://..."`` or ``"https://..."``: use remote database loading.
+        - any other string: treat as a local filesystem database path.
+
+    schema : int, default 1
+        Database schema version used for dispatch. Currently only ``schema=1``
+        is supported.
+
+    **kwargs
+        Arguments forwarded to the schema-specific loader.
+
+        Valid kwargs for ``schema=1``:
+        - ``make`` (str): vehicle make, e.g. ``"Ford"``
+        - ``model`` (str): vehicle model, e.g. ``"F-150"``
+        - ``year`` (str): vehicle model year, e.g. ``"2022"``
+                - ``model_version`` (int): model revision, e.g. ``1``
+                - ``fastsim_version`` (int, optional): FASTSim version namespace.
+                    Defaults to the installed FASTSim major version (e.g. ``3``).
+        - ``skip_init`` (bool, optional): forwarded to Rust loader, defaults to
+          ``False``.
+
+    Returns
+    -------
+    Vehicle
+        Loaded vehicle instance.
+    """
+    if schema != 1:
+        raise ValueError(f"Unsupported schema: {schema}. Only schema=1 is currently supported.")
+
+    if schema == 1:
+        required = ("make", "model", "year", "model_version")
+        missing = [key for key in required if key not in kwargs]
+        if missing:
+            raise TypeError(f"Missing required kwargs: {', '.join(missing)}")
+
+        skip_init = bool(kwargs.get("skip_init", False))
+        fastsim_version = int(kwargs.get("fastsim_version", __version__.split(".", 1)[0].strip()))
+        make = kwargs["make"]
+        model = kwargs["model"]
+        year = kwargs["year"]
+        model_version = int(str(kwargs["model_version"]).strip().removeprefix("v").removeprefix("V"))
+
+        if not hasattr(cls, "from_db_remote_v1") and (
+            db_path_or_url is None
+            or str(db_path_or_url).startswith("http://")
+            or str(db_path_or_url).startswith("https://")
+        ):
+            raise RuntimeError("Remote DB loading requires FASTSim built with the `web` feature.")
+
+        if db_path_or_url is None:
+            return cls.from_db_remote_v1(
+                None,
+                fastsim_version,
+                make,
+                model,
+                year,
+                model_version,
+                skip_init,
+            )
+        elif db_path_or_url.startswith("http://") or db_path_or_url.startswith("https://"):
+            return cls.from_db_remote_v1(
+                db_path_or_url,
+                fastsim_version,
+                make,
+                model,
+                year,
+                model_version,
+                skip_init,
+            )
+        else:
+            local_db_path = Path(db_path_or_url).expanduser()
+            return cls.from_db_local_v1(
+                local_db_path,
+                fastsim_version,
+                make,
+                model,
+                year,
+                model_version,
+                skip_init,
+            )
+
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
 for item in ACCEPTED_RUST_STRUCTS:
@@ -319,4 +414,5 @@ for item in ACCEPTED_RUST_STRUCTS:
     setattr(getattr(fastsim, item), "from_pydict", from_pydict)
     setattr(getattr(fastsim, item), "to_dataframe", to_dataframe)
 
-setattr(Cycle, "plot", plot)
+setattr(Cycle, "plot", _plot_cycle)
+setattr(Vehicle, "from_db", _vehicle_from_db)

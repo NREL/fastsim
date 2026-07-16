@@ -135,6 +135,35 @@ class Vehicle(SerdeAPI):
     def list_resources(cls) -> list[str]: ...
     @classmethod
     def from_f2_file(cls, file_path: str | Path) -> Vehicle: ...
+    @classmethod
+    def from_db_local_v1(
+        cls,
+        db_path: str | Path,
+        fastsim_version: int,
+        make: str,
+        model: str,
+        year: str,
+        model_version: int,
+        skip_init: bool = False,
+    ) -> Vehicle: ...
+    @classmethod
+    def from_db_remote_v1(
+        cls,
+        db_url: str | None,
+        fastsim_version: int,
+        make: str,
+        model: str,
+        year: str,
+        model_version: int,
+        skip_init: bool = False,
+    ) -> Vehicle: ...
+    @classmethod
+    def from_db(
+        cls,
+        db_path_or_url: str | None = None,
+        schema: int = 1,
+        **kwargs: Any,
+    ) -> Vehicle: ...
     def clear(self) -> None: ...
     def reset(self) -> None: ...
     def reset_cumulative(self) -> None: ...

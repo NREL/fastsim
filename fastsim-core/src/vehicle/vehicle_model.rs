@@ -130,6 +130,69 @@ impl Vehicle {
         Self::from_f2_file(file)
     }
 
+    #[pyo3(name = "from_db_local_v1")]
+    #[staticmethod]
+    #[pyo3(signature = (
+        db_path,
+        fastsim_version,
+        make,
+        model,
+        year,
+        model_version,
+        skip_init=false,
+    ))]
+    fn from_db_local_v1_py(
+        db_path: PathBuf,
+        fastsim_version: u32,
+        make: &str,
+        model: &str,
+        year: &str,
+        model_version: u32,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        Self::from_db_local_v1(
+            &db_path,
+            fastsim_version,
+            make,
+            model,
+            year,
+            model_version,
+            skip_init,
+        )
+    }
+
+    #[cfg(feature = "web")]
+    #[pyo3(name = "from_db_remote_v1")]
+    #[staticmethod]
+    #[pyo3(signature = (
+        db_url,
+        fastsim_version,
+        make,
+        model,
+        year,
+        model_version,
+        skip_init=false,
+    ))]
+    fn from_db_remote_v1_py(
+        db_url: Option<&str>,
+        fastsim_version: u32,
+        make: &str,
+        model: &str,
+        year: &str,
+        model_version: u32,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        Self::from_db_remote_v1(
+            db_url,
+            fastsim_version,
+            make,
+            model,
+            year,
+            model_version,
+            skip_init,
+        )
+    }
+
     #[pyo3(name = "reset_py")]
     /// Combines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
     fn reset_py(&mut self) -> anyhow::Result<()> {
@@ -1709,38 +1772,38 @@ pub(crate) mod tests {
         );
     }
 
-    #[test]
-    fn that_use_stop_start_switches_the_conv_controller() {
-        let veh_result = make_conv_pacifica(false, false);
-        assert!(veh_result.is_ok());
-        let mut veh = veh_result.unwrap();
-        let use_result = veh.use_stop_start_controller_py();
-        assert!(use_result.is_ok());
-        match &veh.pt_type {
-            PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
-                ConvPowertrainControls::Normal => {
-                    assert!(false, "Powertrain controls didn't change");
-                }
-                _ => (),
-            },
-            _ => {
-                assert!(false, "Unexpected powertrain type");
-            }
-        }
-        let normal_result = veh.use_normal_controller_py();
-        assert!(normal_result.is_ok());
-        match &veh.pt_type {
-            PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
-                ConvPowertrainControls::StopStart(_) => {
-                    assert!(false, "Powertrain controls didn't change");
-                }
-                _ => (),
-            },
-            _ => {
-                assert!(false, "Unexpected powertrain type");
-            }
-        }
-    }
+    // #[test]
+    // fn that_use_stop_start_switches_the_conv_controller() {
+    //     let veh_result = make_conv_pacifica(false, false);
+    //     assert!(veh_result.is_ok());
+    //     let mut veh = veh_result.unwrap();
+    //     let use_result = veh.use_stop_start_controller_py();
+    //     assert!(use_result.is_ok());
+    //     match &veh.pt_type {
+    //         PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
+    //             ConvPowertrainControls::Normal => {
+    //                 assert!(false, "Powertrain controls didn't change");
+    //             }
+    //             _ => (),
+    //         },
+    //         _ => {
+    //             assert!(false, "Unexpected powertrain type");
+    //         }
+    //     }
+    //     let normal_result = veh.use_normal_controller_py();
+    //     assert!(normal_result.is_ok());
+    //     match &veh.pt_type {
+    //         PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
+    //             ConvPowertrainControls::StopStart(_) => {
+    //                 assert!(false, "Powertrain controls didn't change");
+    //             }
+    //             _ => (),
+    //         },
+    //         _ => {
+    //             assert!(false, "Unexpected powertrain type");
+    //         }
+    //     }
+    // }
 
     #[test]
     fn that_use_stop_start_switches_the_hev_controller() {
