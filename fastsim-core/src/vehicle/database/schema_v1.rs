@@ -142,6 +142,7 @@ mod tests {
             .join("Ford")
             .join("F-150")
             .join("2022")
+            .join("base")
             .join("v1.yaml");
 
         eprintln!("build_filepath output: {}", actual.display());
