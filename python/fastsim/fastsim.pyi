@@ -176,33 +176,49 @@ class Vehicle(SerdeAPI):
         Parameters
         ----------
         db_path_or_url : str | None, default None
-            Database source selector.
+            Database source selector (auto-detects local vs. remote):
 
-            - ``None``: load vehicle from https://github.com/NatLabRockies/fastsim-vehicles.
-            - ``"http://..."`` or ``"https://..."``: use remote database loading,
-              e.g. "https://raw.githubusercontent.com/...".
-            - any other string: treat as a local filesystem database path.
+            - ``None``: load from default remote database 
+              (https://github.com/NatLabRockies/fastsim-vehicles)
+            - ``"http://..."`` or ``"https://..."``: load from remote database base URL
+            - any other string: treat as local filesystem database path
 
         schema : int, default 1
             Database schema version. Currently only ``schema=1`` is supported.
 
         **kwargs
             Valid kwargs for ``schema=1``:
-            - ``make`` (str): vehicle make, e.g. ``"Ford"``
-            - ``model`` (str): vehicle model, e.g. ``"F-150"``
-            - ``year`` (str): vehicle model year, e.g. ``"2022"``
-            - ``variant`` (str, optional): vehicle variant, e.g. ``"base"``. Defaults to ``"base"``.
-            - ``revision`` (int): model revision, e.g. ``1``
-            - ``extension`` (str, optional): file extension, e.g. ``"yaml"``. Defaults to ``"yaml"``.
-            - ``fastsim_version`` (int, optional): FASTSim version namespace.
-                Defaults to the installed FASTSim major version (e.g. ``3``).
-            - ``skip_init`` (bool, optional): forwarded to Rust loader, defaults to
-              ``False``.
+
+            **Path-string mode** (alternative to individual fields):
+            - ``path`` (str): full schema path string, e.g. 
+              ``"v1/fastsim-3/conv/ford/fusion/2012/base/v1"``
+
+            **Individual fields mode** (required if ``path`` not provided):
+            - ``powertrain`` (str): powertrain type, e.g. ``"conv"``, ``"hev"``, ``"phev"``, ``"bev"``
+            - ``make`` (str): vehicle make, e.g. ``"Ford"``, ``"Tesla"``
+            - ``model`` (str): vehicle model, e.g. ``"F-150"``, ``"Model-3"``
+            - ``year`` (str): vehicle model year or range, e.g. ``"2022"``, ``"2020-2023"``
+            - ``revision`` (str): model revision number, e.g. ``v1``.
+            - ``variant`` (str, optional): variant descriptor, e.g. ``"base"``. 
+              Defaults to ``"base"``.
+            - ``extension`` (str, optional): file extension, e.g. ``"yaml"``, ``"json"``. 
+              Defaults to ``"yaml"``.
+            - ``fastsim_version`` (int, optional): Major FASTSim version. 
+              Defaults to the installed FASTSim major version (e.g. ``3``).
+            - ``skip_init`` (bool, optional): if False, runs vehicle initialization after loading. 
+              Defaults to ``False``.
 
         Returns
         -------
         Vehicle
             Loaded vehicle instance.
+
+        Raises
+        ------
+        ValueError
+            If ``schema`` is not 1 or if required fields are missing.
+        RuntimeError
+            If remote loading is requested but web feature is not enabled.
         """
         ...
     def clear(self) -> None: ...
