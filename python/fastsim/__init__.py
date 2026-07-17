@@ -124,7 +124,6 @@ def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict:
         return cast(dict[Any, Any], pydict)
     else:
         hist_len = get_hist_len(pydict)
-        assert hist_len is not None, "Cannot be flattened"
         flat_dict = get_flattened(pydict, hist_len)
         return flat_dict
 
@@ -153,7 +152,7 @@ def get_hist_len(obj: dict) -> int | None:
     return None
 
 
-def get_flattened(obj: dict | list, hist_len: int, prepend_str: str = "") -> dict:
+def get_flattened(obj: dict | list, hist_len: int | None, prepend_str: str = "") -> dict:
     """
     Flatten and return dictionary, separating keys and indices with a `"."`
 
@@ -166,14 +165,14 @@ def get_flattened(obj: dict | list, hist_len: int, prepend_str: str = "") -> dic
     if isinstance(obj, dict):
         for k, v in obj.items():
             new_key = k if (prepend_str == "") else prepend_str + "." + k
-            if isinstance(v, dict) or (isinstance(v, list) and len(v) != hist_len):
+            if isinstance(v, dict) or (isinstance(v, list) and hist_len is not None and len(v) != hist_len):
                 flat.update(get_flattened(v, hist_len, prepend_str=new_key))
             else:
                 flat[new_key] = v
     elif isinstance(obj, list):
         for i, v in enumerate(obj):
             new_key = i if (prepend_str == "") else prepend_str + "." + f"[{i}]"
-            if isinstance(v, dict) or (isinstance(v, list) and len(v) != hist_len):
+            if isinstance(v, dict) or (isinstance(v, list) and hist_len is not None and len(v) != hist_len):
                 flat.update(get_flattened(v, hist_len, prepend_str=new_key))
             else:
                 flat[new_key] = v

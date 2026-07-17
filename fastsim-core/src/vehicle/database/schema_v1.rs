@@ -256,7 +256,8 @@ mod tests {
             "2012".to_string(),
             "base".to_string(),
             1,
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     #[test]
