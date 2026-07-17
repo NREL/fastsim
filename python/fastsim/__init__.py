@@ -345,12 +345,34 @@ def _vehicle_from_db(
         # Path-string mode: caller passes a pre-serialized schema path string
         if "path" in kwargs:
             path = str(kwargs["path"])
-            return cls.from_db_path_v1(
-                db_path_or_url,
-                path,
-                extension,
-                skip_init,
-            )
+            
+            # Check if path has a file extension (e.g., "v1/fastsim-3/.../v1.yaml")
+            last_segment = path.split("/")[-1]
+            has_extension = "." in last_segment
+            
+            if has_extension:
+                # User provided extension in the path
+                if "extension" in kwargs:
+                    raise ValueError(
+                        "Cannot specify extension both in path "
+                        "and as a separate parameter. Use one or the other."
+                    )
+                # Extract extension and path
+                path, extension = path.rsplit(".", 1)
+                return cls.from_db_path_v1(
+                    db_path_or_url,
+                    path,
+                    extension,
+                    skip_init,
+                )
+            else:
+                # Extension is passed separately (or defaults to "yaml")
+                return cls.from_db_path_v1(
+                    db_path_or_url,
+                    path,
+                    extension,
+                    skip_init,
+                )
 
         # Fields mode: caller passes individual schema fields
         required = ("powertrain", "make", "model", "year", "revision")
