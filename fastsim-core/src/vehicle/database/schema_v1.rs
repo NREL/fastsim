@@ -158,10 +158,10 @@ impl DatabaseSchemaV1 {
     }
 
     /// Build a remote URL with the given extension.
-    pub fn build_url(&self, base_url: &str, extension: &str) -> anyhow::Result<String> {
+    pub fn build_url(&self, base_url: Option<&str>, extension: &str) -> anyhow::Result<String> {
         Ok(format!(
             "{}/{}.{}",
-            base_url.trim_end_matches('/'),
+            base_url.map(|s| s.trim_end_matches('/')).unwrap_or(DEFAULT_DB_URL),
             self,
             extension
         ))
@@ -169,8 +169,38 @@ impl DatabaseSchemaV1 {
 }
 
 impl Vehicle {
+    pub fn from_schema_local_v1(
+        base_dir: &std::path::Path,
+        schema: DatabaseSchemaV1,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        let path = schema.build_filepath(base_dir, extension)?;
+        let mut veh = Self::from_file(path.clone(), skip_init).map_err(|err| {
+            anyhow!(
+                "{}: from_schema_local_v1 failed for path '{}': {err}",
+                format_dbg!(),
+                path.display()
+            )
+        })?;
+        if !skip_init {
+            veh.init()?;
+        }
+        Ok(veh)
+    }
+
+    pub fn from_db_local_path_str_v1(
+        base_dir: &std::path::Path,
+        path: &str,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Vehicle> {
+        let schema = DatabaseSchemaV1::from_str(path)?;
+        Self::from_schema_local_v1(base_dir, schema, extension, skip_init)
+    }
+
     /// Load a vehicle from a local database directory.
-    pub fn from_db_local_v1(
+    pub fn from_db_local_fields_v1(
         base_dir: &std::path::Path,
         fastsim_version: u32,
         powertrain: &str,
@@ -191,12 +221,22 @@ impl Vehicle {
             variant.to_string(),
             revision,
         )?;
-        let path = schema.build_filepath(base_dir, extension)?;
-        let mut veh = Self::from_file(path.clone(), skip_init).map_err(|err| {
+        Self::from_schema_local_v1(base_dir, schema, extension, skip_init)
+    }
+
+    #[cfg(feature = "web")]
+    pub fn from_schema_remote_v1(
+        url: Option<&str>,
+        schema: DatabaseSchemaV1,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        let resolved_url = schema.build_url(url, extension)?;
+        let mut veh = Self::from_url(resolved_url.clone(), skip_init).map_err(|err| {
             anyhow!(
-                "{}: from_db_local_v1 failed for path '{}': {err}",
+                "{}: from_schema_remote_v1 failed for URL '{}': {err}",
                 format_dbg!(),
-                path.display()
+                resolved_url
             )
         })?;
         if !skip_init {
@@ -205,9 +245,19 @@ impl Vehicle {
         Ok(veh)
     }
 
+    pub fn from_db_remote_path_str_v1(
+        url: Option<&str>,
+        path: &str,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Vehicle> {
+        let schema = DatabaseSchemaV1::from_str(path)?;
+        Self::from_schema_remote_v1(url, schema, extension, skip_init)
+    }
+
     /// Load a vehicle from a remote database URL (requires `web` feature).
     #[cfg(feature = "web")]
-    pub fn from_db_remote_v1(
+    pub fn from_db_remote_fields_v1(
         url: Option<&str>,
         fastsim_version: u32,
         powertrain: &str,
@@ -228,18 +278,7 @@ impl Vehicle {
             variant.to_string(),
             revision,
         )?;
-        let resolved_url = schema.build_url(url.unwrap_or(DEFAULT_DB_URL), extension)?;
-        let mut veh = Self::from_url(resolved_url.clone(), skip_init).map_err(|err| {
-            anyhow!(
-                "{}: from_db_remote_v1 failed for URL '{}': {err}",
-                format_dbg!(),
-                resolved_url
-            )
-        })?;
-        if !skip_init {
-            veh.init()?;
-        }
-        Ok(veh)
+        Self::from_schema_remote_v1(url, schema, extension, skip_init)
     }
 }
 
@@ -305,7 +344,7 @@ mod tests {
     #[test]
     fn test_build_url_output() {
         let schema = sample_schema();
-        let actual = schema.build_url(DEFAULT_DB_URL, "yaml").unwrap();
+        let actual = schema.build_url(None, "yaml").unwrap();
         let expected =
             "https://raw.githubusercontent.com/NatLabRockies/fastsim-vehicles/main/v1/fastsim-3/conv/ford/fusion/2012/base/v1.yaml"
                 .to_string();

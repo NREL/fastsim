@@ -133,7 +133,29 @@ impl Vehicle {
         Self::from_f2_file(file)
     }
 
-    #[pyo3(name = "from_db_local_v1")]
+    #[pyo3(name = "from_db_local_path_str_v1")]
+    #[staticmethod]
+    #[pyo3(signature = (
+        db_path,
+        path,
+        extension,
+        skip_init=false,
+    ))]
+    fn from_db_local_path_str_v1_py(
+        db_path: PathBuf,
+        path: &str,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        Self::from_db_local_path_str_v1(
+            &db_path,
+            path,
+            extension,
+            skip_init,
+        )
+    }
+
+    #[pyo3(name = "from_db_local_fields_v1")]
     #[staticmethod]
     #[pyo3(signature = (
         db_path,
@@ -147,7 +169,7 @@ impl Vehicle {
         extension,
         skip_init=false,
     ))]
-    fn from_db_local_v1_py(
+    fn from_db_local_fields_v1_py(
         db_path: PathBuf,
         fastsim_version: u32,
         powertrain: &str,
@@ -159,7 +181,7 @@ impl Vehicle {
         extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
-        Self::from_db_local_v1(
+        Self::from_db_local_fields_v1(
             &db_path,
             fastsim_version,
             powertrain,
@@ -173,8 +195,32 @@ impl Vehicle {
         )
     }
 
+
+
+    #[pyo3(name = "from_db_remote_path_str_v1")]
+    #[staticmethod]
+    #[pyo3(signature = (
+        url,
+        path,
+        extension,
+        skip_init=false,
+    ))]
+    fn from_db_remote_path_str_v1_py(
+        url: Option<&str>,
+        path: &str,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        Self::from_db_remote_path_str_v1(
+            url,
+            path,
+            extension,
+            skip_init,
+        )
+    }
+
     #[cfg(feature = "web")]
-    #[pyo3(name = "from_db_remote_v1")]
+    #[pyo3(name = "from_db_remote_fields_v1")]
     #[staticmethod]
     #[pyo3(signature = (
         db_url,
@@ -188,7 +234,7 @@ impl Vehicle {
         extension,
         skip_init=false,
     ))]
-    fn from_db_remote_v1_py(
+    fn from_db_remote_fields_v1_py(
         db_url: Option<&str>,
         fastsim_version: u32,
         powertrain: &str,
@@ -200,7 +246,7 @@ impl Vehicle {
         extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
-        Self::from_db_remote_v1(
+        Self::from_db_remote_fields_v1(
             db_url,
             fastsim_version,
             powertrain,

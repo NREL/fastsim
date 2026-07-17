@@ -142,7 +142,15 @@ class Vehicle(SerdeAPI):
     @classmethod
     def from_f2_file(cls, file_path: str | Path) -> Vehicle: ...
     @classmethod
-    def from_db_local_v1(
+    def from_db_local_path_str_v1(
+        cls,
+        db_path: str | Path,
+        path: str,
+        extension: str,
+        skip_init: bool = False,
+    ) -> Vehicle: ...
+    @classmethod
+    def from_db_local_fields_v1(
         cls,
         db_path: str | Path,
         fastsim_version: int,
@@ -152,11 +160,19 @@ class Vehicle(SerdeAPI):
         year: str,
         variant: str,
         revision: int,
-        extension: str | None,
-        skip_init: bool,
+        extension: str,
+        skip_init: bool = False,
     ) -> Vehicle: ...
     @classmethod
-    def from_db_remote_v1(
+    def from_db_remote_path_str_v1(
+        cls,
+        url: str | None,
+        path: str,
+        extension: str,
+        skip_init: bool = False,
+    ) -> Vehicle: ...
+    @classmethod
+    def from_db_remote_fields_v1(
         cls,
         db_url: str | None,
         fastsim_version: int,
@@ -166,8 +182,8 @@ class Vehicle(SerdeAPI):
         year: str,
         variant: str,
         revision: int,
-        extension: str | None,
-        skip_init: bool,
+        extension: str,
+        skip_init: bool = False,
     ) -> Vehicle: ...
     @classmethod
     def from_db(

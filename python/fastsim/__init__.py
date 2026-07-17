@@ -316,12 +316,37 @@ def _vehicle_from_db(
         raise ValueError(f"Unsupported schema: {schema}. Only schema=1 is currently supported.")
 
     if schema == 1:
+        skip_init = bool(kwargs.get("skip_init", False))
+        extension = str(kwargs.get("extension", "yaml"))
+        is_remote = db_path_or_url is None or str(db_path_or_url).startswith(("http://", "https://"))
+
+        # Path-string mode: caller passes a pre-serialized schema path string
+        if "path" in kwargs:
+            path = str(kwargs["path"])
+            if is_remote:
+                if not hasattr(cls, "from_db_remote_path_str_v1"):
+                    raise RuntimeError("Remote DB loading requires FASTSim built with the `web` feature.")
+                return cls.from_db_remote_path_str_v1(
+                    db_path_or_url,
+                    path,
+                    extension,
+                    skip_init,
+                )
+            else:
+                local_db_path = Path(db_path_or_url).expanduser()
+                return cls.from_db_local_path_str_v1(
+                    local_db_path,
+                    path,
+                    extension,
+                    skip_init,
+                )
+
+        # Fields mode: caller passes individual schema fields
         required = ("powertrain", "make", "model", "year", "revision")
         missing = [key for key in required if key not in kwargs]
         if missing:
             raise TypeError(f"Missing required kwargs: {', '.join(missing)}")
 
-        skip_init = bool(kwargs.get("skip_init", False))
         fastsim_version = int(kwargs.get("fastsim_version", __version__.split(".", 1)[0].strip()))
         powertrain = str(kwargs["powertrain"])
         make = kwargs["make"]
@@ -329,30 +354,11 @@ def _vehicle_from_db(
         year = kwargs["year"]
         variant = str(kwargs.get("variant", "base"))
         revision = int(str(kwargs["revision"]).strip().removeprefix("v").removeprefix("V"))
-        extension = kwargs.get("extension", "yaml")
 
-        if not hasattr(cls, "from_db_remote_v1") and (
-            db_path_or_url is None
-            or str(db_path_or_url).startswith("http://")
-            or str(db_path_or_url).startswith("https://")
-        ):
-            raise RuntimeError("Remote DB loading requires FASTSim built with the `web` feature.")
-
-        if db_path_or_url is None:
-            return cls.from_db_remote_v1(
-                None,
-                fastsim_version,
-                powertrain,
-                make,
-                model,
-                year,
-                variant,
-                revision,
-                extension,
-                skip_init,
-            )
-        elif db_path_or_url.startswith("http://") or db_path_or_url.startswith("https://"):
-            return cls.from_db_remote_v1(
+        if is_remote:
+            if not hasattr(cls, "from_db_remote_fields_v1"):
+                raise RuntimeError("Remote DB loading requires FASTSim built with the `web` feature.")
+            return cls.from_db_remote_fields_v1(
                 db_path_or_url,
                 fastsim_version,
                 powertrain,
@@ -366,7 +372,7 @@ def _vehicle_from_db(
             )
         else:
             local_db_path = Path(db_path_or_url).expanduser()
-            return cls.from_db_local_v1(
+            return cls.from_db_local_fields_v1(
                 local_db_path,
                 fastsim_version,
                 powertrain,
