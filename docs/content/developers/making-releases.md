@@ -16,9 +16,8 @@
     - Breaking changes:
       - *Major* version increments (e.g. 3.x.y -> 4.0.0) may include breaking changes to the Python API
         - Removal of functions, function naming, Python-exposed object naming/structure, etc.
-      - *Minor* version increments (e.g. 3.0.x -> 3.1.0) may include breaking changes to the Rust API,
-        such as new enum variants, altered function signatures, etc.
-        - Removal of functions, function naming, Rust-only object naming/structure, etc.
+      - *Minor* version increments (e.g. 3.0.x -> 3.1.0) may include breaking changes to the Rust API
+        - Alterations to Rust-only functions, function naming, structures, etc.
         - Downstream Rust projects should use [tilde requirements](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#tilde-requirements)
           - Example `Cargo.toml` dependency on FASTSim:
             ```toml
