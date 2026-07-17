@@ -27,3 +27,5 @@ activate.sh
 *.code-workspace
 *.png
 .github/copilot-instructions.md
+
+_build

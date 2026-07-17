@@ -46,11 +46,6 @@ impl SimDrive {
         self.walk()
     }
 
-    #[pyo3(name = "to_fastsim2")]
-    fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
-        self.to_fastsim2()
-    }
-
     #[pyo3(name = "reset_py")]
     /// Combines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
     fn reset_py(&mut self) -> anyhow::Result<()> {

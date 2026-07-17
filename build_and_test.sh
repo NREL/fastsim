@@ -1,5 +1,7 @@
+python python/fastsim/check_versions.py && \
+cargo fmt --check && \
+# cargo clippy -- -D warnings && \
 cargo test && \
-pip install -e '.[dev]' && \
-# pytest -v python/fastsim/tests/ &&
-pytest -v  && \
-echo "Complete success!"
+pip install --group test -e . && \
+# ruff check . && \
+pytest -v

@@ -176,7 +176,11 @@ impl Mass for Transmission {
     ) -> anyhow::Result<()> {
         match new_mass {
             Some(_) => {
-                ensure!(new_mass > Some(0.0 * uc::KG), "{} mass must be positive", stringify!(Transmission));
+                ensure!(
+                    new_mass > Some(0.0 * uc::KG),
+                    "{} mass must be positive",
+                    stringify!(Transmission)
+                );
                 self.mass = new_mass;
             }
             None => {
