@@ -289,7 +289,8 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
             }
             HEVPowertrainControls::StartStop(cntrl) => {
-                cntrl.state
+                cntrl
+                    .state
                     .aux_power_demand
                     .update(pwr_aux_fc > si::Power::ZERO, || format_dbg!())?;
             }

@@ -1454,8 +1454,8 @@ pub(crate) mod tests {
             fc,           // fc
             em,           // em
             tx,           // transmission
-            pt_cntrl,      // pt_cntrl
-            aux_cntrl,     // aux_cntrl
+            pt_cntrl,     // pt_cntrl
+            aux_cntrl,    // aux_cntrl
             Option::None, // mass
             sim_params,   // sim_params
         )?;
