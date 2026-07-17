@@ -35,7 +35,7 @@ where
 }
 
 /// Enum for tracking mutation
-#[derive(Clone, Default, Debug, PartialEq, IsVariant, derive_more::From, TryInto)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, IsVariant, derive_more::From, TryInto)]
 pub enum StateStatus {
     /// Updated in this time step
     #[default]
@@ -44,7 +44,7 @@ pub enum StateStatus {
     Stale,
 }
 
-#[derive(Default, PartialEq, Clone, Debug)]
+#[derive(Default, PartialEq, Clone, Copy, Debug)]
 /// Struct for storing state variable and ensuring one mutation per
 /// initialization or reset -- i.e. one mutation per time step
 pub struct TrackedState<T>(

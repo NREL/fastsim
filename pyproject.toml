@@ -4,12 +4,12 @@ build-backend = "maturin"
 
 [project]
 name = "fastsim"
-version = "3.0.6"
-authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
+version = "3.1.0"
+authors = [{ name = "NLR/BEST/CIMS/TETA Group", email = "fastsim@nlr.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
 license = { file = "LICENSE.md" }
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.16"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: Other/Proprietary License",
@@ -25,7 +25,7 @@ dependencies = [
     "seaborn>=0.11.0,<13.2",
     "typing_extensions~=4.12",
     "PyYAML==6.0.2",
-    "msgpack==1.1.0",
+    "msgpack==1.2.1",
     "ipykernel~=6.29",
     "executing~=2.0",
     "pip",
@@ -33,24 +33,52 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://www.nrel.gov/transportation/fastsim.html"
+Homepage = "https://www.nlr.gov/transportation/fastsim"
 
 [project.optional-dependencies]
-dev = [
-    "pylsp-mypy>=0.7.0",
-    "pylsp-rope>=0.1.17",
+# User-facing feature extras only
+# NOTE: consider adding this as a user-facing optional feature
+# pymoo = [
+#     "pymoo~=0.6",
+# ]
+
+[dependency-groups]
+# Internal groups for development, CI/CD, testing, documentation purposes
+build = [
+    "maturin~=1.8",
+]
+release = [
+    {include-group = "build"},
+    "twine",
+]
+test = [
+    {include-group = "build"},
     "ruff>=0.11.9",
     "pytest~=8.3",
-    "maturin~=1.8",
-    "python-lsp-server~=1.10",
     "memory_profiler~=0.61.0",
-    "pymoo~=0.6",
+]
+wheels = [
+    {include-group = "build"},
+    {include-group = "test"},
+    "build",
+    "cibuildwheel",
+]
+docs = [
+    "jupyter-book>=2.0.0",
+    "nbformat",
+]
+dev = [
+    {include-group = "build"},
+    {include-group = "release"},
+    {include-group = "test"},
+    {include-group = "wheels"},
+    {include-group = "docs"},
+    "pylsp-mypy>=0.7.0",
+    "pylsp-rope>=0.1.17",
+    "python-lsp-server~=1.10",
     "plotly~=6.0",
     "deepdiff>=8.4.2",
 ]
-
-[dependency-groups]
-dev = ["fastsim[dev]"]
 
 [tool.setuptools]
 zip-safe = false
@@ -83,21 +111,33 @@ platforms = ["osx-64", "osx-arm64", "linux-64", "win-64"]
 [tool.pixi.pypi-dependencies]
 fastsim = { path = ".", editable = true }
 
-[tool.pixi.feature.dev.dependencies]
+[tool.pixi.feature.docs.dependencies]
+nodejs = "26.4.*"
+
+[tool.pixi.feature.build.dependencies]
 rust = ">=1.47.0"
+
+[tool.pixi.feature.wheels.dependencies]
+zlib = "*"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
-dev = { features = ["dev"], solve-group = "default" }
+build = { features = ["build"], solve-group = "default" }
+release = { features = ["release", "build"], solve-group = "default" }
+test = { features = ["test", "build"], solve-group = "default" }
+wheels = { features = ["wheels", "build", "test"], solve-group = "default" }
+docs = { features = ["docs", "build"], solve-group = "default" }
+dev = { features = ["dev", "build", "release", "test", "wheels", "docs"], solve-group = "default" }
 
 [tool.pixi.tasks]
 cargo_test = "cargo test --release"
 py_build = "maturin develop --release"
-py_test = { cmd = "pixi run -e dev pytest -v", depends-on = ["py_build"] }
+py_test = { cmd = "pixi run -e test pytest -v", depends-on = ["py_build"] }
 build_and_test = { depends-on = ["cargo_test", "py_test"] }
+docs = { cmd = "python demos_to_notebooks.py && jupyter book start --execute", cwd = "docs", default-environment = "docs" }
 fmt = "ruff format"
-lint = "pylint"
-style = { depends-on = ["fmt", "lint"] }
+# lint = "pylint"
+# style = { depends-on = ["fmt", "lint"] }
 
 [tool.ruff]
 # Specify Python version

@@ -45,11 +45,6 @@ impl SimDrive {
         self.walk()
     }
 
-    #[pyo3(name = "to_fastsim2")]
-    fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
-        self.to_fastsim2()
-    }
-
     #[pyo3(name = "reset_py")]
     /// Combines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
     fn reset_py(&mut self) -> anyhow::Result<()> {
@@ -153,13 +148,11 @@ impl SimDrive {
                             err
                         ))
                     })?;
-                    let soc_final = self
-                        .veh
-                        .res()
-                        .with_context(|| format_dbg!())?
-                        .state
-                        .soc
-                        .clone();
+                    // final SOC, to use as starting SOC for next iteration (if needed)
+                    let soc_final = self.veh.res().with_context(|| format_dbg!())?.state.soc;
+                    // current iteration number, to use as counter for next iteration (if needed)
+                    let soc_bal_iters =
+                        self.veh.hev().with_context(|| format_dbg!())?.soc_bal_iters;
                     let res_per_fuel = *self
                         .veh
                         .res()
@@ -188,19 +181,9 @@ impl SimDrive {
                             .soc_balance_iter_err
                     {
                         bail!(
-                            "{}",
-                            format_dbg!((
-                                self.veh
-                                    .hev()
-                                    .with_context(|| format_dbg!())?
-                                    .soc_bal_iters
-                                    .clone(),
-                                self.veh
-                                    .hev()
-                                    .with_context(|| format_dbg!())?
-                                    .sim_params
-                                    .soc_balance_iter_err
-                            ))
+                            "{}\nSOC balancing surpassed sim_params.soc_balance_iter_err = {} iterations",
+                            format_dbg!(),
+                            self.veh.hev().with_context(|| format_dbg!())?.sim_params.soc_balance_iter_err,
                         );
                     }
                     if res_per_fuel.abs()
@@ -231,6 +214,11 @@ impl SimDrive {
                         self.veh = veh_init.clone();
                         // start SOC at previous final value
                         self.veh.res_mut().with_context(|| format_dbg!())?.state.soc = soc_final;
+                        // keep soc_bal_iters value from previous iteration
+                        self.veh
+                            .hev_mut()
+                            .with_context(|| format_dbg!())?
+                            .soc_bal_iters = soc_bal_iters;
                     }
                 }
             }

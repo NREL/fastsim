@@ -1,17 +1,16 @@
-name: Build and Test
+name: Build wheels and run tests
 
-on: [push]
+on: [push, workflow_call]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
+  build-and-test-wheels:
+    name: Build and test wheels on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
     strategy:
       fail-fast: false
-      # NOTE: In the matrix below, we call out macos 15 and latest (> 15) explicitly. This is to enable running on both Intel and Apple Silicon for Mac.
       matrix:
         os:
           - base: ubuntu
@@ -25,10 +24,6 @@ jobs:
           - base: windows
             version: latest
             arch: "amd64"
-        python-version:
-          - "10"
-          - "11"
-          - "12"
         include:
           - os:
               base: ubuntu
@@ -39,80 +34,78 @@ jobs:
               version: latest
             ls: dir
     runs-on: ${{ format('{0}-{1}', matrix.os.base, matrix.os.version) }}
+    defaults:
+      run:
+        shell: pixi run -e wheels bash -e {0}
     env:
       CARGO_HTTP_MULTIPLEXING: "false"
     steps:
       - uses: actions/checkout@v4
 
-      - name: set up rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: install rust target for MacOS 14+ (Apple Silicon)
-        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
-        if: matrix.os.base == 'macos' && matrix.os.version == 'latest'
-
-      - name: install rust target for MacOS 15-intel (Intel Mac)
-        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
-        if: matrix.os.base == 'macos' && matrix.os.version == '15-intel'
-
-      - name: Update minimum supported MacOS for Wheels for MacOS 15-intel (Intel Mac)
-        run: echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
-        if: matrix.os.base == 'macos' && matrix.os.version == '15-intel'
-
-      - name: set up python
-        uses: actions/setup-python@v4
-        # uses: actions/setup-python@v5
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@v0.8.14
         with:
-          python-version: "3.${{ matrix.python-version }}"
+          environments: wheels
 
-      - name: run cargo tests
-        run: cargo test
+      - name: Check version consistency
+        if: matrix.os.base == 'ubuntu'
+        run: python python/fastsim/check_versions.py
 
-      - name: install python dependencies
-        run: python -m pip install --upgrade pip setuptools wheel twine cibuildwheel pytest
+      # - name: Check Python formatting & linting
+      #   if: matrix.os.base == 'ubuntu'
+      #   run: ruff check .
+      
+      - name: Check Rust formatting
+        if: matrix.os.base == 'ubuntu'
+        run: cargo fmt --check
 
-      - name: build source distribution
-        if: matrix.os.base == 'ubuntu' && matrix.python-version == '10'
+      # - name: Check Rust linting
+      #   if: matrix.os.base == 'ubuntu'
+      #   run: cargo clippy -- -D warnings
+
+      - name: Run Rust tests
+        if: matrix.os.base == 'ubuntu'
+        run: cargo test --release
+
+      - name: Build source distribution
+        if: matrix.os.base == 'ubuntu'
         run: |
-          python -m pip install -U setuptools-rust
-          python -c "import setuptools; setuptools.setup()" sdist
+          python -m build --sdist --outdir dist
 
-      - name: install FASTSim python
-        run: python -m pip install -e .[dev]
+      # Widens wheel compatibility on the Intel Mac runner, which otherwise
+      # defaults to a higher minimum macOS version than we want to require.
+      - name: Update minimum supported MacOS for Wheels for MacOS 15-intel (Intel Mac)
+        if: matrix.os.base == 'macos' && matrix.os.version == '15-intel'
+        run: echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
-      - name: run pytest
-        timeout-minutes: 20
-        run: pytest -v
-
-      - name: build ${{ matrix.platform || matrix.os.base }} binaries
+      # NOTE: parts inspired by https://cibuildwheel.pypa.io/en/stable/setup/
+      # One invocation per platform builds every target Python version --
+      # cibuildwheel manages fetching/using each target interpreter internally.
+      - name: Build ${{ matrix.platform || matrix.os.base }} binaries
         run: cibuildwheel --output-dir dist
         env:
-          CIBW_BUILD: "cp3${{ matrix.python-version }}-*"
+          # Python version targets
+          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
           CIBW_PLATFORM: ${{ matrix.platform || matrix.os.base }}
-          CIBW_TEST_REQUIRES: pytest
-          CIBW_TEST_COMMAND: "pytest {project}/python/fastsim/tests"
+          CIBW_BEFORE_TEST: python -m pip install --group test
+          CIBW_TEST_COMMAND: "pytest -v {project}"
           CIBW_ARCHS_MACOS: "${{ matrix.os.arch }}"
-          # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2
-          CIBW_TEST_SKIP: "*_universal2:arm64"
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
-          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux2014"
-          CIBW_MANYLINUX_I686_IMAGE: "manylinux2014"
-          CIBW_BEFORE_BUILD: >
-            pip install -U setuptools-rust &&
-            rustup default stable &&
-            rustup show
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
+          CIBW_BEFORE_BUILD: rustup show
+          # Linux builds run in an isolated container with no Rust preinstalled,
+          # so it needs its own toolchain install.
           CIBW_BEFORE_BUILD_LINUX: >
             yum -y install openssl openssl-devel &&
-            pip install -U setuptools-rust &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --profile=minimal -y &&
             rustup show
 
-      - name: list dist files
+      - name: List dist files
         run: ${{ matrix.ls || 'ls -lh' }} dist/
 
       - uses: actions/upload-artifact@v4
         with:
-          name: fastsim-${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}-py3.${{ matrix.python }}-${{ strategy.job-index }}
+          name: fastsim-${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}-${{ strategy.job-index }}
           path: ./dist/*
