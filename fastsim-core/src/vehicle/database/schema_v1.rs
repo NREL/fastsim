@@ -1,7 +1,11 @@
 use super::*;
 
-/// Database schema for vehicle files in the `fastsim-vehicles` repository.
-#[derive(Debug)]
+/// Database organizational schema version 1 for the `fastsim-vehicles` repository.
+///
+/// Serializes to/from the path-segment string:
+/// `v1/fastsim-{fastsim_version}/{make}/{model}/{year}/{variant}/v{revision}`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(into = "String", try_from = "String")]
 pub struct DatabaseSchemaV1 {
     /// FASTSim version namespace to prevent cross-major collisions.
     pub fastsim_version: u32,
@@ -17,39 +21,112 @@ pub struct DatabaseSchemaV1 {
     pub revision: u32,
 }
 
+impl std::fmt::Display for DatabaseSchemaV1 {
+    /// Display the schema as its path-segment string representation.
+    ///
+    /// Formats as: `v1/fastsim-{N}/make/model/year/variant/v{N}`
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.path_segments().join("/"))
+    }
+}
+
+impl From<DatabaseSchemaV1> for String {
+    fn from(s: DatabaseSchemaV1) -> Self {
+        s.to_string()
+    }
+}
+
+impl std::str::FromStr for DatabaseSchemaV1 {
+    type Err = anyhow::Error;
+    /// Parse a schema from its path-segment string representation.
+    ///
+    /// Expected format: `v1/fastsim-{N}/make/model/year/variant/v{N}`
+    ///
+    /// # Errors
+    /// Returns an error if the string doesn't have exactly 7 segments,
+    /// is missing required prefixes ("v1", "fastsim-", "v"), or has invalid numbers.
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        let parts: Vec<&str> = s.split('/').collect();
+        ensure!(
+            parts.len() == 7,
+            "expected 7 path segments, got {}: {s:?}",
+            parts.len()
+        );
+        ensure!(
+            parts[0] == "v1",
+            "expected schema prefix 'v1', got {:?}",
+            parts[0]
+        );
+        let fastsim_version = parts[1]
+            .strip_prefix("fastsim-")
+            .ok_or_else(|| anyhow!("expected 'fastsim-N' segment, got {:?}", parts[1]))?
+            .parse::<u32>()
+            .with_context(|| format!("invalid FASTSim version in {:?}", parts[1]))?;
+        let make = parts[2].to_string();
+        let model = parts[3].to_string();
+        let year = parts[4].to_string();
+        let variant = parts[5].to_string();
+        let revision = parts[6]
+            .strip_prefix('v')
+            .ok_or_else(|| anyhow!("expected 'vN' revision segment, got {:?}", parts[6]))?
+            .parse::<u32>()
+            .with_context(|| format!("invalid revision in {:?}", parts[6]))?;
+        Ok(Self {
+            fastsim_version,
+            make,
+            model,
+            year,
+            variant,
+            revision,
+        })
+    }
+}
+
+impl TryFrom<String> for DatabaseSchemaV1 {
+    type Error = anyhow::Error;
+    fn try_from(s: String) -> anyhow::Result<Self> {
+        s.parse()
+    }
+}
+
 impl DatabaseSchemaV1 {
-    fn relative_segments(&self, extension: &str) -> Vec<String> {
-        vec![
+    /// Build the ordered path segments as a 7-element array (without file extension).
+    ///
+    /// Returns: `["v1", "fastsim-{N}", make, model, year, variant, "v{N}"]`
+    fn path_segments(&self) -> [String; 7] {
+        [
             "v1".to_string(),
             format!("fastsim-{}", self.fastsim_version),
             self.make.clone(),
             self.model.clone(),
             self.year.clone(),
             self.variant.clone(),
-            format!("v{}.{}", self.revision, extension),
+            format!("v{}", self.revision),
         ]
     }
 
+    /// Build a local file path with the given extension.
     pub fn build_filepath(
         &self,
         base_dir: &std::path::Path,
         extension: &str,
     ) -> anyhow::Result<std::path::PathBuf> {
-        let path = self
-            .relative_segments(extension)
-            .into_iter()
-            .fold(base_dir.to_path_buf(), |acc, segment| acc.join(segment));
-        Ok(path)
+        Ok(base_dir.join(format!("{}.{}", self, extension)))
     }
 
+    /// Build a remote URL with the given extension.
     pub fn build_url(&self, base_url: &str, extension: &str) -> anyhow::Result<String> {
-        let base = base_url.trim_end_matches('/');
-        let rel = self.relative_segments(extension).join("/");
-        Ok(format!("{base}/{rel}"))
+        Ok(format!(
+            "{}/{}.{}",
+            base_url.trim_end_matches('/'),
+            self,
+            extension
+        ))
     }
 }
 
 impl Vehicle {
+    /// Load a vehicle from a local database directory.
     pub fn from_db_local_v1(
         base_dir: &std::path::Path,
         fastsim_version: u32,
@@ -57,7 +134,8 @@ impl Vehicle {
         model: &str,
         year: &str,
         variant: &str,
-        model_version: u32,
+        revision: u32,
+        extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Vehicle> {
         let schema = DatabaseSchemaV1 {
@@ -66,10 +144,10 @@ impl Vehicle {
             model: model.to_string(),
             year: year.to_string(),
             variant: variant.to_string(),
-            revision: model_version,
+            revision,
         };
-        let path = schema.build_filepath(base_dir, "yaml")?;
-        let mut veh = Self::from_file(path.clone(), false).map_err(|err| {
+        let path = schema.build_filepath(base_dir, extension)?;
+        let mut veh = Self::from_file(path.clone(), skip_init).map_err(|err| {
             anyhow!(
                 "{}: from_db_local_v1 failed for path '{}': {err}",
                 format_dbg!(),
@@ -82,6 +160,7 @@ impl Vehicle {
         Ok(veh)
     }
 
+    /// Load a vehicle from a remote database URL (requires `web` feature).
     #[cfg(feature = "web")]
     pub fn from_db_remote_v1(
         url: Option<&str>,
@@ -90,7 +169,8 @@ impl Vehicle {
         model: &str,
         year: &str,
         variant: &str,
-        model_version: u32,
+        revision: u32,
+        extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Vehicle> {
         let schema = DatabaseSchemaV1 {
@@ -99,10 +179,10 @@ impl Vehicle {
             model: model.to_string(),
             year: year.to_string(),
             variant: variant.to_string(),
-            revision: model_version,
+            revision,
         };
-        let resolved_url = schema.build_url(url.unwrap_or(DEFAULT_DB_URL), "yaml")?;
-        let mut veh = Self::from_url(resolved_url.clone(), false).map_err(|err| {
+        let resolved_url = schema.build_url(url.unwrap_or(DEFAULT_DB_URL), extension)?;
+        let mut veh = Self::from_url(resolved_url.clone(), skip_init).map_err(|err| {
             anyhow!(
                 "{}: from_db_remote_v1 failed for URL '{}': {err}",
                 format_dbg!(),
@@ -123,12 +203,45 @@ mod tests {
     fn sample_schema() -> DatabaseSchemaV1 {
         DatabaseSchemaV1 {
             fastsim_version: 3,
-            make: "Ford".to_string(),
-            model: "F-150".to_string(),
-            year: "2022".to_string(),
+            make: "ford".to_string(),
+            model: "fusion".to_string(),
+            year: "2012".to_string(),
             variant: "base".to_string(),
             revision: 1,
         }
+    }
+
+    #[test]
+    fn test_serde_round_trip() {
+        let schema = sample_schema();
+        let serialized = serde_json::to_string(&schema).unwrap();
+        assert_eq!(serialized, "\"v1/fastsim-3/ford/fusion/2012/base/v1\"");
+        let deserialized: DatabaseSchemaV1 = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, schema);
+    }
+
+    #[test]
+    fn test_to_string() {
+        let schema = sample_schema();
+        assert_eq!(
+            String::from(schema),
+            "v1/fastsim-3/ford/fusion/2012/base/v1"
+        );
+    }
+
+    #[test]
+    fn test_from_str() {
+        let s = "v1/fastsim-3/ford/fusion/2012/base/v1";
+        let schema = DatabaseSchemaV1::from_str(s).unwrap();
+        assert_eq!(schema, sample_schema());
+    }
+
+    #[test]
+    fn test_from_str_errors() {
+        assert!(DatabaseSchemaV1::from_str("v2/fastsim-3/ford/fusion/2012/base/v1").is_err());
+        assert!(DatabaseSchemaV1::from_str("v1/fastsim-3/ford/fusion/2012/base").is_err());
+        assert!(DatabaseSchemaV1::from_str("v1/bad-3/ford/fusion/2012/base/v1").is_err());
+        assert!(DatabaseSchemaV1::from_str("v1/fastsim-3/ford/fusion/2012/base/1").is_err());
     }
 
     #[test]
@@ -136,80 +249,35 @@ mod tests {
         let base = std::path::Path::new("/tmp/vehicles-db");
         let schema = sample_schema();
         let actual = schema.build_filepath(base, "yaml").unwrap();
-        let expected = base
-            .join("v1")
-            .join("fastsim-3")
-            .join("Ford")
-            .join("F-150")
-            .join("2022")
-            .join("base")
-            .join("v1.yaml");
-
-        eprintln!("build_filepath output: {}", actual.display());
+        let expected = base.join("v1/fastsim-3/ford/fusion/2012/base/v1.yaml");
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn test_build_url_output() {
         let schema = sample_schema();
-        let actual = schema
-            .build_url("https://example.com/fastsim-vehicles/", "yaml")
-            .unwrap();
+        let actual = schema.build_url(DEFAULT_DB_URL, "yaml").unwrap();
         let expected =
-            "https://example.com/fastsim-vehicles/v1/fastsim-3/Ford/F-150/2022/base/v1.yaml"
+            "https://raw.githubusercontent.com/NatLabRockies/fastsim-vehicles/main/v1/fastsim-3/ford/fusion/2012/base/v1.yaml"
                 .to_string();
-
-        eprintln!("build_url output: {actual}");
         assert_eq!(actual, expected);
     }
 
-    // #[test]
-    // fn test_from_db_local_output_string() {
-    //     let base = std::path::Path::new("/tmp/vehicles-db");
-    //     let schema = sample_schema();
-    //     let err = Vehicle::from_db_local_v1(
-    //         base,
-    //         schema.fastsim_version,
-    //         &schema.make,
-    //         &schema.model,
-    //         &schema.year,
-    //         &schema.variant,
-    //         schema.revision,
-    //         false,
-    //     )
-    //     .unwrap_err();
-    //     let output = err.to_string();
-
-    //     eprintln!("from_db_local output: {output}");
-    //     assert!(
-    //         output.contains("/tmp/vehicles-db/v1/fastsim-v3/Ford/F-150/2022/base/v1.yaml"),
-    //         "unexpected output: {output}"
-    //     );
-    // }
-
-    // #[test]
-    // #[cfg(feature = "web")]
-    // fn test_from_db_remote_output_string() {
-    //     let schema = sample_schema();
-    //     let err = Vehicle::from_db_remote_v1(
-    //         None,
-    //         schema.fastsim_version,
-    //         &schema.make,
-    //         &schema.model,
-    //         &schema.year,
-    //         &schema.variant,
-    //         schema.revision,
-    //         false,
-    //     )
-    //     .unwrap_err();
-    //     let output = err.to_string();
-
-    //     eprintln!("from_db_remote output: {output}");
-    //     assert!(
-    //         output.contains(
-    //             "https://example.com/fastsim-vehicles/v1/fastsim-v3/Ford/F-150/2022/base/v1.yaml"
-    //         ),
-    //         "unexpected output: {output}"
-    //     );
-    // }
+    #[test]
+    #[cfg(feature = "web")]
+    fn test_from_db_remote_v1() {
+        let schema = sample_schema();
+        assert!(Vehicle::from_db_remote_v1(
+            None,
+            schema.fastsim_version,
+            &schema.make,
+            &schema.model,
+            &schema.year,
+            &schema.variant,
+            schema.revision,
+            "yaml",
+            false,
+        )
+        .is_ok());
+    }
 }

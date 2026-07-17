@@ -150,8 +150,9 @@ class Vehicle(SerdeAPI):
         model: str,
         year: str,
         variant: str,
-        model_version: int,
-        skip_init: bool = False,
+        revision: int,
+        extension: str | None,
+        skip_init: bool,
     ) -> Vehicle: ...
     @classmethod
     def from_db_remote_v1(
@@ -162,8 +163,9 @@ class Vehicle(SerdeAPI):
         model: str,
         year: str,
         variant: str,
-        model_version: int,
-        skip_init: bool = False,
+        revision: int,
+        extension: str | None,
+        skip_init: bool,
     ) -> Vehicle: ...
     @classmethod
     def from_db(
@@ -195,6 +197,7 @@ class Vehicle(SerdeAPI):
             - ``year`` (str): vehicle model year, e.g. ``"2022"``
             - ``variant`` (str, optional): vehicle variant, e.g. ``"base"``. Defaults to ``"base"``.
             - ``revision`` (int): model revision, e.g. ``1``
+            - ``extension`` (str, optional): file extension, e.g. ``"yaml"``. Defaults to ``"yaml"``.
             - ``fastsim_version`` (int, optional): FASTSim version namespace.
                 Defaults to the installed FASTSim major version (e.g. ``3``).
             - ``skip_init`` (bool, optional): forwarded to Rust loader, defaults to

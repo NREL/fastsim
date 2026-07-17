@@ -329,6 +329,7 @@ def _vehicle_from_db(
         year = kwargs["year"]
         variant = str(kwargs.get("variant", "base"))
         revision = int(str(kwargs["revision"]).strip().removeprefix("v").removeprefix("V"))
+        extension = kwargs.get("extension", "yaml")
 
         if not hasattr(cls, "from_db_remote_v1") and (
             db_path_or_url is None
@@ -346,6 +347,7 @@ def _vehicle_from_db(
                 year,
                 variant,
                 revision,
+                extension,
                 skip_init,
             )
         elif db_path_or_url.startswith("http://") or db_path_or_url.startswith("https://"):
@@ -357,6 +359,7 @@ def _vehicle_from_db(
                 year,
                 variant,
                 revision,
+                extension,
                 skip_init,
             )
         else:
@@ -369,6 +372,7 @@ def _vehicle_from_db(
                 year,
                 variant,
                 revision,
+                extension,
                 skip_init,
             )
 

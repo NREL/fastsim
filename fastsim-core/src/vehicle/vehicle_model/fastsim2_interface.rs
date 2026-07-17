@@ -13,6 +13,8 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
 
         Ok(Vehicle::new(
             f2veh.scenario_name.clone(),
+            None,
+            None,
             f2veh.doc.clone(),
             Some(f2veh.veh_year.to_string()),
             None,

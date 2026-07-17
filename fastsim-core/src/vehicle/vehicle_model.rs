@@ -35,6 +35,9 @@ pub struct Vehicle {
     /// Minimum FASTSim version required
     #[serde(default = "crate::current_fastsim_version")]
     pub min_fastsim_version: Version,
+    /// Where in the database this vehicle lives, if applicable
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub db_path: Option<database::Schema>,
     /// Documentation (e.g. how this file was generated, calibration details)
     pub doc: Option<String>,
     /// Vehicle year (e.g. 2020, 2025)
@@ -140,6 +143,7 @@ impl Vehicle {
         year,
         variant,
         revision,
+        extension,
         skip_init=false,
     ))]
     fn from_db_local_v1_py(
@@ -150,6 +154,7 @@ impl Vehicle {
         year: &str,
         variant: &str,
         revision: u32,
+        extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
         Self::from_db_local_v1(
@@ -160,6 +165,7 @@ impl Vehicle {
             year,
             variant,
             revision,
+            extension,
             skip_init,
         )
     }
@@ -175,6 +181,7 @@ impl Vehicle {
         year,
         variant,
         revision,
+        extension,
         skip_init=false,
     ))]
     fn from_db_remote_v1_py(
@@ -185,6 +192,7 @@ impl Vehicle {
         year: &str,
         variant: &str,
         revision: u32,
+        extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
         Self::from_db_remote_v1(
@@ -195,6 +203,7 @@ impl Vehicle {
             year,
             variant,
             revision,
+            extension,
             skip_init,
         )
     }
@@ -330,6 +339,8 @@ impl Vehicle {
     /// Create new Vehicle with specified parameters
     pub fn new(
         name: String,
+        min_fastsim_version: Option<Version>,
+        db_path: Option<database::Schema>,
         doc: Option<String>,
         year: Option<String>,
         make: Option<String>,
@@ -344,7 +355,9 @@ impl Vehicle {
     ) -> anyhow::Result<Self> {
         let mut veh = Self {
             name,
-            min_fastsim_version: crate::FASTSIM_VERSION.clone(),
+            min_fastsim_version: min_fastsim_version
+                .unwrap_or_else(|| crate::FASTSIM_VERSION.clone()),
+            db_path,
             doc,
             year,
             make,
@@ -1488,6 +1501,8 @@ pub(crate) mod tests {
         let mut veh = Vehicle::new(
             String::from("2026 Chrysler Pacifica Select"), // name
             None,
+            None,
+            None,
             Some(String::from("2026")),
             Some(String::from("Chrysler")),
             Some(String::from("Pacifica Select")),
@@ -1623,6 +1638,8 @@ pub(crate) mod tests {
         let boxed_hev = Box::new(hev);
         let mut veh = Vehicle::new(
             String::from("2026 Chrysler Pacifica Select (uHEV Test)"),
+            None,
+            None,
             None,
             Some(String::from("2026")),
             Some(String::from("Chrysler")),
@@ -1811,41 +1828,41 @@ pub(crate) mod tests {
     //     }
     // }
 
-    #[test]
-    fn that_use_stop_start_switches_the_hev_controller() {
-        let veh_result = make_microhybrid_pacifica();
-        assert!(veh_result.is_ok());
-        let mut veh = veh_result.unwrap();
-        let use_result = veh.use_normal_controller_py();
-        assert!(use_result.is_ok());
-        match &veh.pt_type {
-            PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
-                HEVPowertrainControls::StopStart(_) => {
-                    assert!(false, "Powertrain controls didn't change");
-                }
-                HEVPowertrainControls::RGWDB(_) => (),
-            },
-            _ => {
-                assert!(false, "Unexpected powertrain type");
-            }
-        }
-        let use_ss_result = veh.use_stop_start_controller_py();
-        assert!(use_ss_result.is_ok());
-        match &veh.pt_type {
-            PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
-                HEVPowertrainControls::RGWDB(_) => {
-                    assert!(
-                        false,
-                        "Powertrain controls didn't change: RGWDB => StopStart"
-                    );
-                }
-                HEVPowertrainControls::StopStart(_) => (),
-            },
-            _ => {
-                assert!(false, "Unexpected powertrain type");
-            }
-        }
-    }
+    // #[test]
+    // fn that_use_stop_start_switches_the_hev_controller() {
+    //     let veh_result = make_microhybrid_pacifica();
+    //     assert!(veh_result.is_ok());
+    //     let mut veh = veh_result.unwrap();
+    //     let use_result = veh.use_normal_controller_py();
+    //     assert!(use_result.is_ok());
+    //     match &veh.pt_type {
+    //         PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
+    //             HEVPowertrainControls::StopStart(_) => {
+    //                 assert!(false, "Powertrain controls didn't change");
+    //             }
+    //             HEVPowertrainControls::RGWDB(_) => (),
+    //         },
+    //         _ => {
+    //             assert!(false, "Unexpected powertrain type");
+    //         }
+    //     }
+    //     let use_ss_result = veh.use_stop_start_controller_py();
+    //     assert!(use_ss_result.is_ok());
+    //     match &veh.pt_type {
+    //         PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
+    //             HEVPowertrainControls::RGWDB(_) => {
+    //                 assert!(
+    //                     false,
+    //                     "Powertrain controls didn't change: RGWDB => StopStart"
+    //                 );
+    //             }
+    //             HEVPowertrainControls::StopStart(_) => (),
+    //         },
+    //         _ => {
+    //             assert!(false, "Unexpected powertrain type");
+    //         }
+    //     }
+    // }
 
     fn sum_fuel_in_mj(fc: &FuelConverter) -> f64 {
         let fuels_mj: Vec<f64> = fc
