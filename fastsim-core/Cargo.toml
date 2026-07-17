@@ -26,6 +26,7 @@ easy-ext = "1.0.0"
 rayon = "1.5.3"
 document-features = { workspace = true }
 anyhow = { workspace = true }
+home = "0.5.9"
 readonly = "0.2.3"
 duplicate = "0.4.1"
 nohash-hasher = "0.2.0"

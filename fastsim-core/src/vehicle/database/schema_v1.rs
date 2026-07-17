@@ -240,7 +240,19 @@ impl Vehicle {
                 anyhow::bail!("Remote DB loading requires FASTSim built with the `web` feature")
             }
         } else {
-            let db_path = std::path::PathBuf::from(db_path_or_url.unwrap());
+            let db_path_str = db_path_or_url.unwrap();
+            // Expand ~ to home directory (cross-platform)
+            let expanded = if db_path_str.starts_with("~/") {
+                match home::home_dir() {
+                    Some(home_path) => {
+                        format!("{}{}", home_path.display(), &db_path_str[1..])
+                    }
+                    None => db_path_str.to_string(),
+                }
+            } else {
+                db_path_str.to_string()
+            };
+            let db_path = std::path::PathBuf::from(expanded);
             let path = schema.build_filepath(&db_path, extension)?;
             Self::from_file(path.clone(), skip_init).map_err(|err| {
                 anyhow!(
