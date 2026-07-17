@@ -188,26 +188,30 @@ class Vehicle(SerdeAPI):
             Database schema version. Currently only ``schema=1`` is supported.
 
         **kwargs
-            Valid kwargs for ``schema=1``:
+            **Path-string mode** (schema-agnostic; takes precedence over fields mode):
 
-            **Path-string mode** (alternative to individual fields):
-            - ``path`` (str): full schema path string, e.g. 
-              ``"v1/fastsim-3/conv/ford/fusion/2012/base/v1"``
+            - ``path`` (str): pre-serialized schema path string, e.g.
+              ``"v1/fastsim-3/conv/ford/fusion/2012/base/v1"``.
+              The file extension may be embedded directly in the path
+              (e.g. ``"v1/fastsim-3/conv/ford/fusion/2012/base/v1.yaml"``),
+              or supplied separately via ``extension``. Specifying both raises
+              a ``ValueError``.
+            - ``extension`` (str, optional): file extension when not embedded in
+              ``path``, e.g. ``"yaml"`` or ``"json"``. Defaults to ``"yaml"``.
+            - ``skip_init`` (bool, optional): skip vehicle initialization after
+              loading. Defaults to ``False``.
 
-            **Individual fields mode** (required if ``path`` not provided):
+            **Individual fields mode** (schema=1 only; used when ``path`` is not provided):
+
             - ``powertrain`` (str): powertrain type, e.g. ``"conv"``, ``"hev"``, ``"phev"``, ``"bev"``
             - ``make`` (str): vehicle make, e.g. ``"Ford"``, ``"Tesla"``
             - ``model`` (str): vehicle model, e.g. ``"F-150"``, ``"Model-3"``
             - ``year`` (str): vehicle model year or range, e.g. ``"2022"``, ``"2020-2023"``
-            - ``revision`` (str): model revision number, e.g. ``v1``.
-            - ``variant`` (str, optional): variant descriptor, e.g. ``"base"``. 
-              Defaults to ``"base"``.
-            - ``extension`` (str, optional): file extension, e.g. ``"yaml"``, ``"json"``. 
-              Defaults to ``"yaml"``.
-            - ``fastsim_version`` (int, optional): Major FASTSim version. 
-              Defaults to the installed FASTSim major version (e.g. ``3``).
-            - ``skip_init`` (bool, optional): if False, runs vehicle initialization after loading. 
-              Defaults to ``False``.
+            - ``revision`` (str | int): model revision, e.g. ``1``, ``"v1"``, or ``"V1"``
+            - ``variant`` (str, optional): variant descriptor, e.g. ``"base"``. Defaults to ``"base"``.
+            - ``extension`` (str, optional): file extension. Defaults to ``"yaml"``.
+            - ``fastsim_version`` (int, optional): major FASTSim version. Defaults to the installed major version.
+            - ``skip_init`` (bool, optional): skip vehicle initialization after loading. Defaults to ``False``.
 
         Returns
         -------
@@ -217,7 +221,9 @@ class Vehicle(SerdeAPI):
         Raises
         ------
         ValueError
-            If ``schema`` is not 1 or if required fields are missing.
+            If ``schema`` is not 1 (fields mode only), if required fields are
+            missing, or if ``extension`` is specified both in ``path`` and as a
+            separate kwarg.
         RuntimeError
             If remote loading is requested but web feature is not enabled.
         """

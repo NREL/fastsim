@@ -335,46 +335,32 @@ def _vehicle_from_db(
     schema: int = 1,
     **kwargs: Any,
 ) -> Self:
-    if schema != 1:
-        raise ValueError(f"Unsupported schema: {schema}. Only schema=1 is currently supported.")
+    skip_init = bool(kwargs.get("skip_init", False))
+    extension = str(kwargs.get("extension", "yaml"))
+
+    # Schema-agnostic: parse path and extension from path string if provided
+    path: str | None = None
+    if "path" in kwargs:
+        path = str(kwargs["path"])
+        last_segment = path.split("/")[-1]
+        if "." in last_segment:
+            if "extension" in kwargs:
+                raise ValueError(
+                    "Cannot specify extension both in path "
+                    "and as a separate parameter. Use one or the other."
+                )
+            path, extension = path.rsplit(".", 1)
 
     if schema == 1:
-        skip_init = bool(kwargs.get("skip_init", False))
-        extension = str(kwargs.get("extension", "yaml"))
+        if path is not None:
+            return cls.from_db_path_v1(
+                db_path_or_url,
+                path,
+                extension,
+                skip_init,
+            )
 
-        # Path-string mode: caller passes a pre-serialized schema path string
-        if "path" in kwargs:
-            path = str(kwargs["path"])
-            
-            # Check if path has a file extension (e.g., "v1/fastsim-3/.../v1.yaml")
-            last_segment = path.split("/")[-1]
-            has_extension = "." in last_segment
-            
-            if has_extension:
-                # User provided extension in the path
-                if "extension" in kwargs:
-                    raise ValueError(
-                        "Cannot specify extension both in path "
-                        "and as a separate parameter. Use one or the other."
-                    )
-                # Extract extension and path
-                path, extension = path.rsplit(".", 1)
-                return cls.from_db_path_v1(
-                    db_path_or_url,
-                    path,
-                    extension,
-                    skip_init,
-                )
-            else:
-                # Extension is passed separately (or defaults to "yaml")
-                return cls.from_db_path_v1(
-                    db_path_or_url,
-                    path,
-                    extension,
-                    skip_init,
-                )
-
-        # Fields mode: caller passes individual schema fields
+        # Fields mode
         required = ("powertrain", "make", "model", "year", "revision")
         missing = [key for key in required if key not in kwargs]
         if missing:
@@ -400,6 +386,8 @@ def _vehicle_from_db(
             extension,
             skip_init,
         )
+
+    raise ValueError(f"Unsupported schema: {schema}. Only schema=1 is currently supported.")
 
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
