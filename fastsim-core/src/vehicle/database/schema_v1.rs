@@ -171,12 +171,12 @@ impl DatabaseSchemaV1 {
     /// Build a local file path by joining the schema's path-segment string with a base directory and extension.
     ///
     /// Example: `base_dir/v1/fastsim-3/conv/ford/fusion/2012/base/v1.yaml`
-    pub fn build_filepath(
+    pub fn build_filepath<P: AsRef<Path>>(
         &self,
-        base_dir: &std::path::Path,
+        base_dir: P,
         extension: &str,
     ) -> anyhow::Result<std::path::PathBuf> {
-        Ok(base_dir.join(format!("{}.{}", self, extension)))
+        Ok(base_dir.as_ref().join(format!("{}.{}", self, extension)))
     }
 
     /// Build a remote URL by joining the schema's path-segment string with a base URL and extension.
@@ -234,20 +234,7 @@ impl Vehicle {
                 anyhow::bail!("Remote DB loading requires FASTSim built with the `web` feature")
             }
         } else {
-            let db_path_str = db_path_or_url.unwrap();
-            // Expand ~ to home directory (cross-platform)
-            let expanded = if db_path_str.starts_with("~/") {
-                match home::home_dir() {
-                    Some(home_path) => {
-                        format!("{}{}", home_path.display(), &db_path_str[1..])
-                    }
-                    None => db_path_str.to_string(),
-                }
-            } else {
-                db_path_str.to_string()
-            };
-            let db_path = std::path::PathBuf::from(expanded);
-            let path = schema.build_filepath(&db_path, extension)?;
+            let path = schema.build_filepath(db_path_or_url.unwrap(), extension)?;
             Self::from_file(path, skip_init)?
         };
 
