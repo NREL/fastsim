@@ -317,13 +317,14 @@ def _vehicle_from_db(
         raise ValueError(f"Unsupported schema: {schema}. Only schema=1 is currently supported.")
 
     if schema == 1:
-        required = ("make", "model", "year", "revision")
+        required = ("powertrain", "make", "model", "year", "revision")
         missing = [key for key in required if key not in kwargs]
         if missing:
             raise TypeError(f"Missing required kwargs: {', '.join(missing)}")
 
         skip_init = bool(kwargs.get("skip_init", False))
         fastsim_version = int(kwargs.get("fastsim_version", __version__.split(".", 1)[0].strip()))
+        powertrain = str(kwargs["powertrain"])
         make = kwargs["make"]
         model = kwargs["model"]
         year = kwargs["year"]
@@ -342,6 +343,7 @@ def _vehicle_from_db(
             return cls.from_db_remote_v1(
                 None,
                 fastsim_version,
+                powertrain,
                 make,
                 model,
                 year,
@@ -354,6 +356,7 @@ def _vehicle_from_db(
             return cls.from_db_remote_v1(
                 db_path_or_url,
                 fastsim_version,
+                powertrain,
                 make,
                 model,
                 year,
@@ -367,6 +370,7 @@ def _vehicle_from_db(
             return cls.from_db_local_v1(
                 local_db_path,
                 fastsim_version,
+                powertrain,
                 make,
                 model,
                 year,

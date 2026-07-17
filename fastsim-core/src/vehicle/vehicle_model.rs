@@ -138,6 +138,7 @@ impl Vehicle {
     #[pyo3(signature = (
         db_path,
         fastsim_version,
+        powertrain,
         make,
         model,
         year,
@@ -149,6 +150,7 @@ impl Vehicle {
     fn from_db_local_v1_py(
         db_path: PathBuf,
         fastsim_version: u32,
+        powertrain: &str,
         make: &str,
         model: &str,
         year: &str,
@@ -160,6 +162,7 @@ impl Vehicle {
         Self::from_db_local_v1(
             &db_path,
             fastsim_version,
+            powertrain,
             make,
             model,
             year,
@@ -176,6 +179,7 @@ impl Vehicle {
     #[pyo3(signature = (
         db_url,
         fastsim_version,
+        powertrain,
         make,
         model,
         year,
@@ -187,6 +191,7 @@ impl Vehicle {
     fn from_db_remote_v1_py(
         db_url: Option<&str>,
         fastsim_version: u32,
+        powertrain: &str,
         make: &str,
         model: &str,
         year: &str,
@@ -198,6 +203,7 @@ impl Vehicle {
         Self::from_db_remote_v1(
             db_url,
             fastsim_version,
+            powertrain,
             make,
             model,
             year,
