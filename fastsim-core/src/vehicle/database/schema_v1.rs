@@ -7,17 +7,17 @@ use super::*;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(into = "String", try_from = "String")]
 pub struct DatabaseSchemaV1 {
-    /// FASTSim version namespace to prevent cross-major collisions.
+    /// FASTSim version
     pub fastsim_version: u32,
-    /// Vehicle make.
+    /// Vehicle make
     pub make: String,
-    /// Vehicle model (may include trim information).
+    /// Vehicle model (may include trim information)
     pub model: String,
-    /// Vehicle model year.
+    /// Vehicle model year (or range of years)
     pub year: String,
-    /// Vehicle variant (describes what modeling features are active, etc).
+    /// Vehicle variant (describes what modeling features are active, etc.)
     pub variant: String,
-    /// Model revision/version for correcting model-level issues over time.
+    /// Model revision/version for correcting model-level issues over time
     pub revision: u32,
 }
 
@@ -90,6 +90,41 @@ impl TryFrom<String> for DatabaseSchemaV1 {
 }
 
 impl DatabaseSchemaV1 {
+    /// Construct a schema, validating that no field contains a `/`.
+    ///
+    /// # Errors
+    /// Returns an error if `make`, `model`, `year`, or `variant` contains a `/`,
+    /// since that would corrupt the path-segment serialization and cause it to
+    /// misparse (or fail to parse) on the way back in.
+    pub fn new(
+        fastsim_version: u32,
+        make: String,
+        model: String,
+        year: String,
+        variant: String,
+        revision: u32,
+    ) -> anyhow::Result<Self> {
+        for (field, value) in [
+            ("make", &make),
+            ("model", &model),
+            ("year", &year),
+            ("variant", &variant),
+        ] {
+            ensure!(
+                !value.contains('/'),
+                "{field} must not contain '/', got {value:?}"
+            );
+        }
+        Ok(Self {
+            fastsim_version,
+            make,
+            model,
+            year,
+            variant,
+            revision,
+        })
+    }
+
     /// Build the ordered path segments as a 7-element array (without file extension).
     ///
     /// Returns: `["v1", "fastsim-{N}", make, model, year, variant, "v{N}"]`
@@ -138,14 +173,14 @@ impl Vehicle {
         extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Vehicle> {
-        let schema = DatabaseSchemaV1 {
+        let schema = DatabaseSchemaV1::new(
             fastsim_version,
-            make: make.to_string(),
-            model: model.to_string(),
-            year: year.to_string(),
-            variant: variant.to_string(),
+            make.to_string(),
+            model.to_string(),
+            year.to_string(),
+            variant.to_string(),
             revision,
-        };
+        )?;
         let path = schema.build_filepath(base_dir, extension)?;
         let mut veh = Self::from_file(path.clone(), skip_init).map_err(|err| {
             anyhow!(
@@ -173,14 +208,14 @@ impl Vehicle {
         extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Vehicle> {
-        let schema = DatabaseSchemaV1 {
+        let schema = DatabaseSchemaV1::new(
             fastsim_version,
-            make: make.to_string(),
-            model: model.to_string(),
-            year: year.to_string(),
-            variant: variant.to_string(),
+            make.to_string(),
+            model.to_string(),
+            year.to_string(),
+            variant.to_string(),
             revision,
-        };
+        )?;
         let resolved_url = schema.build_url(url.unwrap_or(DEFAULT_DB_URL), extension)?;
         let mut veh = Self::from_url(resolved_url.clone(), skip_init).map_err(|err| {
             anyhow!(
@@ -201,14 +236,14 @@ mod tests {
     use super::*;
 
     fn sample_schema() -> DatabaseSchemaV1 {
-        DatabaseSchemaV1 {
-            fastsim_version: 3,
-            make: "ford".to_string(),
-            model: "fusion".to_string(),
-            year: "2012".to_string(),
-            variant: "base".to_string(),
-            revision: 1,
-        }
+        DatabaseSchemaV1::new(
+            3,
+            "ford".to_string(),
+            "fusion".to_string(),
+            "2012".to_string(),
+            "base".to_string(),
+            1,
+        ).unwrap()
     }
 
     #[test]
