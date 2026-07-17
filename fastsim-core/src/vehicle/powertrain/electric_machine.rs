@@ -39,7 +39,10 @@ pub struct ElectricMachine {
     #[serde(default)]
     pub state: ElectricMachineState,
     /// Custom vector of [Self::state]
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty"
+    )]
     pub history: ElectricMachineStateHistoryVec,
 }
 

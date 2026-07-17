@@ -74,21 +74,6 @@ pt_type:
         energy_loss_joules: 0.0
         fc_on: false
         time_on_seconds: 0.0
-      history:
-        i: []
-        pwr_out_max_watts: []
-        pwr_prop_max_watts: []
-        eff: []
-        pwr_prop_watts: []
-        energy_prop_joules: []
-        pwr_aux_watts: []
-        energy_aux_joules: []
-        pwr_fuel_watts: []
-        energy_fuel_joules: []
-        pwr_loss_watts: []
-        energy_loss_joules: []
-        fc_on: []
-        time_on_seconds: []
       save_interval: 1
     transmission:
       mass_kilograms: ~
@@ -104,17 +89,6 @@ pt_type:
         energy_in_joules: 0.0
         pwr_loss_watts: 0.0
         energy_loss_joules: 0.0
-      history:
-        i: []
-        pwr_out_fwd_max_watts: []
-        pwr_out_regen_max_watts: []
-        eff: []
-        pwr_out_watts: []
-        energy_out_joules: []
-        pwr_in_watts: []
-        energy_in_joules: []
-        pwr_loss_watts: []
-        energy_loss_joules: []
       save_interval: 1
     pt_cntrl: Normal
     dfco_cntrl:
@@ -125,9 +99,6 @@ pt_type:
       state:
         i: 0
         vehicle_dynamics_prevent_dfco: false
-      history:
-        i: []
-        vehicle_dynamics_prevent_dfco: []
     mass_kilograms: ~
     alt_eff: 1.0
 chassis:
@@ -182,34 +153,3 @@ state:
   elev_curr_meters: 0.0
   air_density_kilograms_per_cubic_meter: 0.0
   mass_kilograms: .nan
-history:
-  i: []
-  time_seconds: []
-  pwr_prop_fwd_max_watts: []
-  speed_trac_fwd_max_meters_per_second: []
-  pwr_prop_bwd_max_watts: []
-  pwr_tractive_watts: []
-  pwr_tractive_for_cyc_watts: []
-  energy_tractive_joules: []
-  pwr_aux_watts: []
-  energy_aux_joules: []
-  pwr_drag_watts: []
-  energy_drag_joules: []
-  pwr_accel_watts: []
-  energy_accel_joules: []
-  pwr_ascent_watts: []
-  energy_ascent_joules: []
-  pwr_rr_watts: []
-  energy_rr_joules: []
-  pwr_whl_inertia_watts: []
-  energy_whl_inertia_joules: []
-  pwr_brake_watts: []
-  energy_brake_joules: []
-  cyc_met: []
-  cyc_met_overall: []
-  speed_ach_meters_per_second: []
-  dist_meters: []
-  grade_curr: []
-  elev_curr_meters: []
-  air_density_kilograms_per_cubic_meter: []
-  mass_kilograms: []

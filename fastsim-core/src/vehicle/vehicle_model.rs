@@ -76,7 +76,7 @@ pub struct Vehicle {
     #[serde(default)]
     pub state: VehicleState,
     /// Vector-like history of [Self::state]
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
     pub history: VehicleStateHistoryVec,
 }
 

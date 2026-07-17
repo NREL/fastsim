@@ -26,6 +26,7 @@ pub struct DfcoControls {
     #[serde(default)]
     pub state: DfcoState,
     /// history of current state
+    #[serde(default, skip_serializing_if = "DfcoStateHistoryVec::is_empty")]
     pub history: DfcoStateHistoryVec,
 }
 
@@ -585,6 +586,10 @@ pub struct ConvStopStartControl {
     #[serde(default)]
     pub state: ConvStopStartState,
     /// history of current state
+    #[serde(
+        default,
+        skip_serializing_if = "ConvStopStartStateHistoryVec::is_empty"
+    )]
     pub history: ConvStopStartStateHistoryVec,
 }
 

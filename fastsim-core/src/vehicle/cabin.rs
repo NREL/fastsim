@@ -169,7 +169,7 @@ pub struct LumpedCabin {
     pub width: si::Length,
     #[serde(default)]
     pub state: LumpedCabinState,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "LumpedCabinStateHistoryVec::is_empty")]
     pub history: LumpedCabinStateHistoryVec,
     /// Time step interval at which history is saved
     pub save_interval: Option<usize>,

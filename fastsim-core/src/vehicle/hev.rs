@@ -946,8 +946,8 @@ pub struct RESGreedyWithDynamicBuffers {
     /// current state of control variables
     #[serde(default)]
     pub state: RGWDBState,
-    #[serde(default)]
     /// history of current state
+    #[serde(default, skip_serializing_if = "RGWDBStateHistoryVec::is_empty")]
     pub history: RGWDBStateHistoryVec,
 }
 
@@ -1337,6 +1337,7 @@ pub struct HEVStopStartControl {
     #[serde(default)]
     pub state: StopStartState,
     /// history of current state
+    #[serde(default, skip_serializing_if = "StopStartStateHistoryVec::is_empty")]
     pub history: StopStartStateHistoryVec,
 }
 

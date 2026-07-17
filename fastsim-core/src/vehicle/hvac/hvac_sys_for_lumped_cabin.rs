@@ -33,7 +33,10 @@ pub struct HVACSystemForLumpedCabin {
     /// coefficient of performance of vapor compression cycle
     #[serde(default)]
     pub state: HVACSystemForLumpedCabinState,
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "HVACSystemForLumpedCabinStateHistoryVec::is_empty"
+    )]
     pub history: HVACSystemForLumpedCabinStateHistoryVec,
     pub save_interval: Option<usize>,
 }
