@@ -227,13 +227,7 @@ impl Vehicle {
             #[cfg(feature = "web")]
             {
                 let resolved_url = schema.build_url(db_path_or_url, extension)?;
-                Self::from_url(resolved_url.clone(), skip_init).map_err(|err| {
-                    anyhow!(
-                        "{}: from_db_schema_v1 failed for URL '{}': {err}",
-                        format_dbg!(),
-                        resolved_url
-                    )
-                })?
+                Self::from_url(resolved_url, skip_init)?
             }
             #[cfg(not(feature = "web"))]
             {
@@ -254,13 +248,7 @@ impl Vehicle {
             };
             let db_path = std::path::PathBuf::from(expanded);
             let path = schema.build_filepath(&db_path, extension)?;
-            Self::from_file(path.clone(), skip_init).map_err(|err| {
-                anyhow!(
-                    "{}: from_db_schema_v1 failed for path '{}': {err}",
-                    format_dbg!(),
-                    path.display()
-                )
-            })?
+            Self::from_file(path, skip_init)?
         };
 
         if !skip_init {
