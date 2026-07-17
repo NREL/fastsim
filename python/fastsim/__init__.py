@@ -228,7 +228,6 @@ def to_dataframe(
     obj_dict = self.to_pydict(flatten=True)
     history_keys = ["history.", "cyc."]
     hist_len = get_hist_len(obj_dict)
-    assert hist_len is not None
 
     history_dict: dict[str, Any] = {}
     for k, v in obj_dict.items():
