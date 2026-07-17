@@ -2,10 +2,9 @@
 
 members = [
     "fastsim-core",                     # pure rust core with optional pyo3 feature
+    "fastsim-core/fastsim-proc-macros",
     "fastsim-py",                       # python module exposing fastsim-core
     "fastsim-cli",                      # CLI apps
-    "fastsim-core/fastsim-proc-macros",
-    "fastsim-cli",
 ]
 resolver = "2"
 
@@ -23,12 +22,11 @@ opt-level = 3
 document-features = "0.2.10"
 fastsim-core = { path = "fastsim-core" }
 anyhow = "1.0.71"
-pyo3 = "0.23.3"
+pyo3 = "0.29.0"
 thiserror = "2.0.11"
 uom = { version = "0.35.0", features = ["use_serde"] }
 ninterp = { version = "0.7.3", features = ["serde"] }
 fastsim-2 = { package = "fastsim-core", version = "0.1.11", features = [
-    "pyo3",
     "resources",
 ] }
 lazy_static = "1.4.0"

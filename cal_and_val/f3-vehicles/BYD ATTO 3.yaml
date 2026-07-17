@@ -224,6 +224,7 @@ state:
   i: 0
   time_seconds: 0.0
   pwr_prop_fwd_max_watts: 0.0
+  speed_trac_fwd_max_meters_per_second: 0.0
   pwr_prop_bwd_max_watts: 0.0
   pwr_tractive_watts: 0.0
   pwr_tractive_for_cyc_watts: 0.0
@@ -254,6 +255,7 @@ history:
   i: []
   time_seconds: []
   pwr_prop_fwd_max_watts: []
+  speed_trac_fwd_max_meters_per_second: []
   pwr_prop_bwd_max_watts: []
   pwr_tractive_watts: []
   pwr_tractive_for_cyc_watts: []

@@ -207,7 +207,7 @@ chassis:
   num_wheels: 4
   wheel_radius_meters: 0.395
   tire_code: ~
-  cg_height_meters: -0.53
+  cg_height_meters: 0.53
   wheel_fric_coef: 0.8
   drive_type: RWD
   drive_axle_weight_frac: 0.61
@@ -224,6 +224,7 @@ state:
   i: 0
   time_seconds: 0.0
   pwr_prop_fwd_max_watts: 0.0
+  speed_trac_fwd_max_meters_per_second: 0.0
   pwr_prop_bwd_max_watts: 0.0
   pwr_tractive_watts: 0.0
   pwr_tractive_for_cyc_watts: 0.0
@@ -254,6 +255,7 @@ history:
   i: []
   time_seconds: []
   pwr_prop_fwd_max_watts: []
+  speed_trac_fwd_max_meters_per_second: []
   pwr_prop_bwd_max_watts: []
   pwr_tractive_watts: []
   pwr_tractive_for_cyc_watts: []
