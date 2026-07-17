@@ -26,7 +26,7 @@ dependencies = [
     "seaborn>=0.11.0,<13.2",
     "typing_extensions~=4.12",
     "PyYAML==6.0.2",
-    "msgpack==1.1.0",
+    "msgpack==1.2.1",
     "ipykernel~=6.29",
     "executing~=2.0",
     "pip",
