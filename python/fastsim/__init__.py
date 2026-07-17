@@ -318,28 +318,16 @@ def _vehicle_from_db(
     if schema == 1:
         skip_init = bool(kwargs.get("skip_init", False))
         extension = str(kwargs.get("extension", "yaml"))
-        is_remote = db_path_or_url is None or str(db_path_or_url).startswith(("http://", "https://"))
 
         # Path-string mode: caller passes a pre-serialized schema path string
         if "path" in kwargs:
             path = str(kwargs["path"])
-            if is_remote:
-                if not hasattr(cls, "from_db_remote_path_str_v1"):
-                    raise RuntimeError("Remote DB loading requires FASTSim built with the `web` feature.")
-                return cls.from_db_remote_path_str_v1(
-                    db_path_or_url,
-                    path,
-                    extension,
-                    skip_init,
-                )
-            else:
-                local_db_path = Path(db_path_or_url).expanduser()
-                return cls.from_db_local_path_str_v1(
-                    local_db_path,
-                    path,
-                    extension,
-                    skip_init,
-                )
+            return cls.from_db_path_v1(
+                db_path_or_url,
+                path,
+                extension,
+                skip_init,
+            )
 
         # Fields mode: caller passes individual schema fields
         required = ("powertrain", "make", "model", "year", "revision")
@@ -355,35 +343,18 @@ def _vehicle_from_db(
         variant = str(kwargs.get("variant", "base"))
         revision = int(str(kwargs["revision"]).strip().removeprefix("v").removeprefix("V"))
 
-        if is_remote:
-            if not hasattr(cls, "from_db_remote_fields_v1"):
-                raise RuntimeError("Remote DB loading requires FASTSim built with the `web` feature.")
-            return cls.from_db_remote_fields_v1(
-                db_path_or_url,
-                fastsim_version,
-                powertrain,
-                make,
-                model,
-                year,
-                variant,
-                revision,
-                extension,
-                skip_init,
-            )
-        else:
-            local_db_path = Path(db_path_or_url).expanduser()
-            return cls.from_db_local_fields_v1(
-                local_db_path,
-                fastsim_version,
-                powertrain,
-                make,
-                model,
-                year,
-                variant,
-                revision,
-                extension,
-                skip_init,
-            )
+        return cls.from_db_fields_v1(
+            db_path_or_url,
+            fastsim_version,
+            powertrain,
+            make,
+            model,
+            year,
+            variant,
+            revision,
+            extension,
+            skip_init,
+        )
 
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS

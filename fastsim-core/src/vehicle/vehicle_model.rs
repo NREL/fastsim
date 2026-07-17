@@ -133,32 +133,31 @@ impl Vehicle {
         Self::from_f2_file(file)
     }
 
-    #[pyo3(name = "from_db_local_path_str_v1")]
+    /// Load from schema v1 using a pre-serialized path string.
+    /// Auto-detects local vs remote based on db_path_or_url.
+    #[pyo3(name = "from_db_path_v1")]
     #[staticmethod]
     #[pyo3(signature = (
-        db_path,
+        db_path_or_url,
         path,
         extension,
         skip_init=false,
     ))]
-    fn from_db_local_path_str_v1_py(
-        db_path: PathBuf,
+    fn from_db_path_v1_py(
+        db_path_or_url: Option<&str>,
         path: &str,
         extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
-        Self::from_db_local_path_str_v1(
-            &db_path,
-            path,
-            extension,
-            skip_init,
-        )
+        Self::from_db_path_v1(db_path_or_url, path, extension, skip_init)
     }
 
-    #[pyo3(name = "from_db_local_fields_v1")]
+    /// Load from schema v1 using individual fields.
+    /// Auto-detects local vs remote based on db_path_or_url.
+    #[pyo3(name = "from_db_fields_v1")]
     #[staticmethod]
     #[pyo3(signature = (
-        db_path,
+        db_path_or_url,
         fastsim_version,
         powertrain,
         make,
@@ -169,8 +168,8 @@ impl Vehicle {
         extension,
         skip_init=false,
     ))]
-    fn from_db_local_fields_v1_py(
-        db_path: PathBuf,
+    fn from_db_fields_v1_py(
+        db_path_or_url: Option<&str>,
         fastsim_version: u32,
         powertrain: &str,
         make: &str,
@@ -181,73 +180,8 @@ impl Vehicle {
         extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
-        Self::from_db_local_fields_v1(
-            &db_path,
-            fastsim_version,
-            powertrain,
-            make,
-            model,
-            year,
-            variant,
-            revision,
-            extension,
-            skip_init,
-        )
-    }
-
-
-
-    #[pyo3(name = "from_db_remote_path_str_v1")]
-    #[staticmethod]
-    #[pyo3(signature = (
-        url,
-        path,
-        extension,
-        skip_init=false,
-    ))]
-    fn from_db_remote_path_str_v1_py(
-        url: Option<&str>,
-        path: &str,
-        extension: &str,
-        skip_init: bool,
-    ) -> anyhow::Result<Self> {
-        Self::from_db_remote_path_str_v1(
-            url,
-            path,
-            extension,
-            skip_init,
-        )
-    }
-
-    #[cfg(feature = "web")]
-    #[pyo3(name = "from_db_remote_fields_v1")]
-    #[staticmethod]
-    #[pyo3(signature = (
-        db_url,
-        fastsim_version,
-        powertrain,
-        make,
-        model,
-        year,
-        variant,
-        revision,
-        extension,
-        skip_init=false,
-    ))]
-    fn from_db_remote_fields_v1_py(
-        db_url: Option<&str>,
-        fastsim_version: u32,
-        powertrain: &str,
-        make: &str,
-        model: &str,
-        year: &str,
-        variant: &str,
-        revision: u32,
-        extension: &str,
-        skip_init: bool,
-    ) -> anyhow::Result<Self> {
-        Self::from_db_remote_fields_v1(
-            db_url,
+        Self::from_db_fields_v1(
+            db_path_or_url,
             fastsim_version,
             powertrain,
             make,
