@@ -3,6 +3,7 @@
 import inspect
 import re
 import sys
+import warnings
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
@@ -214,17 +215,40 @@ def from_pydict(cls, pydict: dict, data_fmt: str = "msg_pack", skip_init: bool =
 
 def to_dataframe(
     self,
-    pandas: bool = False,
+    backend: str = "pandas",
     allow_partial: bool = False,
+    pandas: Optional[bool] = None,
 ) -> pd.DataFrame | pl.DataFrame:
     """
-    Return time series results from fastsim object as a Polars or Pandas dataframe.
+    Return time series results from fastsim object as a pandas or polars dataframe.
 
     # Arguments
-    - `pandas`: returns pandas dataframe if True; otherwise, returns polars dataframe by default
+    - `backend`: dataframe backend, one of "pandas" (default) or "polars"
     - `allow_partial`: tries to return dataframe of length equal to solved time
         steps if simulation fails early
+    - `pandas`: deprecated alias for backend selection (`True`->"pandas", `False`->"polars")
     """
+    if isinstance(backend, bool):
+        pandas = backend
+        backend = "pandas" if backend else "polars"
+
+    backend = backend.lower()
+    if backend not in {"pandas", "polars"}:
+        raise ValueError("`backend` must be one of {'pandas', 'polars'}")
+
+    if pandas is not None:
+        warnings.warn(
+            "`pandas` is deprecated for `to_dataframe`; use `backend='pandas'` or "
+            "`backend='polars'` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        pandas_backend = "pandas" if pandas else "polars"
+        if backend != pandas_backend:
+            raise ValueError("Conflicting `backend` and deprecated `pandas` arguments")
+
+    use_pandas = backend == "pandas"
+
     obj_dict = self.to_pydict(flatten=True)
     history_keys = ["history.", "cyc."]
     hist_len = get_hist_len(obj_dict)
@@ -239,7 +263,7 @@ def to_dataframe(
         cutoff = min(history_dict.values())
 
         df: pl.DataFrame | pd.DataFrame
-        if not pandas:
+        if not use_pandas:
             try:
                 df = pl.DataFrame({col: val[:cutoff] for col, val in history_dict.items()})
             except Exception as err:
@@ -251,7 +275,7 @@ def to_dataframe(
                 raise Exception(f"{err}\n`save_interval` may not be uniform")
 
     else:
-        if not pandas:
+        if not use_pandas:
             try:
                 df = pl.DataFrame(history_dict)
             except Exception as err:
