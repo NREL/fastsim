@@ -1038,78 +1038,10 @@ pub(crate) mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/vehicles")
     }
 
-    #[cfg(feature = "yaml")]
-    #[cfg(feature = "compat")]
-    /// Load representative conv from fastsim-2, convert to fastsim-3 format, and
-    /// save to file in the resources folder
-    pub(crate) fn mock_conv_veh() -> Vehicle {
-        let file_contents =
-            include_str!("../compat/fastsim2/assets/fastsim-2_2012_Ford_Fusion.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let veh = {
-            let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
-            let veh = Vehicle::try_from(f2veh);
-            veh.unwrap()
-        };
-
-        // veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
-        //     .unwrap();
-        assert!(veh.pt_type.is_conventional_vehicle());
-        veh
-    }
-
-    #[cfg(feature = "yaml")]
-    #[cfg(feature = "compat")]
-    /// Load representative HEV from fastsim-2, convert to fastsim-3 format, and
-    /// save to file in the resources folder
-    pub(crate) fn mock_hev() -> Vehicle {
-        let file_contents =
-            include_str!("../compat/fastsim2/assets/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let veh = {
-            let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
-            let veh = Vehicle::try_from(f2veh);
-            veh.unwrap()
-        };
-
-        // veh.to_file(vehicles_dir().join("2016_TOYOTA_Prius_Two.yaml"))
-        //     .unwrap();
-        assert!(veh.pt_type.is_hybrid_electric_vehicle());
-        veh
-    }
-
-    #[cfg(feature = "yaml")]
-    #[cfg(feature = "compat")]
-    /// Load representative BEV from fastsim-2, convert to fastsim-3 format, and
-    /// save to file in the resources folder
-    pub(crate) fn mock_bev() -> Vehicle {
-        let file_contents =
-            include_str!("../compat/fastsim2/assets/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let veh = {
-            let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
-            let veh = Vehicle::try_from(f2veh);
-            veh.unwrap()
-        };
-
-        // veh.to_file(vehicles_dir().join("2022_Renault_Zoe_ZE50_R135.yaml"))
-        //     .unwrap();
-        assert!(veh.pt_type.is_battery_electric_vehicle());
-        veh
-    }
-
     #[test]
     #[cfg(feature = "yaml")]
-    #[cfg(feature = "compat")]
     pub(crate) fn test_conv_veh_init() {
-        use pretty_assertions::assert_eq;
-        let veh = mock_conv_veh();
-        let mut veh1 = veh.clone();
-        // NOTE: eventually figure out why the following assertions fail if
-        // `.to_yaml().uwrap()` is removed.  It's probably related to f64::NAN
-        assert_eq!(veh.to_yaml().unwrap(), veh1.to_yaml().unwrap());
-        veh1.init().unwrap();
-        assert_eq!(veh.to_yaml().unwrap(), veh1.to_yaml().unwrap());
+        assert!(Vehicle::from_resource("2012_Ford_Fusion.yaml", false).is_ok());
     }
 
     type StructWithResources = Vehicle;

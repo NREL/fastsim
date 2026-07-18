@@ -1902,6 +1902,9 @@ pub fn get_label_fe_phev(
 mod tests {
     use super::*;
 
+    #[cfg(feature = "compat")]
+    use crate::compat::fastsim2::SerdeAPI;
+
     pub struct Tolerances {
         pub udds_tolerance: f64,
         pub comb_tolerance: f64,
@@ -1912,7 +1915,7 @@ mod tests {
     #[cfg(feature = "compat")]
     fn assert_labels_match_within_tolerance(
         label_fe_f3: &LabelFe,
-        label_fe_f2: &fastsim_2::simdrivelabel::LabelFe,
+        label_fe_f2: &crate::compat::fastsim2::LabelFe,
         tol: &Tolerances,
         all_electric: bool,
     ) {
@@ -2023,10 +2026,8 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     fn test_label_fe_conv_vs_fastsim2() {
-        let file_contents =
-            include_str!("../compat/fastsim2/assets/fastsim-2_2012_Ford_Fusion.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2012_Ford_Fusion.yaml").unwrap().contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
@@ -2035,7 +2036,7 @@ mod tests {
             .unwrap();
 
         // Get FASTSim-2 label FE results
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
+        let (label_fe_f2, _) = crate::compat::fastsim2::get_label_fe(&f2veh.clone(), None, None)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2060,10 +2061,8 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     fn test_label_fe_bev_vs_fastsim2() {
-        let file_contents =
-            include_str!("../compat/fastsim2/assets/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml").unwrap().contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
@@ -2071,7 +2070,7 @@ mod tests {
             .with_context(|| format_dbg!())
             .unwrap();
 
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
+        let (label_fe_f2, _) = crate::compat::fastsim2::get_label_fe(&f2veh.clone(), None, None)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2096,10 +2095,8 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     fn test_label_fe_hev_vs_fastsim2() {
-        let file_contents =
-            include_str!("../compat/fastsim2/assets/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2016_TOYOTA_Prius_Two.yaml").unwrap().contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
@@ -2107,7 +2104,7 @@ mod tests {
             .with_context(|| format_dbg!())
             .unwrap();
 
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh, None, None)
+        let (label_fe_f2, _) = crate::compat::fastsim2::get_label_fe(&f2veh, None, None)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2145,11 +2142,10 @@ mod tests {
             .unwrap();
 
         // Load FASTSim-2 vehicle and convert to FASTSim-3
-        let f2_veh: crate::compat::RustVehicle =
-            fastsim_2::traits::SerdeAPI::from_yaml(&veh_contents, false)
-                .with_context(|| format_dbg!())
-                .unwrap();
-        assert!(f2_veh.veh_pt_type == fastsim_2::vehicle::PHEV);
+        let f2_veh = crate::compat::fastsim2::RustVehicle::from_file(&f2_veh_path, false)
+            .with_context(|| format_dbg!())
+            .unwrap();
+        assert!(f2_veh.veh_pt_type == crate::compat::fastsim2::PHEV);
         let mut veh = Vehicle::try_from(f2_veh.clone())
             .with_context(|| format_dbg!())
             .unwrap();
@@ -2166,9 +2162,7 @@ mod tests {
             .0;
 
         // Get FASTSim-2 label FE results
-        let label_fe_f2 = fastsim_2::simdrivelabel::get_label_fe(&f2_veh, None, None)
-            .unwrap()
-            .0;
+        let label_fe_f2 = crate::compat::fastsim2::get_label_fe(&f2_veh, None, None).unwrap().0;
 
         let tol = Tolerances {
             udds_tolerance: 0.05, // 5% tolerance
@@ -2190,11 +2184,7 @@ mod tests {
     }
 
     #[cfg(feature = "compat")]
-    fn assert_label_fe_same(
-        label_fe_f2: &fastsim_2::simdrivelabel::LabelFe,
-        label_fe_f3: &LabelFe,
-        tol: f64,
-    ) {
+    fn assert_label_fe_same(label_fe_f2: &crate::compat::fastsim2::LabelFe, label_fe_f3: &LabelFe, tol: f64) {
         let mut all_pass = true;
         let mut message = String::new();
         let diff = frac_diff(label_fe_f2.lab_comb_mpgge, label_fe_f3.lab_comb_mpgge);
@@ -2271,14 +2261,11 @@ mod tests {
     }
 
     #[cfg(feature = "compat")]
-    fn run_fe_label_comparison_for(file_contents: &str, tolerance: f64) {
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
-
+    fn run_fe_label_comparison_for(f2veh: &crate::compat::fastsim2::RustVehicle, tolerance: f64) {
         // Get FASTSim-2 label FE results
         let f2veh_copy = f2veh.clone();
         let (label_fe_f2, result) =
-            fastsim_2::simdrivelabel::get_label_fe(&f2veh_copy, Some(true), None)
+            crate::compat::fastsim2::get_label_fe(&f2veh_copy, Some(true), None)
                 .with_context(|| format_dbg!())
                 .unwrap();
         let sim_data = SimulationDataForLabel::ConvOrHev {
@@ -2309,35 +2296,31 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     pub fn test_label_fe_post_proc_calcs_for_conv() {
-        let file_contents =
-            include_str!("../compat/fastsim2/assets/fastsim-2_2012_Ford_Fusion.yaml");
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2012_Ford_Fusion.yaml").unwrap().contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
         let tolerance = 1e-6;
-        run_fe_label_comparison_for(file_contents, tolerance);
+        run_fe_label_comparison_for(&f2veh, tolerance);
     }
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     pub fn test_label_fe_post_proc_calcs_for_hev() {
-        let file_contents =
-            include_str!("../compat/fastsim2/assets/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2016_TOYOTA_Prius_Two.yaml").unwrap().contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
         let tolerance = 1e-6;
-        run_fe_label_comparison_for(file_contents, tolerance);
+        run_fe_label_comparison_for(&f2veh, tolerance);
     }
     #[test]
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     pub fn test_label_fe_post_proc_calcs_for_bev() {
-        let file_contents =
-            include_str!("../compat/fastsim2/assets/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml").unwrap().contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
 
         // Get FASTSim-2 label FE results
-        let f2veh_copy = f2veh.clone();
-        let (label_fe_f2, result) =
-            fastsim_2::simdrivelabel::get_label_fe(&f2veh_copy, Some(true), None)
-                .with_context(|| format_dbg!())
-                .unwrap();
+        let (label_fe_f2, result) = crate::compat::fastsim2::get_label_fe(&f2veh, Some(true), None)
+            .with_context(|| format_dbg!())
+            .unwrap();
         let sim_data = SimulationDataForLabel::Bev {
             veh_year: f2veh.veh_year,
             udds_kwh_per_mi: label_fe_f2.lab_udds_kwh_per_mi,
@@ -2379,16 +2362,11 @@ mod tests {
             return;
         }
 
-        let veh_contents = std::fs::read_to_string(&f2_veh_path)
+        // Load FASTSim-2 vehicle and convert to FASTSim-3
+        let f2_veh = crate::compat::fastsim2::RustVehicle::from_file(&f2_veh_path, false)
             .with_context(|| format_dbg!())
             .unwrap();
-
-        // Load FASTSim-2 vehicle and convert to FASTSim-3
-        let f2_veh: crate::compat::RustVehicle =
-            fastsim_2::traits::SerdeAPI::from_yaml(&veh_contents, false)
-                .with_context(|| format_dbg!())
-                .unwrap();
-        assert!(f2_veh.veh_pt_type == fastsim_2::vehicle::PHEV);
+        assert!(f2_veh.veh_pt_type == crate::compat::fastsim2::PHEV);
 
         let veh = Vehicle::try_from(f2_veh.clone())
             .with_context(|| format_dbg!())
@@ -2403,7 +2381,7 @@ mod tests {
         // Get FASTSim-2 label FE results
         let f2veh_copy = f2_veh.clone();
         let (label_fe_f2, result) =
-            fastsim_2::simdrivelabel::get_label_fe(&f2veh_copy, Some(true), None)
+            crate::compat::fastsim2::get_label_fe(&f2veh_copy, Some(true), None)
                 .with_context(|| format_dbg!())
                 .unwrap();
         assert!(label_fe_f2.phev_calcs.is_some());

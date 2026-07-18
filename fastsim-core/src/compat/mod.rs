@@ -7,5 +7,3 @@ use super::vehicle::vehicle_model::*;
 use super::vehicle::*;
 
 pub mod fastsim2;
-
-pub use fastsim2::*;

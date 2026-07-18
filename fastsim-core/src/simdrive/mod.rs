@@ -894,9 +894,8 @@ mod tests {
 
     #[test]
     #[cfg(feature = "resources")]
-    #[cfg(feature = "compat")]
     fn test_sim_drive_conv() {
-        let _veh = mock_conv_veh();
+        let _veh = Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
@@ -918,9 +917,8 @@ mod tests {
 
     #[test]
     #[cfg(feature = "resources")]
-    #[cfg(feature = "compat")]
     fn test_sim_drive_hev() {
-        let _veh = mock_hev();
+        let _veh = Vehicle::from_resource("2016_TOYOTA_Prius_Two.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
@@ -1390,9 +1388,8 @@ mod tests {
 
     #[test]
     #[cfg(feature = "resources")]
-    #[cfg(feature = "compat")]
     fn test_sim_drive_bev() {
-        let _veh = mock_bev();
+        let _veh = Vehicle::from_resource("2022_Renault_Zoe_ZE50_R135.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive {
             veh: _veh,

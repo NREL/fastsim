@@ -38,7 +38,7 @@ pyo3 = { workspace = true, features = [
 ], optional = true }
 serde-this-or-that = "0.4.2"
 project-root = "0.2.2"
-include_dir = { version = "0.7.3", optional = true }
+include_dir = "0.7.3"
 itertools = "0.12.0"
 lazy_static = { workspace = true }
 regex = "1.10.3"
@@ -63,14 +63,15 @@ num-traits = "0.2.19"
 pretty_assertions = "1.4.1"
 
 [features]
-default = ["resources", "serde-default", "simdrivelabel"]
+# default = ["resources", "serde-default", "simdrivelabel"]
+default = ["resources", "serde-default", "simdrivelabel", "compat"]
 ## Enables conversion functions from FASTSim 2 data structures
 compat = ["dep:fastsim-2"]
 ## Enables `pyo3` to provide fastsim-3 structs, methods, and functions to Python
 pyo3 = ["dep:pyo3"]
 ## Compiles external resources (e.g. vehicle files or cycle files) to be
 ## available in the binary
-resources = ["dep:include_dir"]
+resources = []
 ## Enables internet-querying dependencies
 web = ["dep:ureq", "dep:url"]
 ## Enables several text file formats for serialization and deserialization

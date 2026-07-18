@@ -1,11 +1,89 @@
 pub use fastsim_2::params::RustPhysicalProperties;
+pub use fastsim_2::simdrivelabel::get_label_fe; // do not replicate - use cached results instead
+pub use fastsim_2::simdrivelabel::LabelFe;
 pub use fastsim_2::vehicle::RustVehicle;
 
 use super::*;
 
-impl TryFrom<crate::compat::RustVehicle> for Vehicle {
+use include_dir::{include_dir, Dir};
+pub(crate) const ASSETS_DIR: &'static Dir<'_> =
+    &include_dir!("$CARGO_MANIFEST_DIR/src/compat/fastsim2/assets");
+
+pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
+    // const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "bin"];
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml"];
+
+    /// Specialized code to execute upon initialization
+    fn init(&mut self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    /// Read (deserialize) an object from a file.
+    /// Supported file extensions are listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`).
+    ///
+    /// # Arguments:
+    ///
+    /// * `filepath`: The filepath from which to read the object
+    ///
+    fn from_file<P: AsRef<Path>>(filepath: P, skip_init: bool) -> anyhow::Result<Self> {
+        let filepath = filepath.as_ref();
+        let extension = filepath
+            .extension()
+            .and_then(OsStr::to_str)
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
+        let file = File::open(filepath).with_context(|| {
+            if !filepath.exists() {
+                format!("File not found: {filepath:?}")
+            } else {
+                format!("Could not open file: {filepath:?}")
+            }
+        })?;
+        Self::from_reader(file, extension, skip_init)
+    }
+
+    /// Deserialize an object from anything that implements [`std::io::Read`]
+    ///
+    /// # Arguments:
+    ///
+    /// * `rdr` - The reader from which to read object data
+    /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
+    ///
+    fn from_reader<R: std::io::Read>(
+        rdr: R,
+        format: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
+            // "json" => serde_json::from_reader(rdr)?,
+            // "toml" => {
+            //     let mut buf = String::new();
+            //     rdr.read_to_string(&mut buf)?;
+            //     Self::from_toml(buf, skip_init)?
+            // }
+            // #[cfg(feature = "bincode")]
+            // "bin" => bincode::deserialize_from(rdr)?,
+            _ => bail!(
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS
+            ),
+        };
+        if !skip_init {
+            deserialized.init()?;
+        }
+        Ok(deserialized)
+    }
+}
+
+impl SerdeAPI for RustVehicle {
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.set_derived()
+    }
+}
+
+impl TryFrom<RustVehicle> for Vehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: crate::compat::RustVehicle) -> anyhow::Result<Self> {
+    fn try_from(f2veh: RustVehicle) -> anyhow::Result<Self> {
         let mut f2veh = f2veh.clone();
         f2veh
             .set_derived()
@@ -34,13 +112,13 @@ impl TryFrom<crate::compat::RustVehicle> for Vehicle {
     }
 }
 
-impl TryFrom<&crate::compat::RustVehicle> for PowertrainType {
+impl TryFrom<&RustVehicle> for PowertrainType {
     type Error = anyhow::Error;
     /// Returns fastsim-3 vehicle given fastsim-2 vehicle
     ///
     /// # Arguments
     /// * `f2veh` - fastsim-2 vehicle
-    fn try_from(f2veh: &crate::compat::RustVehicle) -> anyhow::Result<PowertrainType> {
+    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<PowertrainType> {
         // TODO: implement the `_doc` fields in fastsim-3 and make sure they get carried over from fastsim-2
         // see https://github.com/NREL/fastsim/blob/fastsim-2/rust/fastsim-core/fastsim-proc-macros/src/doc_field.rs and do something similar
         match f2veh.veh_pt_type.as_str() {
@@ -75,22 +153,31 @@ Expected one of {}",
 impl Vehicle {
     #[allow(dead_code)]
     pub fn from_f2_file(file: PathBuf) -> anyhow::Result<Self> {
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh =
-            crate::compat::RustVehicle::from_file(file, false).with_context(|| format_dbg!())?;
+        let f2veh = RustVehicle::from_file(file, false).with_context(|| format_dbg!())?;
         Self::try_from(f2veh)
     }
 }
 
-const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
-const CONV: &str = "Conv";
-const HEV: &str = "HEV";
-const PHEV: &str = "PHEV";
-const BEV: &str = "BEV";
+pub(crate) const MC_PERC_OUT_ARRAY: [f64; 101] = [
+    0., 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15,
+    0.16, 0.17, 0.18, 0.19, 0.2, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3, 0.31,
+    0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.4, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47,
+    0.48, 0.49, 0.5, 0.51, 0.52, 0.53, 0.54, 0.55, 0.56, 0.57, 0.58, 0.59, 0.6, 0.61, 0.62, 0.63,
+    0.64, 0.65, 0.66, 0.67, 0.68, 0.69, 0.7, 0.71, 0.72, 0.73, 0.74, 0.75, 0.76, 0.77, 0.78, 0.79,
+    0.8, 0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87, 0.88, 0.89, 0.9, 0.91, 0.92, 0.93, 0.94, 0.95,
+    0.96, 0.97, 0.98, 0.99, 1.,
+];
 
-impl TryFrom<&crate::compat::RustVehicle> for ConventionalVehicle {
+// TODO: remove pub(crate) when able
+pub(crate) const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
+pub(crate) const CONV: &str = "Conv";
+pub(crate) const HEV: &str = "HEV";
+pub(crate) const PHEV: &str = "PHEV";
+pub(crate) const BEV: &str = "BEV";
+
+impl TryFrom<&RustVehicle> for ConventionalVehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &crate::compat::RustVehicle) -> anyhow::Result<ConventionalVehicle> {
+    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<ConventionalVehicle> {
         let conv = ConventionalVehicle {
             fs: {
                 let fs = FuelStorage {
@@ -113,9 +200,9 @@ impl TryFrom<&crate::compat::RustVehicle> for ConventionalVehicle {
     }
 }
 
-impl TryFrom<crate::compat::RustVehicle> for Transmission {
+impl TryFrom<RustVehicle> for Transmission {
     type Error = anyhow::Error;
-    fn try_from(f2veh: crate::compat::RustVehicle) -> anyhow::Result<Transmission> {
+    fn try_from(f2veh: RustVehicle) -> anyhow::Result<Transmission> {
         let transmission = Transmission {
             mass: None,
             eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
@@ -127,9 +214,9 @@ impl TryFrom<crate::compat::RustVehicle> for Transmission {
     }
 }
 
-impl TryFrom<&crate::compat::RustVehicle> for BatteryElectricVehicle {
+impl TryFrom<&RustVehicle> for BatteryElectricVehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &crate::compat::RustVehicle) -> anyhow::Result<BatteryElectricVehicle> {
+    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<BatteryElectricVehicle> {
         let bev = BatteryElectricVehicle {
             res: ReversibleEnergyStorage::try_from(f2veh.clone()).with_context(|| format_dbg!())?,
             em: ElectricMachine {
@@ -166,9 +253,9 @@ impl TryFrom<&crate::compat::RustVehicle> for BatteryElectricVehicle {
     }
 }
 
-impl TryFrom<&crate::compat::RustVehicle> for Chassis {
+impl TryFrom<&RustVehicle> for Chassis {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &crate::compat::RustVehicle) -> anyhow::Result<Self> {
+    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<Self> {
         let drive_type = if f2veh.drive_axle_weight_frac > 0.9 {
             chassis::DriveTypes::AWD
         } else if f2veh.veh_cg_m < 0. {
@@ -197,9 +284,9 @@ impl TryFrom<&crate::compat::RustVehicle> for Chassis {
     }
 }
 
-impl TryFrom<&crate::compat::RustVehicle> for HybridElectricVehicle {
+impl TryFrom<&RustVehicle> for HybridElectricVehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &crate::compat::RustVehicle) -> anyhow::Result<HybridElectricVehicle> {
+    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<HybridElectricVehicle> {
         let pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(hev::RESGreedyWithDynamicBuffers {
             speed_soc_fc_on_buffer: None,
             speed_soc_fc_on_buffer_coeff: None,
@@ -245,9 +332,9 @@ impl TryFrom<&crate::compat::RustVehicle> for HybridElectricVehicle {
     }
 }
 
-impl TryFrom<crate::compat::RustVehicle> for ElectricMachine {
+impl TryFrom<RustVehicle> for ElectricMachine {
     type Error = anyhow::Error;
-    fn try_from(f2veh: crate::compat::RustVehicle) -> Result<ElectricMachine, anyhow::Error> {
+    fn try_from(f2veh: RustVehicle) -> Result<ElectricMachine, anyhow::Error> {
         Ok(powertrain::electric_machine::EMBuilder {
             eff_interp_achieved: {
                 // fastsim-2's hard-coded short vector of percent of peak power
@@ -262,7 +349,7 @@ impl TryFrom<crate::compat::RustVehicle> for ElectricMachine {
                         let mc_full_eff = Array1::from_vec(f2veh.mc_full_eff_array.clone());
                         ensure!(mc_full_eff.len() == 101);
                         let shortener = Interp1D::new(
-                            fastsim_2::params::MC_PERC_OUT_ARRAY.to_vec().into(),
+                            MC_PERC_OUT_ARRAY.to_vec().into(),
                             mc_full_eff,
                             strategy::Linear,
                             Extrapolate::Error,
@@ -293,9 +380,9 @@ impl TryFrom<crate::compat::RustVehicle> for ElectricMachine {
     }
 }
 
-impl TryFrom<crate::compat::RustVehicle> for FuelConverter {
+impl TryFrom<RustVehicle> for FuelConverter {
     type Error = anyhow::Error;
-    fn try_from(f2veh: crate::compat::RustVehicle) -> Result<FuelConverter, anyhow::Error> {
+    fn try_from(f2veh: RustVehicle) -> Result<FuelConverter, anyhow::Error> {
         let mut fc: FuelConverter = powertrain::fuel_converter::FCBuilder {
             pwr_out_max: f2veh.fc_max_kw * uc::KW,
             pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
@@ -322,9 +409,9 @@ impl TryFrom<crate::compat::RustVehicle> for FuelConverter {
     }
 }
 
-impl TryFrom<crate::compat::RustVehicle> for ReversibleEnergyStorage {
+impl TryFrom<RustVehicle> for ReversibleEnergyStorage {
     type Error = anyhow::Error;
-    fn try_from(f2veh: crate::compat::RustVehicle) -> anyhow::Result<ReversibleEnergyStorage> {
+    fn try_from(f2veh: RustVehicle) -> anyhow::Result<ReversibleEnergyStorage> {
         let f3_res = ReversibleEnergyStorage {
             thrml: Default::default(),
             state: Default::default(),
