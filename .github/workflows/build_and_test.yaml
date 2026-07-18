@@ -65,6 +65,7 @@ jobs:
 
       - name: Run Rust tests
         if: matrix.os.base == 'ubuntu'
+        shell: bash -e {0}
         run: cargo test --release
 
       - name: Build source distribution
