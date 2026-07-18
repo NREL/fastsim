@@ -40,8 +40,6 @@ pub mod vehicle;
 #[cfg_attr(feature = "pyo3", imports::pyfunction)]
 pub fn enabled_features() -> Vec<String> {
     vec![
-        #[cfg(feature = "default")]
-        "default".into(),
         #[cfg(feature = "resources")]
         "resources".into(),
         #[cfg(feature = "web")]

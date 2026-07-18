@@ -1,4 +1,5 @@
 use super::*;
+#[cfg(feature = "resources")]
 use include_dir::{include_dir, Dir};
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {

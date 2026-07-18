@@ -2019,7 +2019,6 @@ mod tests {
 
     /// Test that label FE calculations for conventional vehicles match FASTSim-2 results
     #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_conv_vs_fastsim2() {
         let file_contents = include_str!("../vehicle/fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -2054,7 +2053,6 @@ mod tests {
 
     /// Test that label FE calculations for BEV vehicles match FASTSim-2 results
     #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_bev_vs_fastsim2() {
         let file_contents = include_str!("../vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -2088,7 +2086,6 @@ mod tests {
 
     /// Test that label FE calculations for HEV vehicles match FASTSim-2 results
     #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_hev_vs_fastsim2() {
         let file_contents = include_str!("../vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -2118,7 +2115,6 @@ mod tests {
 
     /// Test that creates a mock PHEV vehicle from FASTSim-2 data and compares label FE calculations
     #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
     fn test_label_fe_phev_vs_fastsim2() {
         // Load a PHEV vehicle from the calibration directory (FASTSim-2 format)
         let f2_veh_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -2293,21 +2289,18 @@ mod tests {
         assert_label_fe_same(&label_fe_f2, &label_fe_f3, tolerance);
     }
     #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
     pub fn test_label_fe_post_proc_calcs_for_conv() {
         let file_contents = include_str!("../vehicle/fastsim-2_2012_Ford_Fusion.yaml");
         let tolerance = 1e-6;
         run_fe_label_comparison_for(file_contents, tolerance);
     }
     #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
     pub fn test_label_fe_post_proc_calcs_for_hev() {
         let file_contents = include_str!("../vehicle/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         let tolerance = 1e-6;
         run_fe_label_comparison_for(file_contents, tolerance);
     }
     #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
     pub fn test_label_fe_post_proc_calcs_for_bev() {
         let file_contents = include_str!("../vehicle/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -2346,7 +2339,6 @@ mod tests {
         assert_label_fe_same(&label_fe_f2, &label_fe_f3, tolerance);
     }
     #[test]
-    #[cfg(all(feature = "resources", feature = "yaml"))]
     pub fn test_label_fe_post_proc_calcs_for_phev() {
         let f2_veh_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()

@@ -83,7 +83,7 @@ yaml = ["dep:serde_yaml"]
 msgpack = ["dep:rmp-serde"]
 
 ## Enables the simdrivelabel module for calculating EPA label fuel economy
-simdrivelabel = []
+simdrivelabel = ["resources", "yaml", "json", "csv"]
 
 #! ### Features needed to allow for custom `uom` quantities and units.  These
 #! ### have no actual effect.

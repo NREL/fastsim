@@ -118,6 +118,7 @@ pt_type:
       dfco_enabled: false
       minimum_dfco_speed_meters_per_second: 0.0
       minimum_dfco_deceleration_meters_per_second_squared: 0.0
+      stopped_speed_threshold_meters_per_second: 0.0
       save_interval: ~
       state:
         i: 0
