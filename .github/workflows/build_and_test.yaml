@@ -101,7 +101,7 @@ jobs:
           # Linux builds run in an isolated container with no Rust preinstalled,
           # so it needs its own toolchain install.
           CIBW_BEFORE_BUILD_LINUX: >
-            yum -y install openssl openssl-devel &&
+            yum -y install openssl openssl-devel perl perl-IPC-Cmd &&
             curl https://sh.rustup.rs -sSf | sh -s -- --profile=minimal -y &&
             rustup show
 
