@@ -2026,8 +2026,12 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     fn test_label_fe_conv_vs_fastsim2() {
-        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2012_Ford_Fusion.yaml").unwrap().contents();
-        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR
+            .get_file("vehicles/fastsim-2_2012_Ford_Fusion.yaml")
+            .unwrap()
+            .contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false)
+            .unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
@@ -2061,8 +2065,12 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     fn test_label_fe_bev_vs_fastsim2() {
-        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml").unwrap().contents();
-        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR
+            .get_file("vehicles/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml")
+            .unwrap()
+            .contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false)
+            .unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
@@ -2095,8 +2103,12 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     fn test_label_fe_hev_vs_fastsim2() {
-        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2016_TOYOTA_Prius_Two.yaml").unwrap().contents();
-        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR
+            .get_file("vehicles/fastsim-2_2016_TOYOTA_Prius_Two.yaml")
+            .unwrap()
+            .contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false)
+            .unwrap();
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
@@ -2162,7 +2174,9 @@ mod tests {
             .0;
 
         // Get FASTSim-2 label FE results
-        let label_fe_f2 = crate::compat::fastsim2::get_label_fe(&f2_veh, None, None).unwrap().0;
+        let label_fe_f2 = crate::compat::fastsim2::get_label_fe(&f2_veh, None, None)
+            .unwrap()
+            .0;
 
         let tol = Tolerances {
             udds_tolerance: 0.05, // 5% tolerance
@@ -2184,7 +2198,11 @@ mod tests {
     }
 
     #[cfg(feature = "compat")]
-    fn assert_label_fe_same(label_fe_f2: &crate::compat::fastsim2::LabelFe, label_fe_f3: &LabelFe, tol: f64) {
+    fn assert_label_fe_same(
+        label_fe_f2: &crate::compat::fastsim2::LabelFe,
+        label_fe_f3: &LabelFe,
+        tol: f64,
+    ) {
         let mut all_pass = true;
         let mut message = String::new();
         let diff = frac_diff(label_fe_f2.lab_comb_mpgge, label_fe_f3.lab_comb_mpgge);
@@ -2296,8 +2314,12 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     pub fn test_label_fe_post_proc_calcs_for_conv() {
-        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2012_Ford_Fusion.yaml").unwrap().contents();
-        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR
+            .get_file("vehicles/fastsim-2_2012_Ford_Fusion.yaml")
+            .unwrap()
+            .contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false)
+            .unwrap();
         let tolerance = 1e-6;
         run_fe_label_comparison_for(&f2veh, tolerance);
     }
@@ -2305,8 +2327,12 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     pub fn test_label_fe_post_proc_calcs_for_hev() {
-        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2016_TOYOTA_Prius_Two.yaml").unwrap().contents();
-        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR
+            .get_file("vehicles/fastsim-2_2016_TOYOTA_Prius_Two.yaml")
+            .unwrap()
+            .contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false)
+            .unwrap();
         let tolerance = 1e-6;
         run_fe_label_comparison_for(&f2veh, tolerance);
     }
@@ -2314,8 +2340,12 @@ mod tests {
     #[cfg(all(feature = "resources", feature = "yaml"))]
     #[cfg(feature = "compat")]
     pub fn test_label_fe_post_proc_calcs_for_bev() {
-        let file_contents = crate::compat::fastsim2::ASSETS_DIR.get_file("fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml").unwrap().contents();
-        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false).unwrap();
+        let file_contents = crate::compat::fastsim2::ASSETS_DIR
+            .get_file("vehicles/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml")
+            .unwrap()
+            .contents();
+        let f2veh = crate::compat::fastsim2::RustVehicle::from_reader(file_contents, "yaml", false)
+            .unwrap();
 
         // Get FASTSim-2 label FE results
         let (label_fe_f2, result) = crate::compat::fastsim2::get_label_fe(&f2veh, Some(true), None)
