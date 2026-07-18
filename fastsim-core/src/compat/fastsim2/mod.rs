@@ -1,4 +1,4 @@
-use fastsim_core::traits::SerdeAPI;
+use fastsim_core::traits::SerdeAPI as _;
 
 use super::*;
 pub use fastsim_2 as fastsim_core;
@@ -23,14 +23,14 @@ mod tests {
                 let f2veh =
                     fastsim_core::vehicle::RustVehicle::from_reader(file.contents(), "yaml", false)
                         .unwrap();
-                let f3veh = Vehicle::try_from(f2veh).unwrap();
+                assert!(Vehicle::try_from(f2veh).is_ok());
             });
     }
 
     #[test]
     #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_conv() {
-        let veh = mock_conv_veh();
+        let veh = Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
         let mut sd2 = sd.to_fastsim2().unwrap();
@@ -40,7 +40,7 @@ mod tests {
     #[test]
     #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_hev() {
-        let veh = mock_hev();
+        let veh = Vehicle::from_resource("2016_TOYOTA_Prius_Two.yaml", false).unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
         let mut sd2 = sd.to_fastsim2().unwrap();
@@ -50,7 +50,7 @@ mod tests {
     #[test]
     #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_bev() {
-        let veh = mock_bev();
+        let veh = Vehicle::from_resource("2022_Renault_Zoe_ZE50_R135.yaml", false).unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
         let mut sd2 = sd.to_fastsim2().unwrap();
