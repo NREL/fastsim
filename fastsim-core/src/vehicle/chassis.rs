@@ -20,7 +20,6 @@ impl Init for DriveTypes {}
 
 #[serde_api]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
-#[non_exhaustive]
 #[serde(deny_unknown_fields)]
 /// Struct for simulating vehicle
 pub struct Chassis {
@@ -52,9 +51,9 @@ pub struct Chassis {
     /// Wheel base length
     pub wheel_base: si::Length,
 
-    pub(super) mass: Option<si::Mass>,
+    pub mass: Option<si::Mass>,
     /// Vehicle mass excluding cargo, passengers, and powertrain components
-    pub(super) glider_mass: Option<si::Mass>,
+    pub glider_mass: Option<si::Mass>,
     /// Cargo mass including passengers
     #[serde(default)]
     pub cargo_mass: Option<si::Mass>,
@@ -62,37 +61,6 @@ pub struct Chassis {
 
 impl SerdeAPI for Chassis {}
 impl Init for Chassis {}
-
-impl TryFrom<&fastsim_2::vehicle::RustVehicle> for Chassis {
-    type Error = anyhow::Error;
-    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<Self> {
-        let drive_type = if f2veh.drive_axle_weight_frac > 0.9 {
-            chassis::DriveTypes::AWD
-        } else if f2veh.veh_cg_m < 0. {
-            chassis::DriveTypes::RWD
-        } else {
-            chassis::DriveTypes::FWD
-        };
-
-        Ok(Self {
-            drag_coef: f2veh.drag_coef * uc::R,
-            frontal_area: f2veh.frontal_area_m2 * uc::M2,
-            cg_height: f2veh.veh_cg_m.abs() * uc::M,
-            wheel_fric_coef: f2veh.wheel_coef_of_fric * uc::R,
-            drive_type,
-            drive_axle_weight_frac: f2veh.drive_axle_weight_frac * uc::R,
-            wheel_base: f2veh.wheel_base_m * uc::M,
-            wheel_inertia: f2veh.wheel_inertia_kg_m2 * uc::KGM2,
-            wheel_rr_coef: f2veh.wheel_rr_coef * uc::R,
-            num_wheels: f2veh.num_wheels as u8,
-            wheel_radius: Some(f2veh.wheel_radius_m * uc::M),
-            tire_code: None,
-            mass: None,
-            glider_mass: Some(f2veh.glider_kg * uc::KG),
-            cargo_mass: Some(f2veh.cargo_kg * uc::KG),
-        })
-    }
-}
 
 impl Mass for Chassis {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {

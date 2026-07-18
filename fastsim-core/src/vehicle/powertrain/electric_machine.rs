@@ -32,7 +32,7 @@ pub struct ElectricMachine {
     /// ElectricMachine specific power
     pub specific_pwr: Option<si::SpecificPower>,
     /// ElectricMachine mass
-    pub(in super::super) mass: Option<si::Mass>,
+    pub(crate) mass: Option<si::Mass>,
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
     /// struct for tracking current state
@@ -817,54 +817,6 @@ impl ElectricMachine {
                 eff_range,
             )))
         }
-    }
-}
-
-impl TryFrom<fastsim_2::vehicle::RustVehicle> for ElectricMachine {
-    type Error = anyhow::Error;
-    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<ElectricMachine, anyhow::Error> {
-        Ok(EMBuilder {
-            eff_interp_achieved: {
-                // fastsim-2's hard-coded short vector of percent of peak power
-                let short_perc_out_vec =
-                    vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
-                // `InterpolatorEnum` for fastsim-3
-                InterpolatorEnum::new_1d(
-                    short_perc_out_vec.clone().into(),
-                    {
-                        // convert 101 element f2 array to shorter f2 array and use
-                        // linear rather than left-nearest interpolation
-                        let mc_full_eff = Array1::from_vec(f2veh.mc_full_eff_array.clone());
-                        ensure!(mc_full_eff.len() == 101);
-                        let shortener = Interp1D::new(
-                            fastsim_2::params::MC_PERC_OUT_ARRAY.to_vec().into(),
-                            mc_full_eff,
-                            strategy::Linear,
-                            Extrapolate::Error,
-                        )
-                        .with_context(|| format_dbg!())?;
-                        let mut short_eff: Vec<f64> = short_perc_out_vec
-                            .iter()
-                            .map(|x| shortener.interpolate(&[*x]).unwrap())
-                            .collect();
-                        short_eff[0] = short_eff[1];
-                        short_eff.into()
-                    },
-                    strategy::Linear,
-                    Extrapolate::Error,
-                )
-            }
-            .with_context(|| {
-                format!(
-                    "{}\n{}",
-                    format_dbg!(f2veh.mc_full_eff_array.len()),
-                    format_dbg!(f2veh.mc_perc_out_array.len())
-                )
-            })?,
-            pwr_out_max: f2veh.mc_max_kw * uc::KW,
-        }
-        .try_into()
-        .with_context(|| format_dbg!())?)
     }
 }
 

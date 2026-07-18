@@ -20,9 +20,9 @@ pub struct ReversibleEnergyStorage {
     pub thrml: RESThermalOption,
     /// ReversibleEnergyStorage mass
     #[serde(default)]
-    pub(in super::super) mass: Option<si::Mass>,
+    pub(crate) mass: Option<si::Mass>,
     /// ReversibleEnergyStorage specific energy
-    pub(in super::super) specific_energy: Option<si::SpecificEnergy>,
+    pub(crate) specific_energy: Option<si::SpecificEnergy>,
     /// Max output (and input) power battery can produce (accept)
     pub pwr_out_max: si::Power,
 
@@ -853,26 +853,6 @@ impl HistoryMethods for ReversibleEnergyStorage {
     fn clear(&mut self) {
         self.history.clear();
         self.thrml.clear();
-    }
-}
-
-impl TryFrom<fastsim_2::vehicle::RustVehicle> for ReversibleEnergyStorage {
-    type Error = anyhow::Error;
-    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> anyhow::Result<ReversibleEnergyStorage> {
-        let f3_res = ReversibleEnergyStorage {
-            thrml: Default::default(),
-            state: Default::default(),
-            mass: None,
-            specific_energy: None,
-            pwr_out_max: f2veh.ess_max_kw * uc::KW,
-            energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-            eff_interp: EffInterp::Constant(Interp0D::new(f2veh.ess_round_trip_eff.sqrt())),
-            min_soc: f2veh.min_soc * uc::R,
-            max_soc: f2veh.max_soc * uc::R,
-            save_interval: Some(1),
-            history: Default::default(),
-        };
-        Ok(f3_res)
     }
 }
 

@@ -19,9 +19,9 @@ pub struct FuelConverter {
     pub thrml: FuelConverterThermalOption,
     /// [Self] mass
     #[serde(default)]
-    pub(in super::super) mass: Option<si::Mass>,
+    pub(crate) mass: Option<si::Mass>,
     /// FuelConverter specific power
-    pub(in super::super) specific_pwr: Option<si::SpecificPower>,
+    pub(crate) specific_pwr: Option<si::SpecificPower>,
     /// max rated brake output power
     pub pwr_out_max: si::Power,
     /// starting/baseline transient power limit
@@ -491,35 +491,6 @@ impl FuelConverter {
             FuelConverterThermalOption::FuelConverterThermal(fct) => Some(&mut fct.state),
             FuelConverterThermalOption::None => None,
         }
-    }
-}
-
-impl TryFrom<fastsim_2::vehicle::RustVehicle> for FuelConverter {
-    type Error = anyhow::Error;
-    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<FuelConverter, anyhow::Error> {
-        let mut fc: FuelConverter = FCBuilder {
-            pwr_out_max: f2veh.fc_max_kw * uc::KW,
-            pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-            eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
-                // hard-coded vec from fastsim-2
-                vec![
-                    0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
-                ]
-                .into(),
-                f2veh.fc_eff_map.clone().into(),
-                strategy::Linear,
-                Extrapolate::Error,
-            )
-            .with_context(|| format_dbg!())?,
-            pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
-            // this means that aux power must include idle fuel
-            pwr_idle_fuel: si::Power::ZERO,
-            save_interval: Some(1),
-        }
-        .try_into()
-        .with_context(|| format_dbg!())?;
-        fc.init()?;
-        Ok(fc)
     }
 }
 

@@ -449,53 +449,6 @@ impl HybridElectricVehicle {
     }
 }
 
-impl TryFrom<&fastsim_2::vehicle::RustVehicle> for HybridElectricVehicle {
-    type Error = anyhow::Error;
-    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<HybridElectricVehicle> {
-        let pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(hev::RESGreedyWithDynamicBuffers {
-            speed_soc_fc_on_buffer: None,
-            speed_soc_fc_on_buffer_coeff: None,
-            speed_soc_disch_buffer: None,
-            speed_soc_disch_buffer_coeff: None,
-            speed_soc_regen_buffer: None,
-            speed_soc_regen_buffer_coeff: None,
-            // note that this exists in `fastsim-2` but has no apparent effect!
-            fc_min_time_on: None,
-            speed_fc_forced_on: Some(f2veh.mph_fc_on * uc::MPH),
-            frac_pwr_demand_fc_forced_on: Some(
-                f2veh.kw_demand_fc_on / (f2veh.fc_max_kw + f2veh.ess_max_kw.min(f2veh.mc_max_kw))
-                    * uc::R,
-            ),
-            frac_of_most_eff_pwr_to_run_fc: None,
-            temp_fc_forced_on: None,
-            temp_fc_allowed_off: None,
-            save_interval: Some(1),
-            state: Default::default(),
-            history: Default::default(),
-        }));
-        let mut hev = HybridElectricVehicle {
-            fs: FuelStorage {
-                pwr_out_max: f2veh.fs_max_kw * uc::KW,
-                pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
-                energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
-                specific_energy: None,
-                mass: None,
-            },
-            fc: FuelConverter::try_from(f2veh.clone())?,
-            res: ReversibleEnergyStorage::try_from(f2veh.clone()).with_context(|| format_dbg!())?,
-            em: ElectricMachine::try_from(f2veh.clone())?,
-            transmission: Transmission::try_from(f2veh.clone())?,
-            pt_cntrl,
-            mass: None,
-            sim_params: Default::default(),
-            aux_cntrl: Default::default(),
-            soc_bal_iter_history: Default::default(),
-            soc_bal_iters: Default::default(),
-        };
-        hev.init()?;
-        Ok(hev)
-    }
-}
 impl Mass for HybridElectricVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self

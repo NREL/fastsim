@@ -13,10 +13,10 @@ pub struct FuelStorage {
     /// energy capacity
     pub energy_capacity: si::Energy,
     /// Fuel and tank specific energy
-    pub(in super::super) specific_energy: Option<si::SpecificEnergy>,
+    pub(crate) specific_energy: Option<si::SpecificEnergy>,
     /// Mass of fuel storage
     #[serde(default)]
-    pub(in super::super) mass: Option<si::Mass>,
+    pub(crate) mass: Option<si::Mass>,
     // TODO: add state to track fuel level and make sure mass changes propagate up to vehicle level,
     // which should then include vehicle mass in state
 }

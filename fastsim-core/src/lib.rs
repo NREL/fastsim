@@ -36,6 +36,9 @@ pub mod uc;
 pub mod utils;
 pub mod vehicle;
 
+#[cfg(feature = "compat")]
+pub mod compat;
+
 /// List enabled features
 #[cfg_attr(feature = "pyo3", imports::pyfunction)]
 pub fn enabled_features() -> Vec<String> {

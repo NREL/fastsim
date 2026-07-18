@@ -58,7 +58,7 @@ pub struct Vehicle {
     pub pwr_aux_base: si::Power,
 
     /// time step interval at which `state` is saved into `history`
-    save_interval: Option<usize>,
+    pub save_interval: Option<usize>,
     /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
@@ -114,6 +114,7 @@ impl Vehicle {
     // }
 
     /// Load vehicle from file saved in fastsim-2 format
+    #[cfg(feature = "compat")]
     #[pyo3(name = "from_f2_file")]
     #[staticmethod]
     fn from_f2_file_py(file: PathBuf) -> anyhow::Result<Self> {
@@ -413,13 +414,6 @@ impl HistoryMethods for Vehicle {
         self.hvac.clear();
     }
 }
-
-/// TODO: update this constant to match fastsim-2 for gasoline
-pub(super) const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
-const CONV: &str = "Conv";
-const HEV: &str = "HEV";
-const PHEV: &str = "PHEV";
-const BEV: &str = "BEV";
 
 impl SetCumulative for Vehicle {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
@@ -848,14 +842,6 @@ impl Vehicle {
         Ok((pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab))
     }
 
-    #[allow(dead_code)]
-    fn from_f2_file(file: PathBuf) -> anyhow::Result<Self> {
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh = fastsim_2::vehicle::RustVehicle::from_file(file, false)
-            .with_context(|| format_dbg!())?;
-        Self::try_from(f2veh)
-    }
-
     pub(crate) fn mark_non_thermal_fresh(&mut self) -> Result<(), anyhow::Error> {
         self.state.i.mark_stale();
         self.state.time.mark_stale();
@@ -1053,61 +1039,65 @@ pub(crate) mod tests {
     }
 
     #[cfg(feature = "yaml")]
+    #[cfg(feature = "compat")]
     /// Load representative conv from fastsim-2, convert to fastsim-3 format, and
     /// save to file in the resources folder
     pub(crate) fn mock_conv_veh() -> Vehicle {
-        let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
+        let file_contents = include_str!("../compat/fastsim2/fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
-            let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
+            let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
             let veh = Vehicle::try_from(f2veh);
             veh.unwrap()
         };
 
-        veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
-            .unwrap();
+        // veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
+        //     .unwrap();
         assert!(veh.pt_type.is_conventional_vehicle());
         veh
     }
 
     #[cfg(feature = "yaml")]
+    #[cfg(feature = "compat")]
     /// Load representative HEV from fastsim-2, convert to fastsim-3 format, and
     /// save to file in the resources folder
     pub(crate) fn mock_hev() -> Vehicle {
-        let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
+        let file_contents = include_str!("../compat/fastsim2/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
-            let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
+            let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
             let veh = Vehicle::try_from(f2veh);
             veh.unwrap()
         };
 
-        veh.to_file(vehicles_dir().join("2016_TOYOTA_Prius_Two.yaml"))
-            .unwrap();
+        // veh.to_file(vehicles_dir().join("2016_TOYOTA_Prius_Two.yaml"))
+        //     .unwrap();
         assert!(veh.pt_type.is_hybrid_electric_vehicle());
         veh
     }
 
     #[cfg(feature = "yaml")]
+    #[cfg(feature = "compat")]
     /// Load representative BEV from fastsim-2, convert to fastsim-3 format, and
     /// save to file in the resources folder
     pub(crate) fn mock_bev() -> Vehicle {
-        let file_contents = include_str!("fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
+        let file_contents = include_str!("../compat/fastsim2/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
-            let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
+            let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
             let veh = Vehicle::try_from(f2veh);
             veh.unwrap()
         };
 
-        veh.to_file(vehicles_dir().join("2022_Renault_Zoe_ZE50_R135.yaml"))
-            .unwrap();
+        // veh.to_file(vehicles_dir().join("2022_Renault_Zoe_ZE50_R135.yaml"))
+        //     .unwrap();
         assert!(veh.pt_type.is_battery_electric_vehicle());
         veh
     }
 
     #[test]
     #[cfg(feature = "yaml")]
+    #[cfg(feature = "compat")]
     pub(crate) fn test_conv_veh_init() {
         use pretty_assertions::assert_eq;
         let veh = mock_conv_veh();
@@ -1117,36 +1107,6 @@ pub(crate) mod tests {
         assert_eq!(veh.to_yaml().unwrap(), veh1.to_yaml().unwrap());
         veh1.init().unwrap();
         assert_eq!(veh.to_yaml().unwrap(), veh1.to_yaml().unwrap());
-    }
-
-    #[test]
-    #[cfg(all(feature = "csv", feature = "resources"))]
-    fn test_to_fastsim2_conv() {
-        let veh = mock_conv_veh();
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
-    }
-
-    #[test]
-    #[cfg(all(feature = "csv", feature = "resources"))]
-    fn test_to_fastsim2_hev() {
-        let veh = mock_hev();
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
-    }
-
-    #[test]
-    #[cfg(all(feature = "csv", feature = "resources"))]
-    fn test_to_fastsim2_bev() {
-        let veh = mock_bev();
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
     }
 
     type StructWithResources = Vehicle;
