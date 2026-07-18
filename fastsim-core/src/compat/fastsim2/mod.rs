@@ -1,265 +1,8 @@
-pub use fastsim_2::simdrivelabel::get_label_fe; // do not replicate - use cached results instead
-pub use fastsim_2::simdrivelabel::LabelFe;
-pub use fastsim_2::vehicle::RustVehicle;
-pub use fastsim_2::traits::SerdeAPI;
-
 use super::*;
+pub use fastsim_2;
 
-// #[derive(Serialize, Deserialize)]
-// pub struct LabelFe {
-//     pub veh: vehicle::RustVehicle,
-//     pub adj_params: AdjCoef,
-//     pub lab_udds_mpgge: f64,
-//     pub lab_hwy_mpgge: f64,
-//     pub lab_comb_mpgge: f64,
-//     pub lab_udds_kwh_per_mi: f64,
-//     pub lab_hwy_kwh_per_mi: f64,
-//     pub lab_comb_kwh_per_mi: f64,
-//     pub adj_udds_mpgge: f64,
-//     pub adj_hwy_mpgge: f64,
-//     pub adj_comb_mpgge: f64,
-//     pub adj_udds_kwh_per_mi: f64,
-//     pub adj_hwy_kwh_per_mi: f64,
-//     pub adj_comb_kwh_per_mi: f64,
-//     pub adj_udds_ess_kwh_per_mi: f64,
-//     pub adj_hwy_ess_kwh_per_mi: f64,
-//     pub adj_comb_ess_kwh_per_mi: f64,
-//     pub net_range_miles: f64,
-//     pub uf: f64,
-//     pub net_accel: f64,
-//     pub res_found: String,
-//     pub phev_calcs: Option<LabelFePHEV>,
-//     pub adj_cs_comb_mpgge: Option<f64>,
-//     pub adj_cd_comb_mpgge: Option<f64>,
-//     pub net_phev_cd_miles: Option<f64>,
-//     pub trace_miss_speed_mph: f64,
-// }
-
-// impl SerdeAPI for LabelFe {}
-
-// #[derive(Serialize, Deserialize)]
-// /// Label fuel economy values for a PHEV vehicle
-// pub struct LabelFePHEV {
-//     pub regen_soc_buffer: f64,
-//     pub udds: PHEVCycleCalc,
-//     pub hwy: PHEVCycleCalc,
-// }
-
-// impl SerdeAPI for LabelFePHEV {}
-
-// #[derive(Serialize, Deserialize)]
-// /// Struct containing vehicle attributes
-// /// # Python Examples
-// /// ```python
-// /// import fastsim
-// ///
-// /// ## Load drive cycle by name
-// /// cyc_py = fastsim.cycle.Cycle.from_file("udds")
-// /// cyc_rust = cyc_py.to_rust()
-// /// ```
-// pub struct RustVehicle {
-//     /// Vehicle name
-//     #[serde(alias = "name")]
-//     pub scenario_name: String,
-//     /// Vehicle database ID
-//     #[serde(skip)]
-//     pub selection: u32,
-//     /// Vehicle year
-//     #[serde(alias = "vehModelYear")]
-//     pub veh_year: u32,
-//     /// Vehicle powertrain type, one of \[[CONV](CONV), [HEV](HEV), [PHEV](PHEV), [BEV](BEV)\]
-//     #[serde(alias = "vehPtType")]
-//     pub veh_pt_type: String,
-//     /// Aerodynamic drag coefficient
-//     #[serde(alias = "dragCoef")]
-//     pub drag_coef: f64,
-//     /// Frontal area, $m^2$
-//     #[serde(alias = "frontalAreaM2")]
-//     pub frontal_area_m2: f64,
-//     /// Vehicle mass excluding cargo, passengers, and powertrain components, $kg$
-//     #[serde(alias = "gliderKg")]
-//     pub glider_kg: f64,
-//     /// Vehicle center of mass height, $m$
-//     /// **NOTE:** positive for FWD, negative for RWD, AWD, 4WD
-//     #[serde(alias = "vehCgM")]
-//     pub veh_cg_m: f64,
-//     /// Fraction of weight on the drive axle while stopped
-//     #[serde(alias = "driveAxleWeightFrac")]
-//     pub drive_axle_weight_frac: f64,
-//     /// Wheelbase, $m$
-//     #[serde(alias = "wheelBaseM")]
-//     pub wheel_base_m: f64,
-//     /// Cargo mass including passengers, $kg$
-//     #[serde(alias = "cargoKg")]
-//     pub cargo_kg: f64,
-//     /// Total vehicle mass, overrides mass calculation, $kg$
-//     #[serde(alias = "vehOverrideKg")]
-//     pub veh_override_kg: Option<f64>,
-//     /// Component mass multiplier for vehicle mass calculation
-//     #[serde(alias = "compMassMultiplier")]
-//     pub comp_mass_multiplier: f64,
-//     /// Fuel storage max power output, $kW$
-//     #[serde(alias = "maxFuelStorKw")]
-//     pub fs_max_kw: f64,
-//     /// Fuel storage time to peak power, $s$
-//     #[serde(alias = "fuelStorSecsToPeakPwr")]
-//     pub fs_secs_to_peak_pwr: f64,
-//     /// Fuel storage energy capacity, $kWh$
-//     #[serde(alias = "fuelStorKwh")]
-//     pub fs_kwh: f64,
-//     /// Fuel specific energy, $\frac{kWh}{kg}$
-//     #[serde(alias = "fuelStorKwhPerKg")]
-//     pub fs_kwh_per_kg: f64,
-//     /// Fuel converter peak continuous power, $kW$
-//     #[serde(alias = "maxFuelConvKw")]
-//     pub fc_max_kw: f64,
-//     /// Fuel converter output power percentage map, x values of [fc_eff_map](RustVehicle::fc_eff_map)
-//     #[serde(alias = "fcPwrOutPerc")]
-//     pub fc_pwr_out_perc: Array1<f64>,
-//     /// Fuel converter efficiency map
-//     #[serde(default)]
-//     pub fc_eff_map: Array1<f64>,
-//     /// Fuel converter efficiency type, one of \[[SI](SI), [ATKINSON](ATKINSON), [DIESEL](DIESEL), [H2FC](H2FC), [HD_DIESEL](HD_DIESEL)\]
-//     /// Used for calculating [fc_eff_map](RustVehicle::fc_eff_map), and other calculations if H2FC
-//     #[serde(alias = "fcEffType")]
-//     pub fc_eff_type: String,
-//     /// Fuel converter time to peak power, $s$
-//     #[serde(alias = "fuelConvSecsToPeakPwr")]
-//     pub fc_sec_to_peak_pwr: f64,
-//     /// Fuel converter base mass, $kg$
-//     #[serde(alias = "fuelConvBaseKg")]
-//     pub fc_base_kg: f64,
-//     /// Fuel converter specific power (power-to-weight ratio), $\frac{kW}{kg}$
-//     #[serde(alias = "fuelConvKwPerKg")]
-//     pub fc_kw_per_kg: f64,
-//     /// Minimum time fuel converter must be on before shutoff (for HEV, PHEV)
-//     #[serde(alias = "minFcTimeOn")]
-//     pub min_fc_time_on: f64,
-//     /// Fuel converter idle power, $kW$
-//     #[serde(alias = "idleFcKw")]
-//     pub idle_fc_kw: f64,
-//     /// Peak continuous electric motor power, $kW$
-//     #[serde(alias = "mcMaxElecInKw")]
-//     pub mc_max_kw: f64,
-//     /// Electric motor output power percentage map, x values of [mc_eff_map](RustVehicle::mc_eff_map)
-//     #[serde(alias = "mcPwrOutPerc")]
-//     pub mc_pwr_out_perc: Array1<f64>,
-//     /// Electric motor efficiency map
-//     #[serde(alias = "mcEffArray")]
-//     pub mc_eff_map: Array1<f64>,
-//     /// Electric motor time to peak power, $s$
-//     #[serde(alias = "motorSecsToPeakPwr")]
-//     pub mc_sec_to_peak_pwr: f64,
-//     /// Motor power electronics mass per power output, $\frac{kg}{kW}$
-//     #[serde(alias = "mcPeKgPerKw")]
-//     pub mc_pe_kg_per_kw: f64,
-//     /// Motor power electronics base mass, $kg$
-//     #[serde(alias = "mcPeBaseKg")]
-//     pub mc_pe_base_kg: f64,
-//     /// Traction battery maximum power output, $kW$
-//     #[serde(alias = "maxEssKw")]
-//     pub ess_max_kw: f64,
-//     /// Traction battery energy capacity, $kWh$
-//     #[serde(alias = "maxEssKwh")]
-//     pub ess_max_kwh: f64,
-//     /// Traction battery mass per energy, $\frac{kg}{kWh}$
-//     #[serde(alias = "essKgPerKwh")]
-//     pub ess_kg_per_kwh: f64,
-//     /// Traction battery base mass, $kg$
-//     #[serde(alias = "essBaseKg")]
-//     pub ess_base_kg: f64,
-//     /// Traction battery round-trip efficiency
-//     #[serde(alias = "essRoundTripEff")]
-//     pub ess_round_trip_eff: f64,
-//     /// Traction battery cycle life coefficient A, see [reference](https://web.archive.org/web/20090529194442/http://www.ocean.udel.edu/cms/wkempton/Kempton-V2G-pdfFiles/PDF%20format/Duvall-V2G-batteries-June05.pdf)
-//     #[serde(alias = "essLifeCoefA")]
-//     pub ess_life_coef_a: f64,
-//     /// Traction battery cycle life coefficient B, see [reference](https://web.archive.org/web/20090529194442/http://www.ocean.udel.edu/cms/wkempton/Kempton-V2G-pdfFiles/PDF%20format/Duvall-V2G-batteries-June05.pdf)
-//     #[serde(alias = "essLifeCoefB")]
-//     pub ess_life_coef_b: f64,
-//     /// Traction battery minimum state of charge
-//     #[serde(alias = "minSoc")]
-//     pub min_soc: f64,
-//     /// Traction battery maximum state of charge
-//     #[serde(alias = "maxSoc")]
-//     pub max_soc: f64,
-//     /// ESS discharge effort toward max FC efficiency
-//     #[serde(alias = "essDischgToFcMaxEffPerc")]
-//     pub ess_dischg_to_fc_max_eff_perc: f64,
-//     /// ESS charge effort toward max FC efficiency
-//     #[serde(alias = "essChgToFcMaxEffPerc")]
-//     pub ess_chg_to_fc_max_eff_perc: f64,
-//     /// Mass moment of inertia per wheel, $kg \cdot m^2$
-//     #[serde(alias = "wheelInertiaKgM2")]
-//     pub wheel_inertia_kg_m2: f64,
-//     /// Number of wheels
-//     #[serde(alias = "numWheels")]
-//     pub num_wheels: f64, // TODO: Shouldn't this just be a unsigned integer? u8 would work fine.
-//     /// Rolling resistance coefficient
-//     #[serde(alias = "wheelRrCoef")]
-//     pub wheel_rr_coef: f64,
-//     /// Wheel radius, $m$
-//     #[serde(alias = "wheelRadiusM")]
-//     pub wheel_radius_m: f64,
-//     /// Wheel coefficient of friction
-//     #[serde(alias = "wheelCoefOfFric")]
-//     pub wheel_coef_of_fric: f64,
-//     /// Speed where the battery reserved for accelerating is zero
-//     #[serde(alias = "maxAccelBufferMph")]
-//     pub max_accel_buffer_mph: f64,
-//     /// Percent of usable battery energy reserved to help accelerate
-//     #[serde(alias = "maxAccelBufferPercOfUseableSoc")]
-//     pub max_accel_buffer_perc_of_useable_soc: f64,
-//     /// Percent SOC buffer for high accessory loads during cycles with long idle time
-//     #[serde(alias = "percHighAccBuf")]
-//     pub perc_high_acc_buf: f64,
-//     /// Speed at which the fuel converter must turn on, $mph$
-//     #[serde(alias = "mphFcOn")]
-//     pub mph_fc_on: f64,
-//     /// Power demand above which to require fuel converter on, $kW$
-//     #[serde(alias = "kwDemandFcOn")]
-//     pub kw_demand_fc_on: f64,
-//     /// Maximum brake regeneration efficiency
-//     #[serde(alias = "maxRegen")]
-//     pub max_regen: f64,
-//     /// Stop/start micro-HEV flag
-//     pub stop_start: bool,
-//     /// Force auxiliary power load to come from fuel converter
-//     #[serde(alias = "forceAuxOnFC")]
-//     pub force_aux_on_fc: bool,
-//     /// Alternator efficiency
-//     #[serde(alias = "altEff")]
-//     pub alt_eff: f64,
-//     /// Charger efficiency
-//     #[serde(alias = "chgEff")]
-//     pub chg_eff: f64,
-//     /// Auxiliary load power, $kW$
-//     #[serde(alias = "auxKw")]
-//     pub aux_kw: f64,
-//     /// Transmission mass, $kg$
-//     #[serde(alias = "transKg")]
-//     pub trans_kg: f64,
-//     /// Transmission efficiency
-//     #[serde(alias = "transEff")]
-//     pub trans_eff: f64,
-//     /// Maximum acceptable ratio of change in ESS energy to expended fuel energy (used in hybrid SOC balancing), $\frac{\Delta E_{ESS}}{\Delta E_{fuel}}$
-//     #[serde(alias = "essToFuelOkError")]
-//     pub ess_to_fuel_ok_error: f64,
-//     #[serde(default = "default_regen_a")]
-//     pub regen_a: f64,
-//     #[serde(default = "default_regen_b")]
-//     pub regen_b: f64,
-//     #[serde(default)]
-//     #[serde(alias = "fcEffArray", skip_serializing)]
-//     pub fc_eff_array: Vec<f64>,
-// }
-
-const fn default_regen_a() -> f64 {
-    500.0
-}
-const fn default_regen_b() -> f64 {
-    0.99
-}
+use fastsim_2::traits::SerdeAPI;
+use fastsim_2::vehicle::RustVehicle;
 
 use include_dir::{include_dir, Dir};
 pub(crate) const ASSETS_DIR: &'static Dir<'_> =
@@ -281,92 +24,7 @@ mod tests {
                 let f3veh = Vehicle::try_from(f2veh).unwrap();
             });
     }
-
-    // #[test]
-    // fn test_all_labelfe_deserialize() {
-    //     // Stored LabelFe results
-    //     ASSETS_DIR
-    //         .get_dir("labelfe")
-    //         .unwrap()
-    //         .files()
-    //         .iter()
-    //         .for_each(|file| {
-    //             LabelFe::from_file(file.contents(), false).unwrap();
-    //         });
-    // }
 }
-
-// pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-//     // const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "bin"];
-//     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml"];
-
-//     /// Specialized code to execute upon initialization
-//     fn init(&mut self) -> anyhow::Result<()> {
-//         Ok(())
-//     }
-
-//     /// Read (deserialize) an object from a file.
-//     /// Supported file extensions are listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`).
-//     ///
-//     /// # Arguments:
-//     ///
-//     /// * `filepath`: The filepath from which to read the object
-//     ///
-//     fn from_file<P: AsRef<Path>>(filepath: P, skip_init: bool) -> anyhow::Result<Self> {
-//         let filepath = filepath.as_ref();
-//         let extension = filepath
-//             .extension()
-//             .and_then(OsStr::to_str)
-//             .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-//         let file = File::open(filepath).with_context(|| {
-//             if !filepath.exists() {
-//                 format!("File not found: {filepath:?}")
-//             } else {
-//                 format!("Could not open file: {filepath:?}")
-//             }
-//         })?;
-//         Self::from_reader(file, extension, skip_init)
-//     }
-
-//     /// Deserialize an object from anything that implements [`std::io::Read`]
-//     ///
-//     /// # Arguments:
-//     ///
-//     /// * `rdr` - The reader from which to read object data
-//     /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
-//     ///
-//     fn from_reader<R: std::io::Read>(
-//         rdr: R,
-//         format: &str,
-//         skip_init: bool,
-//     ) -> anyhow::Result<Self> {
-//         let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
-//             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
-//             // "json" => serde_json::from_reader(rdr)?,
-//             // "toml" => {
-//             //     let mut buf = String::new();
-//             //     rdr.read_to_string(&mut buf)?;
-//             //     Self::from_toml(buf, skip_init)?
-//             // }
-//             // #[cfg(feature = "bincode")]
-//             // "bin" => bincode::deserialize_from(rdr)?,
-//             _ => bail!(
-//                 "Unsupported format {format:?}, must be one of {:?}",
-//                 Self::ACCEPTED_BYTE_FORMATS
-//             ),
-//         };
-//         if !skip_init {
-//             deserialized.init()?;
-//         }
-//         Ok(deserialized)
-//     }
-// }
-
-// impl SerdeAPI for RustVehicle {
-//     fn init(&mut self) -> anyhow::Result<()> {
-//         self.set_derived()
-//     }
-// }
 
 impl TryFrom<RustVehicle> for Vehicle {
     type Error = anyhow::Error;
@@ -409,19 +67,19 @@ impl TryFrom<&RustVehicle> for PowertrainType {
         // TODO: implement the `_doc` fields in fastsim-3 and make sure they get carried over from fastsim-2
         // see https://github.com/NREL/fastsim/blob/fastsim-2/rust/fastsim-core/fastsim-proc-macros/src/doc_field.rs and do something similar
         match f2veh.veh_pt_type.as_str() {
-            CONV => {
+            fastsim_2::vehicle::CONV => {
                 let conv = ConventionalVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
             }
-            HEV => {
+            fastsim_2::vehicle::HEV => {
                 let hev = HybridElectricVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
             }
-            PHEV => {
+            fastsim_2::vehicle::PHEV => {
                 let phev = HybridElectricVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::PlugInHybridElectricVehicle(Box::new(phev)))
             }
-            BEV => {
+            fastsim_2::vehicle::BEV => {
                 let bev = BatteryElectricVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::BatteryElectricVehicle(Box::new(bev)))
             }
@@ -430,7 +88,13 @@ impl TryFrom<&RustVehicle> for PowertrainType {
                     "Invalid powertrain type: {}.
 Expected one of {}",
                     f2veh.veh_pt_type,
-                    [CONV, HEV, PHEV, BEV].join(", "),
+                    [
+                        fastsim_2::vehicle::CONV,
+                        fastsim_2::vehicle::HEV,
+                        fastsim_2::vehicle::PHEV,
+                        fastsim_2::vehicle::BEV
+                    ]
+                    .join(", "),
                 )
             }
         }
@@ -445,22 +109,7 @@ impl Vehicle {
     }
 }
 
-pub(crate) const MC_PERC_OUT_ARRAY: [f64; 101] = [
-    0., 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15,
-    0.16, 0.17, 0.18, 0.19, 0.2, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3, 0.31,
-    0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.4, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47,
-    0.48, 0.49, 0.5, 0.51, 0.52, 0.53, 0.54, 0.55, 0.56, 0.57, 0.58, 0.59, 0.6, 0.61, 0.62, 0.63,
-    0.64, 0.65, 0.66, 0.67, 0.68, 0.69, 0.7, 0.71, 0.72, 0.73, 0.74, 0.75, 0.76, 0.77, 0.78, 0.79,
-    0.8, 0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87, 0.88, 0.89, 0.9, 0.91, 0.92, 0.93, 0.94, 0.95,
-    0.96, 0.97, 0.98, 0.99, 1.,
-];
-
-// TODO: remove pub(crate) when able
-pub(crate) const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
-pub(crate) const CONV: &str = "Conv";
-pub(crate) const HEV: &str = "HEV";
-pub(crate) const PHEV: &str = "PHEV";
-pub(crate) const BEV: &str = "BEV";
+pub const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
 
 impl TryFrom<&RustVehicle> for ConventionalVehicle {
     type Error = anyhow::Error;
@@ -636,7 +285,7 @@ impl TryFrom<RustVehicle> for ElectricMachine {
                         let mc_full_eff = Array1::from_vec(f2veh.mc_full_eff_array.clone());
                         ensure!(mc_full_eff.len() == 101);
                         let shortener = Interp1D::new(
-                            MC_PERC_OUT_ARRAY.to_vec().into(),
+                            fastsim_2::params::MC_PERC_OUT_ARRAY.to_vec().into(),
                             mc_full_eff,
                             strategy::Linear,
                             Extrapolate::Error,
