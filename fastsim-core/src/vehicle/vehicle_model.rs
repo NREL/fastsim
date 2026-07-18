@@ -3,7 +3,6 @@ use crate::{
     prelude::*,
     vehicle::conv::{ConvPowertrainControls, ConvStopStartControl},
 };
-pub mod fastsim2_interface;
 
 /// Possible aux load power sources
 #[derive(

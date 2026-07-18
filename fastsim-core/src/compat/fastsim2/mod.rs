@@ -12,54 +12,29 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg(all(feature = "yaml", feature = "resources"))]
-    fn test_all_vehicles_deserialize_and_convert() {
+    #[cfg(all(feature = "yaml", feature = "csv", feature = "resources"))]
+    fn test_deserialize_and_convert_roundtrip() {
+        let cyc = Cycle::from_resource("udds.csv", false).unwrap();
         // Vehicles
         ASSETS_DIR
             .get_dir("vehicles")
             .unwrap()
             .files()
             .for_each(|file| {
-                let f2veh =
+                let f2_veh =
                     fastsim_core::vehicle::RustVehicle::from_reader(file.contents(), "yaml", false)
                         .unwrap();
-                assert!(Vehicle::try_from(f2veh).is_ok());
+                let f3_veh = Vehicle::try_from(f2_veh).unwrap();
+                let mut f3_sd = SimDrive::new(f3_veh, cyc.clone(), None);
+                assert!(f3_sd.walk().is_ok());
+                let mut f2_sd = f3_sd.to_fastsim2().unwrap();
+                assert!(f2_sd.sim_drive(None, None).is_ok());
             });
-    }
-
-    #[test]
-    #[cfg(all(feature = "csv", feature = "resources"))]
-    fn test_to_fastsim2_conv() {
-        let veh = Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
-    }
-
-    #[test]
-    #[cfg(all(feature = "csv", feature = "resources"))]
-    fn test_to_fastsim2_hev() {
-        let veh = Vehicle::from_resource("2016_TOYOTA_Prius_Two.yaml", false).unwrap();
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
-    }
-
-    #[test]
-    #[cfg(all(feature = "csv", feature = "resources"))]
-    fn test_to_fastsim2_bev() {
-        let veh = Vehicle::from_resource("2022_Renault_Zoe_ZE50_R135.yaml", false).unwrap();
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
     }
 }
 
 impl SimDrive {
-    pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
+    pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_core::simdrive::RustSimDrive> {
         let veh2 = self
             .veh
             .to_fastsim2()
@@ -68,15 +43,15 @@ impl SimDrive {
             .cyc
             .to_fastsim2()
             .with_context(|| anyhow!(format_dbg!()))?;
-        Ok(fastsim_2::simdrive::RustSimDrive::new(cyc2, veh2))
+        Ok(fastsim_core::simdrive::RustSimDrive::new(cyc2, veh2))
     }
 }
 
 impl Vehicle {
     /// Function to convert back to fastsim-2 format.  Note that this is
     /// probably not 100% reliable.
-    pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
-        let mut veh = fastsim_2::vehicle::RustVehicle {
+    pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_core::vehicle::RustVehicle> {
+        let mut veh = fastsim_core::vehicle::RustVehicle {
             alt_eff: match &self.pt_type {
                 PowertrainType::ConventionalVehicle(conv) => conv.alt_eff.get::<si::ratio>(),
                 _ => 1.0,
@@ -333,7 +308,7 @@ impl Vehicle {
             orphaned: false,
             perc_high_acc_buf: Default::default(), // TODO: revisit when implemementing HEV
             perc_high_acc_buf_doc: None,
-            props: fastsim_2::params::RustPhysicalProperties::default(),
+            props: fastsim_core::params::RustPhysicalProperties::default(),
             regen_a: 500.0, //TODO: placeholder
             regen_b: 0.99,  //TODO: placeholder
             scenario_name: self.name.clone(),

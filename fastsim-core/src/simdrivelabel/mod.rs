@@ -2044,7 +2044,7 @@ mod tests {
             .unwrap();
 
         // Get FASTSim-2 label FE results
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
+        let (label_fe_f2, _) = crate::compat::fastsim2::fastsim_core::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2086,7 +2086,7 @@ mod tests {
             .with_context(|| format_dbg!())
             .unwrap();
 
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
+        let (label_fe_f2, _) = crate::compat::fastsim2::fastsim_core::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2128,7 +2128,7 @@ mod tests {
             .with_context(|| format_dbg!())
             .unwrap();
 
-        let (label_fe_f2, _) = fastsim_2::simdrivelabel::get_label_fe(&f2veh, None, None)
+        let (label_fe_f2, _) = crate::compat::fastsim2::fastsim_core::simdrivelabel::get_label_fe(&f2veh, None, None)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2178,7 +2178,7 @@ mod tests {
             .0;
 
         // Get FASTSim-2 label FE results
-        let label_fe_f2 = fastsim_2::simdrivelabel::get_label_fe(&f2_veh, None, None)
+        let label_fe_f2 = crate::compat::fastsim2::fastsim_core::simdrivelabel::get_label_fe(&f2_veh, None, None)
             .unwrap()
             .0;
 
