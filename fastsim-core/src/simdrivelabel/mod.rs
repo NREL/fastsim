@@ -2372,9 +2372,13 @@ mod tests {
 
         // Get FASTSim-2 label FE results
         let (label_fe_f2, result) =
-            crate::compat::fastsim2::fastsim_core::simdrivelabel::get_label_fe(&f2veh, Some(true), None)
-                .with_context(|| format_dbg!())
-                .unwrap();
+            crate::compat::fastsim2::fastsim_core::simdrivelabel::get_label_fe(
+                &f2veh,
+                Some(true),
+                None,
+            )
+            .with_context(|| format_dbg!())
+            .unwrap();
         let sim_data = SimulationDataForLabel::Bev {
             veh_year: f2veh.veh_year,
             udds_kwh_per_mi: label_fe_f2.lab_udds_kwh_per_mi,
@@ -2411,10 +2415,13 @@ mod tests {
             .contents();
 
         // Load FASTSim-2 vehicle and convert to FASTSim-3
-        let f2_veh =
-            crate::compat::fastsim2::fastsim_core::vehicle::RustVehicle::from_reader(file_contents, "yaml", false)
-                .with_context(|| format_dbg!())
-                .unwrap();
+        let f2_veh = crate::compat::fastsim2::fastsim_core::vehicle::RustVehicle::from_reader(
+            file_contents,
+            "yaml",
+            false,
+        )
+        .with_context(|| format_dbg!())
+        .unwrap();
         assert!(f2_veh.veh_pt_type == crate::compat::fastsim2::fastsim_core::vehicle::PHEV);
 
         let veh = Vehicle::try_from(f2_veh.clone())

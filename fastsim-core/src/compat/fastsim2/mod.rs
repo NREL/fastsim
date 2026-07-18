@@ -19,7 +19,9 @@ mod tests {
             .unwrap()
             .files()
             .for_each(|file| {
-                let f2veh = fastsim_core::vehicle::RustVehicle::from_reader(file.contents(), "yaml", false).unwrap();
+                let f2veh =
+                    fastsim_core::vehicle::RustVehicle::from_reader(file.contents(), "yaml", false)
+                        .unwrap();
                 let f3veh = Vehicle::try_from(f2veh).unwrap();
             });
     }
@@ -103,7 +105,8 @@ Expected one of {}",
 impl Vehicle {
     #[allow(dead_code)]
     pub fn from_f2_file(file: PathBuf) -> anyhow::Result<Self> {
-        let f2veh = fastsim_core::vehicle::RustVehicle::from_file(file, false).with_context(|| format_dbg!())?;
+        let f2veh = fastsim_core::vehicle::RustVehicle::from_file(file, false)
+            .with_context(|| format_dbg!())?;
         Self::try_from(f2veh)
     }
 }
@@ -151,7 +154,9 @@ impl TryFrom<fastsim_core::vehicle::RustVehicle> for Transmission {
 
 impl TryFrom<&fastsim_core::vehicle::RustVehicle> for BatteryElectricVehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &fastsim_core::vehicle::RustVehicle) -> anyhow::Result<BatteryElectricVehicle> {
+    fn try_from(
+        f2veh: &fastsim_core::vehicle::RustVehicle,
+    ) -> anyhow::Result<BatteryElectricVehicle> {
         let bev = BatteryElectricVehicle {
             res: ReversibleEnergyStorage::try_from(f2veh.clone()).with_context(|| format_dbg!())?,
             em: ElectricMachine {
@@ -221,7 +226,9 @@ impl TryFrom<&fastsim_core::vehicle::RustVehicle> for Chassis {
 
 impl TryFrom<&fastsim_core::vehicle::RustVehicle> for HybridElectricVehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &fastsim_core::vehicle::RustVehicle) -> anyhow::Result<HybridElectricVehicle> {
+    fn try_from(
+        f2veh: &fastsim_core::vehicle::RustVehicle,
+    ) -> anyhow::Result<HybridElectricVehicle> {
         let pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(hev::RESGreedyWithDynamicBuffers {
             speed_soc_fc_on_buffer: None,
             speed_soc_fc_on_buffer_coeff: None,
@@ -269,7 +276,9 @@ impl TryFrom<&fastsim_core::vehicle::RustVehicle> for HybridElectricVehicle {
 
 impl TryFrom<fastsim_core::vehicle::RustVehicle> for ElectricMachine {
     type Error = anyhow::Error;
-    fn try_from(f2veh: fastsim_core::vehicle::RustVehicle) -> Result<ElectricMachine, anyhow::Error> {
+    fn try_from(
+        f2veh: fastsim_core::vehicle::RustVehicle,
+    ) -> Result<ElectricMachine, anyhow::Error> {
         Ok(powertrain::electric_machine::EMBuilder {
             eff_interp_achieved: {
                 // fastsim-2's hard-coded short vector of percent of peak power
@@ -346,7 +355,9 @@ impl TryFrom<fastsim_core::vehicle::RustVehicle> for FuelConverter {
 
 impl TryFrom<fastsim_core::vehicle::RustVehicle> for ReversibleEnergyStorage {
     type Error = anyhow::Error;
-    fn try_from(f2veh: fastsim_core::vehicle::RustVehicle) -> anyhow::Result<ReversibleEnergyStorage> {
+    fn try_from(
+        f2veh: fastsim_core::vehicle::RustVehicle,
+    ) -> anyhow::Result<ReversibleEnergyStorage> {
         let f3_res = ReversibleEnergyStorage {
             thrml: Default::default(),
             state: Default::default(),
