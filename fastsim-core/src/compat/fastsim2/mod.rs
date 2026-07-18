@@ -1,5 +1,5 @@
-pub use fastsim_2::vehicle::RustVehicle;
 pub use fastsim_2::params::RustPhysicalProperties;
+pub use fastsim_2::vehicle::RustVehicle;
 
 use super::*;
 
@@ -65,13 +65,7 @@ impl TryFrom<&crate::compat::RustVehicle> for PowertrainType {
                     "Invalid powertrain type: {}.
 Expected one of {}",
                     f2veh.veh_pt_type,
-                    [
-                        CONV,
-                        HEV,
-                        PHEV,
-                        BEV
-                    ]
-                    .join(", "),
+                    [CONV, HEV, PHEV, BEV].join(", "),
                 )
             }
         }
@@ -103,9 +97,7 @@ impl TryFrom<&crate::compat::RustVehicle> for ConventionalVehicle {
                     pwr_out_max: f2veh.fs_max_kw * uc::KW,
                     pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
                     energy_capacity: f2veh.fs_kwh * uc::KWH,
-                    specific_energy: Some(
-                        FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG,
-                    ),
+                    specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
                     mass: None,
                 };
                 fs
@@ -134,7 +126,6 @@ impl TryFrom<crate::compat::RustVehicle> for Transmission {
         Ok(transmission)
     }
 }
-
 
 impl TryFrom<&crate::compat::RustVehicle> for BatteryElectricVehicle {
     type Error = anyhow::Error;
@@ -341,7 +332,9 @@ impl TryFrom<crate::compat::RustVehicle> for ReversibleEnergyStorage {
             specific_energy: None,
             pwr_out_max: f2veh.ess_max_kw * uc::KW,
             energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-            eff_interp: powertrain::reversible_energy_storage::EffInterp::Constant(Interp0D::new(f2veh.ess_round_trip_eff.sqrt())),
+            eff_interp: powertrain::reversible_energy_storage::EffInterp::Constant(Interp0D::new(
+                f2veh.ess_round_trip_eff.sqrt(),
+            )),
             min_soc: f2veh.min_soc * uc::R,
             max_soc: f2veh.max_soc * uc::R,
             save_interval: Some(1),

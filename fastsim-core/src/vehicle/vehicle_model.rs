@@ -1043,7 +1043,8 @@ pub(crate) mod tests {
     /// Load representative conv from fastsim-2, convert to fastsim-3 format, and
     /// save to file in the resources folder
     pub(crate) fn mock_conv_veh() -> Vehicle {
-        let file_contents = include_str!("../compat/fastsim2/fastsim-2_2012_Ford_Fusion.yaml");
+        let file_contents =
+            include_str!("../compat/fastsim2/assets/fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
             let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
@@ -1062,7 +1063,8 @@ pub(crate) mod tests {
     /// Load representative HEV from fastsim-2, convert to fastsim-3 format, and
     /// save to file in the resources folder
     pub(crate) fn mock_hev() -> Vehicle {
-        let file_contents = include_str!("../compat/fastsim2/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
+        let file_contents =
+            include_str!("../compat/fastsim2/assets/fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
             let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
@@ -1081,7 +1083,8 @@ pub(crate) mod tests {
     /// Load representative BEV from fastsim-2, convert to fastsim-3 format, and
     /// save to file in the resources folder
     pub(crate) fn mock_bev() -> Vehicle {
-        let file_contents = include_str!("../compat/fastsim2/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
+        let file_contents =
+            include_str!("../compat/fastsim2/assets/fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
             let f2veh = crate::compat::RustVehicle::from_yaml(file_contents, false).unwrap();
