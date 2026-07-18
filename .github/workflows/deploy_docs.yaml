@@ -45,9 +45,6 @@ jobs:
       - name: Register Jupyter kernel
         run: python -m ipykernel install --user --name python3
 
-      - name: Convert demos to notebooks
-        run: python docs/demos_to_notebooks.py
-
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
