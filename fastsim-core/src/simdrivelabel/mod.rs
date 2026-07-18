@@ -2040,9 +2040,14 @@ mod tests {
             .unwrap();
 
         // Get FASTSim-2 label FE results
-        let (label_fe_f2, _) = crate::compat::fastsim2::get_label_fe(&f2veh.clone(), None, None)
-            .with_context(|| format_dbg!())
-            .unwrap();
+        let label_fe_f2 = crate::compat::fastsim2::LabelFe::from_reader(
+            crate::compat::fastsim2::ASSETS_DIR
+                .get_file("labelfe/conv_result_fastsim-2_2012_Ford_Fusion.yaml")
+                .unwrap()
+                .contents(),
+            "yaml",
+            false,
+        ).unwrap();
 
         let tol = Tolerances {
             udds_tolerance: 0.03, // 3% tolerance
@@ -2078,9 +2083,14 @@ mod tests {
             .with_context(|| format_dbg!())
             .unwrap();
 
-        let (label_fe_f2, _) = crate::compat::fastsim2::get_label_fe(&f2veh.clone(), None, None)
-            .with_context(|| format_dbg!())
-            .unwrap();
+        let label_fe_f2 = crate::compat::fastsim2::LabelFe::from_reader(
+            crate::compat::fastsim2::ASSETS_DIR
+                .get_file("labelfe/bev_result_fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml")
+                .unwrap()
+                .contents(),
+            "yaml",
+            false,
+        ).unwrap();
 
         let tol = Tolerances {
             udds_tolerance: 0.011, // 1.1% tolerance
@@ -2116,9 +2126,14 @@ mod tests {
             .with_context(|| format_dbg!())
             .unwrap();
 
-        let (label_fe_f2, _) = crate::compat::fastsim2::get_label_fe(&f2veh, None, None)
-            .with_context(|| format_dbg!())
-            .unwrap();
+        let label_fe_f2 = crate::compat::fastsim2::LabelFe::from_reader(
+            crate::compat::fastsim2::ASSETS_DIR
+                .get_file("labelfe/hev_result_fastsim-2_2016_TOYOTA_Prius_Two.yaml")
+                .unwrap()
+                .contents(),
+            "yaml",
+            false,
+        ).unwrap();
 
         // NOTE: EPA data is closer to Fastsim 3 results for UDDS
         // https://www.fueleconomy.gov/feg/PowerSearch.do?action=noform&path=1&year1=2016&year2=2016&make=Toyota&baseModel=Prius&srchtyp=ymm&pageno=1&rowLimit=50
@@ -2174,9 +2189,14 @@ mod tests {
             .0;
 
         // Get FASTSim-2 label FE results
-        let label_fe_f2 = crate::compat::fastsim2::get_label_fe(&f2_veh, None, None)
-            .unwrap()
-            .0;
+        let label_fe_f2 = crate::compat::fastsim2::LabelFe::from_reader(
+            crate::compat::fastsim2::ASSETS_DIR
+                .get_file("labelfe/phev_result_calval_2016_CHEVROLET_Volt.yaml")
+                .unwrap()
+                .contents(),
+            "yaml",
+            false,
+        ).unwrap();
 
         let tol = Tolerances {
             udds_tolerance: 0.05, // 5% tolerance
@@ -2286,6 +2306,10 @@ mod tests {
             crate::compat::fastsim2::get_label_fe(&f2veh_copy, Some(true), None)
                 .with_context(|| format_dbg!())
                 .unwrap();
+
+        use fastsim_2::traits::SerdeAPI;
+        // label_fe_f2.to_file(format!("result_fe_label_comparison_for_{}.yaml", f2veh.scenario_name));
+
         let sim_data = SimulationDataForLabel::ConvOrHev {
             veh_year: f2veh.veh_year,
             udds_mpgge: label_fe_f2.lab_udds_mpgge,
@@ -2351,6 +2375,19 @@ mod tests {
         let (label_fe_f2, result) = crate::compat::fastsim2::get_label_fe(&f2veh, Some(true), None)
             .with_context(|| format_dbg!())
             .unwrap();
+
+        use fastsim_2::traits::SerdeAPI;
+        // label_fe_f2.to_file("result_post_proc_calcs_fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
+
+        let label_fe_f2 = crate::compat::fastsim2::LabelFe::from_reader(
+            crate::compat::fastsim2::ASSETS_DIR
+                .get_file("labelfe/result_post_proc_calcs_fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml")
+                .unwrap()
+                .contents(),
+            "yaml",
+            false,
+        ).unwrap();
+
         let sim_data = SimulationDataForLabel::Bev {
             veh_year: f2veh.veh_year,
             udds_kwh_per_mi: label_fe_f2.lab_udds_kwh_per_mi,

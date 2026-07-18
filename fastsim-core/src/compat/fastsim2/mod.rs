@@ -1,6 +1,7 @@
 pub use fastsim_2::simdrivelabel::get_label_fe; // do not replicate - use cached results instead
 pub use fastsim_2::simdrivelabel::LabelFe;
 pub use fastsim_2::vehicle::RustVehicle;
+pub use fastsim_2::traits::SerdeAPI;
 
 use super::*;
 
@@ -295,77 +296,77 @@ mod tests {
     // }
 }
 
-pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    // const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "bin"];
-    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml"];
+// pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
+//     // const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "bin"];
+//     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml"];
 
-    /// Specialized code to execute upon initialization
-    fn init(&mut self) -> anyhow::Result<()> {
-        Ok(())
-    }
+//     /// Specialized code to execute upon initialization
+//     fn init(&mut self) -> anyhow::Result<()> {
+//         Ok(())
+//     }
 
-    /// Read (deserialize) an object from a file.
-    /// Supported file extensions are listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`).
-    ///
-    /// # Arguments:
-    ///
-    /// * `filepath`: The filepath from which to read the object
-    ///
-    fn from_file<P: AsRef<Path>>(filepath: P, skip_init: bool) -> anyhow::Result<Self> {
-        let filepath = filepath.as_ref();
-        let extension = filepath
-            .extension()
-            .and_then(OsStr::to_str)
-            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-        let file = File::open(filepath).with_context(|| {
-            if !filepath.exists() {
-                format!("File not found: {filepath:?}")
-            } else {
-                format!("Could not open file: {filepath:?}")
-            }
-        })?;
-        Self::from_reader(file, extension, skip_init)
-    }
+//     /// Read (deserialize) an object from a file.
+//     /// Supported file extensions are listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`).
+//     ///
+//     /// # Arguments:
+//     ///
+//     /// * `filepath`: The filepath from which to read the object
+//     ///
+//     fn from_file<P: AsRef<Path>>(filepath: P, skip_init: bool) -> anyhow::Result<Self> {
+//         let filepath = filepath.as_ref();
+//         let extension = filepath
+//             .extension()
+//             .and_then(OsStr::to_str)
+//             .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
+//         let file = File::open(filepath).with_context(|| {
+//             if !filepath.exists() {
+//                 format!("File not found: {filepath:?}")
+//             } else {
+//                 format!("Could not open file: {filepath:?}")
+//             }
+//         })?;
+//         Self::from_reader(file, extension, skip_init)
+//     }
 
-    /// Deserialize an object from anything that implements [`std::io::Read`]
-    ///
-    /// # Arguments:
-    ///
-    /// * `rdr` - The reader from which to read object data
-    /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
-    ///
-    fn from_reader<R: std::io::Read>(
-        rdr: R,
-        format: &str,
-        skip_init: bool,
-    ) -> anyhow::Result<Self> {
-        let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
-            // "json" => serde_json::from_reader(rdr)?,
-            // "toml" => {
-            //     let mut buf = String::new();
-            //     rdr.read_to_string(&mut buf)?;
-            //     Self::from_toml(buf, skip_init)?
-            // }
-            // #[cfg(feature = "bincode")]
-            // "bin" => bincode::deserialize_from(rdr)?,
-            _ => bail!(
-                "Unsupported format {format:?}, must be one of {:?}",
-                Self::ACCEPTED_BYTE_FORMATS
-            ),
-        };
-        if !skip_init {
-            deserialized.init()?;
-        }
-        Ok(deserialized)
-    }
-}
+//     /// Deserialize an object from anything that implements [`std::io::Read`]
+//     ///
+//     /// # Arguments:
+//     ///
+//     /// * `rdr` - The reader from which to read object data
+//     /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
+//     ///
+//     fn from_reader<R: std::io::Read>(
+//         rdr: R,
+//         format: &str,
+//         skip_init: bool,
+//     ) -> anyhow::Result<Self> {
+//         let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
+//             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
+//             // "json" => serde_json::from_reader(rdr)?,
+//             // "toml" => {
+//             //     let mut buf = String::new();
+//             //     rdr.read_to_string(&mut buf)?;
+//             //     Self::from_toml(buf, skip_init)?
+//             // }
+//             // #[cfg(feature = "bincode")]
+//             // "bin" => bincode::deserialize_from(rdr)?,
+//             _ => bail!(
+//                 "Unsupported format {format:?}, must be one of {:?}",
+//                 Self::ACCEPTED_BYTE_FORMATS
+//             ),
+//         };
+//         if !skip_init {
+//             deserialized.init()?;
+//         }
+//         Ok(deserialized)
+//     }
+// }
 
-impl SerdeAPI for RustVehicle {
-    fn init(&mut self) -> anyhow::Result<()> {
-        self.set_derived()
-    }
-}
+// impl SerdeAPI for RustVehicle {
+//     fn init(&mut self) -> anyhow::Result<()> {
+//         self.set_derived()
+//     }
+// }
 
 impl TryFrom<RustVehicle> for Vehicle {
     type Error = anyhow::Error;
