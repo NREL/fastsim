@@ -2044,9 +2044,13 @@ mod tests {
             .unwrap();
 
         // Get FASTSim-2 label FE results
-        let (label_fe_f2, _) = crate::compat::fastsim_2::fastsim_core::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
-            .with_context(|| format_dbg!())
-            .unwrap();
+        let (label_fe_f2, _) = crate::compat::fastsim_2::fastsim_core::simdrivelabel::get_label_fe(
+            &f2veh.clone(),
+            None,
+            None,
+        )
+        .with_context(|| format_dbg!())
+        .unwrap();
 
         let tol = Tolerances {
             udds_tolerance: 0.03, // 3% tolerance
@@ -2086,9 +2090,13 @@ mod tests {
             .with_context(|| format_dbg!())
             .unwrap();
 
-        let (label_fe_f2, _) = crate::compat::fastsim_2::fastsim_core::simdrivelabel::get_label_fe(&f2veh.clone(), None, None)
-            .with_context(|| format_dbg!())
-            .unwrap();
+        let (label_fe_f2, _) = crate::compat::fastsim_2::fastsim_core::simdrivelabel::get_label_fe(
+            &f2veh.clone(),
+            None,
+            None,
+        )
+        .with_context(|| format_dbg!())
+        .unwrap();
 
         let tol = Tolerances {
             udds_tolerance: 0.011, // 1.1% tolerance
@@ -2128,9 +2136,10 @@ mod tests {
             .with_context(|| format_dbg!())
             .unwrap();
 
-        let (label_fe_f2, _) = crate::compat::fastsim_2::fastsim_core::simdrivelabel::get_label_fe(&f2veh, None, None)
-            .with_context(|| format_dbg!())
-            .unwrap();
+        let (label_fe_f2, _) =
+            crate::compat::fastsim_2::fastsim_core::simdrivelabel::get_label_fe(&f2veh, None, None)
+                .with_context(|| format_dbg!())
+                .unwrap();
 
         // NOTE: EPA data is closer to Fastsim 3 results for UDDS
         // https://www.fueleconomy.gov/feg/PowerSearch.do?action=noform&path=1&year1=2016&year2=2016&make=Toyota&baseModel=Prius&srchtyp=ymm&pageno=1&rowLimit=50
@@ -2178,9 +2187,11 @@ mod tests {
             .0;
 
         // Get FASTSim-2 label FE results
-        let label_fe_f2 = crate::compat::fastsim_2::fastsim_core::simdrivelabel::get_label_fe(&f2_veh, None, None)
-            .unwrap()
-            .0;
+        let label_fe_f2 = crate::compat::fastsim_2::fastsim_core::simdrivelabel::get_label_fe(
+            &f2_veh, None, None,
+        )
+        .unwrap()
+        .0;
 
         let tol = Tolerances {
             udds_tolerance: 0.05, // 5% tolerance
