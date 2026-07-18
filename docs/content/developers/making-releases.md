@@ -60,7 +60,7 @@
     ```
 
     ```
-    git push origin tag vX.Y.Z
+    git push origin vX.Y.Z
     ```
 
 1. Draft a new release at https://github.com/NatLabRockies/fastsim/releases/new

@@ -3,7 +3,7 @@
 A few options exist for environment setup:
 1. [Pixi (recommended)](#1-pixi)
 2. [Anaconda](#2-anaconda)
-2. [Custom](#3-custom)
+3. [Custom](#3-custom)
 
 (1-pixi)=
 ## 1. Pixi
@@ -77,12 +77,12 @@ Anaconda users can easily install Rust using the conda-forge `rust` package
     conda create --name fastsim python=3.12 rust -c conda-forge
     ```
 
-2. Activate the new environment
+1. Activate the new environment
     ```
     conda activate fastsim
     ```
 
-2. From the repository root, install FASTSim and development dependencies:
+1. From the repository root, install FASTSim and development dependencies:
 
     ```sh
     pip install --upgrade pip
@@ -122,8 +122,8 @@ Relevant links:
 If you do not want to use Pixi or Anaconda, install Rust and Python dependencies manually.
 
 1. Install Rust system-wide: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
-2. Create and activate a Python environment (using your environment manager of choice).
-3. From the repository root, install FASTSim and development dependencies:
+1. Create and activate a Python environment (using your environment manager of choice).
+1. From the repository root, install FASTSim and development dependencies:
 
     ```sh
     pip install --group dev -e .

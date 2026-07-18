@@ -1207,4 +1207,4 @@ hvac:
 
 ---
 
-**Mass can be set for the entire vehicle at the outermost level of the hierarchy `mass_kilograms`, or set on each component and calculated automatically on initialization.*  
+*Mass can be set for the entire vehicle at the outermost level of the hierarchy (`mass_kilograms`), or on each component and calculated automatically during initialization.*
