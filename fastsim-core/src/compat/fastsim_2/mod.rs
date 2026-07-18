@@ -1,11 +1,11 @@
 use fastsim_core::traits::SerdeAPI as _;
 
 use super::*;
-pub use fastsim_2 as fastsim_core;
+pub use ::fastsim_2 as fastsim_core;
 
 use include_dir::{include_dir, Dir};
 pub const ASSETS_DIR: &'static Dir<'_> =
-    &include_dir!("$CARGO_MANIFEST_DIR/src/compat/fastsim2/assets");
+    &include_dir!("$CARGO_MANIFEST_DIR/src/compat/fastsim_2/assets");
 
 #[cfg(test)]
 mod tests {

@@ -6,4 +6,4 @@ use super::vehicle::hev::*;
 use super::vehicle::vehicle_model::*;
 use super::vehicle::*;
 
-pub mod fastsim2;
+pub mod fastsim_2;
