@@ -1,11 +1,10 @@
-use super::*;
-pub use fastsim_2;
+use fastsim_core::traits::SerdeAPI;
 
-use fastsim_2::traits::SerdeAPI;
-use fastsim_2::vehicle::RustVehicle;
+use super::*;
+pub use fastsim_2 as fastsim_core;
 
 use include_dir::{include_dir, Dir};
-pub(crate) const ASSETS_DIR: &'static Dir<'_> =
+pub const ASSETS_DIR: &'static Dir<'_> =
     &include_dir!("$CARGO_MANIFEST_DIR/src/compat/fastsim2/assets");
 
 #[cfg(test)]
@@ -20,15 +19,15 @@ mod tests {
             .unwrap()
             .files()
             .for_each(|file| {
-                let f2veh = RustVehicle::from_reader(file.contents(), "yaml", false).unwrap();
+                let f2veh = fastsim_core::vehicle::RustVehicle::from_reader(file.contents(), "yaml", false).unwrap();
                 let f3veh = Vehicle::try_from(f2veh).unwrap();
             });
     }
 }
 
-impl TryFrom<RustVehicle> for Vehicle {
+impl TryFrom<fastsim_core::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: RustVehicle) -> anyhow::Result<Self> {
+    fn try_from(f2veh: fastsim_core::vehicle::RustVehicle) -> anyhow::Result<Self> {
         let mut f2veh = f2veh.clone();
         f2veh
             .set_derived()
@@ -57,29 +56,29 @@ impl TryFrom<RustVehicle> for Vehicle {
     }
 }
 
-impl TryFrom<&RustVehicle> for PowertrainType {
+impl TryFrom<&fastsim_core::vehicle::RustVehicle> for PowertrainType {
     type Error = anyhow::Error;
     /// Returns fastsim-3 vehicle given fastsim-2 vehicle
     ///
     /// # Arguments
     /// * `f2veh` - fastsim-2 vehicle
-    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<PowertrainType> {
+    fn try_from(f2veh: &fastsim_core::vehicle::RustVehicle) -> anyhow::Result<PowertrainType> {
         // TODO: implement the `_doc` fields in fastsim-3 and make sure they get carried over from fastsim-2
         // see https://github.com/NREL/fastsim/blob/fastsim-2/rust/fastsim-core/fastsim-proc-macros/src/doc_field.rs and do something similar
         match f2veh.veh_pt_type.as_str() {
-            fastsim_2::vehicle::CONV => {
+            fastsim_core::vehicle::CONV => {
                 let conv = ConventionalVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
             }
-            fastsim_2::vehicle::HEV => {
+            fastsim_core::vehicle::HEV => {
                 let hev = HybridElectricVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
             }
-            fastsim_2::vehicle::PHEV => {
+            fastsim_core::vehicle::PHEV => {
                 let phev = HybridElectricVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::PlugInHybridElectricVehicle(Box::new(phev)))
             }
-            fastsim_2::vehicle::BEV => {
+            fastsim_core::vehicle::BEV => {
                 let bev = BatteryElectricVehicle::try_from(f2veh)?;
                 Ok(PowertrainType::BatteryElectricVehicle(Box::new(bev)))
             }
@@ -89,10 +88,10 @@ impl TryFrom<&RustVehicle> for PowertrainType {
 Expected one of {}",
                     f2veh.veh_pt_type,
                     [
-                        fastsim_2::vehicle::CONV,
-                        fastsim_2::vehicle::HEV,
-                        fastsim_2::vehicle::PHEV,
-                        fastsim_2::vehicle::BEV
+                        fastsim_core::vehicle::CONV,
+                        fastsim_core::vehicle::HEV,
+                        fastsim_core::vehicle::PHEV,
+                        fastsim_core::vehicle::BEV
                     ]
                     .join(", "),
                 )
@@ -104,16 +103,16 @@ Expected one of {}",
 impl Vehicle {
     #[allow(dead_code)]
     pub fn from_f2_file(file: PathBuf) -> anyhow::Result<Self> {
-        let f2veh = RustVehicle::from_file(file, false).with_context(|| format_dbg!())?;
+        let f2veh = fastsim_core::vehicle::RustVehicle::from_file(file, false).with_context(|| format_dbg!())?;
         Self::try_from(f2veh)
     }
 }
 
 pub const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
 
-impl TryFrom<&RustVehicle> for ConventionalVehicle {
+impl TryFrom<&fastsim_core::vehicle::RustVehicle> for ConventionalVehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<ConventionalVehicle> {
+    fn try_from(f2veh: &fastsim_core::vehicle::RustVehicle) -> anyhow::Result<ConventionalVehicle> {
         let conv = ConventionalVehicle {
             fs: {
                 let fs = FuelStorage {
@@ -136,9 +135,9 @@ impl TryFrom<&RustVehicle> for ConventionalVehicle {
     }
 }
 
-impl TryFrom<RustVehicle> for Transmission {
+impl TryFrom<fastsim_core::vehicle::RustVehicle> for Transmission {
     type Error = anyhow::Error;
-    fn try_from(f2veh: RustVehicle) -> anyhow::Result<Transmission> {
+    fn try_from(f2veh: fastsim_core::vehicle::RustVehicle) -> anyhow::Result<Transmission> {
         let transmission = Transmission {
             mass: None,
             eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
@@ -150,9 +149,9 @@ impl TryFrom<RustVehicle> for Transmission {
     }
 }
 
-impl TryFrom<&RustVehicle> for BatteryElectricVehicle {
+impl TryFrom<&fastsim_core::vehicle::RustVehicle> for BatteryElectricVehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<BatteryElectricVehicle> {
+    fn try_from(f2veh: &fastsim_core::vehicle::RustVehicle) -> anyhow::Result<BatteryElectricVehicle> {
         let bev = BatteryElectricVehicle {
             res: ReversibleEnergyStorage::try_from(f2veh.clone()).with_context(|| format_dbg!())?,
             em: ElectricMachine {
@@ -189,9 +188,9 @@ impl TryFrom<&RustVehicle> for BatteryElectricVehicle {
     }
 }
 
-impl TryFrom<&RustVehicle> for Chassis {
+impl TryFrom<&fastsim_core::vehicle::RustVehicle> for Chassis {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<Self> {
+    fn try_from(f2veh: &fastsim_core::vehicle::RustVehicle) -> anyhow::Result<Self> {
         let drive_type = if f2veh.drive_axle_weight_frac > 0.9 {
             chassis::DriveTypes::AWD
         } else if f2veh.veh_cg_m < 0. {
@@ -220,9 +219,9 @@ impl TryFrom<&RustVehicle> for Chassis {
     }
 }
 
-impl TryFrom<&RustVehicle> for HybridElectricVehicle {
+impl TryFrom<&fastsim_core::vehicle::RustVehicle> for HybridElectricVehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &RustVehicle) -> anyhow::Result<HybridElectricVehicle> {
+    fn try_from(f2veh: &fastsim_core::vehicle::RustVehicle) -> anyhow::Result<HybridElectricVehicle> {
         let pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(hev::RESGreedyWithDynamicBuffers {
             speed_soc_fc_on_buffer: None,
             speed_soc_fc_on_buffer_coeff: None,
@@ -268,9 +267,9 @@ impl TryFrom<&RustVehicle> for HybridElectricVehicle {
     }
 }
 
-impl TryFrom<RustVehicle> for ElectricMachine {
+impl TryFrom<fastsim_core::vehicle::RustVehicle> for ElectricMachine {
     type Error = anyhow::Error;
-    fn try_from(f2veh: RustVehicle) -> Result<ElectricMachine, anyhow::Error> {
+    fn try_from(f2veh: fastsim_core::vehicle::RustVehicle) -> Result<ElectricMachine, anyhow::Error> {
         Ok(powertrain::electric_machine::EMBuilder {
             eff_interp_achieved: {
                 // fastsim-2's hard-coded short vector of percent of peak power
@@ -285,7 +284,7 @@ impl TryFrom<RustVehicle> for ElectricMachine {
                         let mc_full_eff = Array1::from_vec(f2veh.mc_full_eff_array.clone());
                         ensure!(mc_full_eff.len() == 101);
                         let shortener = Interp1D::new(
-                            fastsim_2::params::MC_PERC_OUT_ARRAY.to_vec().into(),
+                            fastsim_core::params::MC_PERC_OUT_ARRAY.to_vec().into(),
                             mc_full_eff,
                             strategy::Linear,
                             Extrapolate::Error,
@@ -316,9 +315,9 @@ impl TryFrom<RustVehicle> for ElectricMachine {
     }
 }
 
-impl TryFrom<RustVehicle> for FuelConverter {
+impl TryFrom<fastsim_core::vehicle::RustVehicle> for FuelConverter {
     type Error = anyhow::Error;
-    fn try_from(f2veh: RustVehicle) -> Result<FuelConverter, anyhow::Error> {
+    fn try_from(f2veh: fastsim_core::vehicle::RustVehicle) -> Result<FuelConverter, anyhow::Error> {
         let mut fc: FuelConverter = powertrain::fuel_converter::FCBuilder {
             pwr_out_max: f2veh.fc_max_kw * uc::KW,
             pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
@@ -345,9 +344,9 @@ impl TryFrom<RustVehicle> for FuelConverter {
     }
 }
 
-impl TryFrom<RustVehicle> for ReversibleEnergyStorage {
+impl TryFrom<fastsim_core::vehicle::RustVehicle> for ReversibleEnergyStorage {
     type Error = anyhow::Error;
-    fn try_from(f2veh: RustVehicle) -> anyhow::Result<ReversibleEnergyStorage> {
+    fn try_from(f2veh: fastsim_core::vehicle::RustVehicle) -> anyhow::Result<ReversibleEnergyStorage> {
         let f3_res = ReversibleEnergyStorage {
             thrml: Default::default(),
             state: Default::default(),
