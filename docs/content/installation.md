@@ -4,7 +4,7 @@ FASTSim is available as a package for use in [Python 3.10 through 3.15](https://
 
 For the quickest start, install from [PyPI](https://pypi.org/project/fastsim/). Install from source if you are developing FASTSim or need unreleased changes.
 
-## Installation From PyPI (recommended)
+## Install from PyPI (recommended)
 
 In an active Python environment, run:
 
@@ -12,9 +12,11 @@ In an active Python environment, run:
 pip install fastsim
 ```
 
-This will install the latest version of FASTSim as a Python package. See [](#next-steps) for further resources.
+This will install the latest version of FASTSim as a Python package.
 
-## Installation From Source
+See [](#next-steps) for further resources.
+
+## Install from Source (developers)
 
 FASTSim's backend is written entirely in Rust. Install the
 [Rust toolchain](https://www.rust-lang.org/tools/install) first (or

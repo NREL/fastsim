@@ -15,22 +15,29 @@ site:
 
 The **Future Automotive Systems Technology Simulator** (FASTSim) provides a simple
 way to compare powertrains and estimate the impact of technology improvements
-on light-, medium-, and heavy-duty vehicle efficiency, performance, cost, and
-battery life.
+on on-road vehicle efficiency and performance. FASTSim has been used to model
+light-duty passenger cars, two-wheelers, and medium- and heavy-duty vocational
+vehicles.
 
-FASTSim is fast. Simulating a second-by-second standard drive cycle takes under
-a tenth of a second, estimating a vehicle's efficiency and related metrics takes
-less than ten seconds, and comparing powertrains on efficiency and cost
-completes in under five minutes.
+FASTSim is designed for rapid analysis, making it practical to run many
+simulations and compare technology scenarios across vehicle classes and use
+cases. FASTSim outputs also feed other NLR tools, including:
+- [RouteE](https://www.nlr.gov/transportation/route-energy-prediction-model):
+  an energy prediction tool and energy-aware routing engine
+- [T3CO](https://www.nlr.gov/transportation/t3co):
+  a medium- and heavy-duty vehicle total cost of ownership assessment tool
+- [ADOPT](https://www.nlr.gov/transportation/adopt):
+  a technology-driven consumer choice and vehicle market adoption model
 
-It can represent a wide range of powertrains, including conventional vehicles
-(spark ignition, Atkinson, diesel, and hybrid diesel), electric-drive vehicles
-(hybrid, plug-in hybrid, and all-electric), and hydrogen fuel cell vehicles.
-FASTSim ships with more than 20 vehicles and a set of standard U.S., European,
-and Japanese drive cycles, and you can add your own vehicles and drive cycles.
+FASTSim models conventional vehicles, hybrids, plug-in hybrids,
+and battery electric vehicles over a set of standard regulatory drive cycles.
+You can also define custom vehicles and custom drive cycles to simulate
+any on-road vehicle over realistic scenarios.
 
-For background on FASTSim's history and modeling philosophy, see
-[](background/what-is-fastsim.md).
+For information on FASTSim's history and modeling philosophy, see the
+[Background](background/what-is-fastsim.md) section.
+
+For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](https://github.com/NatLabRockies/fastsim-vehicles).
 
 ## Get Started
 
@@ -49,5 +56,5 @@ For background on FASTSim's history and modeling philosophy, see
 - FASTSim Vehicle Database: https://github.com/NatLabRockies/fastsim-vehicles
 
 ## Contact
-- Open a GitHub issue at https://github.com/NatLabRockies/fastsim/issues
-- Email [fastsim@nlr.gov](mailto:fastsim@nlr.gov) to reach the development team directly
+- Open a GitHub issue at https://github.com/NatLabRockies/fastsim/issues.
+- Email [fastsim@nlr.gov](mailto:fastsim@nlr.gov) to reach the development team directly.
