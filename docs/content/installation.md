@@ -1,8 +1,10 @@
 # Installation
 
-FASTSim supports Python 3.10 through 3.15. For the quickest start, install from [PyPI](https://pypi.org/project/fastsim/). Install from source if you are developing FASTSim or need unreleased changes.
+FASTSim is available as a package for use in [Python 3.10 through 3.15](https://www.python.org).
 
-## Install from PyPI (recommended)
+For the quickest start, install from [PyPI](https://pypi.org/project/fastsim/). Install from source if you are developing FASTSim or need unreleased changes.
+
+## Installation From PyPI (recommended)
 
 In an active Python environment, run:
 
@@ -10,10 +12,13 @@ In an active Python environment, run:
 pip install fastsim
 ```
 
-## Install from Source
+This will install the latest version of FASTSim as a Python package. See [](#next-steps) for further resources.
+
+## Installation From Source
 
 FASTSim's backend is written entirely in Rust. Install the
-[Rust toolchain](https://www.rust-lang.org/tools/install) first.
+[Rust toolchain](https://www.rust-lang.org/tools/install) first (or
+[set up a developer environment](developers/environment-setup.md)).
 
 Then install FASTSim from source:
 
@@ -38,7 +43,42 @@ Optional:
 
 For more detail on developer builds, see [](developers/compiling-from-source.md).
 
+(next-steps)=
 ## Next Steps
 
-With FASTSim installed, continue to [](getting-started.ipynb) to load a vehicle,
-run a simulation, and inspect results.
+See the following resources:
+
+:::{card} [](getting-started.ipynb)
+:link: getting-started.ipynb
+
+A high-level overview showing how to load pre-defined vehicles, run simulations, and inspect results.
+
+:::
+
+:::::{card}
+
+**User Guide**:
+
+::::{grid} 1 1 2 2 3 3
+
+:::{grid-item-card} [Vehicle Models](user-guide/vehicle-models/vehicle.md)
+:link: user-guide/vehicle-models/vehicle.md
+:link-type: doc
+Define and configure vehicle models
+:::
+
+:::{grid-item-card} [Drive Cycles](user-guide/drive-cycles/drive-cycle.ipynb)
+:link: user-guide/drive-cycles/drive-cycle.ipynb
+:link-type: doc
+Work with built-in and custom cycles
+:::
+
+:::{grid-item-card} [Running Simulations](user-guide/running-simulations/simdrive.ipynb)
+:link: user-guide/running-simulations/simdrive.ipynb
+:link-type: doc
+Execute simulations and inspect results
+:::
+
+::::
+
+:::::

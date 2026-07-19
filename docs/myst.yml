@@ -2,7 +2,7 @@
 version: 1
 project:
   id: 61560401-8f58-4c7f-b78b-4754d2b0d3ae
-  title: FASTSim
+  title: FASTSim Documentation
   github: https://github.com/NatLabRockies/fastsim
   toc:
     - file: content/intro.md
@@ -47,5 +47,6 @@ project:
 site:
   template: book-theme
   options:
-    logo: assets/fastsim-icon.svg
-    favicon: assets/fastsim-icon.ico
+    logo: assets/edit-nlr-logo-color-horizontal-png-v2.png
+    favicon: assets/nlr.ico
+    style: assets/site.css

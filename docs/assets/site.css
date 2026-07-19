@@ -1,0 +1,7 @@
+/* Increase the site header logo size in the MyST book theme. */
+img[src*="edit-nlr-logo-color-horizontal-png-v2"],
+img[src*="edit-nlr-logo"] {
+  height: 55px !important;
+  max-height: 55px !important;
+  width: auto !important;
+}
