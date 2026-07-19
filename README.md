@@ -48,6 +48,6 @@ page of
 ## Usage
 
 For instruction on using FASTSim to simulate on-road vehicle performance, see the
-[User Guide](https://natlabrockies.github.io/vehicles)
+[User Guide](https://natlabrockies.github.io/user-guide)
 section of
 [FASTSim's documentation](https://natlabrockies.github.io/fastsim).

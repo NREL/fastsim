@@ -43,7 +43,7 @@ For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](
 
 - [](installation.md): install FASTSim and dependencies
 - [](getting-started.ipynb): run your first simulation
-- [User Guide](user-guide/vehicle-models/vehicle.md):
+- [](user-guide/user-guide.md):
     - [Modeling Vehicles](user-guide/vehicle-models/vehicle.md): define and configure vehicle models
     - [Drive Cycles](user-guide/drive-cycles/drive-cycle.ipynb): work with built-in and custom cycles
     - [Running Simulations](user-guide/running-simulations/simdrive.ipynb): execute simulations and inspect results

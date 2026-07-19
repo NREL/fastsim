@@ -59,7 +59,7 @@ A high-level overview showing how to load pre-defined vehicles, run simulations,
 
 :::::{card}
 
-**User Guide**:
+[](user-guide/user-guide.md):
 
 ::::{grid} 1 1 2 2 3 3
 

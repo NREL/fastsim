@@ -14,6 +14,7 @@ project:
     - file: content/getting-started.ipynb
     - title: User Guide
       children:
+        - file: content/user-guide/user-guide.md
         - title: Vehicle Models
           children:
             - file: content/user-guide/vehicle-models/vehicle.md
