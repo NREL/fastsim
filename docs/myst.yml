@@ -9,6 +9,7 @@ project:
     - title: Background
       children:
         - file: content/background/what-is-fastsim.md
+        - file: content/background/related-tools.md
     - file: content/installation.md
     - file: content/getting-started.ipynb
     - title: User Guide
