@@ -30,7 +30,7 @@ FASTSim ships with more than 20 vehicles and a set of standard U.S., European,
 and Japanese drive cycles, and you can add your own vehicles and drive cycles.
 
 For background on FASTSim's history and modeling philosophy, see
-[](overview/what-is-fastsim.md).
+[](background/what-is-fastsim.md).
 
 ## Get Started
 
