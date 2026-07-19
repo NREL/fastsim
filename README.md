@@ -1,11 +1,6 @@
-<img src="docs/assets/fastsim-icon.svg" height="200">
+<img src="docs/assets/fastsim-icon.svg" height="250">
 
-[![homepage](https://img.shields.io/badge/homepage-fastsim-blue)](https://www.nlr.gov/transportation/fastsim.html)
-[![tests](https://github.com/NatLabRockies/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NatLabRockies/fastsim/actions/workflows/tests.yaml)
-[![release](https://github.com/NatLabRockies/fastsim/actions/workflows/release.yaml/badge.svg)](https://github.com/NatLabRockies/fastsim/actions/workflows/release.yaml?event=release)
-[![python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://pypi.org/project/fastsim/)
-[![documentation](https://img.shields.io/badge/documentation-book-blue.svg)](https://natlabrockies.github.io/fastsim/)
-[![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NatLabRockies/fastsim)
+<div style="height: 2rem;"></div>
 
 The **Future Automotive Systems Technology Simulator** (FASTSim) provides a simple
 way to compare powertrains and estimate the impact of technology improvements

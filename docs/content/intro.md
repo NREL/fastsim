@@ -50,10 +50,11 @@ For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](
 
 ## Learn More
 
-- Homepage: https://www.nlr.gov/transportation/fastsim
-- Documentation: https://natlabrockies.github.io/fastsim
 - GitHub Repository: https://github.com/NatLabRockies/fastsim
 - FASTSim Vehicle Database: https://github.com/NatLabRockies/fastsim-vehicles
+- Documentation: https://natlabrockies.github.io/fastsim
+- Release Notes: https://github.com/NatLabRockies/fastsim/releases
+- NLR FASTSim Homepage: https://www.nlr.gov/transportation/fastsim
 
 ## Contact
 - Open a GitHub issue at https://github.com/NatLabRockies/fastsim/issues.

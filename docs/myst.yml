@@ -40,10 +40,12 @@ project:
         - file: content/developers/compiling-from-source.md
         - file: content/developers/making-releases.md
         - file: content/developers/updating-docs.md
+    - url: https://github.com/NatLabRockies/fastsim
+      title: GitHub Repository
+    - url: https://github.com/NatLabRockies/fastsim-vehicles
+      title: FASTSim Vehicle Database
     - url: https://docs.rs/fastsim-core/latest/fastsim_core/
       title: Rust API Documentation
-    - url: https://github.com/NatLabRockies/fastsim/releases
-      title: Release Notes
     # - file: content/migration-guide.md
 site:
   template: book-theme
