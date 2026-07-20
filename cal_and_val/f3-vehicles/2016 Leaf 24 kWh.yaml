@@ -14,6 +14,7 @@ pt_type:
         Constant: 0.9848857801796105
       min_soc: 0.05
       max_soc: 0.95
+      aux_eff: ~
       state:
         pwr_prop_max_watts: 0.0
         pwr_regen_max_watts: 0.0
