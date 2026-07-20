@@ -484,6 +484,10 @@ Expected one of {}",
 
 impl Vehicle {
     #[allow(dead_code)]
+    #[deprecated(
+        since = "3.1.0",
+        note = "Use Vehicle::from_reader / from_yaml / from_json / from_toml with the compat feature enabled instead"
+    )]
     pub fn from_f2_file(file: PathBuf) -> anyhow::Result<Self> {
         let f2veh = fastsim_core::vehicle::RustVehicle::from_file(file, false)
             .with_context(|| format_dbg!())?;

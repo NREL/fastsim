@@ -116,7 +116,16 @@ impl Vehicle {
     #[cfg(feature = "compat")]
     #[pyo3(name = "from_f2_file")]
     #[staticmethod]
-    fn from_f2_file_py(file: PathBuf) -> anyhow::Result<Self> {
+    #[allow(deprecated)]
+    fn from_f2_file_py(py: pyo3::Python<'_>, file: PathBuf) -> anyhow::Result<Self> {
+        if let Ok(warnings) = py.import("warnings") {
+            let _ = warnings.call_method1(
+                "warn",
+                (
+                    "Vehicle.from_f2_file is deprecated; use Vehicle.from_file / from_reader / from_yaml / from_json / from_toml instead.",
+                ),
+            );
+        }
         Self::from_f2_file(file)
     }
 
