@@ -58,4 +58,4 @@ For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](
 
 ## Contact
 - Open a GitHub issue at https://github.com/NatLabRockies/fastsim/issues.
-- Email [fastsim@nlr.gov](mailto:fastsim@nlr.gov) to reach the development team directly.
+- Email [fastsim@nlr.gov](mailto:fastsim@nlr.gov) to reach the FASTSim team directly.
