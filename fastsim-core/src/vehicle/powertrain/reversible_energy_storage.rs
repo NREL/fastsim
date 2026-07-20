@@ -36,6 +36,11 @@ pub struct ReversibleEnergyStorage {
     pub min_soc: si::Ratio,
     /// Hard limit on maximum SOC, e.g. 0.95
     pub max_soc: si::Ratio,
+
+    /// Efficiency to apply to aux load
+    #[serde(default)]
+    pub aux_eff: Option<AuxEfficiency>,
+
     /// struct for tracking current state
     #[serde(default)]
     pub state: ReversibleEnergyStorageState,
@@ -137,6 +142,7 @@ impl ReversibleEnergyStorage {
         eff_interp: RESEfficiency,
         min_soc: si::Ratio,
         max_soc: si::Ratio,
+        aux_eff: Option<AuxEfficiency>,
         save_interval: Option<usize>,
     ) -> anyhow::Result<Self> {
         let mut reversible_energy_storage = Self {
@@ -148,6 +154,7 @@ impl ReversibleEnergyStorage {
             eff_interp,
             min_soc,
             max_soc,
+            aux_eff,
             state: ReversibleEnergyStorageState::default(),
             history: ReversibleEnergyStorageStateHistoryVec::default(),
             save_interval,
@@ -817,6 +824,9 @@ impl Init for ReversibleEnergyStorage {
         self.eff_interp
             .validate()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
+        if let Some(aux_eff) = self.aux_eff.as_mut() {
+            aux_eff.validate().map_err(|err| Error::InitError(format_dbg!(err)))?;
+        }
         self.state
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
@@ -860,6 +870,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for ReversibleEnergyStorage {
             eff_interp: RESEfficiency::Constant(Interp0D::new(f2veh.ess_round_trip_eff.sqrt())),
             min_soc: f2veh.min_soc * uc::R,
             max_soc: f2veh.max_soc * uc::R,
+            aux_eff: None,
             save_interval: Some(1),
             history: Default::default(),
         };

@@ -21,6 +21,27 @@ pub enum AuxSource {
 impl SerdeAPI for AuxSource {}
 impl Init for AuxSource {}
 
+/// Efficiency model for aux load power source
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, TryInto)]
+pub enum AuxEfficiency {
+    Constant(Interp0D<f64>),
+}
+
+impl_efficiency_enum!(AuxEfficiency { Constant });
+
+// impl Default for AuxEfficiency {
+//     /// Default to 100% efficiency.
+//     /// Necessary for backwards compatibility when field is missing.
+//     /// Also used in unwrap_or_default() calls.
+//     fn default() -> Self {
+//         AuxEfficiency::Constant(Interp0D(1.0))
+//     }
+// }
+
+// pub(crate) fn default_aux_efficiency() -> AuxEfficiency {
+//     AuxEfficiency::Constant(Interp0D(1.0))
+// }
+
 #[serde_api]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
@@ -1333,6 +1354,7 @@ pub(crate) mod tests {
             RESEfficiency::Constant(Interp0D(0.9)), // eff_interp
             0.0 * uc::R,                            // min_soc
             1.0 * uc::R,                            // max_soc
+            Option::None,                           // aux_eff
             Option::None,
         )?;
         let fs = FuelStorage::new(

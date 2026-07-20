@@ -73,7 +73,7 @@ macro_rules! impl_efficiency_enum {
                     }
                 }?;
 
-                self.try_for_each_value::<ninterp::error::ValidateError, _>(|value| {
+                <Self as $crate::utils::interp::InterpolatorScanValues>::try_for_each_value::<ninterp::error::ValidateError, _>(self, |value| {
                     if value.is_nan() {
                         return Ok(());
                     }
