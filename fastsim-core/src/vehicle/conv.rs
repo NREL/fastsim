@@ -128,13 +128,24 @@ pub struct ConventionalVehicle {
     /// powertrain mass
     pub(crate) mass: Option<si::Mass>,
     /// Alternator efficiency used to calculate aux mechanical power demand on engine
+    #[serde(default = "default_alt_eff")]
+    #[deprecated(
+        note = "This field will be removed in a future release. Use FuelConverter.aux_eff instead."
+    )]
+    #[serde(skip_serializing)]
     pub alt_eff: si::Ratio,
+}
+
+/// Defaults to 100% for backward compatibility. This field will be removed in a future release.
+fn default_alt_eff() -> si::Ratio {
+    1.0 * uc::R
 }
 
 #[pyo3_api]
 impl ConventionalVehicle {}
 
 impl ConventionalVehicle {
+    #[allow(deprecated)]
     pub fn new(
         fs: FuelStorage,
         fc: FuelConverter,
@@ -160,7 +171,30 @@ impl ConventionalVehicle {
 
 impl SerdeAPI for ConventionalVehicle {}
 impl Init for ConventionalVehicle {
+    #[allow(deprecated)]
     fn init(&mut self) -> Result<(), Error> {
+        if self.alt_eff != 1.0 * uc::R {
+            // when supplied an alt_eff that would have an effect on simulation:
+            // - emit warning about deprecated field
+            eprintln!(
+                "Warning: deprecated field `alt_eff` = `{}` is not equal to 1.0, which is the default value. This field will be removed in a future release.",
+                self.alt_eff.get::<si::ratio>()
+            );
+            if self.fc.aux_eff.is_none() {
+                // if alt_eff != 1.0 is provided and aux_eff is not set
+                // use alt_eff to set aux_eff
+                self.fc.aux_eff = Some(self.alt_eff.get::<si::ratio>().into());
+            } else if let Some(AuxEfficiency::Constant(interp)) = &self.fc.aux_eff {
+                if interp.0 != self.alt_eff.get::<si::ratio>() {
+                    // if provided both alt_eff != 1.0 and Some aux_eff that is not equivalent
+                    // emit warning that aux_eff overrides alt_eff
+                    eprintln!(
+                        "Warning: provided deprecated field `alt_eff` = `{}` is being overridden by `fc.aux_eff`. The `alt_eff` field will be removed in a future release.",
+                        self.alt_eff.get::<si::ratio>()
+                    );
+                }
+            }
+        }
         self.fc
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
@@ -202,8 +236,12 @@ impl Powertrain for Box<ConventionalVehicle> {
         self.fc
             .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
+        let aux_eff = match &self.fc.aux_eff {
+            Some(AuxEfficiency::Constant(interp)) => interp.interpolate(&[]),
+            None => Ok(1.0),
+        }?;
         self.fc
-            .set_curr_pwr_prop_max(pwr_aux / self.alt_eff)
+            .set_curr_pwr_prop_max(pwr_aux / aux_eff)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.transmission
             .set_curr_pwr_prop_out_max(
@@ -318,6 +356,7 @@ impl ConventionalVehicle {
 
 impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
     type Error = anyhow::Error;
+    #[allow(deprecated)]
     fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<ConventionalVehicle> {
         let conv = ConventionalVehicle {
             fs: {

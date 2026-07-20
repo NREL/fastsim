@@ -825,7 +825,9 @@ impl Init for ReversibleEnergyStorage {
             .validate()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         if let Some(aux_eff) = self.aux_eff.as_mut() {
-            aux_eff.validate().map_err(|err| Error::InitError(format_dbg!(err)))?;
+            aux_eff
+                .validate()
+                .map_err(|err| Error::InitError(format_dbg!(err)))?;
         }
         self.state
             .init()

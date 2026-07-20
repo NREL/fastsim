@@ -73,10 +73,17 @@ Expected one of {}",
 impl Vehicle {
     /// Function to convert back to fastsim-2 format.  Note that this is
     /// probably not 100% reliable.
+    #[allow(deprecated)]
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
         let mut veh = fastsim_2::vehicle::RustVehicle {
             alt_eff: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => conv.alt_eff.get::<si::ratio>(),
+                PowertrainType::ConventionalVehicle(conv) => {
+                    if let Some(AuxEfficiency::Constant(interp)) = &conv.fc.aux_eff {
+                        interp.0
+                    } else {
+                        conv.alt_eff.get::<si::ratio>()
+                    }
+                }
                 _ => 1.0,
             },
             alt_eff_doc: None,

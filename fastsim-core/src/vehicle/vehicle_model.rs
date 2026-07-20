@@ -1267,6 +1267,7 @@ pub(crate) mod tests {
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
             Option::None,
+            Option::None,
         )?;
         let tx = Transmission::new(
             Option::None,                   // mass
@@ -1396,6 +1397,7 @@ pub(crate) mod tests {
             )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
+            Option::None,
             Option::None,
         )?;
         let em = ElectricMachine::new(

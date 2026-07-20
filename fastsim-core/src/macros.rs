@@ -65,7 +65,7 @@ macro_rules! impl_efficiency_enum {
                 }
             }
 
-            /// Validate efficiency map, ensuring all values are within the range [0, 1] and that the underlying interpolator is valid.
+            /// Validate efficiency map, ensuring all values are within the range \[0, 1\] and that the underlying interpolator is valid.
             fn validate(&mut self) -> Result<(), ninterp::error::ValidateError> {
                 ::paste::paste! {
                     match self {
@@ -139,6 +139,12 @@ macro_rules! impl_efficiency_enum {
                         $(Self::$variant([<$variant:snake _interp>]) => [<$variant:snake _interp>].set_extrapolate(extrapolate),)+
                     }
                 }
+            }
+        }
+
+        impl From<f64> for $enum_ty {
+            fn from(value: f64) -> Self {
+                Self::Constant(ninterp::prelude::Interp0D(value))
             }
         }
 

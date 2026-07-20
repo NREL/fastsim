@@ -29,4 +29,4 @@ pub use powertrain::traits::Powertrain;
 pub use powertrain::transmission::Transmission;
 pub use powertrain_type::PowertrainType;
 pub use traits::*;
-pub use vehicle_model::*;
+pub use vehicle_model::{AuxEfficiency, Vehicle, VehicleState};
