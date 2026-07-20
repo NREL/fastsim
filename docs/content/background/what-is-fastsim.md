@@ -53,7 +53,7 @@ The validation report compares FASTSim outputs with laboratory and on-road data 
 all modeled powertrains. It shows that:
 
 - Basic FASTSim models perform well for many high-level efficiency and energy studies.
-- Customized FASTSim models can closely match second-by-second and trip-level data in
+- Calibrated FASTSim models can closely match second-by-second and trip-level data in
   targeted calibration efforts.
 
 ## Conclusion
@@ -63,4 +63,4 @@ large batches of simulations, it is well suited for analyses that need to be
 shared, replicated, and debated across many stakeholders.
 
 Across NLR's suite of analysis software, FASTSim also serves as a core simulation layer that can
-feed downstream tools for routing, cost of ownership, market adoption analysis, and more.
+feed downstream tools for routing, cost of ownership, market adoption analysis, and more. For NLR tools related to FASTSim, see [](related-tools.md).
