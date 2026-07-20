@@ -422,8 +422,7 @@ impl SerdeAPI for Vehicle {
             "toml" => {
                 let toml_str =
                     std::str::from_utf8(&buf).map_err(|err| Error::SerdeError(format!("{err}")))?;
-                toml::from_str(toml_str)
-                    .map_err(|err| Error::SerdeError(format!("{err}")))?
+                toml::from_str(toml_str).map_err(|err| Error::SerdeError(format!("{err}")))?
             }
             _ => Err(Error::SerdeError(format!(
                 "Unsupported format {format:?}, must be one of {:?}",
