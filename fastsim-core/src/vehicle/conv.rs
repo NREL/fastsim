@@ -130,6 +130,7 @@ pub struct ConventionalVehicle {
     /// Alternator efficiency used to calculate aux mechanical power demand on engine
     #[serde(default = "default_alt_eff")]
     #[deprecated(
+        since = "3.1.0",
         note = "This field will be removed in a future release. Use FuelConverter.aux_eff instead."
     )]
     #[serde(skip_serializing)]
