@@ -215,8 +215,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
                     let mut buf = String::new();
                     rdr.read_to_string(&mut buf)
                         .map_err(|err| Error::SerdeError(format!("{err}")))?;
-                    Self::from_toml(buf, skip_init)
-                        .map_err(|err| Error::SerdeError(format!("{err}")))?
+                    Self::from_toml(buf, true).map_err(|err| Error::SerdeError(format!("{err}")))?
                 }
                 _ => Err(Error::SerdeError(format!(
                     "Unsupported format {format:?}, must be one of {:?}",

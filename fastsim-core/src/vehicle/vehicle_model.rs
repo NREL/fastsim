@@ -371,7 +371,126 @@ impl Mass for Vehicle {
 impl SerdeAPI for Vehicle {
     #[cfg(feature = "resources")]
     const RESOURCES_SUBDIR: &'static str = "vehicles";
+
+    // specialized from_reader that allows for compatibility with fastsim-2 vehicle files
+    fn from_reader<R: std::io::Read>(
+        rdr: &mut R,
+        format: &str,
+        skip_init: bool,
+    ) -> Result<Self, Error> {
+        let mut buf = Vec::new();
+        rdr.read_to_end(&mut buf)
+            .map_err(|err| Error::SerdeError(format!("{err}")))?;
+        let mut buf_rdr = std::io::Cursor::new(buf.as_slice());
+
+        #[cfg(feature = "compat")]
+        {
+            use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+            if let Ok(f2_veh) =
+                crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_reader(
+                    &mut buf_rdr,
+                    format,
+                    skip_init,
+                )
+            {
+                return Vehicle::try_from(f2_veh)
+                    .map_err(|err| Error::SerdeError(format!("{err}")));
+            }
+        }
+        buf_rdr.set_position(0);
+
+        let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => serde_yaml::from_reader(&mut buf_rdr)
+                .map_err(|err| Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "json")]
+            "json" => serde_json::from_reader(&mut buf_rdr)
+                .map_err(|err| Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "msgpack")]
+            "msgpack" => rmp_serde::decode::from_read(&mut buf_rdr)
+                .map_err(|err| Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "toml")]
+            "toml" => {
+                let toml_str =
+                    std::str::from_utf8(&buf).map_err(|err| Error::SerdeError(format!("{err}")))?;
+                toml::from_str(toml_str)
+                    .map_err(|err| Error::SerdeError(format!("{err}")))?
+            }
+            _ => Err(Error::SerdeError(format!(
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS,
+            )))?,
+        };
+        if !skip_init {
+            deserialized.init()?;
+        }
+        Ok(deserialized)
+    }
+
+    // specialized from_yaml that allows for compatibility with fastsim-2 vehicle files
+    #[cfg(feature = "yaml")]
+    fn from_yaml<S: AsRef<str>>(yaml_str: S, skip_init: bool) -> anyhow::Result<Self> {
+        #[cfg(feature = "compat")]
+        {
+            use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+            if let Ok(f2_veh) =
+                crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_yaml(
+                    &yaml_str, skip_init,
+                )
+            {
+                return Vehicle::try_from(f2_veh);
+            }
+        }
+        let mut yaml_de: Self = serde_yaml::from_str(yaml_str.as_ref())?;
+        if !skip_init {
+            yaml_de.init()?;
+        }
+        Ok(yaml_de)
+    }
+
+    // specialized from_json that allows for compatibility with fastsim-2 vehicle files
+    #[cfg(feature = "json")]
+    fn from_json<S: AsRef<str>>(json_str: S, skip_init: bool) -> anyhow::Result<Self> {
+        #[cfg(feature = "compat")]
+        {
+            use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+            if let Ok(f2_veh) =
+                crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_json(
+                    &json_str, skip_init,
+                )
+            {
+                return Vehicle::try_from(f2_veh);
+            }
+        }
+        let mut json_de: Self = serde_json::from_str(json_str.as_ref())?;
+        if !skip_init {
+            json_de.init()?;
+        }
+        Ok(json_de)
+    }
+
+    // specialized from_toml that allows for compatibility with fastsim-2 vehicle files
+    #[cfg(feature = "toml")]
+    fn from_toml<S: AsRef<str>>(toml_str: S, skip_init: bool) -> anyhow::Result<Self> {
+        #[cfg(feature = "compat")]
+        {
+            use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+            if let Ok(f2_veh) =
+                crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_toml(
+                    &toml_str, skip_init,
+                )
+            {
+                return Vehicle::try_from(f2_veh);
+            }
+        }
+        let mut toml_de: Self = toml::from_str(toml_str.as_ref())?;
+        if !skip_init {
+            toml_de.init()?;
+        }
+        Ok(toml_de)
+    }
 }
+
 impl Init for Vehicle {
     fn init(&mut self) -> Result<(), Error> {
         let _mass = self
@@ -1044,6 +1163,44 @@ pub(crate) mod tests {
     }
 
     type StructWithResources = Vehicle;
+
+    #[test]
+    #[cfg(all(feature = "compat", feature = "yaml"))]
+    fn test_f2_vehicle_assets_load_via_from_reader() {
+        let vehicle_assets = crate::compat::fastsim_2::ASSETS_DIR
+            .get_dir("vehicles")
+            .unwrap();
+
+        for file in vehicle_assets.files() {
+            let mut contents = file.contents();
+            let result = Vehicle::from_reader(&mut contents, "yaml", false);
+            assert!(
+                result.is_ok(),
+                "from_reader failed for {:?}: {:?}",
+                file.path(),
+                result.err()
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(all(feature = "compat", feature = "yaml"))]
+    fn test_f2_vehicle_assets_load_via_from_yaml() {
+        let vehicle_assets = crate::compat::fastsim_2::ASSETS_DIR
+            .get_dir("vehicles")
+            .unwrap();
+
+        for file in vehicle_assets.files() {
+            let yaml_str = std::str::from_utf8(file.contents()).unwrap();
+            let result = Vehicle::from_yaml(yaml_str, false);
+            assert!(
+                result.is_ok(),
+                "from_yaml failed for {:?}: {:?}",
+                file.path(),
+                result.err()
+            );
+        }
+    }
 
     #[test]
     fn test_resources() {
