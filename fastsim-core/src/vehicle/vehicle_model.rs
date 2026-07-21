@@ -381,7 +381,7 @@ impl SerdeAPI for Vehicle {
     #[cfg(feature = "resources")]
     const RESOURCES_SUBDIR: &'static str = "vehicles";
 
-    // specialized from_reader that allows for compatibility with fastsim-2 vehicle files
+    // Specialized `from_reader` that allows for compatibility with fastsim-2 vehicle format
     fn from_reader<R: std::io::Read>(
         rdr: &mut R,
         format: &str,
@@ -392,110 +392,168 @@ impl SerdeAPI for Vehicle {
             .map_err(|err| Error::SerdeError(format!("{err}")))?;
         let mut buf_rdr = std::io::Cursor::new(buf.as_slice());
 
-        #[cfg(feature = "compat")]
-        {
-            use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
-            if let Ok(f2_veh) =
-                crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_reader(
-                    &mut buf_rdr,
-                    format,
-                    skip_init,
-                )
-            {
-                return Vehicle::try_from(f2_veh)
-                    .map_err(|err| Error::SerdeError(format!("{err}")));
+        // Try deserializing from the contemporary vehicle format
+        let parse_result: Result<Self, Error> =
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                #[cfg(feature = "yaml")]
+                "yaml" | "yml" => serde_yaml::from_reader(&mut buf_rdr)
+                    .map_err(|err| Error::SerdeError(format!("{err}"))),
+                #[cfg(feature = "json")]
+                "json" => serde_json::from_reader(&mut buf_rdr)
+                    .map_err(|err| Error::SerdeError(format!("{err}"))),
+                #[cfg(feature = "msgpack")]
+                "msgpack" => rmp_serde::decode::from_read(&mut buf_rdr)
+                    .map_err(|err| Error::SerdeError(format!("{err}"))),
+                #[cfg(feature = "toml")]
+                "toml" => {
+                    let toml_str = std::str::from_utf8(&buf)
+                        .map_err(|err| Error::SerdeError(format!("{err}")))?;
+                    toml::from_str(toml_str).map_err(|err| Error::SerdeError(format!("{err}")))
+                }
+                _ => Err(Error::SerdeError(format!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_BYTE_FORMATS,
+                ))),
+            };
+        match parse_result {
+            // Normal behavior:
+            // If deserialization in contemporary vehicle format succeeds,
+            // return the deserialized initialized vehicle
+            Ok(mut deserialized) => {
+                if !skip_init {
+                    deserialized.init()?;
+                }
+                Ok(deserialized)
+            }
+            // Fallback behavior:
+            // If deserialization in contemporary vehicle format fails
+            // (and the `compat` feature is enabled),
+            // attempt to deserialize in fastsim-2 format,
+            // otherwise return the original error
+            Err(format_parse_err) => {
+                #[cfg(feature = "compat")]
+                {
+                    buf_rdr.set_position(0);
+                    use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+                    if let Ok(f2_veh) =
+                        crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_reader(
+                            &mut buf_rdr,
+                            format,
+                            skip_init,
+                        )
+                    {
+                        return Vehicle::try_from(f2_veh)
+                            .map_err(|err| Error::SerdeError(format!("{err}")));
+                    }
+                }
+                Err(format_parse_err)
             }
         }
-        buf_rdr.set_position(0);
-
-        let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
-            #[cfg(feature = "yaml")]
-            "yaml" | "yml" => serde_yaml::from_reader(&mut buf_rdr)
-                .map_err(|err| Error::SerdeError(format!("{err}")))?,
-            #[cfg(feature = "json")]
-            "json" => serde_json::from_reader(&mut buf_rdr)
-                .map_err(|err| Error::SerdeError(format!("{err}")))?,
-            #[cfg(feature = "msgpack")]
-            "msgpack" => rmp_serde::decode::from_read(&mut buf_rdr)
-                .map_err(|err| Error::SerdeError(format!("{err}")))?,
-            #[cfg(feature = "toml")]
-            "toml" => {
-                let toml_str =
-                    std::str::from_utf8(&buf).map_err(|err| Error::SerdeError(format!("{err}")))?;
-                toml::from_str(toml_str).map_err(|err| Error::SerdeError(format!("{err}")))?
-            }
-            _ => Err(Error::SerdeError(format!(
-                "Unsupported format {format:?}, must be one of {:?}",
-                Self::ACCEPTED_BYTE_FORMATS,
-            )))?,
-        };
-        if !skip_init {
-            deserialized.init()?;
-        }
-        Ok(deserialized)
     }
 
-    // specialized from_yaml that allows for compatibility with fastsim-2 vehicle files
+    // Specialized `from_yaml` that allows for compatibility with fastsim-2 vehicle format
     #[cfg(feature = "yaml")]
     fn from_yaml<S: AsRef<str>>(yaml_str: S, skip_init: bool) -> anyhow::Result<Self> {
-        #[cfg(feature = "compat")]
-        {
-            use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
-            if let Ok(f2_veh) =
-                crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_yaml(
-                    &yaml_str, skip_init,
-                )
-            {
-                return Vehicle::try_from(f2_veh);
+        match serde_yaml::from_str::<Self>(yaml_str.as_ref()) {
+            // Normal behavior:
+            // If deserialization in contemporary vehicle format succeeds,
+            // return the deserialized initialized vehicle
+            Ok(mut yaml_de) => {
+                if !skip_init {
+                    yaml_de.init()?;
+                }
+                Ok(yaml_de)
+            }
+            // Fallback behavior:
+            // If deserialization in contemporary vehicle format fails
+            // (and the `compat` feature is enabled),
+            // attempt to deserialize in fastsim-2 format,
+            // otherwise return the original error
+            Err(format_parse_err) => {
+                #[cfg(feature = "compat")]
+                {
+                    use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+                    if let Ok(f2_veh) =
+                        crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_yaml(
+                            &yaml_str, skip_init,
+                        )
+                    {
+                        return Vehicle::try_from(f2_veh);
+                    }
+                }
+                Err(format_parse_err.into())
             }
         }
-        let mut yaml_de: Self = serde_yaml::from_str(yaml_str.as_ref())?;
-        if !skip_init {
-            yaml_de.init()?;
-        }
-        Ok(yaml_de)
     }
 
-    // specialized from_json that allows for compatibility with fastsim-2 vehicle files
+    // Specialized `from_json` that allows for compatibility with fastsim-2 vehicle format
     #[cfg(feature = "json")]
     fn from_json<S: AsRef<str>>(json_str: S, skip_init: bool) -> anyhow::Result<Self> {
-        #[cfg(feature = "compat")]
-        {
-            use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
-            if let Ok(f2_veh) =
-                crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_json(
-                    &json_str, skip_init,
-                )
-            {
-                return Vehicle::try_from(f2_veh);
+        match serde_json::from_str::<Self>(json_str.as_ref()) {
+            // Normal behavior:
+            // If deserialization in contemporary vehicle format succeeds,
+            // return the deserialized initialized vehicle
+            Ok(mut json_de) => {
+                if !skip_init {
+                    json_de.init()?;
+                }
+                Ok(json_de)
+            }
+            // Fallback behavior:
+            // If deserialization in contemporary vehicle format fails
+            // (and the `compat` feature is enabled),
+            // attempt to deserialize in fastsim-2 format,
+            // otherwise return the original error
+            Err(format_parse_err) => {
+                #[cfg(feature = "compat")]
+                {
+                    use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+                    if let Ok(f2_veh) =
+                        crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_json(
+                            &json_str, skip_init,
+                        )
+                    {
+                        return Vehicle::try_from(f2_veh);
+                    }
+                }
+                Err(format_parse_err.into())
             }
         }
-        let mut json_de: Self = serde_json::from_str(json_str.as_ref())?;
-        if !skip_init {
-            json_de.init()?;
-        }
-        Ok(json_de)
     }
 
-    // specialized from_toml that allows for compatibility with fastsim-2 vehicle files
+    // Specialized `from_toml` that allows for compatibility with fastsim-2 vehicle format
     #[cfg(feature = "toml")]
     fn from_toml<S: AsRef<str>>(toml_str: S, skip_init: bool) -> anyhow::Result<Self> {
-        #[cfg(feature = "compat")]
-        {
-            use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
-            if let Ok(f2_veh) =
-                crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_toml(
-                    &toml_str, skip_init,
-                )
-            {
-                return Vehicle::try_from(f2_veh);
+        match toml::from_str::<Self>(toml_str.as_ref()) {
+            // Normal behavior:
+            // If deserialization in contemporary vehicle format succeeds,
+            // return the deserialized initialized vehicle
+            Ok(mut toml_de) => {
+                if !skip_init {
+                    toml_de.init()?;
+                }
+                Ok(toml_de)
+            }
+            // Fallback behavior:
+            // If deserialization in contemporary vehicle format fails
+            // (and the `compat` feature is enabled),
+            // attempt to deserialize in fastsim-2 format,
+            // otherwise return the original error
+            Err(format_parse_err) => {
+                #[cfg(feature = "compat")]
+                {
+                    use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+                    if let Ok(f2_veh) =
+                        crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_toml(
+                            &toml_str, skip_init,
+                        )
+                    {
+                        return Vehicle::try_from(f2_veh);
+                    }
+                }
+                Err(format_parse_err.into())
             }
         }
-        let mut toml_de: Self = toml::from_str(toml_str.as_ref())?;
-        if !skip_init {
-            toml_de.init()?;
-        }
-        Ok(toml_de)
     }
 }
 
