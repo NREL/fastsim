@@ -174,21 +174,22 @@ impl SerdeAPI for ConventionalVehicle {}
 impl Init for ConventionalVehicle {
     #[allow(deprecated)]
     fn init(&mut self) -> Result<(), Error> {
-        if self.alt_eff != 1.0 * uc::R {
+        let alt_eff = self.alt_eff.get::<si::ratio>();
+        if alt_eff != 1.0 {
             // when supplied an alt_eff that would have an effect on simulation:
             // - emit warning about deprecated field
             eprintln!(
                 "Warning: deprecated field `alt_eff` = `{}` is not equal to 1.0, which is the default value. This field will be removed in a future release.",
-                self.alt_eff.get::<si::ratio>()
+                alt_eff
             );
             match &self.fc.aux_supply_eff {
                 AuxSupplyEfficiency::Constant(interp) => {
-                    if interp.0 != self.alt_eff.get::<si::ratio>() {
+                    if interp.0 != alt_eff {
                         // if provided both alt_eff != 1.0 and aux_eff that is not equivalent
                         // emit warning that aux_eff overrides alt_eff
                         eprintln!(
                             "Warning: provided deprecated field `alt_eff` = `{}` is being overridden by `fc.aux_supply_eff`. The `alt_eff` field will be removed in a future release.",
-                            self.alt_eff.get::<si::ratio>()
+                            alt_eff
                         );
                     }
                 }
