@@ -56,7 +56,7 @@ pt_type:
         strategy: Linear
         extrapolate: Error
       pwr_idle_fuel_watts: 0.0
-      aux_eff:
+      aux_supply_eff:
         Constant: 1.0
       state:
         i: 0

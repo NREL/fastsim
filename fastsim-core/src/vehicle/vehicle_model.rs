@@ -23,24 +23,20 @@ impl Init for AuxSource {}
 
 /// Efficiency model for aux load power source
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, TryInto)]
-pub enum AuxEfficiency {
+pub enum AuxSupplyEfficiency {
     Constant(Interp0D<f64>),
 }
 
-impl_efficiency_enum!(AuxEfficiency { Constant });
+impl_efficiency_enum!(AuxSupplyEfficiency { Constant });
 
-// impl Default for AuxEfficiency {
-//     /// Default to 100% efficiency.
-//     /// Necessary for backwards compatibility when field is missing.
-//     /// Also used in unwrap_or_default() calls.
-//     fn default() -> Self {
-//         AuxEfficiency::Constant(Interp0D(1.0))
-//     }
-// }
-
-// pub(crate) fn default_aux_efficiency() -> AuxEfficiency {
-//     AuxEfficiency::Constant(Interp0D(1.0))
-// }
+impl Default for AuxSupplyEfficiency {
+    /// Default to 100% efficiency.
+    /// Necessary for backwards compatibility when field is missing.
+    /// Also used in unwrap_or_default() calls.
+    fn default() -> Self {
+        AuxSupplyEfficiency::Constant(Interp0D(1.0))
+    }
+}
 
 #[serde_api]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
@@ -1266,7 +1262,7 @@ pub(crate) mod tests {
             )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
-            Option::None,
+            Default::default(),
             Option::None,
         )?;
         let tx = Transmission::new(
@@ -1355,7 +1351,7 @@ pub(crate) mod tests {
             RESEfficiency::Constant(Interp0D(0.9)), // eff_interp
             0.0 * uc::R,                            // min_soc
             1.0 * uc::R,                            // max_soc
-            Option::None,                           // aux_eff
+            Default::default(),                     // aux_eff
             Option::None,
         )?;
         let fs = FuelStorage::new(
@@ -1397,7 +1393,7 @@ pub(crate) mod tests {
             )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
-            Option::None,
+            Default::default(),
             Option::None,
         )?;
         let em = ElectricMachine::new(

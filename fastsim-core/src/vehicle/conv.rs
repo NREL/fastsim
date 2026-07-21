@@ -181,20 +181,18 @@ impl Init for ConventionalVehicle {
                 "Warning: deprecated field `alt_eff` = `{}` is not equal to 1.0, which is the default value. This field will be removed in a future release.",
                 self.alt_eff.get::<si::ratio>()
             );
-            if self.fc.aux_eff.is_none() {
-                // if alt_eff != 1.0 is provided and aux_eff is not set
-                // use alt_eff to set aux_eff
-                self.fc.aux_eff = Some(self.alt_eff.get::<si::ratio>().into());
-            } else if let Some(AuxEfficiency::Constant(interp)) = &self.fc.aux_eff {
-                if interp.0 != self.alt_eff.get::<si::ratio>() {
-                    // if provided both alt_eff != 1.0 and Some aux_eff that is not equivalent
-                    // emit warning that aux_eff overrides alt_eff
-                    eprintln!(
-                        "Warning: provided deprecated field `alt_eff` = `{}` is being overridden by `fc.aux_eff`. The `alt_eff` field will be removed in a future release.",
-                        self.alt_eff.get::<si::ratio>()
-                    );
+            match &self.fc.aux_supply_eff {
+                AuxSupplyEfficiency::Constant(interp) => {
+                    if interp.0 != self.alt_eff.get::<si::ratio>() {
+                        // if provided both alt_eff != 1.0 and aux_eff that is not equivalent
+                        // emit warning that aux_eff overrides alt_eff
+                        eprintln!(
+                            "Warning: provided deprecated field `alt_eff` = `{}` is being overridden by `fc.aux_supply_eff`. The `alt_eff` field will be removed in a future release.",
+                            self.alt_eff.get::<si::ratio>()
+                        );
+                    }
                 }
-            }
+            };
         }
         self.fc
             .init()
@@ -237,12 +235,11 @@ impl Powertrain for Box<ConventionalVehicle> {
         self.fc
             .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        let aux_eff = match &self.fc.aux_eff {
-            Some(AuxEfficiency::Constant(interp)) => interp.interpolate(&[]),
-            None => Ok(1.0),
+        let aux_supply_eff = match &self.fc.aux_supply_eff {
+            AuxSupplyEfficiency::Constant(interp) => interp.interpolate(&[]),
         }?;
         self.fc
-            .set_curr_pwr_prop_max(pwr_aux / aux_eff)
+            .set_curr_pwr_prop_max(pwr_aux / aux_supply_eff)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.transmission
             .set_curr_pwr_prop_out_max(

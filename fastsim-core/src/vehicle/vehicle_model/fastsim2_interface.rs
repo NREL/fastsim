@@ -77,13 +77,9 @@ impl Vehicle {
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
         let mut veh = fastsim_2::vehicle::RustVehicle {
             alt_eff: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {
-                    if let Some(AuxEfficiency::Constant(interp)) = &conv.fc.aux_eff {
-                        interp.0
-                    } else {
-                        conv.alt_eff.get::<si::ratio>()
-                    }
-                }
+                PowertrainType::ConventionalVehicle(conv) => match &conv.fc.aux_supply_eff {
+                    AuxSupplyEfficiency::Constant(interp) => interp.interpolate(&[])?,
+                },
                 _ => 1.0,
             },
             alt_eff_doc: None,

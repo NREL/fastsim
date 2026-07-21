@@ -40,7 +40,7 @@ pub struct FuelConverter {
 
     /// Efficiency to apply to aux load
     #[serde(default)]
-    pub aux_eff: Option<AuxEfficiency>,
+    pub aux_supply_eff: AuxSupplyEfficiency,
 
     /// struct for tracking current state
     #[serde(default)]
@@ -112,7 +112,7 @@ impl FuelConverter {
         eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
         pwr_for_peak_eff: si::Power,
         pwr_idle_fuel: si::Power,
-        aux_eff: Option<AuxEfficiency>,
+        aux_supply_eff: AuxSupplyEfficiency,
         save_interval: Option<usize>,
     ) -> anyhow::Result<Self> {
         let mut fc = Self {
@@ -125,7 +125,7 @@ impl FuelConverter {
             eff_interp_from_pwr_out,
             pwr_for_peak_eff,
             pwr_idle_fuel,
-            aux_eff,
+            aux_supply_eff,
             state: FuelConverterState::default(),
             history: FuelConverterStateHistoryVec::default(),
             save_interval,
@@ -142,11 +142,9 @@ impl Init for FuelConverter {
             .mass()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.thrml.init()?;
-        if let Some(aux_eff) = self.aux_eff.as_mut() {
-            aux_eff
-                .validate()
-                .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        }
+        self.aux_supply_eff
+            .validate()
+            .map_err(|err| Error::InitError(format_dbg!(err)))?;
         self.state
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
@@ -526,7 +524,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for FuelConverter {
             pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
             // this means that aux power must include idle fuel
             pwr_idle_fuel: si::Power::ZERO,
-            aux_eff: Some(f2veh.alt_eff.into()),
+            aux_supply_eff: f2veh.alt_eff.into(),
             save_interval: Some(1),
         }
         .try_into()
@@ -553,7 +551,7 @@ impl TryFrom<FCBuilder> for FuelConverter {
             // TODO: make a function for setting this according with below line
             // this means that aux power must include idle fuel
             pwr_idle_fuel: si::Power::ZERO,
-            aux_eff: fcbuilder.aux_eff,
+            aux_supply_eff: fcbuilder.aux_supply_eff,
             save_interval: Some(1),
             history: Default::default(),
         };
@@ -580,7 +578,7 @@ pub struct FCBuilder {
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     pub pwr_idle_fuel: si::Power,
     /// Efficiency to apply to aux load
-    pub aux_eff: Option<AuxEfficiency>,
+    pub aux_supply_eff: AuxSupplyEfficiency,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
 }
@@ -1386,7 +1384,7 @@ mod tests {
             .unwrap(),
             pwr_for_peak_eff: peak_pwr * 0.8,
             pwr_idle_fuel: idle_pwr,
-            aux_eff: None,
+            aux_supply_eff: Default::default(),
             state: fc_state,
             history: FuelConverterStateHistoryVec::default(),
             save_interval: Option::None,
