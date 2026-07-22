@@ -113,7 +113,7 @@ class Cycle(SerdeAPI):
         """
         Plot a drive cycle (default: speed vs. time) with Plotly.
 
-        x-axis options: ["time_seconds", "dist_meters"]  
+        x-axis options: ["time_seconds", "dist_meters"]
         y-axis options: ["speed_meters_per_second", "grade"]
         """
         ...
@@ -171,15 +171,14 @@ class Vehicle(SerdeAPI):
         schema: int = 1,
         **kwargs: Any,
     ) -> Vehicle:
-        """
-        Load a vehicle from a schema-versioned FASTSim vehicle database.
+        """Load a vehicle from a schema-versioned FASTSim vehicle database.
 
         Parameters
         ----------
         db_path_or_url : str | None, default None
             Database source selector (auto-detects local vs. remote):
 
-            - ``None``: load from default remote database 
+            - ``None``: load from default remote database
               (https://github.com/NatLabRockies/fastsim-vehicles)
             - ``"http://..."`` or ``"https://..."``: load from remote database base URL
             - any other string: treat as local filesystem database path
@@ -191,9 +190,9 @@ class Vehicle(SerdeAPI):
             **Path-string mode** (schema-agnostic; takes precedence over fields mode):
 
             - ``path`` (str): pre-serialized schema path string, e.g.
-              ``"v1/fastsim-3/conv/ford/fusion/2012/base/v1"``.
+                            ``"v1/fastsim-3/conv/ford/fusion/2012/base/r1"``.
               The file extension may be embedded directly in the path
-              (e.g. ``"v1/fastsim-3/conv/ford/fusion/2012/base/v1.yaml"``),
+                            (e.g. ``"v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml"``),
               or supplied separately via ``extension``. Specifying both raises
               a ``ValueError``.
             - ``extension`` (str, optional): file extension when not embedded in
@@ -207,7 +206,7 @@ class Vehicle(SerdeAPI):
             - ``make`` (str): vehicle make, e.g. ``"Ford"``, ``"Tesla"``
             - ``model`` (str): vehicle model, e.g. ``"F-150"``, ``"Model-3"``
             - ``year`` (str): vehicle model year or range, e.g. ``"2022"``, ``"2020-2023"``
-            - ``revision`` (str | int): model revision, e.g. ``1``, ``"v1"``, or ``"V1"``
+            - ``revision`` (str | int): model revision, e.g. ``1``, ``"r1"``, or ``"R1"``
             - ``variant`` (str, optional): variant descriptor, e.g. ``"base"``. Defaults to ``"base"``.
             - ``extension`` (str, optional): file extension. Defaults to ``"yaml"``.
             - ``fastsim_version`` (int, optional): major FASTSim version. Defaults to the installed major version.

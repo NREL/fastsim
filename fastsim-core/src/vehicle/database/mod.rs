@@ -25,7 +25,7 @@ impl<'de> Deserialize<'de> for Schema {
                 Ok(schema) => Ok(schema),
                 Err(err) => {
                     let mut msg = format!(
-                        "invalid db_path schema {raw:?}: {err}. Expected format: v1/fastsim-{{N}}/{{powertrain}}/{{make}}/{{model}}/{{year}}/{{variant}}/v{{N}}"
+                        "invalid db_path schema {raw:?}: {err}. Expected format: v1/fastsim-{{N}}/{{powertrain}}/{{make}}/{{model}}/{{year}}/{{variant}}/r{{N}}"
                     );
                     if let Some((current, suggested)) = normalized_path_suggestion(&raw) {
                         msg.push_str(&format!(
@@ -81,7 +81,7 @@ mod tests {
 
     #[test]
     fn schema_deserializes_valid_v1_path() {
-        let raw = "\"v1/fastsim-3/conv/ford/fusion/2012/base/v1\"";
+        let raw = "\"v1/fastsim-3/conv/ford/fusion/2012/base/r1\"";
         let schema: Schema = serde_json::from_str(raw).unwrap();
         match schema {
             Schema::V1(v1) => {
@@ -101,16 +101,16 @@ mod tests {
 
     #[test]
     fn schema_deserialize_error_suggests_slugified_path() {
-        let raw = "\"v1/fastsim-3/Conv/Ford/F-150 Raptor/2012/Base Trim/v1\"";
+        let raw = "\"v1/fastsim-3/Conv/Ford/F-150 Raptor/2012/Base Trim/r1\"";
         let err = serde_json::from_str::<Schema>(raw).unwrap_err().to_string();
         assert!(err.contains("Current path:"));
         assert!(err.contains("Suggested normalized path:"));
-        assert!(err.contains("v1/fastsim-3/conv/ford/f-150-raptor/2012/base-trim/v1"));
+        assert!(err.contains("v1/fastsim-3/conv/ford/f-150-raptor/2012/base-trim/r1"));
     }
 
     #[test]
     fn schema_deserialize_error_for_unknown_version() {
-        let raw = "\"v9/fastsim-3/conv/ford/fusion/2012/base/v1\"";
+        let raw = "\"v9/fastsim-3/conv/ford/fusion/2012/base/r1\"";
         let err = serde_json::from_str::<Schema>(raw).unwrap_err().to_string();
         assert!(err.contains("unknown schema version prefix"));
         assert!(err.contains("v1/"));
@@ -118,16 +118,16 @@ mod tests {
 
     #[test]
     fn schema_rejects_unknown_schema_version() {
-        let raw = "\"v2/fastsim-3/conv/ford/fusion/2012/base/v1\"";
+        let raw = "\"v2/fastsim-3/conv/ford/fusion/2012/base/r1\"";
         let err = serde_json::from_str::<Schema>(raw).unwrap_err().to_string();
         assert!(err.contains("unknown schema version prefix"));
     }
 
     #[test]
     fn schema_deserialize_error_suggests_punctuation_cleanup() {
-        let raw = "\"v1/fastsim-3/conv/ford/model.3/2022/base_variant/v1\"";
+        let raw = "\"v1/fastsim-3/conv/ford/model.3/2022/base_variant/r1\"";
         let err = serde_json::from_str::<Schema>(raw).unwrap_err().to_string();
 
-        assert!(err.contains("v1/fastsim-3/conv/ford/model.3/2022/base-variant/v1"));
+        assert!(err.contains("v1/fastsim-3/conv/ford/model.3/2022/base-variant/r1"));
     }
 }

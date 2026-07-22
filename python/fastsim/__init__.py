@@ -166,14 +166,18 @@ def get_flattened(obj: dict | list, hist_len: int | None, prepend_str: str = "")
     if isinstance(obj, dict):
         for k, v in obj.items():
             new_key = k if (prepend_str == "") else prepend_str + "." + k
-            if isinstance(v, dict) or (isinstance(v, list) and hist_len is not None and len(v) != hist_len):
+            if isinstance(v, dict) or (
+                isinstance(v, list) and hist_len is not None and len(v) != hist_len
+            ):
                 flat.update(get_flattened(v, hist_len, prepend_str=new_key))
             else:
                 flat[new_key] = v
     elif isinstance(obj, list):
         for i, v in enumerate(obj):
             new_key = i if (prepend_str == "") else prepend_str + "." + f"[{i}]"
-            if isinstance(v, dict) or (isinstance(v, list) and hist_len is not None and len(v) != hist_len):
+            if isinstance(v, dict) or (
+                isinstance(v, list) and hist_len is not None and len(v) != hist_len
+            ):
                 flat.update(get_flattened(v, hist_len, prepend_str=new_key))
             else:
                 flat[new_key] = v
@@ -294,7 +298,9 @@ def to_dataframe(
     return df
 
 
-def _plot_cycle(self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True) -> go._figure.Figure:
+def _plot_cycle(
+    self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True
+) -> go._figure.Figure:
     if x not in self.to_pydict():
         raise ValueError(f"Column '{x}' not found in the drive cycle data")
     if y not in self.to_pydict():
@@ -372,7 +378,7 @@ def _vehicle_from_db(
         model = kwargs["model"]
         year = kwargs["year"]
         variant = str(kwargs.get("variant", "base"))
-        revision = int(str(kwargs["revision"]).strip().removeprefix("v").removeprefix("V"))
+        revision = int(str(kwargs["revision"]).strip().removeprefix("r").removeprefix("R"))
 
         return cls.from_db_fields_v1(
             db_path_or_url,
@@ -388,6 +394,7 @@ def _vehicle_from_db(
         )
 
     raise ValueError(f"Unsupported schema: {schema}. Only schema=1 is currently supported.")
+
 
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
