@@ -2,11 +2,7 @@
 
 <div style="height: 2rem;"></div>
 
-The **Future Automotive Systems Technology Simulator** (FASTSim) provides a simple
-way to compare powertrains and estimate the impact of technology improvements
-on on-road vehicle efficiency and performance. FASTSim has been used to model
-light-duty passenger cars, two-wheelers, and medium- and heavy-duty vocational
-vehicles.
+FASTSim (**Future Automotive Systems Technology Simulator**) is a vehicle simulation tool for evaluating the effects of technology improvements on the efficiency and performance of on-road vehicles, including light-duty passenger cars, two-wheelers, and medium- and heavy-duty vocational vehicles.
 
 FASTSim is designed for rapid analysis, making it practical to run many
 simulations and compare technology scenarios across vehicle classes and use
