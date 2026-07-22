@@ -16,7 +16,11 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             None,
             None,
             f2veh.doc.clone(),
-            Some(f2veh.veh_year.to_string()),
+            if f2veh.veh_year == 0 {
+                None
+            } else {
+                Some(f2veh.veh_year.to_string())
+            },
             None,
             None,
             pt_type,
