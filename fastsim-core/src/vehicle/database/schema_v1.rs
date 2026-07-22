@@ -184,7 +184,6 @@ impl DatabaseSchemaV1 {
 
         for c in s.to_ascii_lowercase().chars() {
             let c = match c {
-                ' ' | '_' => '-',
                 c if Self::allowed_character(c) => c,
                 _ => '-',
             };
