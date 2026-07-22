@@ -55,11 +55,44 @@ impl std::str::FromStr for DatabaseSchemaV1 {
     /// `v1/fastsim-{N}/{powertrain}/{make}/{model}/{year}/{variant}/v{N}`
     ///
     /// # Errors
-    /// Returns an error if:
-    /// - String doesn't have exactly 8 segments
-    /// - Missing required prefixes ("v1" at start, "fastsim-" in segment 2, "v" in segment 8)
-    /// - Version numbers (fastsim_version or revision) are not valid u32 values
+    /// This parser has two validation phases and may fail in either phase:
+    /// - Structural parsing (`parse_structural`): wrong segment count, wrong required
+    ///   prefixes, or non-numeric version fields.
+    /// - Canonical identifier validation (`new`): any of `powertrain`, `make`, `model`,
+    ///   `year`, or `variant` is not already a canonical identifier.
     fn from_str(s: &str) -> anyhow::Result<Self> {
+        let raw = Self::parse_structural(s)?;
+        Self::new(
+            raw.fastsim_version,
+            raw.powertrain,
+            raw.make,
+            raw.model,
+            raw.year,
+            raw.variant,
+            raw.revision,
+        )
+    }
+}
+
+impl TryFrom<String> for DatabaseSchemaV1 {
+    type Error = anyhow::Error;
+    fn try_from(s: String) -> anyhow::Result<Self> {
+        s.parse()
+    }
+}
+
+impl DatabaseSchemaV1 {
+    /// Parse a v1 schema path structurally, without canonical identifier validation.
+    ///
+    /// This only validates path shape and numeric fields:
+    /// - 8 segments
+    /// - `v1` schema prefix
+    /// - `fastsim-{N}` and `v{N}` numeric segments
+    ///
+    /// It intentionally does not enforce canonical formatting for `powertrain`,
+    /// `make`, `model`, `year`, or `variant`. Call `new` (or `from_str`) for full
+    /// canonical validation.
+    pub(crate) fn parse_structural(s: &str) -> anyhow::Result<Self> {
         let parts: Vec<&str> = s.split('/').collect();
         ensure!(
             parts.len() == 8,
@@ -76,42 +109,28 @@ impl std::str::FromStr for DatabaseSchemaV1 {
             .ok_or_else(|| anyhow!("expected 'fastsim-N' segment, got {:?}", parts[1]))?
             .parse::<u32>()
             .with_context(|| format!("invalid FASTSim version in {:?}", parts[1]))?;
-        let powertrain = parts[2].to_string();
-        let make = parts[3].to_string();
-        let model = parts[4].to_string();
-        let year = parts[5].to_string();
-        let variant = parts[6].to_string();
         let revision = parts[7]
             .strip_prefix('v')
             .ok_or_else(|| anyhow!("expected 'vN' revision segment, got {:?}", parts[7]))?
             .parse::<u32>()
             .with_context(|| format!("invalid revision in {:?}", parts[7]))?;
-        Self::new(
+
+        Ok(Self {
             fastsim_version,
-            powertrain,
-            make,
-            model,
-            year,
-            variant,
+            powertrain: parts[2].to_string(),
+            make: parts[3].to_string(),
+            model: parts[4].to_string(),
+            year: parts[5].to_string(),
+            variant: parts[6].to_string(),
             revision,
-        )
+        })
     }
-}
 
-impl TryFrom<String> for DatabaseSchemaV1 {
-    type Error = anyhow::Error;
-    fn try_from(s: String) -> anyhow::Result<Self> {
-        s.parse()
-    }
-}
-
-impl DatabaseSchemaV1 {
-    /// Construct a schema, validating that no field contains a `/`.
+    /// Construct a schema from parsed field values, enforcing canonical identifiers.
     ///
     /// # Errors
-    /// Returns an error if `powertrain`, `make`, `model`, `year`, or `variant` contains a `/`,
-    /// since that would corrupt the path-segment serialization and cause it to
-    /// misparse (or fail to parse) on the way back in.
+    /// Returns an error if any of `powertrain`, `make`, `model`, `year`, or `variant`
+    /// is not already in canonical identifier form (lowercase, ASCII, dashes and periods allowed).
     pub fn new(
         fastsim_version: u32,
         powertrain: String,
@@ -121,7 +140,7 @@ impl DatabaseSchemaV1 {
         variant: String,
         revision: u32,
     ) -> anyhow::Result<Self> {
-        for (field, value) in [
+        for (field, segment) in [
             ("powertrain", &powertrain),
             ("make", &make),
             ("model", &model),
@@ -129,8 +148,9 @@ impl DatabaseSchemaV1 {
             ("variant", &variant),
         ] {
             ensure!(
-                !value.contains('/'),
-                "{field} must not contain '/', got {value:?}"
+                Self::validate_identifier(segment),
+                "{field} contains invalid identifier {segment:?}, proper identifier would be {:?}",
+                Self::normalize_identifier(segment),
             );
         }
         Ok(Self {
@@ -144,6 +164,59 @@ impl DatabaseSchemaV1 {
         })
     }
 
+    /// Returns `false` if `c` is not in:
+    /// - `a-z`
+    /// - `0-9`
+    /// - `-`
+    /// - `.`
+    fn allowed_character(c: char) -> bool {
+        c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '.'
+    }
+
+    /// Convert arbitrary text into the canonical identifier format used by schema paths.
+    /// Examples:
+    /// - `"Outback XT"` → `"outback-xt"`
+    /// - `"Model_3"` → `"model-3"`.
+    pub fn normalize_identifier(s: &str) -> String {
+        let mut result = String::new();
+        let mut previous_was_dash = false;
+        let mut previous_was_dot = false;
+
+        for c in s.to_ascii_lowercase().chars() {
+            let c = match c {
+                ' ' | '_' => '-',
+                c if Self::allowed_character(c) => c,
+                _ => '-',
+            };
+
+            // Collapse repeated separators of the same type
+            if c == '-' {
+                if previous_was_dash {
+                    continue;
+                }
+                previous_was_dash = true;
+                previous_was_dot = false;
+            } else if c == '.' {
+                if previous_was_dot {
+                    continue;
+                }
+                previous_was_dot = true;
+                previous_was_dash = false;
+            } else {
+                previous_was_dash = false;
+                previous_was_dot = false;
+            }
+            result.push(c);
+        }
+
+        result.trim_matches(|c| c == '-' || c == '.').to_string()
+    }
+
+    /// Validate that a string is a valid identifier for path segments.
+    pub fn validate_identifier(s: &str) -> bool {
+        !s.is_empty() && Self::normalize_identifier(s) == s
+    }
+
     /// Build the ordered path segments as an 8-element array (without file extension).
     ///
     /// Returns in order:
@@ -155,7 +228,7 @@ impl DatabaseSchemaV1 {
     /// 6. year — e.g., "2012", "2020"
     /// 7. variant — e.g., "base", "trim-package"
     /// 8. "v{N}" — revision/version number
-    fn path_segments(&self) -> [String; 8] {
+    pub fn path_segments(&self) -> [String; 8] {
         [
             "v1".to_string(),
             format!("fastsim-{}", self.fastsim_version),
@@ -223,11 +296,11 @@ impl Vehicle {
             .map(|u| u.starts_with("http://") || u.starts_with("https://"))
             .unwrap_or(true);
 
-        let mut veh = if is_remote {
+        if is_remote {
             #[cfg(feature = "web")]
             {
                 let resolved_url = schema.build_url(db_path_or_url, extension)?;
-                Self::from_url(resolved_url, skip_init)?
+                Ok(Self::from_url(resolved_url, skip_init)?)
             }
             #[cfg(not(feature = "web"))]
             {
@@ -235,13 +308,8 @@ impl Vehicle {
             }
         } else {
             let path = schema.build_filepath(db_path_or_url.unwrap(), extension)?;
-            Self::from_file(path, skip_init)?
-        };
-
-        if !skip_init {
-            veh.init()?;
+            Ok(Self::from_file(path, skip_init)?)
         }
-        Ok(veh)
     }
 
     /// Load a vehicle using a pre-serialized schema path string.
@@ -285,7 +353,8 @@ impl Vehicle {
     /// - `skip_init`: If false, runs vehicle initialization
     ///
     /// # Errors
-    /// Returns an error if any field contains a `/` character or if file/URL loading fails.
+    /// Returns an error if any field fails `DatabaseSchemaV1::new` canonical
+    /// identifier validation, or if file/URL loading fails.
     pub fn from_db_fields_v1(
         db_path_or_url: Option<&str>,
         fastsim_version: u32,
@@ -383,6 +452,99 @@ mod tests {
             1,
         )
         .is_err());
+    }
+
+    #[test]
+    fn test_new_allows_expected_characters() {
+        assert!(DatabaseSchemaV1::new(
+            3,
+            "conv".to_string(),
+            "a-b-c-d-e-f0".to_string(),
+            "model-3-long-range".to_string(),
+            "2020".to_string(),
+            "base-v1-2".to_string(),
+            1,
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn test_new_rejects_disallowed_characters() {
+        assert!(DatabaseSchemaV1::new(
+            3,
+            "conv".to_string(),
+            "ford".to_string(),
+            "fusion:se".to_string(),
+            "2012".to_string(),
+            "base".to_string(),
+            1,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn test_normalize_identifier_simple_cases() {
+        assert_eq!(
+            DatabaseSchemaV1::normalize_identifier("Outback XT"),
+            "outback-xt"
+        );
+        assert_eq!(
+            DatabaseSchemaV1::normalize_identifier("Model__3   Performance"),
+            "model-3-performance"
+        );
+        assert_eq!(
+            DatabaseSchemaV1::normalize_identifier("f-150/raptor"),
+            "f-150-raptor"
+        );
+        assert_eq!(DatabaseSchemaV1::normalize_identifier("foo@bar"), "foo-bar");
+        assert_eq!(
+            DatabaseSchemaV1::normalize_identifier("foo..bar"),
+            "foo.bar"
+        );
+        assert_eq!(
+            DatabaseSchemaV1::normalize_identifier("foo.-..bar"),
+            "foo.-.bar"
+        );
+        assert_eq!(DatabaseSchemaV1::normalize_identifier("foo/bar"), "foo-bar");
+        assert_eq!(DatabaseSchemaV1::normalize_identifier("---"), "");
+    }
+
+    #[test]
+    fn test_normalize_engine_displacement() {
+        assert_eq!(
+            DatabaseSchemaV1::normalize_identifier("Golf 1.5 TSI"),
+            "golf-1.5-tsi"
+        );
+        assert_eq!(
+            DatabaseSchemaV1::normalize_identifier("F-150 3.5 EcoBoost"),
+            "f-150-3.5-ecoboost"
+        );
+    }
+
+    #[test]
+    fn test_vehicle_model_identifiers_with_engine_displacement() {
+        assert!(DatabaseSchemaV1::validate_identifier("golf-1.5tsi"));
+        assert!(DatabaseSchemaV1::validate_identifier("f-150-3.5-ecoboost"));
+    }
+
+    #[test]
+    fn test_validate_identifier_passes_for_slug_strings() {
+        assert!(DatabaseSchemaV1::validate_identifier("ford"));
+        assert!(DatabaseSchemaV1::validate_identifier("model-3"));
+        assert!(DatabaseSchemaV1::validate_identifier("golf-1.5tsi"));
+        assert!(DatabaseSchemaV1::validate_identifier("2020"));
+        assert!(DatabaseSchemaV1::validate_identifier("a1-b2-c3"));
+    }
+
+    #[test]
+    fn test_validate_identifier_fails_for_non_slug_strings() {
+        assert!(!DatabaseSchemaV1::validate_identifier("Outback XT"));
+        assert!(!DatabaseSchemaV1::validate_identifier("model_3"));
+        assert!(!DatabaseSchemaV1::validate_identifier("model+3"));
+        assert!(!DatabaseSchemaV1::validate_identifier("model--3"));
+        assert!(!DatabaseSchemaV1::validate_identifier("/model3"));
+        assert!(!DatabaseSchemaV1::validate_identifier(""));
+        assert!(!DatabaseSchemaV1::validate_identifier("-model"));
     }
 
     #[test]
