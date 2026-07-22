@@ -167,7 +167,7 @@ class Vehicle(SerdeAPI):
     @classmethod
     def from_db(
         cls,
-        db_path_or_url: str | None = None,
+        db_path_or_url: str | Path | None = None,
         schema: int = 1,
         **kwargs: Any,
     ) -> Vehicle:
@@ -225,6 +225,7 @@ class Vehicle(SerdeAPI):
             separate kwarg.
         RuntimeError
             If remote loading is requested but web feature is not enabled.
+
         """
         ...
     def clear(self) -> None: ...

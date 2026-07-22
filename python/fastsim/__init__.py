@@ -337,10 +337,12 @@ def _plot_cycle(
 @classmethod
 def _vehicle_from_db(
     cls,
-    db_path_or_url: str | None = None,
+    db_path_or_url: str | Path | None = None,
     schema: int = 1,
     **kwargs: Any,
 ) -> Self:
+    if isinstance(db_path_or_url, Path):
+        db_path_or_url = str(db_path_or_url)
     skip_init = bool(kwargs.get("skip_init", False))
     extension = str(kwargs.get("extension", "yaml"))
 
