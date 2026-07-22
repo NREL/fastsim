@@ -1386,6 +1386,7 @@ pub(crate) mod tests {
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
+            Some(FuelType::Gasoline),
             2305080000.0 * uc::J,
             None,
             None,
@@ -1519,6 +1520,7 @@ pub(crate) mod tests {
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
+            Some(FuelType::Gasoline),
             2305080000.0 * uc::J,
             None,
             None,

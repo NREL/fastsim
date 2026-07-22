@@ -325,6 +325,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
                 let fs = FuelStorage {
                     pwr_out_max: f2veh.fs_max_kw * uc::KW,
                     pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                    fuel_type: None,
                     energy_capacity: f2veh.fs_kwh * uc::KWH,
                     specific_energy: Some(
                         super::vehicle_model::FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG,
