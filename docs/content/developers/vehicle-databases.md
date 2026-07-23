@@ -55,3 +55,10 @@ For example, the base URL used by default is `https://raw.githubusercontent.com/
 ### Path Segment Formatting
 
 In Rust, `DatabaseSchemaV1::normalize_identifier` and `DatabaseSchemaV1::validate_identifier` can help with formatting and checking path segments for errors. Otherwise, you can try loading from the database with FASTSim and it will provide descriptive error messaging.
+
+# Uploading to the FASTSim Vehicle Database
+
+All changes must be done via pull request so that CI/CD can run and perform checks on the new vehicle files:
+- `db_path` must be provided for all vehicle files, and must match the actual locations in the database
+- All FASTSim 3 vehicles must be loadable (using FASTSim cloned and compiled from the `fastsim-3` branch)
+  - Enforces path segment formatting rules as described above
