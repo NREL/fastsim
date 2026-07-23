@@ -40,6 +40,7 @@ project:
       children:
         - file: content/developers/environment-setup.md
         - file: content/developers/compiling-from-source.md
+        - file: content/developers/vehicle-databases.md
         - file: content/developers/making-releases.md
         - file: content/developers/updating-docs.md
     - url: https://github.com/NatLabRockies/fastsim
