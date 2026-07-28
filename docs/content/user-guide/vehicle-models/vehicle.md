@@ -823,7 +823,7 @@ FASTSim's vehicle model is a hierarchy of components:
 :::
 
 
-:::::{dropdown} Cabin model (`cabin`)
+:::::{dropdown} Cabin thermal model (`cabin`)
 :open:
 
 Models cabin temperature, heat can flow between cabin and:
@@ -942,7 +942,7 @@ Examples:
 :::::
 
 
-:::::{dropdown} HVAC model (`hvac`)
+:::::{dropdown} HVAC thermal model (`hvac`)
 :open:
 
 Models HVAC behavior and related heat flow.

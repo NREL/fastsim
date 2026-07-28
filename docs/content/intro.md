@@ -13,7 +13,9 @@ site:
 
 # FASTSim Documentation
 
-FASTSim (**Future Automotive Systems Technology Simulator**) is a vehicle simulation tool for evaluating the effects of technology improvements on the efficiency and performance of on-road vehicles, including light-duty passenger cars, two-wheelers, and medium- and heavy-duty vocational vehicles.
+FASTSim (**Future Automotive Systems Technology Simulator**) is a vehicle simulation tool for evaluating the efficiency and performance of on-road vehicles.
+Developed by the National Laboratory of the Rockies (NLR), it provides fast, accurate estimates of powertrain performance and energy consumption.
+FASTSim models powertrain technologies from conventional fuel-burning vehicles to hybrids and battery electric vehicles, and has been used to simulate light-duty passenger cars, two-wheelers, and a wide variety of medium- and heavy-duty vocational vehicles.
 
 FASTSim is designed for rapid analysis, making it practical to run many
 simulations and compare technology scenarios across vehicle classes and use
