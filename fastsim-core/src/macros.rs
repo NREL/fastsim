@@ -155,12 +155,6 @@ macro_rules! impl_efficiency_enum {
             }
         }
 
-        impl From<f64> for $enum_ty {
-            fn from(value: f64) -> Self {
-                Self::Constant(ninterp::prelude::Interp0D(value))
-            }
-        }
-
         impl $crate::utils::interp::InterpolatorScanValues for $enum_ty {
             fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, f: F) -> Result<(), E> {
                 ::paste::paste! {

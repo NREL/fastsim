@@ -29,15 +29,6 @@ pub enum AuxSupplyEfficiency {
 
 impl_efficiency_enum!(AuxSupplyEfficiency { Constant });
 
-impl Default for AuxSupplyEfficiency {
-    /// Default to 100% efficiency.
-    /// Necessary for backwards compatibility when field is missing.
-    /// Also used in unwrap_or_default() calls.
-    fn default() -> Self {
-        AuxSupplyEfficiency::Constant(Interp0D(1.0))
-    }
-}
-
 #[serde_api]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, StateMethods)]
