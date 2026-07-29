@@ -36,7 +36,9 @@ macro_rules! extract_units {
 fn serde_attrs_for_si_field(field: &mut syn::Field, unit_name: &str) {
     let ident = field.ident.clone().unwrap();
     match unit_name {
-        "" => {}
+        // Empty unit name or "ratio" → canonical is the bare field name; no rename needed.
+        // Ratio quantities keep backward compatibility (e.g. `grade` not `grade_ratio`).
+        "" | "ratio" => {}
         _ => {
             if !field_has_serde_rename(field) {
                 // add the rename attribute for any fields that don't already have it
@@ -356,11 +358,23 @@ pub fn generate_helper_struct(
                         // The JSON key is "field_unit" (without _macrogenerated)
                         let json_key = format!("{}_{}", field_ident, unit_name);
 
+                        // For Ratio quantities, the canonical serialized name is the bare field
+                        // name (e.g. `grade`, not `grade_ratio`) for backward compatibility.
+                        // The unit-suffixed name becomes an alias instead.
+                        // For all other quantities, field_unit is canonical and bare is alias.
+                        let use_bare_as_canonical =
+                            si_field.quantity == "Ratio" && unit_name == "ratio";
+                        let (canonical_name, unit_alias) = if use_bare_as_canonical {
+                            (bare_name.clone(), json_key.clone())
+                        } else {
+                            (json_key.clone(), bare_name.clone())
+                        };
+
                         // The primary unit (first in list) also accepts the bare field name as
                         // alias, plus any extra aliases from the original field declaration.
                         let serde_attr = if idx == 0 {
                             let extra = extra_aliases.iter().map(|a| quote! { , alias = #a });
-                            quote! { #[serde(default, rename = #json_key, alias = #bare_name #(#extra)*)] }
+                            quote! { #[serde(default, rename = #canonical_name, alias = #unit_alias #(#extra)*)] }
                         } else {
                             quote! { #[serde(default, rename = #json_key)] }
                         };
@@ -408,9 +422,18 @@ pub fn generate_helper_struct(
         }
     }
 
+    // Propagate deny_unknown_fields from the original struct to the helper so that
+    // the same strictness applies during deserialization.
+    let deny_unknown = if has_serde_deny_unknown_fields(struct_ast) {
+        quote! { #[serde(deny_unknown_fields)] }
+    } else {
+        quote! {}
+    };
+
     quote! {
         #[derive(::serde::Deserialize)]
         #[serde(crate = "::serde")]
+        #deny_unknown
         struct #helper_name {
             #(#helper_fields),*
         }

@@ -272,6 +272,7 @@ fn test_serialize_uses_primary_units() {
         serde_json::from_str(&serialized).expect("Failed to parse serialized JSON");
 
     // Serialization always uses primary units (kg, W, m/s, s, m², kelvin, J, ratio, [kelvin])
+    // Ratio fields serialize as bare name (no _ratio suffix) for backward compatibility
     assert!(value.get("mass_kilograms").is_some());
     assert!(value.get("power_watts").is_some());
     assert!(value.get("speed_meters_per_second").is_some());
@@ -279,9 +280,9 @@ fn test_serialize_uses_primary_units() {
     assert!(value.get("area_square_meters").is_some());
     assert!(value.get("temperature_kelvin").is_some());
     assert!(value.get("energy_joules").is_some());
-    assert!(value.get("efficiency_ratio").is_some());
+    assert!(value.get("efficiency").is_some()); // Ratio: bare name
     assert!(value.get("tracked_power_watts").is_some());
-    assert!(value.get("tracked_efficiency_ratio").is_some());
+    assert!(value.get("tracked_efficiency").is_some()); // Ratio: bare name
 }
 
 #[test]
@@ -308,6 +309,7 @@ fn test_round_trip_conversion_preserves_values() {
         serde_json::from_str(&serialized).expect("Failed to parse serialized JSON");
 
     // Values are preserved through round-trip (in primary units)
+    // Ratio fields round-trip using bare name
     assert_eq!(value["mass_kilograms"], 2000.0);
     assert_eq!(value["power_watts"], 150.0);
     assert_eq!(value["speed_meters_per_second"], 30.0);
@@ -315,7 +317,7 @@ fn test_round_trip_conversion_preserves_values() {
     assert_eq!(value["area_square_meters"], 5.0);
     assert_eq!(value["temperature_kelvin"], 300.0);
     assert_eq!(value["energy_joules"], 1000.0);
-    assert_eq!(value["efficiency_ratio"], 0.85);
+    assert_eq!(value["efficiency"], 0.85); // Ratio: bare name
 }
 
 #[test]
