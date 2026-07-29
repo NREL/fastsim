@@ -339,25 +339,16 @@ pub fn generate_helper_struct(
                     .find(|f| f.field_ident.to_string() == field_ident_str)
                 {
                     let bare_name = field_ident.to_string();
-                    // Collect any existing serde aliases from the original field.
-                    // Each alias is routed to the unit variant whose suffix it ends with
-                    // (e.g. `alias = "old_power_kilowatts"` → kilowatts helper).
-                    // Aliases with no matching unit suffix fall back to the primary (base) unit.
+                    // Collect any extra name aliases (alternative prefixes) from the field.
+                    // Each alias is treated as an alternative field-name prefix: the macro
+                    // expands it into unit-suffixed variants for every unit, mirroring how the
+                    // canonical name is expanded.  The bare alias also routes to the base unit.
+                    //
+                    // Example: `budget_power: si::Power` with `#[serde(alias = "budget")]`
+                    //   primary helper  → rename "budget_power_watts",  alias "budget_power",
+                    //                     alias "budget" (bare), alias "budget_watts"
+                    //   alternate helper → rename "budget_power_kilowatts", alias "budget_kilowatts"
                     let extra_aliases = extract_serde_aliases(field);
-                    let unit_names: Vec<&str> =
-                        si_field.units.iter().map(|(_, n)| n.as_str()).collect();
-                    // Pre-route: for each alias, find its target unit name (or "" for primary)
-                    let routed: Vec<(&str, &str)> = extra_aliases
-                        .iter()
-                        .map(|alias| {
-                            let target = unit_names
-                                .iter()
-                                .find(|&&u| alias.ends_with(&format!("_{u}")))
-                                .copied()
-                                .unwrap_or(unit_names[0]);
-                            (alias.as_str(), target)
-                        })
-                        .collect();
 
                     for (idx, (_unit_type, unit_name)) in si_field.units.iter().enumerate() {
                         let helper_field_name = syn::Ident::new(
@@ -389,22 +380,29 @@ pub fn generate_helper_struct(
                         };
 
                         // The primary unit (first in list) also accepts the bare field name as
-                        // alias, plus any extra aliases routed to this unit variant.
-                        let this_unit_aliases: Vec<&str> = routed
-                            .iter()
-                            .filter(|(_, target)| *target == unit_name.as_str())
-                            .map(|(alias, _)| *alias)
-                            .collect();
+                        // alias.  Extra aliases are expanded: each alias A contributes
+                        // alias "A_{unit}" to this unit's helper, plus bare "A" on primary.
+                        let expanded_aliases: Vec<String> = if idx == 0 {
+                            extra_aliases
+                                .iter()
+                                .flat_map(|a| [a.clone(), format!("{}_{}", a, unit_name)])
+                                .collect()
+                        } else {
+                            extra_aliases
+                                .iter()
+                                .map(|a| format!("{}_{}", a, unit_name))
+                                .collect()
+                        };
 
                         let serde_attr = if idx == 0 {
                             let extra = std::iter::once(unit_alias.as_str())
-                                .chain(this_unit_aliases.iter().copied())
+                                .chain(expanded_aliases.iter().map(String::as_str))
                                 .map(|a| quote! { , alias = #a });
                             quote! { #[serde(default, rename = #canonical_name #(#extra)*)] }
-                        } else if this_unit_aliases.is_empty() {
+                        } else if expanded_aliases.is_empty() {
                             quote! { #[serde(default, rename = #serde_key)] }
                         } else {
-                            let extra = this_unit_aliases.iter().map(|a| quote! { , alias = #a });
+                            let extra = expanded_aliases.iter().map(|a| quote! { , alias = #a });
                             quote! { #[serde(default, rename = #serde_key #(#extra)*)] }
                         };
 

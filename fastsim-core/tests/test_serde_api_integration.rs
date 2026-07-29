@@ -58,6 +58,10 @@ struct TestDevice {
 
     /// Tracked efficiency state, wrapped in TrackedState - accepts ratio or percent
     tracked_efficiency: TrackedState<si::Ratio>,
+
+    /// Renamed from "old_power" - accepts old_power, old_power_watts, old_power_kilowatts
+    #[serde(alias = "old_power")]
+    renamed_power: si::Power,
 }
 
 // ============================================================================
@@ -77,7 +81,8 @@ fn test_deserialize_all_primary_units() {
         "efficiency_ratio": 0.85,
         "temperature_readings_kelvin": [290.0, 300.0, 310.0],
         "tracked_power_watts": 100.0,
-        "tracked_efficiency_ratio": 0.90
+        "tracked_efficiency_ratio": 0.90,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice =
@@ -122,7 +127,8 @@ fn test_deserialize_fails_with_missing_required_fields() {
         "energy_joules": 1000.0,
         "efficiency_ratio": 0.85,
         "tracked_power_watts": 100.0,
-        "tracked_efficiency_ratio": 0.90
+        "tracked_efficiency_ratio": 0.90,
+        "renamed_power_watts": 50.0
     }"#;
 
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -152,7 +158,8 @@ fn test_deserialize_with_alternate_units() {
         "secondary_temperature_degrees_celsius": 25.0,
         "temperature_readings_degrees_fahrenheit": [32.0, 68.0, 104.0],
         "tracked_power_kilowatts": 0.5,
-        "tracked_efficiency_percent": 80.0
+        "tracked_efficiency_percent": 80.0,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice =
@@ -211,7 +218,8 @@ fn test_deserialize_time_in_hours() {
         "energy_joules": 1000.0,
         "efficiency_ratio": 0.85,
         "tracked_power_watts": 100.0,
-        "tracked_efficiency_ratio": 0.90
+        "tracked_efficiency_ratio": 0.90,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice =
@@ -232,7 +240,8 @@ fn test_deserialize_multiple_si_quantities() {
         "energy_joules": 5000.0,
         "efficiency_ratio": 0.90,
         "tracked_power_watts": 50.0,
-        "tracked_efficiency_ratio": 0.88
+        "tracked_efficiency_ratio": 0.88,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice =
@@ -261,7 +270,8 @@ fn test_serialize_uses_primary_units() {
         "efficiency_ratio": 0.85,
         "temperature_readings_kelvin": [290.0, 300.0, 310.0],
         "tracked_power_watts": 100.0,
-        "tracked_efficiency_ratio": 0.90
+        "tracked_efficiency_ratio": 0.90,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice = serde_json::from_str(json).expect("Failed to deserialize");
@@ -283,6 +293,7 @@ fn test_serialize_uses_primary_units() {
     assert!(value.get("efficiency").is_some()); // Ratio: bare name
     assert!(value.get("tracked_power_watts").is_some());
     assert!(value.get("tracked_efficiency").is_some()); // Ratio: bare name
+    assert!(value.get("renamed_power_watts").is_some());
 }
 
 #[test]
@@ -298,7 +309,8 @@ fn test_round_trip_conversion_preserves_values() {
         "efficiency_ratio": 0.85,
         "temperature_readings_kelvin": [290.0, 300.0, 310.0],
         "tracked_power_watts": 100.0,
-        "tracked_efficiency_ratio": 0.90
+        "tracked_efficiency_ratio": 0.90,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice = serde_json::from_str(json_input).expect("Failed to deserialize");
@@ -333,7 +345,8 @@ fn test_deserialize_with_different_values() {
         "efficiency_ratio": 0.95,
         "temperature_readings_kelvin": [380.0, 400.0, 420.0],
         "tracked_power_watts": 200.0,
-        "tracked_efficiency_ratio": 0.75
+        "tracked_efficiency_ratio": 0.75,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice =
@@ -364,7 +377,8 @@ fn test_tracked_state_deserialize_primary_units() {
         "energy_joules": 500.0,
         "efficiency_ratio": 0.80,
         "tracked_power_watts": 250.0,
-        "tracked_efficiency_ratio": 0.92
+        "tracked_efficiency_ratio": 0.92,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice =
@@ -400,7 +414,8 @@ fn test_tracked_state_deserialize_alternate_units() {
         "energy_joules": 500.0,
         "efficiency_ratio": 0.80,
         "tracked_power_kilowatts": 0.5,
-        "tracked_efficiency_percent": 85.0
+        "tracked_efficiency_percent": 85.0,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice =
@@ -441,7 +456,8 @@ fn test_tracked_state_deserialize_bare_name() {
         "energy_joules": 500.0,
         "efficiency_ratio": 0.80,
         "tracked_power": 300.0,
-        "tracked_efficiency": 0.78
+        "tracked_efficiency": 0.78,
+        "renamed_power_watts": 50.0
     }"#;
 
     let device: TestDevice =
@@ -542,60 +558,53 @@ fn test_cycle_csv_legacy_aliases() {
 }
 
 // ============================================================================
-// TEST: Unit-aware alias routing for backward compatibility
+// TEST: alias = name prefix expands to all unit variants (backward compat rename)
 // ============================================================================
 
-/// Struct where fields have been renamed but old names are preserved as aliases.
-/// Demonstrates that aliases ending with a unit suffix are routed to the correct
-/// unit variant — not silently misinterpreted as base units.
-#[serde_api]
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-struct RenamedDevice {
-    /// Previously "max_power_watts", now "peak_power" — bare alias routes to base (watts)
-    #[serde(alias = "max_power_watts")]
-    peak_power: si::Power,
-
-    /// Previously "budget_kilowatts", now "budget_power" — unit-suffixed alias routes to kW
-    #[serde(alias = "budget_kilowatts")]
-    budget_power: si::Power,
-
-    /// Previously "trip_hours", now "trip_duration" — unit-suffixed alias routes to hours
-    #[serde(alias = "trip_hours")]
-    trip_duration: si::Time,
-}
-
 #[test]
-fn test_alias_routes_to_correct_unit_variant() {
-    // "max_power_watts" ends with "_watts" → routes to watts helper → 200.0 W
-    // "budget_kilowatts" ends with "_kilowatts" → routes to kilowatts helper → 0.5 kW = 500 W
-    // "trip_hours" ends with "_hours" → routes to hours helper → 2.0 h = 7200 s
-    let json = r#"{
-        "max_power_watts": 200.0,
-        "budget_kilowatts": 0.5,
-        "trip_hours": 2.0
+fn test_alias_prefix_expands_to_all_unit_variants() {
+    let base_json = r#"{
+        "mass_kilograms": 1000.0,
+        "power_watts": 100.0,
+        "speed_meters_per_second": 10.0,
+        "duration_seconds": 60.0,
+        "area_square_meters": 2.0,
+        "temperature_kelvin": 293.0,
+        "energy_joules": 500.0,
+        "efficiency_ratio": 0.80,
+        "tracked_power_watts": 50.0,
+        "tracked_efficiency_ratio": 0.90,
+        "renamed_power_watts": 0.0
     }"#;
 
-    let device: RenamedDevice =
-        serde_json::from_str(json).expect("Failed to deserialize with unit-aware aliases");
+    // Old bare name routes to base unit (watts)
+    let json = base_json.replace(r#""renamed_power_watts": 0.0"#, r#""old_power": 200.0"#);
+    let d: TestDevice = serde_json::from_str(&json).expect("old_power (bare) should deserialize");
+    assert_eq!(d.renamed_power.get::<si::watt>(), 200.0);
 
-    assert_eq!(device.peak_power.get::<si::watt>(), 200.0);
-    assert!((device.budget_power.get::<si::watt>() - 500.0).abs() < 1e-9); // 0.5 kW
-    assert_eq!(device.trip_duration.get::<si::second>(), 7_200.0); // 2 h
-}
+    // Old name + _watts suffix
+    let json = base_json.replace(
+        r#""renamed_power_watts": 0.0"#,
+        r#""old_power_watts": 300.0"#,
+    );
+    let d: TestDevice = serde_json::from_str(&json).expect("old_power_watts should deserialize");
+    assert_eq!(d.renamed_power.get::<si::watt>(), 300.0);
 
-#[test]
-fn test_alias_bare_name_routes_to_base_unit() {
-    // Bare alias (no unit suffix) still routes to base (primary) unit
-    let json = r#"{
-        "peak_power_watts": 300.0,
-        "budget_power_watts": 100.0,
-        "trip_duration_seconds": 3600.0
-    }"#;
+    // Old name + _kilowatts suffix — converts correctly
+    let json = base_json.replace(
+        r#""renamed_power_watts": 0.0"#,
+        r#""old_power_kilowatts": 0.5"#,
+    );
+    let d: TestDevice =
+        serde_json::from_str(&json).expect("old_power_kilowatts should deserialize");
+    assert!((d.renamed_power.get::<si::watt>() - 500.0).abs() < 1e-9); // 0.5 kW = 500 W
 
-    let device: RenamedDevice =
-        serde_json::from_str(json).expect("Failed to deserialize with canonical unit names");
-
-    assert_eq!(device.peak_power.get::<si::watt>(), 300.0);
-    assert_eq!(device.budget_power.get::<si::watt>(), 100.0);
-    assert_eq!(device.trip_duration.get::<si::second>(), 3600.0);
+    // New canonical name still works
+    let json = base_json.replace(
+        r#""renamed_power_watts": 0.0"#,
+        r#""renamed_power_kilowatts": 0.15"#,
+    );
+    let d: TestDevice =
+        serde_json::from_str(&json).expect("renamed_power_kilowatts should deserialize");
+    assert!((d.renamed_power.get::<si::watt>() - 150.0).abs() < 1e-9);
 }
