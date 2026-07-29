@@ -6,8 +6,20 @@
 
 use fastsim_core::si;
 use fastsim_core::utils::tracked_state::TrackedState;
-use fastsim_proc_macros::serde_api;
+use fastsim_proc_macros::{serde_api, HistoryVec};
 use serde::{Deserialize, Serialize};
+
+/// State captured each time step for history tracking
+#[serde_api]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, HistoryVec)]
+#[history_vec(no_pyo3)]
+#[serde(default)]
+struct TestDeviceState {
+    /// Instantaneous power output
+    pwr_out: si::Power,
+    /// Operating efficiency
+    eff: si::Ratio,
+}
 
 /// Struct for testing multi-unit deserialization with required, optional, and vector SI fields
 #[serde_api]
@@ -53,6 +65,13 @@ struct TestDevice {
     /// as well as renamed_power, renamed_power_watts, renamed_power_kilowatts, renamed_power_horsepower
     #[serde(alias = "old_power")]
     renamed_power: si::Power,
+
+    /// Current operational state
+    #[serde(default)]
+    state: TestDeviceState,
+    /// History of operational state over time
+    #[serde(default)]
+    history: TestDeviceStateHistoryVec,
 }
 
 #[test]
@@ -621,4 +640,76 @@ fn test_multi_unit_conflict_is_rejected() {
         err_msg.contains("power"),
         "error message should mention the conflicting field; got: {err_msg}"
     );
+}
+
+#[test]
+fn test_state_history_push_and_round_trip() {
+    let json = r#"{
+        "mass_kilograms": 1000.0,
+        "power_watts": 100.0,
+        "speed_meters_per_second": 10.0,
+        "duration_seconds": 60.0,
+        "area_square_meters": 2.0,
+        "temperature_kelvin": 293.0,
+        "energy_joules": 500.0,
+        "efficiency_ratio": 0.80,
+        "tracked_power_watts": 50.0,
+        "tracked_efficiency_ratio": 0.90,
+        "renamed_power_watts": 200.0
+    }"#;
+
+    let mut device: TestDevice = serde_json::from_str(json).unwrap();
+    // Initial state defaults to zero
+    assert_eq!(device.history.len(), 0);
+
+    // Push two states
+    device.state.pwr_out = si::Power::new::<si::watt>(500.0);
+    device.state.eff = si::Ratio::new::<si::ratio>(0.9);
+    device.history.push(device.state.clone());
+
+    device.state.pwr_out = si::Power::new::<si::watt>(750.0);
+    device.state.eff = si::Ratio::new::<si::ratio>(0.85);
+    device.history.push(device.state.clone());
+
+    assert_eq!(device.history.len(), 2);
+
+    // Round-trip through JSON
+    let json = serde_json::to_string(&device).unwrap();
+    let rt: TestDevice = serde_json::from_str(&json).expect("round-trip failed");
+
+    assert_eq!(rt.history.len(), 2);
+    assert!((rt.history.pwr_out[0].get::<si::watt>() - 500.0).abs() < 1e-9);
+    assert!((rt.history.pwr_out[1].get::<si::watt>() - 750.0).abs() < 1e-9);
+    assert!((rt.history.eff[0].get::<si::ratio>() - 0.9).abs() < 1e-9);
+    assert!((rt.history.eff[1].get::<si::ratio>() - 0.85).abs() < 1e-9);
+}
+
+#[test]
+fn test_state_history_deserializes_alternate_units() {
+    // History vec should accept alternate unit keys on input
+    // (pwr_out_kilowatts instead of pwr_out_watts)
+    let json = r#"{
+        "mass_kilograms": 1000.0,
+        "power_watts": 100.0,
+        "speed_meters_per_second": 10.0,
+        "duration_seconds": 60.0,
+        "area_square_meters": 2.0,
+        "temperature_kelvin": 293.0,
+        "energy_joules": 500.0,
+        "efficiency_ratio": 0.80,
+        "tracked_power_watts": 50.0,
+        "tracked_efficiency_ratio": 0.90,
+        "renamed_power_watts": 200.0,
+        "history": {
+            "pwr_out_kilowatts": [0.5, 0.75],
+            "eff_percent": [90.0, 85.0]
+        }
+    }"#;
+
+    let device: TestDevice = serde_json::from_str(json).expect("alternate unit in history failed");
+    assert_eq!(device.history.len(), 2);
+    assert!((device.history.pwr_out[0].get::<si::watt>() - 500.0).abs() < 1e-9);
+    assert!((device.history.pwr_out[1].get::<si::watt>() - 750.0).abs() < 1e-9);
+    assert!((device.history.eff[0].get::<si::ratio>() - 0.9).abs() < 1e-9);
+    assert!((device.history.eff[1].get::<si::ratio>() - 0.85).abs() < 1e-9);
 }

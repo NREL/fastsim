@@ -1,10 +1,52 @@
 use crate::imports::*;
 use crate::utilities::TokenStreamIterator;
 
+/// Rewrite a `#[serde(..., serialize_with = "mod::fn_name", ...)]` attribute so
+/// the serialize_with path uses the `vec_` variant of the helper function.
+/// All other serde keys are forwarded unchanged.
+///
+/// Example: `serialize_with = "fastsim_core::utils::serde_helpers::power_as_kilowatts"`
+///       →  `serialize_with = "fastsim_core::utils::serde_helpers::vec_power_as_kilowatts"`
+fn rewrite_serialize_with_for_vec(attr: &syn::Attribute) -> TokenStream2 {
+    let mut parts: Vec<TokenStream2> = vec![];
+    let _ = attr.parse_nested_meta(|meta| {
+        if meta.path.is_ident("serialize_with") {
+            let _: syn::Token![=] = meta.input.parse()?;
+            let lit: syn::LitStr = meta.input.parse()?;
+            let base = lit.value();
+            let vec_path = if let Some(sep) = base.rfind("::") {
+                format!("{}::vec_{}", &base[..sep], &base[sep + 2..])
+            } else {
+                format!("vec_{}", base)
+            };
+            parts.push(quote! { serialize_with = #vec_path });
+        } else {
+            let path = &meta.path;
+            if meta.input.peek(syn::Token![=]) {
+                let _: syn::Token![=] = meta.input.parse()?;
+                let val: proc_macro2::TokenTree = meta.input.parse()?;
+                parts.push(quote! { #path = #val });
+            } else {
+                parts.push(quote! { #path });
+            }
+        }
+        Ok(())
+    });
+    quote! { #[serde(#(#parts),*)] }
+}
+
 pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
     let item_struct = syn::parse_macro_input!(input as syn::ItemStruct);
     let original_name = &item_struct.ident;
     let original_name_str: String = original_name.to_string();
+
+    // `#[api(no_pyo3)]` on the state struct opts out of pyclass / pyo3_api / Init /
+    // SerdeAPI generation.  Use this when deriving HistoryVec outside fastsim-core
+    // (e.g. integration tests) where those items are not in scope.
+    let no_pyo3 = item_struct.attrs.iter().any(|attr| {
+        attr.path().is_ident("history_vec")
+            && attr.to_token_stream().to_string().contains("no_pyo3")
+    });
     let new_name = Ident::new(
         &format!("{}HistoryVec", original_name.to_token_stream()),
         original_name.span(),
@@ -21,19 +63,23 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
         .map(|f| {
             let ident = f.ident.as_ref().unwrap();
             let ty = &f.ty;
-            // Copy serde attributes but drop `serialize_with` — the Vec wrapper
-            // receives a different field type and needs a separate helper variant.
+            // Copy serde attributes; for any that contain `serialize_with`, rewrite
+            // the path to its `vec_` variant so history fields serialize with the
+            // same unit as the main struct (e.g. `power_as_kilowatts` →
+            // `vec_power_as_kilowatts`).
             let attrs = f
                 .attrs
                 .iter()
-                .filter(|a| {
+                .filter_map(|a| {
                     if !a.path().is_ident("serde") {
-                        return true;
+                        return Some(quote! { #a });
                     }
-                    // Drop the whole #[serde(...)] if it contains serialize_with
-                    !a.to_token_stream().to_string().contains("serialize_with")
+                    if !a.to_token_stream().to_string().contains("serialize_with") {
+                        return Some(quote! { #a });
+                    }
+                    Some(rewrite_serialize_with_for_vec(a))
                 })
-                .collect::<Vec<&syn::Attribute>>();
+                .collect::<Vec<_>>();
             quote! {
                 #(#attrs)*
                 pub #ident: Vec<#ty>,
@@ -64,30 +110,45 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
     let state_vec_doc: TokenStream2 = format!("/// Return history as vec of {original_name_str}")
         .parse()
         .unwrap();
+
+    // Conditionally emit pyo3/Init/SerdeAPI code at macro-expansion time.
+    // When no_pyo3 is true these are entirely absent from the generated tokens,
+    // so the HistoryVec can be used outside fastsim-core without those items in scope.
+    let pyclass_attr = if no_pyo3 {
+        quote! {}
+    } else {
+        quote! { #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))] }
+    };
+    let pyo3_impls = if no_pyo3 {
+        quote! {}
+    } else {
+        quote! {
+            #[cfg(feature = "pyo3")]
+            #[pyo3_api]
+            impl #new_name {
+                #[pyo3(name = "len")]
+                fn len_py(&self) -> usize { self.len() }
+                fn __len__(&self) -> usize { self.len() }
+            }
+
+            #[cfg(feature = "pyo3")]
+            impl Init for #new_name {}
+            #[cfg(feature = "pyo3")]
+            impl SerdeAPI for #new_name {}
+        }
+    };
+
     generated.append_all(quote! {
         #[serde_api]
         #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
         #[serde(default)]
-        #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+        #pyclass_attr
         #struct_doc
         pub struct #new_name {
             #vec_fields
         }
 
-        #[pyo3_api]
-        impl #new_name {
-            #[pyo3(name = "len")]
-            fn len_py(&self) -> usize {
-                self.len()
-            }
-
-            fn __len__(&self) -> usize {
-                self.len()
-            }
-        }
-
-        impl Init for #new_name { }
-        impl SerdeAPI for #new_name { }
+        #pyo3_impls
 
         impl #new_name {
             /// Creates new emtpy vec container
