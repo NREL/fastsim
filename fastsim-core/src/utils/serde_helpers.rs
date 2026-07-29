@@ -9,24 +9,33 @@
 //! | `tracked_{prefix}`    | `TrackedState<Qty>`          |
 //! | `opt_{prefix}`        | `Option<Qty>`                |
 //! | `vec_{prefix}`        | `Vec<Qty>`                   |
+//! | `vec_tracked_{prefix}`| `Vec<TrackedState<Qty>>`     |
 //!
 //! # Activating non-base serialization for a quantity
 //!
-//! In `fastsim-proc-macros/src/serde_api/serde_utils.rs`, each quantity arm
-//! returns `(unit_impls, serialize_with)` together.  To serialize Power in
-//! kilowatts, change the `"Power"` arm from:
+//! Two coordinated changes in `fastsim-proc-macros/src/serde_api/serde_utils.rs`
+//! are needed — both live in the same arm of `quantity_config`:
+//!
+//! 1. Move the target unit to first position (first = canonical serialization unit).
+//! 2. Set `serialize_with` to the matching helper path.
 //!
 //! ```text
-//! "Power" => (extract_units!(uom::si::power::watt), None),
-//! ```
-//! to:
-//! ```text
-//! "Power" => (
-//!     extract_units!(uom::si::power::kilowatt),
+//! // Current (serializes in watts):
+//! "Power" => Some((
+//!     extract_units!(uom::si::power::watt, uom::si::power::kilowatt, ...),
+//!     None,
+//! )),
+//!
+//! // To serialize in kilowatts:
+//! "Power" => Some((
+//!     extract_units!(uom::si::power::kilowatt, uom::si::power::watt, ...),
 //!     Some("fastsim_core::utils::serde_helpers::power_as_kilowatts"),
-//! ),
+//! )),
 //! ```
+//!
+//! Then uncomment the matching `impl_si_serialize_as!` call below.
 
+#[allow(unused_imports)]
 use crate::si;
 
 // ── Power ────────────────────────────────────────────────────────────────────
