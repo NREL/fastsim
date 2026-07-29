@@ -258,6 +258,13 @@ pub struct SIFieldData {
 /// Collect SI field information for helper struct generation
 pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
     let field_ident = field.ident.as_ref()?.clone();
+
+    // Fields with #[serde(skip)] must not enter the SI path: they need Default::default()
+    // in the From impl, which is handled by the non-SI skip branch.
+    if has_serde_skip(field) {
+        return None;
+    }
+
     let mut inner_type = &field.ty;
 
     // Unwrap Option<T>
@@ -401,18 +408,9 @@ pub fn generate_helper_struct(
         }
     }
 
-    // Propagate deny_unknown_fields from the original struct to the helper so that
-    // the same strictness applies during deserialization.
-    let deny_unknown = if has_serde_deny_unknown_fields(struct_ast) {
-        quote! { #[serde(deny_unknown_fields)] }
-    } else {
-        quote! {}
-    };
-
     quote! {
         #[derive(::serde::Deserialize)]
         #[serde(crate = "::serde")]
-        #deny_unknown
         struct #helper_name {
             #(#helper_fields),*
         }

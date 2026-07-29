@@ -60,7 +60,7 @@ pt_type:
         i: 0
         pwr_out_max_watts: 0.0
         pwr_prop_max_watts: 0.0
-        eff: 0.0
+        eff_ratio: 0.0
         pwr_prop_watts: 0.0
         energy_prop_joules: 0.0
         pwr_aux_watts: 0.0
@@ -75,7 +75,7 @@ pt_type:
         i: []
         pwr_out_max_watts: []
         pwr_prop_max_watts: []
-        eff: []
+        eff_ratio: []
         pwr_prop_watts: []
         energy_prop_joules: []
         pwr_aux_watts: []
@@ -94,7 +94,7 @@ pt_type:
         i: 0
         pwr_out_fwd_max_watts: 0.0
         pwr_out_regen_max_watts: 0.0
-        eff: 0.0
+        eff_ratio: 0.0
         pwr_out_watts: 0.0
         energy_out_joules: 0.0
         pwr_in_watts: 0.0
@@ -105,7 +105,7 @@ pt_type:
         i: []
         pwr_out_fwd_max_watts: []
         pwr_out_regen_max_watts: []
-        eff: []
+        eff_ratio: []
         pwr_out_watts: []
         energy_out_joules: []
         pwr_in_watts: []
@@ -126,19 +126,19 @@ pt_type:
         i: []
         vehicle_dynamics_prevent_dfco: []
     mass_kilograms: ~
-    alt_eff: 1.0
+    alt_eff_ratio: 1.0
 chassis:
-  drag_coef: 0.393
+  drag_coef_ratio: 0.393
   frontal_area_square_meters: 2.12
-  wheel_rr_coef: 0.007
+  wheel_rr_coef_ratio: 0.007
   wheel_inertia_kilogram_square_meters: 0.82
   num_wheels: 4
   wheel_radius_meters: 0.326
   tire_code: ~
   cg_height_meters: 0.53
-  wheel_fric_coef: 0.7
+  wheel_fric_coef_ratio: 0.7
   drive_type: FWD
-  drive_axle_weight_frac: 0.59
+  drive_axle_weight_frac_ratio: 0.59
   wheel_base_meters: 2.72
   mass_kilograms: ~
   glider_mass_kilograms: ~
@@ -175,7 +175,7 @@ state:
   cyc_met_overall: true
   speed_ach_meters_per_second: 0.0
   dist_meters: 0.0
-  grade_curr: 0.0
+  grade_curr_ratio: 0.0
   elev_curr_meters: 0.0
   air_density_kilograms_per_cubic_meter: 0.0
   mass_kilograms: .nan
@@ -206,7 +206,7 @@ history:
   cyc_met_overall: []
   speed_ach_meters_per_second: []
   dist_meters: []
-  grade_curr: []
+  grade_curr_ratio: []
   elev_curr_meters: []
   air_density_kilograms_per_cubic_meter: []
   mass_kilograms: []
