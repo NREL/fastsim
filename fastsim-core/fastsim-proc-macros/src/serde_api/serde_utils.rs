@@ -285,6 +285,7 @@ pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
 
 fn get_units_for_quantity(quantity: &str) -> Vec<(TokenStream2, String)> {
     match quantity {
+        "Mass" => extract_units!(uom::si::mass::kilogram),
         "Power" => extract_units!(uom::si::power::watt, uom::si::power::kilowatt),
         "Time" => extract_units!(uom::si::time::second, uom::si::time::hour),
         "Temperature" => extract_units!(
@@ -299,6 +300,7 @@ fn get_units_for_quantity(quantity: &str) -> Vec<(TokenStream2, String)> {
         ),
         "Energy" => extract_units!(uom::si::energy::joule, uom::si::energy::kilowatt_hour),
         "Ratio" => extract_units!(uom::si::ratio::ratio),
+        "Area" => extract_units!(uom::si::area::square_meter),
         _ => vec![],
     }
 }
@@ -332,9 +334,18 @@ pub fn generate_helper_struct(
                             &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
                             field_ident.span(),
                         );
+
+                        let field_ty = &field.ty;
+                        let wrapper_type = detect_outer_wrapper(field_ty);
+
+                        let field_type = match wrapper_type {
+                            WrapperType::Vec => quote! { Option<Vec<f64>> },
+                            _ => quote! { Option<f64> },
+                        };
+
                         helper_fields.push(quote! {
                             #[serde(default)]
-                            pub #helper_field_name: Option<f64>
+                            pub #helper_field_name: #field_type
                         });
                     }
                 }
@@ -384,25 +395,47 @@ pub fn generate_from_impl(
                 {
                     let quantity_str = &si_field.quantity;
                     let quantity_type = match quantity_str.as_str() {
+                        "Mass" => quote! { uom::si::f64::Mass },
                         "Power" => quote! { uom::si::f64::Power },
                         "Time" => quote! { uom::si::f64::Time },
                         "Temperature" => quote! { uom::si::f64::ThermodynamicTemperature },
                         "Velocity" => quote! { uom::si::f64::Velocity },
                         "Energy" => quote! { uom::si::f64::Energy },
                         "Ratio" => quote! { uom::si::f64::Ratio },
+                        "Area" => quote! { uom::si::f64::Area },
                         _ => continue,
                     };
 
-                    let mut match_arms = vec![];
-                    for (unit_type, unit_name) in &si_field.units {
-                        let helper_field_name = syn::Ident::new(
-                            &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
-                            field_ident.span(),
-                        );
+                    // Check if field is wrapped in TrackedState, Option, or Vec
+                    let field_ty = &field.ty;
+                    let wrapper_type = detect_outer_wrapper(field_ty);
 
-                        match_arms.push(quote! {
-                            helper.#helper_field_name.map(|val| #quantity_type::new::<#unit_type>(val))
-                        });
+                    let mut match_arms = vec![];
+
+                    if wrapper_type == WrapperType::Vec {
+                        // For Vec fields, convert each element in the vector
+                        for (unit_type, unit_name) in &si_field.units {
+                            let helper_field_name = syn::Ident::new(
+                                &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
+                                field_ident.span(),
+                            );
+
+                            match_arms.push(quote! {
+                                helper.#helper_field_name.map(|vals| vals.into_iter().map(|v| #quantity_type::new::<#unit_type>(v)).collect::<Vec<_>>())
+                            });
+                        }
+                    } else {
+                        // For non-Vec fields, convert the single value
+                        for (unit_type, unit_name) in &si_field.units {
+                            let helper_field_name = syn::Ident::new(
+                                &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
+                                field_ident.span(),
+                            );
+
+                            match_arms.push(quote! {
+                                helper.#helper_field_name.map(|val| #quantity_type::new::<#unit_type>(val))
+                            });
+                        }
                     }
 
                     if match_arms.is_empty() {
@@ -422,8 +455,32 @@ pub fn generate_from_impl(
                         result
                     };
 
+                    let wrapped_conversion = match wrapper_type {
+                        WrapperType::TrackedState => {
+                            quote! {
+                                (#conversion).map(|val| crate::utils::tracked_state::TrackedState::new(val))
+                                    .expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                            }
+                        }
+                        WrapperType::Option => {
+                            quote! {
+                                (#conversion)
+                            }
+                        }
+                        WrapperType::Vec => {
+                            quote! {
+                                (#conversion).unwrap_or_default()
+                            }
+                        }
+                        WrapperType::None => {
+                            quote! {
+                                (#conversion).expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                            }
+                        }
+                    };
+
                     field_conversions.push(quote! {
-                        #field_ident: (#conversion).expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                        #field_ident: #wrapped_conversion
                     });
                 }
             } else {
@@ -444,4 +501,31 @@ pub fn generate_from_impl(
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WrapperType {
+    TrackedState,
+    Option,
+    Vec,
+    None,
+}
+
+fn detect_outer_wrapper(ty: &syn::Type) -> WrapperType {
+    if let Some(path) = extract_type_path(ty) {
+        if let Some(segment) = path.segments.last() {
+            if segment.ident == "TrackedState" {
+                return WrapperType::TrackedState;
+            } else if segment.ident == "Option" {
+                return WrapperType::Option;
+            } else if segment.ident == "Vec" {
+                return WrapperType::Vec;
+            }
+        }
+    }
+    WrapperType::None
+}
+
+fn is_tracked_state_wrapper(ty: &syn::Type) -> bool {
+    detect_outer_wrapper(ty) == WrapperType::TrackedState
 }
