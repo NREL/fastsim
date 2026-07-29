@@ -1,4 +1,5 @@
 use crate::imports::*;
+use std::collections::HashSet;
 
 /// Converts multiple uom unit values to a vector of token stream and the plural units name
 ///
@@ -8,9 +9,20 @@ macro_rules! extract_units {
         let mut unit_impls = vec![];
         $(
             let field_units: TokenStream2 = stringify!($field_units).parse().expect("failed to parse `field_units`");
-            let unit_name = <$field_units as uom::si::Unit>::plural().replace(' ', "_");
-            // fix the UOM Kelvin atrocity
+            let mut unit_name = <$field_units as uom::si::Unit>::plural().replace(' ', "_");
+
+            // UOM has a bug where ratio.plural() returns an empty string
+            // Default to "ratio" for the ratio unit when plural() is empty
+            if unit_name.is_empty() {
+                let debug_name = stringify!($field_units);
+                if debug_name.contains("ratio") {
+                    unit_name = "ratio".to_string();
+                }
+            }
+
+            // fix UOM pluralization edge cases
             let unit_name = unit_name.replace("kelvins", "kelvin");
+            let unit_name = unit_name.replace("ratios", "ratio");
             unit_impls.push((field_units, unit_name));
         )+
         unit_impls
@@ -234,4 +246,202 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
         }
     }
     Some(())
+}
+
+#[derive(Clone, Debug)]
+pub struct SIFieldData {
+    pub field_ident: syn::Ident,
+    pub quantity: String,
+    pub units: Vec<(TokenStream2, String)>, // (unit_type, plural_name)
+}
+
+/// Collect SI field information for helper struct generation
+pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
+    let field_ident = field.ident.as_ref()?.clone();
+    let mut inner_type = &field.ty;
+
+    // Unwrap Option<T>
+    if let Some(opt_inner) = extract_type_from_container(inner_type) {
+        inner_type = opt_inner;
+    }
+
+    // Unwrap Vec<T>
+    if let Some(vec_inner) = extract_type_from_vec(inner_type) {
+        inner_type = vec_inner;
+    }
+
+    let inner_path = extract_type_path(inner_type)?;
+    let quantity = extract_si_quantity(inner_path)?;
+
+    // Get units for this quantity
+    let units = get_units_for_quantity(&quantity);
+
+    Some(SIFieldData {
+        field_ident,
+        quantity,
+        units,
+    })
+}
+
+fn get_units_for_quantity(quantity: &str) -> Vec<(TokenStream2, String)> {
+    match quantity {
+        "Power" => extract_units!(uom::si::power::watt, uom::si::power::kilowatt),
+        "Time" => extract_units!(uom::si::time::second, uom::si::time::hour),
+        "Temperature" => extract_units!(
+            uom::si::thermodynamic_temperature::kelvin,
+            uom::si::thermodynamic_temperature::degree_celsius,
+            uom::si::thermodynamic_temperature::degree_fahrenheit
+        ),
+        "Velocity" => extract_units!(
+            uom::si::velocity::meter_per_second,
+            uom::si::velocity::kilometer_per_hour,
+            uom::si::velocity::mile_per_hour
+        ),
+        "Energy" => extract_units!(uom::si::energy::joule, uom::si::energy::kilowatt_hour),
+        "Ratio" => extract_units!(uom::si::ratio::ratio),
+        _ => vec![],
+    }
+}
+
+pub fn generate_helper_struct(
+    helper_name: &syn::Ident,
+    struct_ast: &syn::ItemStruct,
+    si_fields: &[SIFieldData],
+) -> TokenStream2 {
+    // Build a map of SI field idents for quick lookup
+    let si_field_idents: std::collections::HashSet<_> = si_fields
+        .iter()
+        .map(|f| f.field_ident.to_string())
+        .collect();
+
+    let mut helper_fields = vec![];
+
+    if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &struct_ast.fields {
+        for field in named {
+            let field_ident = field.ident.as_ref().unwrap();
+            let field_ident_str = field_ident.to_string();
+
+            if si_field_idents.contains(&field_ident_str) {
+                // This is an SI field - generate helper fields for each unit variant
+                if let Some(si_field) = si_fields
+                    .iter()
+                    .find(|f| f.field_ident.to_string() == field_ident_str)
+                {
+                    for (_unit_type, unit_name) in &si_field.units {
+                        let helper_field_name = syn::Ident::new(
+                            &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
+                            field_ident.span(),
+                        );
+                        helper_fields.push(quote! {
+                            #[serde(default)]
+                            pub #helper_field_name: Option<f64>
+                        });
+                    }
+                }
+            } else {
+                // Non-SI field - pass through as-is
+                let field_ty = &field.ty;
+                helper_fields.push(quote! {
+                    pub #field_ident: #field_ty
+                });
+            }
+        }
+    }
+
+    quote! {
+        #[derive(::serde::Deserialize)]
+        #[serde(crate = "::serde")]
+        struct #helper_name {
+            #(#helper_fields),*
+        }
+    }
+}
+
+pub fn generate_from_impl(
+    original_name: &syn::Ident,
+    helper_name: &syn::Ident,
+    struct_ast: &syn::ItemStruct,
+    si_fields: &[SIFieldData],
+) -> TokenStream2 {
+    // Build a map of SI field idents for quick lookup
+    let si_field_idents: std::collections::HashSet<_> = si_fields
+        .iter()
+        .map(|f| f.field_ident.to_string())
+        .collect();
+
+    let mut field_conversions = vec![];
+
+    if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &struct_ast.fields {
+        for field in named {
+            let field_ident = field.ident.as_ref().unwrap();
+            let field_ident_str = field_ident.to_string();
+
+            if si_field_idents.contains(&field_ident_str) {
+                // This is an SI field - convert from helper unit variants
+                if let Some(si_field) = si_fields
+                    .iter()
+                    .find(|f| f.field_ident.to_string() == field_ident_str)
+                {
+                    let quantity_str = &si_field.quantity;
+                    let quantity_type = match quantity_str.as_str() {
+                        "Power" => quote! { uom::si::f64::Power },
+                        "Time" => quote! { uom::si::f64::Time },
+                        "Temperature" => quote! { uom::si::f64::ThermodynamicTemperature },
+                        "Velocity" => quote! { uom::si::f64::Velocity },
+                        "Energy" => quote! { uom::si::f64::Energy },
+                        "Ratio" => quote! { uom::si::f64::Ratio },
+                        _ => continue,
+                    };
+
+                    let mut match_arms = vec![];
+                    for (unit_type, unit_name) in &si_field.units {
+                        let helper_field_name = syn::Ident::new(
+                            &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
+                            field_ident.span(),
+                        );
+
+                        match_arms.push(quote! {
+                            helper.#helper_field_name.map(|val| #quantity_type::new::<#unit_type>(val))
+                        });
+                    }
+
+                    if match_arms.is_empty() {
+                        continue;
+                    }
+
+                    // Combine all match arms with .or_else()
+                    let conversion = if match_arms.len() == 1 {
+                        match_arms.into_iter().next().unwrap()
+                    } else {
+                        let mut result = match_arms[0].clone();
+                        for arm in &match_arms[1..] {
+                            result = quote! {
+                                #result.or_else(|| #arm)
+                            };
+                        }
+                        result
+                    };
+
+                    field_conversions.push(quote! {
+                        #field_ident: (#conversion).expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                    });
+                }
+            } else {
+                // Non-SI field - pass through directly
+                field_conversions.push(quote! {
+                    #field_ident: helper.#field_ident
+                });
+            }
+        }
+    }
+
+    quote! {
+        impl From<#helper_name> for #original_name {
+            fn from(helper: #helper_name) -> Self {
+                Self {
+                    #(#field_conversions),*
+                }
+            }
+        }
+    }
 }
