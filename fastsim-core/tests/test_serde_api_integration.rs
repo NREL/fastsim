@@ -11,6 +11,7 @@
 //! Optional<SI> and Vec<SI> field support has been implemented and these tests validate it.
 
 use fastsim_core::si;
+use fastsim_core::utils::tracked_state::TrackedState;
 use fastsim_proc_macros::serde_api;
 use serde::{Deserialize, Serialize};
 
@@ -51,6 +52,12 @@ struct TestDevice {
 
     /// Efficiency ratio - supports ratio and percent
     efficiency: si::Ratio,
+
+    /// Tracked power state, wrapped in TrackedState - accepts watts or kilowatts
+    tracked_power: TrackedState<si::Power>,
+
+    /// Tracked efficiency state, wrapped in TrackedState - accepts ratio or percent
+    tracked_efficiency: TrackedState<si::Ratio>,
 }
 
 // ============================================================================
@@ -68,7 +75,9 @@ fn test_deserialize_all_primary_units() {
         "temperature_kelvin": 300.0,
         "energy_joules": 1000.0,
         "efficiency_ratio": 0.85,
-        "temperature_readings_kelvin": [290.0, 300.0, 310.0]
+        "temperature_readings_kelvin": [290.0, 300.0, 310.0],
+        "tracked_power_watts": 100.0,
+        "tracked_efficiency_ratio": 0.90
     }"#;
 
     let device: TestDevice =
@@ -84,6 +93,22 @@ fn test_deserialize_all_primary_units() {
     assert_eq!(device.efficiency.get::<si::ratio>(), 0.85);
     assert_eq!(device.secondary_temperature, None);
     assert_eq!(device.temperature_readings.len(), 3);
+    assert_eq!(
+        device
+            .tracked_power
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::watt>(),
+        100.0
+    );
+    assert_eq!(
+        device
+            .tracked_efficiency
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::ratio>(),
+        0.90
+    );
 }
 
 #[test]
@@ -95,7 +120,9 @@ fn test_deserialize_fails_with_missing_required_fields() {
         "duration_seconds": 120.0,
         "area_square_meters": 5.0,
         "energy_joules": 1000.0,
-        "efficiency_ratio": 0.85
+        "efficiency_ratio": 0.85,
+        "tracked_power_watts": 100.0,
+        "tracked_efficiency_ratio": 0.90
     }"#;
 
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -123,7 +150,9 @@ fn test_deserialize_with_alternate_units() {
         "energy_kilowatt_hours": 1.0,
         "efficiency_percent": 85.0,
         "secondary_temperature_degrees_celsius": 25.0,
-        "temperature_readings_degrees_fahrenheit": [32.0, 68.0, 104.0]
+        "temperature_readings_degrees_fahrenheit": [32.0, 68.0, 104.0],
+        "tracked_power_kilowatts": 0.5,
+        "tracked_efficiency_percent": 80.0
     }"#;
 
     let device: TestDevice =
@@ -136,6 +165,26 @@ fn test_deserialize_with_alternate_units() {
     assert_eq!(device.energy.get::<si::joule>(), 3_600_000.0); // 1 kWh
     assert_eq!(device.duration.get::<si::second>(), 7_200.0); // 2 hours
     assert_eq!(device.efficiency.get::<si::ratio>(), 0.85); // 85%
+    assert!(
+        (device
+            .tracked_power
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::watt>()
+            - 500.0)
+            .abs()
+            < 1e-9
+    ); // 0.5 kW
+    assert!(
+        (device
+            .tracked_efficiency
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::ratio>()
+            - 0.80)
+            .abs()
+            < 1e-9
+    ); // 80%
 
     // Verify Optional field with alternate unit (celsius -> kelvin conversion)
     assert!(device.secondary_temperature.is_some());
@@ -160,7 +209,9 @@ fn test_deserialize_time_in_hours() {
         "area_square_meters": 5.0,
         "temperature_kelvin": 300.0,
         "energy_joules": 1000.0,
-        "efficiency_ratio": 0.85
+        "efficiency_ratio": 0.85,
+        "tracked_power_watts": 100.0,
+        "tracked_efficiency_ratio": 0.90
     }"#;
 
     let device: TestDevice =
@@ -179,7 +230,9 @@ fn test_deserialize_multiple_si_quantities() {
         "area_square_meters": 10.0,
         "temperature_kelvin": 298.15,
         "energy_joules": 5000.0,
-        "efficiency_ratio": 0.90
+        "efficiency_ratio": 0.90,
+        "tracked_power_watts": 50.0,
+        "tracked_efficiency_ratio": 0.88
     }"#;
 
     let device: TestDevice =
@@ -206,7 +259,9 @@ fn test_serialize_uses_primary_units() {
         "temperature_kelvin": 300.0,
         "energy_joules": 1000.0,
         "efficiency_ratio": 0.85,
-        "temperature_readings_kelvin": [290.0, 300.0, 310.0]
+        "temperature_readings_kelvin": [290.0, 300.0, 310.0],
+        "tracked_power_watts": 100.0,
+        "tracked_efficiency_ratio": 0.90
     }"#;
 
     let device: TestDevice = serde_json::from_str(json).expect("Failed to deserialize");
@@ -225,6 +280,8 @@ fn test_serialize_uses_primary_units() {
     assert!(value.get("temperature_kelvin").is_some());
     assert!(value.get("energy_joules").is_some());
     assert!(value.get("efficiency_ratio").is_some());
+    assert!(value.get("tracked_power_watts").is_some());
+    assert!(value.get("tracked_efficiency_ratio").is_some());
 }
 
 #[test]
@@ -238,7 +295,9 @@ fn test_round_trip_conversion_preserves_values() {
         "temperature_kelvin": 300.0,
         "energy_joules": 1000.0,
         "efficiency_ratio": 0.85,
-        "temperature_readings_kelvin": [290.0, 300.0, 310.0]
+        "temperature_readings_kelvin": [290.0, 300.0, 310.0],
+        "tracked_power_watts": 100.0,
+        "tracked_efficiency_ratio": 0.90
     }"#;
 
     let device: TestDevice = serde_json::from_str(json_input).expect("Failed to deserialize");
@@ -270,7 +329,9 @@ fn test_deserialize_with_different_values() {
         "temperature_kelvin": 400.0,
         "energy_joules": 10000.0,
         "efficiency_ratio": 0.95,
-        "temperature_readings_kelvin": [380.0, 400.0, 420.0]
+        "temperature_readings_kelvin": [380.0, 400.0, 420.0],
+        "tracked_power_watts": 200.0,
+        "tracked_efficiency_ratio": 0.75
     }"#;
 
     let device: TestDevice =
@@ -283,4 +344,171 @@ fn test_deserialize_with_different_values() {
     assert_eq!(device.area.get::<si::square_meter>(), 20.0);
     assert_eq!(device.temperature.get::<si::kelvin_abs>(), 400.0);
     assert_eq!(device.energy.get::<si::joule>(), 10000.0);
+}
+
+// ============================================================================
+// TESTS: TrackedState fields (using TestDevice)
+// ============================================================================
+
+#[test]
+fn test_tracked_state_deserialize_primary_units() {
+    let json = r#"{
+        "mass_kilograms": 1000.0,
+        "power_watts": 100.0,
+        "speed_meters_per_second": 10.0,
+        "duration_seconds": 60.0,
+        "area_square_meters": 2.0,
+        "temperature_kelvin": 293.0,
+        "energy_joules": 500.0,
+        "efficiency_ratio": 0.80,
+        "tracked_power_watts": 250.0,
+        "tracked_efficiency_ratio": 0.92
+    }"#;
+
+    let device: TestDevice =
+        serde_json::from_str(json).expect("Failed to deserialize TestDevice primary units");
+
+    assert_eq!(
+        device
+            .tracked_power
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::watt>(),
+        250.0
+    );
+    assert_eq!(
+        device
+            .tracked_efficiency
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::ratio>(),
+        0.92
+    );
+}
+
+#[test]
+fn test_tracked_state_deserialize_alternate_units() {
+    let json = r#"{
+        "mass_kilograms": 1000.0,
+        "power_watts": 100.0,
+        "speed_meters_per_second": 10.0,
+        "duration_seconds": 60.0,
+        "area_square_meters": 2.0,
+        "temperature_kelvin": 293.0,
+        "energy_joules": 500.0,
+        "efficiency_ratio": 0.80,
+        "tracked_power_kilowatts": 0.5,
+        "tracked_efficiency_percent": 85.0
+    }"#;
+
+    let device: TestDevice =
+        serde_json::from_str(json).expect("Failed to deserialize TestDevice alternate units");
+
+    assert!(
+        (device
+            .tracked_power
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::watt>()
+            - 500.0)
+            .abs()
+            < 1e-9
+    );
+    assert!(
+        (device
+            .tracked_efficiency
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::ratio>()
+            - 0.85)
+            .abs()
+            < 1e-9
+    );
+}
+
+#[test]
+fn test_tracked_state_deserialize_bare_name() {
+    // Bare field names (without unit suffix) are accepted as aliases for the primary unit
+    let json = r#"{
+        "mass_kilograms": 1000.0,
+        "power_watts": 100.0,
+        "speed_meters_per_second": 10.0,
+        "duration_seconds": 60.0,
+        "area_square_meters": 2.0,
+        "temperature_kelvin": 293.0,
+        "energy_joules": 500.0,
+        "efficiency_ratio": 0.80,
+        "tracked_power": 300.0,
+        "tracked_efficiency": 0.78
+    }"#;
+
+    let device: TestDevice =
+        serde_json::from_str(json).expect("Failed to deserialize TestDevice with bare names");
+
+    assert_eq!(
+        device
+            .tracked_power
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::watt>(),
+        300.0
+    );
+    assert_eq!(
+        device
+            .tracked_efficiency
+            .get_fresh(|| "".into())
+            .unwrap()
+            .get::<si::ratio>(),
+        0.78
+    );
+}
+
+// ============================================================================
+// TEST: Drive cycle CSV loading with bare "grade" column
+// ============================================================================
+
+#[test]
+#[cfg(feature = "csv")]
+fn test_cycle_csv_loads_bare_grade_column() {
+    use fastsim_core::drive_cycle::CycleElement;
+
+    // CSV with bare "grade" column (no unit suffix) - the real-world format used by
+    // fastsim CSV files like udds.csv and hwfet.csv
+    let csv = "time_seconds,speed_meters_per_second,grade\n\
+               0,0,0\n\
+               1,2.5,0.01\n\
+               2,5.0,-0.005\n";
+
+    let mut rdr = csv::Reader::from_reader(csv.as_bytes());
+    let elements: Vec<CycleElement> = rdr
+        .deserialize()
+        .map(|r| r.expect("Failed to deserialize CycleElement row"))
+        .collect();
+
+    assert_eq!(elements.len(), 3);
+    assert_eq!(elements[0].time.get::<si::second>(), 0.0);
+    assert_eq!(elements[1].speed.get::<si::meter_per_second>(), 2.5);
+    // grade in ratio units (0.01 = 1% grade)
+    assert!((elements[1].grade.unwrap().get::<si::ratio>() - 0.01).abs() < 1e-10);
+    assert!((elements[2].grade.unwrap().get::<si::ratio>() - (-0.005)).abs() < 1e-10);
+}
+
+#[test]
+#[cfg(feature = "csv")]
+fn test_cycle_csv_loads_grade_ratio_column() {
+    use fastsim_core::drive_cycle::CycleElement;
+
+    // CSV with explicit "grade_ratio" column (new unit-suffixed format)
+    let csv = "time_seconds,speed_meters_per_second,grade_ratio\n\
+               0,0,0\n\
+               1,10.0,0.02\n";
+
+    let mut rdr = csv::Reader::from_reader(csv.as_bytes());
+    let elements: Vec<CycleElement> = rdr
+        .deserialize()
+        .map(|r| r.expect("Failed to deserialize CycleElement row"))
+        .collect();
+
+    assert_eq!(elements.len(), 2);
+    assert!((elements[1].grade.unwrap().get::<si::ratio>() - 0.02).abs() < 1e-10);
 }

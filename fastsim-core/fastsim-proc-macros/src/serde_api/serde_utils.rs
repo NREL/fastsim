@@ -329,7 +329,8 @@ pub fn generate_helper_struct(
                     .iter()
                     .find(|f| f.field_ident.to_string() == field_ident_str)
                 {
-                    for (_unit_type, unit_name) in &si_field.units {
+                    let bare_name = field_ident.to_string();
+                    for (idx, (_unit_type, unit_name)) in si_field.units.iter().enumerate() {
                         let helper_field_name = syn::Ident::new(
                             &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
                             field_ident.span(),
@@ -346,8 +347,15 @@ pub fn generate_helper_struct(
                         // The JSON key is "field_unit" (without _macrogenerated)
                         let json_key = format!("{}_{}", field_ident, unit_name);
 
+                        // The primary unit (first in list) also accepts the bare field name as alias
+                        let serde_attr = if idx == 0 {
+                            quote! { #[serde(default, rename = #json_key, alias = #bare_name)] }
+                        } else {
+                            quote! { #[serde(default, rename = #json_key)] }
+                        };
+
                         helper_fields.push(quote! {
-                            #[serde(default, rename = #json_key)]
+                            #serde_attr
                             pub #helper_field_name: #field_type
                         });
                     }
@@ -487,8 +495,11 @@ pub fn generate_from_impl(
 
                     let wrapped_conversion = match wrapper_type {
                         WrapperType::TrackedState => {
+                            let ts_path = outer_type_path_tokens(field_ty).unwrap_or_else(
+                                || quote! { crate::utils::tracked_state::TrackedState },
+                            );
                             quote! {
-                                (#conversion).map(|val| crate::utils::tracked_state::TrackedState::new(val))
+                                (#conversion).map(|val| #ts_path::new(val))
                                     .expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
                             }
                         }
@@ -635,6 +646,22 @@ fn detect_outer_wrapper(ty: &syn::Type) -> WrapperType {
         }
     }
     WrapperType::None
+}
+
+/// Extract the outer type path without generic args as a token stream.
+/// e.g. `crate::utils::TrackedState<si::Power>` → `crate::utils::TrackedState`
+/// Used to call `::new()` on the outer wrapper type with the correct path.
+fn outer_type_path_tokens(ty: &syn::Type) -> Option<TokenStream2> {
+    if let syn::Type::Path(type_path) = ty {
+        let mut path = type_path.path.clone();
+        // Strip generic args from the last segment
+        if let Some(last) = path.segments.last_mut() {
+            last.arguments = syn::PathArguments::None;
+        }
+        Some(quote! { #path })
+    } else {
+        None
+    }
 }
 
 fn is_tracked_state_wrapper(ty: &syn::Type) -> bool {
