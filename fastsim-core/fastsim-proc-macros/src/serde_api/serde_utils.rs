@@ -44,7 +44,7 @@ fn serde_attrs_for_si_field(field: &mut syn::Field, unit_name: &str, serialize_w
                 let field_name_lit_str = format!("{ident}_{unit_name}");
                 if let Some(sw_base) = serialize_with {
                     // The serialize_with path names the plain-field helper (e.g.
-                    // "crate::utils::serde_helpers::power_as_kilowatts").
+                    // "fastsim_core::utils::serde_helpers::power_as_kilowatts").
                     // Adjust it for wrapper types by inserting the appropriate prefix
                     // before the function name: vec_ / opt_ / tracked_.
                     let sw_path = adjust_serialize_with_for_wrapper(sw_base, &field.ty);
@@ -716,7 +716,7 @@ pub fn generate_try_from_impl(
                     let wrapped_conversion = match wrapper_type {
                         WrapperType::TrackedState => {
                             let ts_path = outer_type_path_tokens(field_ty).unwrap_or_else(
-                                || quote! { crate::utils::tracked_state::TrackedState },
+                                || quote! { fastsim_core::utils::tracked_state::TrackedState },
                             );
                             if has_serde_struct_default(struct_ast) {
                                 quote! {
@@ -941,7 +941,7 @@ fn detect_outer_wrapper(ty: &syn::Type) -> WrapperType {
 }
 
 /// Extract the outer type path without generic args as a token stream.
-/// e.g. `crate::utils::TrackedState<si::Power>` → `crate::utils::TrackedState`
+/// e.g. `fastsim_core::utils::TrackedState<si::Power>` → `fastsim_core::utils::TrackedState`
 /// Used to call `::new()` on the outer wrapper type with the correct path.
 fn outer_type_path_tokens(ty: &syn::Type) -> Option<TokenStream2> {
     if let syn::Type::Path(type_path) = ty {
