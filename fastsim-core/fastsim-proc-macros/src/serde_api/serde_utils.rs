@@ -440,7 +440,7 @@ pub fn generate_helper_struct(
 
                     for (idx, (_unit_type, unit_name)) in si_field.units.iter().enumerate() {
                         let helper_field_name = syn::Ident::new(
-                            &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
+                            &format!("__{}_{}", field_ident, unit_name),
                             field_ident.span(),
                         );
 
@@ -633,7 +633,7 @@ pub fn generate_try_from_impl(
                         // For Vec fields, convert each element in the vector
                         for (unit_type, unit_name) in &si_field.units {
                             let helper_field_name = syn::Ident::new(
-                                &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
+                                &format!("__{}_{}", field_ident, unit_name),
                                 field_ident.span(),
                             );
 
@@ -645,7 +645,7 @@ pub fn generate_try_from_impl(
                         // For non-Vec fields, convert the single value
                         for (unit_type, unit_name) in &si_field.units {
                             let helper_field_name = syn::Ident::new(
-                                &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
+                                &format!("__{}_{}", field_ident, unit_name),
                                 field_ident.span(),
                             );
 
@@ -909,8 +909,4 @@ fn outer_type_path_tokens(ty: &syn::Type) -> Option<TokenStream2> {
     } else {
         None
     }
-}
-
-fn is_tracked_state_wrapper(ty: &syn::Type) -> bool {
-    detect_outer_wrapper(ty) == WrapperType::TrackedState
 }
