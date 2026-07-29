@@ -540,3 +540,62 @@ fn test_cycle_csv_legacy_aliases() {
     assert!((elements[1].grade.unwrap().get::<si::ratio>() - 0.05).abs() < 1e-10);
     assert!((elements[2].grade.unwrap().get::<si::ratio>() - (-0.02)).abs() < 1e-10);
 }
+
+// ============================================================================
+// TEST: Unit-aware alias routing for backward compatibility
+// ============================================================================
+
+/// Struct where fields have been renamed but old names are preserved as aliases.
+/// Demonstrates that aliases ending with a unit suffix are routed to the correct
+/// unit variant — not silently misinterpreted as base units.
+#[serde_api]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+struct RenamedDevice {
+    /// Previously "max_power_watts", now "peak_power" — bare alias routes to base (watts)
+    #[serde(alias = "max_power_watts")]
+    peak_power: si::Power,
+
+    /// Previously "budget_kilowatts", now "budget_power" — unit-suffixed alias routes to kW
+    #[serde(alias = "budget_kilowatts")]
+    budget_power: si::Power,
+
+    /// Previously "trip_hours", now "trip_duration" — unit-suffixed alias routes to hours
+    #[serde(alias = "trip_hours")]
+    trip_duration: si::Time,
+}
+
+#[test]
+fn test_alias_routes_to_correct_unit_variant() {
+    // "max_power_watts" ends with "_watts" → routes to watts helper → 200.0 W
+    // "budget_kilowatts" ends with "_kilowatts" → routes to kilowatts helper → 0.5 kW = 500 W
+    // "trip_hours" ends with "_hours" → routes to hours helper → 2.0 h = 7200 s
+    let json = r#"{
+        "max_power_watts": 200.0,
+        "budget_kilowatts": 0.5,
+        "trip_hours": 2.0
+    }"#;
+
+    let device: RenamedDevice =
+        serde_json::from_str(json).expect("Failed to deserialize with unit-aware aliases");
+
+    assert_eq!(device.peak_power.get::<si::watt>(), 200.0);
+    assert!((device.budget_power.get::<si::watt>() - 500.0).abs() < 1e-9); // 0.5 kW
+    assert_eq!(device.trip_duration.get::<si::second>(), 7_200.0); // 2 h
+}
+
+#[test]
+fn test_alias_bare_name_routes_to_base_unit() {
+    // Bare alias (no unit suffix) still routes to base (primary) unit
+    let json = r#"{
+        "peak_power_watts": 300.0,
+        "budget_power_watts": 100.0,
+        "trip_duration_seconds": 3600.0
+    }"#;
+
+    let device: RenamedDevice =
+        serde_json::from_str(json).expect("Failed to deserialize with canonical unit names");
+
+    assert_eq!(device.peak_power.get::<si::watt>(), 300.0);
+    assert_eq!(device.budget_power.get::<si::watt>(), 100.0);
+    assert_eq!(device.trip_duration.get::<si::second>(), 3600.0);
+}

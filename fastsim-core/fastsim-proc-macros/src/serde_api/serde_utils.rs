@@ -339,12 +339,26 @@ pub fn generate_helper_struct(
                     .find(|f| f.field_ident.to_string() == field_ident_str)
                 {
                     let bare_name = field_ident.to_string();
-                    // Collect any existing serde aliases from the original field to forward.
-                    // NOTE: all aliases are routed to the PRIMARY (base) unit helper field.
-                    // This means aliases must represent values already in the base unit.
-                    // An alias like `old_name_kilowatts` would be silently deserialized as
-                    // base-unit (e.g. watts), not kilowatts — do not add non-base-unit aliases.
+                    // Collect any existing serde aliases from the original field.
+                    // Each alias is routed to the unit variant whose suffix it ends with
+                    // (e.g. `alias = "old_power_kilowatts"` → kilowatts helper).
+                    // Aliases with no matching unit suffix fall back to the primary (base) unit.
                     let extra_aliases = extract_serde_aliases(field);
+                    let unit_names: Vec<&str> =
+                        si_field.units.iter().map(|(_, n)| n.as_str()).collect();
+                    // Pre-route: for each alias, find its target unit name (or "" for primary)
+                    let routed: Vec<(&str, &str)> = extra_aliases
+                        .iter()
+                        .map(|alias| {
+                            let target = unit_names
+                                .iter()
+                                .find(|&&u| alias.ends_with(&format!("_{u}")))
+                                .copied()
+                                .unwrap_or(unit_names[0]);
+                            (alias.as_str(), target)
+                        })
+                        .collect();
+
                     for (idx, (_unit_type, unit_name)) in si_field.units.iter().enumerate() {
                         let helper_field_name = syn::Ident::new(
                             &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
@@ -375,12 +389,23 @@ pub fn generate_helper_struct(
                         };
 
                         // The primary unit (first in list) also accepts the bare field name as
-                        // alias, plus any extra aliases from the original field declaration.
+                        // alias, plus any extra aliases routed to this unit variant.
+                        let this_unit_aliases: Vec<&str> = routed
+                            .iter()
+                            .filter(|(_, target)| *target == unit_name.as_str())
+                            .map(|(alias, _)| *alias)
+                            .collect();
+
                         let serde_attr = if idx == 0 {
-                            let extra = extra_aliases.iter().map(|a| quote! { , alias = #a });
-                            quote! { #[serde(default, rename = #canonical_name, alias = #unit_alias #(#extra)*)] }
-                        } else {
+                            let extra = std::iter::once(unit_alias.as_str())
+                                .chain(this_unit_aliases.iter().copied())
+                                .map(|a| quote! { , alias = #a });
+                            quote! { #[serde(default, rename = #canonical_name #(#extra)*)] }
+                        } else if this_unit_aliases.is_empty() {
                             quote! { #[serde(default, rename = #serde_key)] }
+                        } else {
+                            let extra = this_unit_aliases.iter().map(|a| quote! { , alias = #a });
+                            quote! { #[serde(default, rename = #serde_key #(#extra)*)] }
                         };
 
                         helper_fields.push(quote! {
