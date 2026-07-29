@@ -512,3 +512,29 @@ fn test_cycle_csv_loads_grade_ratio_column() {
     assert_eq!(elements.len(), 2);
     assert!((elements[1].grade.unwrap().get::<si::ratio>() - 0.02).abs() < 1e-10);
 }
+
+#[test]
+#[cfg(feature = "csv")]
+fn test_cycle_csv_legacy_aliases() {
+    use fastsim_core::drive_cycle::CycleElement;
+
+    // CSV with legacy fastsim2 column names: cycSecs, cycMps, cycGrade
+    // These were serde aliases on the original fields and must still be forwarded
+    // through the helper struct so old CSV files keep working.
+    let csv = "cycSecs,cycMps,cycGrade\n\
+               0,0,0\n\
+               1,5.0,0.05\n\
+               2,10.0,-0.02\n";
+
+    let mut rdr = csv::Reader::from_reader(csv.as_bytes());
+    let elements: Vec<CycleElement> = rdr
+        .deserialize()
+        .map(|r| r.expect("Failed to deserialize CycleElement row with legacy aliases"))
+        .collect();
+
+    assert_eq!(elements.len(), 3);
+    assert_eq!(elements[0].time.get::<si::second>(), 0.0);
+    assert_eq!(elements[1].speed.get::<si::meter_per_second>(), 5.0);
+    assert!((elements[1].grade.unwrap().get::<si::ratio>() - 0.05).abs() < 1e-10);
+    assert!((elements[2].grade.unwrap().get::<si::ratio>() - (-0.02)).abs() < 1e-10);
+}

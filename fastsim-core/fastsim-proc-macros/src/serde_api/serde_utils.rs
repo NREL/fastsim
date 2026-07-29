@@ -330,6 +330,8 @@ pub fn generate_helper_struct(
                     .find(|f| f.field_ident.to_string() == field_ident_str)
                 {
                     let bare_name = field_ident.to_string();
+                    // Collect any existing serde aliases from the original field to forward
+                    let extra_aliases = extract_serde_aliases(field);
                     for (idx, (_unit_type, unit_name)) in si_field.units.iter().enumerate() {
                         let helper_field_name = syn::Ident::new(
                             &format!("{}_{}_{}", field_ident, unit_name, "macrogenerated"),
@@ -347,9 +349,11 @@ pub fn generate_helper_struct(
                         // The JSON key is "field_unit" (without _macrogenerated)
                         let json_key = format!("{}_{}", field_ident, unit_name);
 
-                        // The primary unit (first in list) also accepts the bare field name as alias
+                        // The primary unit (first in list) also accepts the bare field name as
+                        // alias, plus any extra aliases from the original field declaration.
                         let serde_attr = if idx == 0 {
-                            quote! { #[serde(default, rename = #json_key, alias = #bare_name)] }
+                            let extra = extra_aliases.iter().map(|a| quote! { , alias = #a });
+                            quote! { #[serde(default, rename = #json_key, alias = #bare_name #(#extra)*)] }
                         } else {
                             quote! { #[serde(default, rename = #json_key)] }
                         };
@@ -397,9 +401,18 @@ pub fn generate_helper_struct(
         }
     }
 
+    // Propagate deny_unknown_fields from the original struct to the helper so that
+    // the same strictness applies during deserialization.
+    let deny_unknown = if has_serde_deny_unknown_fields(struct_ast) {
+        quote! { #[serde(deny_unknown_fields)] }
+    } else {
+        quote! {}
+    };
+
     quote! {
         #[derive(::serde::Deserialize)]
         #[serde(crate = "::serde")]
+        #deny_unknown
         struct #helper_name {
             #(#helper_fields),*
         }
@@ -571,6 +584,50 @@ fn has_serde_flag(field: &syn::Field, flag: &str) -> bool {
                 found = true;
             }
             // consume "= value" if present so parse_nested_meta doesn't error
+            if meta.input.peek(syn::Token![=]) {
+                let _: syn::Token![=] = meta.input.parse().unwrap();
+                let _: proc_macro2::TokenTree = meta.input.parse().unwrap();
+            }
+            Ok(())
+        });
+        found
+    })
+}
+
+/// Extract all `alias = "..."` string values from a field's `#[serde(...)]` attributes.
+fn extract_serde_aliases(field: &syn::Field) -> Vec<String> {
+    let mut aliases = vec![];
+    for attr in &field.attrs {
+        if !attr.path().is_ident("serde") {
+            continue;
+        }
+        let _ = attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("alias") && meta.input.peek(syn::Token![=]) {
+                let _: syn::Token![=] = meta.input.parse().unwrap();
+                let lit: syn::LitStr = meta.input.parse().unwrap();
+                aliases.push(lit.value());
+            } else if meta.input.peek(syn::Token![=]) {
+                // consume other "= value" tokens so parse_nested_meta doesn't error
+                let _: syn::Token![=] = meta.input.parse().unwrap();
+                let _: proc_macro2::TokenTree = meta.input.parse().unwrap();
+            }
+            Ok(())
+        });
+    }
+    aliases
+}
+
+/// Returns true if the struct has `#[serde(deny_unknown_fields)]`.
+fn has_serde_deny_unknown_fields(struct_ast: &syn::ItemStruct) -> bool {
+    struct_ast.attrs.iter().any(|attr| {
+        if !attr.path().is_ident("serde") {
+            return false;
+        }
+        let mut found = false;
+        let _ = attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("deny_unknown_fields") {
+                found = true;
+            }
             if meta.input.peek(syn::Token![=]) {
                 let _: syn::Token![=] = meta.input.parse().unwrap();
                 let _: proc_macro2::TokenTree = meta.input.parse().unwrap();
