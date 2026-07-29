@@ -56,6 +56,19 @@ macro_rules! make_uom_cmp_fn {
 #[macro_export]
 macro_rules! impl_efficiency_enum {
     ($enum_ty:ty { $($variant:ident),+ $(,)? }) => {
+        impl From<f64> for $enum_ty {
+            fn from(value: f64) -> Self {
+                Self::Constant(ninterp::prelude::Interp0D(value))
+            }
+        }
+
+        impl Default for $enum_ty {
+            /// Default to 100% efficiency.
+            fn default() -> Self {
+                Self::from(1.0)
+            }
+        }
+
         impl Interpolator<f64> for $enum_ty {
             fn ndim(&self) -> usize {
                 ::paste::paste! {
@@ -65,7 +78,7 @@ macro_rules! impl_efficiency_enum {
                 }
             }
 
-            /// Validate efficiency map, ensuring all values are within the range [0, 1] and that the underlying interpolator is valid.
+            /// Validate efficiency map, ensuring all values are within the range \[0, 1\] and that the underlying interpolator is valid.
             fn validate(&mut self) -> Result<(), ninterp::error::ValidateError> {
                 ::paste::paste! {
                     match self {
@@ -73,7 +86,7 @@ macro_rules! impl_efficiency_enum {
                     }
                 }?;
 
-                self.try_for_each_value::<ninterp::error::ValidateError, _>(|value| {
+                <Self as $crate::utils::interp::InterpolatorScanValues>::try_for_each_value::<ninterp::error::ValidateError, _>(self, |value| {
                     if value.is_nan() {
                         return Ok(());
                     }
