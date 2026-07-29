@@ -355,8 +355,8 @@ pub fn generate_helper_struct(
                             _ => quote! { Option<f64> },
                         };
 
-                        // The JSON key is "field_unit" (without _macrogenerated)
-                        let json_key = format!("{}_{}", field_ident, unit_name);
+                        // The serde key is "field_unit"
+                        let serde_key = format!("{}_{}", field_ident, unit_name);
 
                         // For Ratio quantities, the canonical serialized name is the bare field
                         // name (e.g. `grade`, not `grade_ratio`) for backward compatibility.
@@ -365,9 +365,9 @@ pub fn generate_helper_struct(
                         let use_bare_as_canonical =
                             si_field.quantity == "Ratio" && unit_name == "ratio";
                         let (canonical_name, unit_alias) = if use_bare_as_canonical {
-                            (bare_name.clone(), json_key.clone())
+                            (bare_name.clone(), serde_key.clone())
                         } else {
-                            (json_key.clone(), bare_name.clone())
+                            (serde_key.clone(), bare_name.clone())
                         };
 
                         // The primary unit (first in list) also accepts the bare field name as
@@ -376,7 +376,7 @@ pub fn generate_helper_struct(
                             let extra = extra_aliases.iter().map(|a| quote! { , alias = #a });
                             quote! { #[serde(default, rename = #canonical_name, alias = #unit_alias #(#extra)*)] }
                         } else {
-                            quote! { #[serde(default, rename = #json_key)] }
+                            quote! { #[serde(default, rename = #serde_key)] }
                         };
 
                         helper_fields.push(quote! {
