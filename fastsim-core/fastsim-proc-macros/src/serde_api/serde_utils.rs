@@ -9,7 +9,7 @@ macro_rules! extract_units {
         let mut unit_impls = vec![];
         $(
             let field_units: TokenStream2 = stringify!($field_units).parse().expect("failed to parse `field_units`");
-            let mut unit_name = <$field_units as uom::si::Unit>::plural().replace(' ', "_");
+            let mut unit_name = <$field_units as uom::si::Unit>::plural().to_lowercase().replace(' ', "_");
 
             // UOM has a bug where ratio.plural() returns an empty string
             // Default to "ratio" for the ratio unit when plural() is empty
@@ -299,7 +299,7 @@ fn get_units_for_quantity(quantity: &str) -> Vec<(TokenStream2, String)> {
             uom::si::velocity::mile_per_hour
         ),
         "Energy" => extract_units!(uom::si::energy::joule, uom::si::energy::kilowatt_hour),
-        "Ratio" => extract_units!(uom::si::ratio::ratio),
+        "Ratio" => extract_units!(uom::si::ratio::ratio, uom::si::ratio::percent),
         "Area" => extract_units!(uom::si::area::square_meter),
         _ => vec![],
     }
@@ -343,18 +343,48 @@ pub fn generate_helper_struct(
                             _ => quote! { Option<f64> },
                         };
 
+                        // The JSON key is "field_unit" (without _macrogenerated)
+                        let json_key = format!("{}_{}", field_ident, unit_name);
+
                         helper_fields.push(quote! {
-                            #[serde(default)]
+                            #[serde(default, rename = #json_key)]
                             pub #helper_field_name: #field_type
                         });
                     }
                 }
             } else {
-                // Non-SI field - pass through as-is
+                // Non-SI field
                 let field_ty = &field.ty;
-                helper_fields.push(quote! {
-                    pub #field_ident: #field_ty
-                });
+                let has_skip = has_serde_skip(field);
+                let contains_self = type_contains_self(field_ty);
+                let has_default = has_serde_default(field);
+
+                if has_skip {
+                    // Skip: omit from helper struct entirely; From impl will use Default::default()
+                } else if contains_self && !has_default {
+                    // Self-referential container without skip/default: emit a compile error
+                    let field_name = field_ident.to_string();
+                    helper_fields.push(quote! {
+                        compile_error!(concat!(
+                            "Field `", #field_name,
+                            "` contains `Self` and is used with #[serde_api]. ",
+                            "Add #[serde(skip)] or #[serde(default)] to this field."
+                        ));
+                    });
+                } else {
+                    let struct_name = &struct_ast.ident;
+                    let final_ty = replace_self_in_type(field_ty, struct_name);
+                    // Preserve only serde attributes (not custom derive helpers like #[has_state])
+                    let serde_attrs: Vec<_> = field
+                        .attrs
+                        .iter()
+                        .filter(|a| a.path().is_ident("serde"))
+                        .collect();
+                    helper_fields.push(quote! {
+                        #(#serde_attrs)*
+                        pub #field_ident: #final_ty
+                    });
+                }
             }
         }
     }
@@ -484,10 +514,16 @@ pub fn generate_from_impl(
                     });
                 }
             } else {
-                // Non-SI field - pass through directly
-                field_conversions.push(quote! {
-                    #field_ident: helper.#field_ident
-                });
+                // Non-SI field
+                if has_serde_skip(field) {
+                    field_conversions.push(quote! {
+                        #field_ident: Default::default()
+                    });
+                } else {
+                    field_conversions.push(quote! {
+                        #field_ident: helper.#field_ident
+                    });
+                }
             }
         }
     }
@@ -500,6 +536,81 @@ pub fn generate_from_impl(
                 }
             }
         }
+    }
+}
+
+/// Returns true if the field has `#[serde(skip)]`
+fn has_serde_skip(field: &syn::Field) -> bool {
+    has_serde_flag(field, "skip")
+}
+
+/// Returns true if the field has `#[serde(default)]`
+fn has_serde_default(field: &syn::Field) -> bool {
+    has_serde_flag(field, "default")
+}
+
+fn has_serde_flag(field: &syn::Field, flag: &str) -> bool {
+    field.attrs.iter().any(|attr| {
+        if !attr.path().is_ident("serde") {
+            return false;
+        }
+        let mut found = false;
+        let _ = attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident(flag) {
+                found = true;
+            }
+            // consume "= value" if present so parse_nested_meta doesn't error
+            if meta.input.peek(syn::Token![=]) {
+                let _: syn::Token![=] = meta.input.parse().unwrap();
+                let _: proc_macro2::TokenTree = meta.input.parse().unwrap();
+            }
+            Ok(())
+        });
+        found
+    })
+}
+
+/// Replace bare `Self` path segments with `replacement` in a type.
+fn replace_self_in_type(ty: &syn::Type, replacement: &syn::Ident) -> syn::Type {
+    match ty {
+        syn::Type::Path(type_path) => {
+            let mut new_path = type_path.clone();
+            for segment in &mut new_path.path.segments {
+                if segment.ident == "Self" {
+                    segment.ident = replacement.clone();
+                }
+                if let syn::PathArguments::AngleBracketed(ref mut args) = segment.arguments {
+                    for arg in &mut args.args {
+                        if let syn::GenericArgument::Type(inner_ty) = arg {
+                            *inner_ty = replace_self_in_type(inner_ty, replacement);
+                        }
+                    }
+                }
+            }
+            syn::Type::Path(new_path)
+        }
+        _ => ty.clone(),
+    }
+}
+
+/// Returns true if the type tree contains a bare `Self` path segment.
+fn type_contains_self(ty: &syn::Type) -> bool {
+    match ty {
+        syn::Type::Path(type_path) => type_path.path.segments.iter().any(|seg| {
+            seg.ident == "Self"
+                || if let syn::PathArguments::AngleBracketed(ref args) = seg.arguments {
+                    args.args.iter().any(|arg| {
+                        if let syn::GenericArgument::Type(inner) = arg {
+                            type_contains_self(inner)
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    false
+                }
+        }),
+        _ => false,
     }
 }
 
