@@ -23,7 +23,7 @@
 //! ```text
 //! "Power" => (
 //!     extract_units!(uom::si::power::kilowatt),
-//!     Some("crate::utils::serde_helpers::power_as_kilowatts"),
+//!     Some("fastsim_core::utils::serde_helpers::power_as_kilowatts"),
 //! ),
 //! ```
 

@@ -259,7 +259,7 @@ fn test_deserialize_multiple_si_quantities() {
 }
 
 #[test]
-fn test_serialize_uses_primary_units() {
+fn test_serialize_uses_prescribed_units() {
     let json = r#"{
         "mass_kilograms": 2000.0,
         "power_watts": 150.0,

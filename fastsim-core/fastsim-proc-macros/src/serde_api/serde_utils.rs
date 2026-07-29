@@ -232,7 +232,7 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
         //       extract_units!(uom::si::power::kilowatt),
         //       Some("crate::utils::serde_helpers::power_as_kilowatts"),
         //   ),
-        // and uncomment the matching line in crate::utils::serde_helpers.
+        // and uncomment the matching line in fastsim_core::utils::serde_helpers.
         let (unit_impls, serialize_with): (Vec<(TokenStream2, String)>, Option<&str>) =
             match quantity.as_str() {
                 "Acceleration" => (
@@ -258,7 +258,10 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
                     None,
                 ),
                 "Power" => (extract_units!(uom::si::power::watt), None),
-                // "Power" => (extract_units!(uom::si::power::kilowatt), Some("crate::utils::serde_helpers::power_as_kilowatts")),
+                // "Power" => (
+                //     extract_units!(uom::si::power::kilowatt),
+                //     Some("fastsim_core::utils::serde_helpers::power_as_kilowatts"),
+                // ),
                 "SpecificPower" => (
                     extract_units!(uom::si::specific_power::watt_per_kilogram),
                     None,
