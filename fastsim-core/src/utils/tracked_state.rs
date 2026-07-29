@@ -69,6 +69,12 @@ where
         Self(value, Default::default())
     }
 
+    /// Returns a reference to the inner value without freshness checking.
+    /// Intended for use with `#[serde(serialize_with)]` helpers.
+    pub fn inner(&self) -> &T {
+        &self.0
+    }
+
     fn is_fresh(&self) -> bool {
         self.1.is_fresh()
     }

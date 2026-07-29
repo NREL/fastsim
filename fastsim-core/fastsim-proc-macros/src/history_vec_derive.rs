@@ -21,7 +21,19 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
         .map(|f| {
             let ident = f.ident.as_ref().unwrap();
             let ty = &f.ty;
-            let attrs = &f.attrs.iter().collect::<Vec<&syn::Attribute>>();
+            // Copy serde attributes but drop `serialize_with` — the Vec wrapper needs a
+            // different function variant and history data serializes in base units anyway.
+            let attrs = f
+                .attrs
+                .iter()
+                .filter(|a| {
+                    if !a.path().is_ident("serde") {
+                        return true;
+                    }
+                    // Drop the whole #[serde(...)] if it contains serialize_with
+                    !a.to_token_stream().to_string().contains("serialize_with")
+                })
+                .collect::<Vec<&syn::Attribute>>();
             quote! {
                 #(#attrs)*
                 pub #ident: Vec<#ty>,

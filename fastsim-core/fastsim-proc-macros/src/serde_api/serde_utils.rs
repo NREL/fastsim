@@ -29,25 +29,70 @@ macro_rules! extract_units {
     }};
 }
 
-/// Generates pyo3 getter and setter methods for si fields and vector elements
+/// Generates serde attributes for si fields
 ///
 /// - field: struct field name as ident
 /// - unit_name: plural name of units being used (generate using extract_units)
-fn serde_attrs_for_si_field(field: &mut syn::Field, unit_name: &str) {
+fn serde_attrs_for_si_field(field: &mut syn::Field, unit_name: &str, serialize_with: Option<&str>) {
     let ident = field.ident.clone().unwrap();
     match unit_name {
         // Empty unit name or "ratio" → canonical is the bare field name; no rename needed.
         // Ratio quantities keep backward compatibility (e.g. `grade` not `grade_ratio`).
+        // TODO: remove ratio exception once all efficiencies use an efficiency enum
         "" | "ratio" => {}
         _ => {
             if !field_has_serde_rename(field) {
                 // add the rename attribute for any fields that don't already have it
                 let field_name_lit_str = format!("{ident}_{unit_name}");
-                field.attrs.push(syn::parse_quote! {
-                    #[serde(rename = #field_name_lit_str)]
-                });
+                if let Some(sw_base) = serialize_with {
+                    // The serialize_with path names the plain-field helper (e.g.
+                    // "crate::utils::serde_helpers::power_as_kilowatts").
+                    // Adjust it for wrapper types by inserting the appropriate prefix
+                    // before the function name: vec_ / opt_ / tracked_.
+                    let sw_path = adjust_serialize_with_for_wrapper(sw_base, &field.ty);
+                    field.attrs.push(syn::parse_quote! {
+                        #[serde(rename = #field_name_lit_str, serialize_with = #sw_path)]
+                    });
+                } else {
+                    field.attrs.push(syn::parse_quote! {
+                        #[serde(rename = #field_name_lit_str)]
+                    });
+                }
             }
         }
+    }
+}
+
+/// Given a base serialize_with path (for plain `T`) and a field type, insert the
+/// wrapper-appropriate prefix before the function name:
+///   Vec<TrackedState<T>>  → vec_tracked_fn
+///   Vec<T>                → vec_fn
+///   Option<T>             → opt_fn
+///   TrackedState<T>       → tracked_fn
+///   T                     → fn (unchanged)
+fn adjust_serialize_with_for_wrapper(base_path: &str, field_ty: &syn::Type) -> String {
+    let prefix = match detect_outer_wrapper(field_ty) {
+        WrapperType::Vec => {
+            // Check if the inner type is TrackedState (Vec<TrackedState<T>>)
+            if let Some(inner) = extract_type_from_vec(field_ty) {
+                if detect_outer_wrapper(inner) == WrapperType::TrackedState {
+                    "vec_tracked_"
+                } else {
+                    "vec_"
+                }
+            } else {
+                "vec_"
+            }
+        }
+        WrapperType::Option => "opt_",
+        WrapperType::TrackedState => "tracked_",
+        WrapperType::None => return base_path.to_string(),
+    };
+    // Insert prefix before the last path segment: "a::b::fn_name" → "a::b::prefix_fn_name"
+    if let Some(sep) = base_path.rfind("::") {
+        format!("{}::{}{}", &base_path[..sep], prefix, &base_path[sep + 2..])
+    } else {
+        format!("{}{}", prefix, base_path)
     }
 }
 
@@ -176,75 +221,100 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
 
     let inner_path = extract_type_path(inner_type)?;
     if let Some(quantity) = extract_si_quantity(inner_path) {
-        // Make sure to use absolute paths here to avoid issues with si.rs in the main fastsim-core!
-        let unit_impls = match quantity.as_str() {
-            "Acceleration" => extract_units!(uom::si::acceleration::meter_per_second_squared),
-            "Angle" => extract_units!(uom::si::angle::radian),
-            "Area" => extract_units!(uom::si::area::square_meter),
-            "SpecificEnergy" => extract_units!(
-                uom::si::available_energy::joule_per_kilogram,
-                uom::si::available_energy::kilojoule_per_kilogram,
-                uom::si::available_energy::megajoule_per_kilogram
-            ),
-            "Energy" => extract_units!(uom::si::energy::joule),
-            "Force" => extract_units!(uom::si::force::newton),
-            "InverseVelocity" => extract_units!(uom::si::inverse_velocity::second_per_meter),
-            "Length" => extract_units!(uom::si::length::meter, uom::si::length::mile),
-            "Mass" => extract_units!(uom::si::mass::kilogram),
-            "MomentOfInertia" => extract_units!(uom::si::moment_of_inertia::kilogram_square_meter),
-            "Power" => extract_units!(uom::si::power::watt),
-            "SpecificPower" => extract_units!(uom::si::specific_power::watt_per_kilogram),
-            "PowerRate" => extract_units!(uom::si::power_rate::watt_per_second),
-            "Pressure" => extract_units!(uom::si::pressure::kilopascal, uom::si::pressure::bar),
-            "Ratio" => extract_units!(uom::si::ratio::ratio),
-            "Time" => extract_units!(uom::si::time::second, uom::si::time::hour),
-            "HeatTransferCoeff" => extract_units!(
-                uom::si::heat_transfer::watt_per_square_meter_kelvin,
-                uom::si::heat_transfer::watt_per_square_meter_degree_celsius
-            ),
-            "Curvature" => extract_units!(
-                uom::si::curvature::radian_per_meter,
-                uom::si::curvature::degree_per_meter
-            ),
-            "HeatCapacity" => {
-                extract_units!(
-                    uom::si::heat_capacity::joule_per_kelvin,
-                    uom::si::heat_capacity::joule_per_degree_celsius
-                )
-            }
-            "TemperatureInterval" => extract_units!(uom::si::temperature_interval::kelvin),
-            "Temperature" => {
-                extract_units!(uom::si::thermodynamic_temperature::kelvin)
-            }
-            "ThermalConductance" => {
-                extract_units!(uom::si::thermal_conductance::watt_per_kelvin)
-            }
-            "ThermalConductivity" => {
-                extract_units!(
-                    uom::si::thermal_conductivity::watt_per_meter_kelvin,
-                    uom::si::thermal_conductivity::watt_per_meter_degree_celsius
-                )
-            }
-            "DynamicViscosity" => {
-                extract_units!(uom::si::dynamic_viscosity::pascal_second)
-            }
-            "Velocity" => extract_units!(
-                uom::si::velocity::meter_per_second,
-                uom::si::velocity::mile_per_hour
-            ),
-            "Volume" => extract_units!(uom::si::volume::cubic_meter, uom::si::volume::liter),
-            "EnergyDensity" => vec![(
-                quote! {EnergyDensity},
-                String::from("joule_per_cubic_meter"),
-            )],
-            "MassDensity" => extract_units!(uom::si::mass_density::kilogram_per_cubic_meter),
-            _ => abort!(
-                inner_path.span(),
-                "Unknown si quantity! Make sure it's implemented in `impl_getters_and_setters`"
-            ),
-        };
+        // Each arm returns (unit_impls, serialize_with).
+        // unit_impls:    sets the rename key added to the struct field for **serialization**.
+        // serialize_with: optional path to a fn in crate::utils::serde_helpers that converts
+        //                 the UOM base-unit value to the target unit before writing.
+        //                 Must match the unit in unit_impls. Leave None to serialize in base units.
+        //
+        // Example — to serialize Power in kilowatts instead of watts, change the "Power" arm to:
+        //   "Power" => (
+        //       extract_units!(uom::si::power::kilowatt),
+        //       Some("crate::utils::serde_helpers::power_as_kilowatts"),
+        //   ),
+        // and uncomment the matching line in crate::utils::serde_helpers.
+        let (unit_impls, serialize_with): (Vec<(TokenStream2, String)>, Option<&str>) =
+            match quantity.as_str() {
+                "Acceleration" => (
+                    extract_units!(uom::si::acceleration::meter_per_second_squared),
+                    None,
+                ),
+                "Angle" => (extract_units!(uom::si::angle::radian), None),
+                "Area" => (extract_units!(uom::si::area::square_meter), None),
+                "SpecificEnergy" => (
+                    extract_units!(uom::si::available_energy::joule_per_kilogram),
+                    None,
+                ),
+                "Energy" => (extract_units!(uom::si::energy::joule), None),
+                "Force" => (extract_units!(uom::si::force::newton), None),
+                "InverseVelocity" => (
+                    extract_units!(uom::si::inverse_velocity::second_per_meter),
+                    None,
+                ),
+                "Length" => (extract_units!(uom::si::length::meter), None),
+                "Mass" => (extract_units!(uom::si::mass::kilogram), None),
+                "MomentOfInertia" => (
+                    extract_units!(uom::si::moment_of_inertia::kilogram_square_meter),
+                    None,
+                ),
+                "Power" => (extract_units!(uom::si::power::watt), None),
+                // "Power" => (extract_units!(uom::si::power::kilowatt), Some("crate::utils::serde_helpers::power_as_kilowatts")),
+                "SpecificPower" => (
+                    extract_units!(uom::si::specific_power::watt_per_kilogram),
+                    None,
+                ),
+                "PowerRate" => (extract_units!(uom::si::power_rate::watt_per_second), None),
+                "Pressure" => (extract_units!(uom::si::pressure::kilopascal), None),
+                "Ratio" => (extract_units!(uom::si::ratio::ratio), None),
+                "Time" => (extract_units!(uom::si::time::second), None),
+                "HeatTransferCoeff" => (
+                    extract_units!(uom::si::heat_transfer::watt_per_square_meter_kelvin),
+                    None,
+                ),
+                "Curvature" => (extract_units!(uom::si::curvature::radian_per_meter), None),
+                "HeatCapacity" => (
+                    extract_units!(uom::si::heat_capacity::joule_per_kelvin),
+                    None,
+                ),
+                "TemperatureInterval" => {
+                    (extract_units!(uom::si::temperature_interval::kelvin), None)
+                }
+                "Temperature" => (
+                    extract_units!(uom::si::thermodynamic_temperature::kelvin),
+                    None,
+                ),
+                "ThermalConductance" => (
+                    extract_units!(uom::si::thermal_conductance::watt_per_kelvin),
+                    None,
+                ),
+                "ThermalConductivity" => (
+                    extract_units!(uom::si::thermal_conductivity::watt_per_meter_kelvin),
+                    None,
+                ),
+                "DynamicViscosity" => (
+                    extract_units!(uom::si::dynamic_viscosity::pascal_second),
+                    None,
+                ),
+                "Velocity" => (extract_units!(uom::si::velocity::meter_per_second), None),
+                "Volume" => (extract_units!(uom::si::volume::cubic_meter), None),
+                "EnergyDensity" => (
+                    vec![(
+                        quote! {EnergyDensity},
+                        String::from("joule_per_cubic_meter"),
+                    )],
+                    None,
+                ),
+                "MassDensity" => (
+                    extract_units!(uom::si::mass_density::kilogram_per_cubic_meter),
+                    None,
+                ),
+                _ => abort!(
+                    inner_path.span(),
+                    "Unknown si quantity! Make sure it's implemented in `impl_getters_and_setters`"
+                ),
+            };
         for (_, unit_name) in &unit_impls {
-            serde_attrs_for_si_field(field, unit_name);
+            serde_attrs_for_si_field(field, unit_name, serialize_with);
         }
     }
     Some(())
@@ -292,10 +362,16 @@ pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
     })
 }
 
+/// NOTE: this is where each available unit is defined for each quantity.
+/// To support a new unit in **deserialization**, add it to the appropriate quantity arm here.
 fn get_units_for_quantity(quantity: &str) -> Vec<(TokenStream2, String)> {
     match quantity {
         "Mass" => extract_units!(uom::si::mass::kilogram),
-        "Power" => extract_units!(uom::si::power::watt, uom::si::power::kilowatt),
+        "Power" => extract_units!(
+            uom::si::power::watt,
+            uom::si::power::kilowatt,
+            uom::si::power::horsepower
+        ),
         "Time" => extract_units!(uom::si::time::second, uom::si::time::hour),
         "Temperature" => extract_units!(
             uom::si::thermodynamic_temperature::kelvin,

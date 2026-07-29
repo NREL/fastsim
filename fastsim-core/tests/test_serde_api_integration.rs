@@ -59,7 +59,8 @@ struct TestDevice {
     /// Tracked efficiency state, wrapped in TrackedState - accepts ratio or percent
     tracked_efficiency: TrackedState<si::Ratio>,
 
-    /// Renamed from "old_power" - accepts old_power, old_power_watts, old_power_kilowatts
+    /// Renamed from "old_power" - accepts old_power, old_power_watts, old_power_kilowatts, old_power_horsepower,
+    /// as well as renamed_power, renamed_power_watts, renamed_power_kilowatts, renamed_power_horsepower
     #[serde(alias = "old_power")]
     renamed_power: si::Power,
 }
@@ -598,6 +599,15 @@ fn test_alias_prefix_expands_to_all_unit_variants() {
     let d: TestDevice =
         serde_json::from_str(&json).expect("old_power_kilowatts should deserialize");
     assert!((d.renamed_power.get::<si::watt>() - 500.0).abs() < 1e-9); // 0.5 kW = 500 W
+
+    // Old name + _horsepower suffix — converts correctly
+    let json = base_json.replace(
+        r#""renamed_power_watts": 0.0"#,
+        r#""old_power_horsepower": 1.0"#,
+    );
+    let d: TestDevice =
+        serde_json::from_str(&json).expect("old_power_horsepower should deserialize");
+    assert!((d.renamed_power.get::<si::watt>() - 745.7).abs() < 0.1); // 1 hp ≈ 745.7 W
 
     // New canonical name still works
     let json = base_json.replace(
