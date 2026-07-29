@@ -339,7 +339,11 @@ pub fn generate_helper_struct(
                     .find(|f| f.field_ident.to_string() == field_ident_str)
                 {
                     let bare_name = field_ident.to_string();
-                    // Collect any existing serde aliases from the original field to forward
+                    // Collect any existing serde aliases from the original field to forward.
+                    // NOTE: all aliases are routed to the PRIMARY (base) unit helper field.
+                    // This means aliases must represent values already in the base unit.
+                    // An alias like `old_name_kilowatts` would be silently deserialized as
+                    // base-unit (e.g. watts), not kilowatts — do not add non-base-unit aliases.
                     let extra_aliases = extract_serde_aliases(field);
                     for (idx, (_unit_type, unit_name)) in si_field.units.iter().enumerate() {
                         let helper_field_name = syn::Ident::new(
