@@ -1,5 +1,4 @@
 use crate::imports::*;
-use std::collections::HashSet;
 
 /// Converts multiple uom unit values to a vector of token stream and the plural units name
 ///
@@ -37,7 +36,6 @@ fn serde_attrs_for_si_field(field: &mut syn::Field, unit_name: &str, serialize_w
     let ident = field.ident.clone().unwrap();
     match unit_name {
         // Empty unit name or "ratio" → canonical is the bare field name; no rename needed.
-        // Ratio quantities keep backward compatibility (e.g. `grade` not `grade_ratio`).
         // TODO: remove ratio exception once all efficiencies use an efficiency enum
         "" | "ratio" => {}
         _ => {
@@ -230,7 +228,7 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
         // Example — to serialize Power in kilowatts instead of watts, change the "Power" arm to:
         //   "Power" => (
         //       extract_units!(uom::si::power::kilowatt),
-        //       Some("crate::utils::serde_helpers::power_as_kilowatts"),
+        //       Some("fastsim_core::utils::serde_helpers::power_as_kilowatts"),
         //   ),
         // and uncomment the matching line in fastsim_core::utils::serde_helpers.
         let (unit_impls, serialize_with): (Vec<(TokenStream2, String)>, Option<&str>) =
@@ -334,8 +332,7 @@ pub struct SIFieldData {
 pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
     let field_ident = field.ident.as_ref()?.clone();
 
-    // Fields with #[serde(skip)] must not enter the SI path: they need Default::default()
-    // in the From impl, which is handled by the non-SI skip branch.
+    // Fields with #[serde(skip)] are excluded from the SI helper path.
     if has_serde_skip(field) {
         return None;
     }
@@ -367,6 +364,9 @@ pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
 
 /// NOTE: this is where each available unit is defined for each quantity.
 /// To support a new unit in **deserialization**, add it to the appropriate quantity arm here.
+/// The first entry in each arm is the **primary (canonical) unit** used for round-trip:
+/// it is the one selected when neither a unit-suffixed key nor a bare key is present (for structs
+/// with `#[serde(default)]`), and its suffix is the only one guaranteed to appear in serialized output.
 fn get_units_for_quantity(quantity: &str) -> Vec<(TokenStream2, String)> {
     match quantity {
         "Mass" => extract_units!(uom::si::mass::kilogram),
@@ -551,7 +551,12 @@ pub fn generate_helper_struct(
     }
 }
 
-pub fn generate_from_impl(
+/// Generate `impl TryFrom<Helper> for Struct` that converts the helper's optional
+/// unit-variant fields into the original struct's SI field values.
+///
+/// Returns `Err(String)` (surfaced by serde as a proper deserialization error with
+/// field context) when a required SI field has no populated unit variant in the input.
+pub fn generate_try_from_impl(
     original_name: &syn::Ident,
     helper_name: &syn::Ident,
     struct_ast: &syn::ItemStruct,
@@ -651,7 +656,7 @@ pub fn generate_from_impl(
                             } else {
                                 quote! {
                                     (#conversion).map(|val| #ts_path::new(val))
-                                        .expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                                        .ok_or_else(|| format!("Missing field {} in any unit variant", stringify!(#field_ident)))?
                                 }
                             }
                         }
@@ -672,7 +677,7 @@ pub fn generate_from_impl(
                                 }
                             } else {
                                 quote! {
-                                    (#conversion).expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                                    (#conversion).ok_or_else(|| format!("Missing field {} in any unit variant", stringify!(#field_ident)))?
                                 }
                             }
                         }
@@ -698,11 +703,13 @@ pub fn generate_from_impl(
     }
 
     quote! {
-        impl From<#helper_name> for #original_name {
-            fn from(helper: #helper_name) -> Self {
-                Self {
+        impl ::std::convert::TryFrom<#helper_name> for #original_name {
+            type Error = ::std::string::String;
+
+            fn try_from(helper: #helper_name) -> ::std::result::Result<Self, ::std::string::String> {
+                ::std::result::Result::Ok(Self {
                     #(#field_conversions),*
-                }
+                })
             }
         }
     }

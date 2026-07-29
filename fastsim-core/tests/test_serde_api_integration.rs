@@ -1,23 +1,13 @@
-//! Integration tests for #[serde_api] macro demonstrating multi-unit deserialization
+//! Integration tests for #[serde_api] macro demonstrating multi-unit deserialization.
 //!
-//! This test suite validates the wrapper-based approach to multi-unit JSON deserialization.
-//!
-//! The macro applies a wrapper struct pattern to enable multi-unit JSON support for SI quantities:
-//! - Each SI field generates deserializer options for all supported unit variants
-//! - JSON can use ANY unit variant (primary or alternate) and values auto-convert to SI base units
-//! - Serialization always outputs primary units for consistency
-//!
-//! **Note on Optional/Vector Fields:**
-//! Optional<SI> and Vec<SI> field support has been implemented and these tests validate it.
+//! Each SI field generates a helper struct with `Option<f64>` fields for each supported unit
+//! variant. Any unit variant is accepted on input; values are converted to the SI base unit
+//! internally. The serialized unit per quantity is configured in `serde_utils.rs`.
 
 use fastsim_core::si;
 use fastsim_core::utils::tracked_state::TrackedState;
 use fastsim_proc_macros::serde_api;
 use serde::{Deserialize, Serialize};
-
-// ============================================================================
-// TEST STRUCT: Pure SI Quantities with Optional and Vec fields
-// ============================================================================
 
 /// Struct for testing multi-unit deserialization with required, optional, and vector SI fields
 #[serde_api]
@@ -64,10 +54,6 @@ struct TestDevice {
     #[serde(alias = "old_power")]
     renamed_power: si::Power,
 }
-
-// ============================================================================
-// TESTS: Pure SI Struct with Wrapper (8 tests - all passing)
-// ============================================================================
 
 #[test]
 fn test_deserialize_all_primary_units() {
@@ -132,21 +118,15 @@ fn test_deserialize_fails_with_missing_required_fields() {
         "renamed_power_watts": 50.0
     }"#;
 
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let _: TestDevice = serde_json::from_str(json).unwrap();
-    }));
-
+    let result: Result<TestDevice, _> = serde_json::from_str(json);
     assert!(
         result.is_err(),
-        "Should panic when required temperature field is missing"
+        "Should return Err when required temperature field is missing"
     );
 }
 
 #[test]
 fn test_deserialize_with_alternate_units() {
-    // **KEY TEST**: Multi-unit JSON deserialization works!
-    // JSON uses alternate unit field names and values automatically convert to SI base units
-    // Also demonstrates Option and Vec fields working with alternate units
     let json = r#"{
         "mass_kilograms": 2000.0,
         "power_kilowatts": 0.15,
@@ -282,8 +262,6 @@ fn test_serialize_uses_prescribed_units() {
     let value: serde_json::Value =
         serde_json::from_str(&serialized).expect("Failed to parse serialized JSON");
 
-    // Serialization always uses primary units (kg, W, m/s, s, m², kelvin, J, ratio, [kelvin])
-    // Ratio fields serialize as bare name (no _ratio suffix) for backward compatibility
     assert!(value.get("mass_kilograms").is_some());
     assert!(value.get("power_watts").is_some());
     assert!(value.get("speed_meters_per_second").is_some());
@@ -322,7 +300,6 @@ fn test_round_trip_conversion_preserves_values() {
         serde_json::from_str(&serialized).expect("Failed to parse serialized JSON");
 
     // Values are preserved through round-trip (in primary units)
-    // Ratio fields round-trip using bare name
     assert_eq!(value["mass_kilograms"], 2000.0);
     assert_eq!(value["power_watts"], 150.0);
     assert_eq!(value["speed_meters_per_second"], 30.0);
@@ -363,7 +340,7 @@ fn test_deserialize_with_different_values() {
 }
 
 // ============================================================================
-// TESTS: TrackedState fields (using TestDevice)
+// TESTS: TrackedState fields
 // ============================================================================
 
 #[test]
@@ -491,8 +468,7 @@ fn test_tracked_state_deserialize_bare_name() {
 fn test_cycle_csv_loads_bare_grade_column() {
     use fastsim_core::drive_cycle::CycleElement;
 
-    // CSV with bare "grade" column (no unit suffix) - the real-world format used by
-    // fastsim CSV files like udds.csv and hwfet.csv
+    // CSV with bare "grade" column (no unit suffix)
     let csv = "time_seconds,speed_meters_per_second,grade\n\
                0,0,0\n\
                1,2.5,0.01\n\
@@ -517,7 +493,7 @@ fn test_cycle_csv_loads_bare_grade_column() {
 fn test_cycle_csv_loads_grade_ratio_column() {
     use fastsim_core::drive_cycle::CycleElement;
 
-    // CSV with explicit "grade_ratio" column (new unit-suffixed format)
+    // CSV with explicit "grade_ratio" column
     let csv = "time_seconds,speed_meters_per_second,grade_ratio\n\
                0,0,0\n\
                1,10.0,0.02\n";
@@ -538,8 +514,6 @@ fn test_cycle_csv_legacy_aliases() {
     use fastsim_core::drive_cycle::CycleElement;
 
     // CSV with legacy fastsim2 column names: cycSecs, cycMps, cycGrade
-    // These were serde aliases on the original fields and must still be forwarded
-    // through the helper struct so old CSV files keep working.
     let csv = "cycSecs,cycMps,cycGrade\n\
                0,0,0\n\
                1,5.0,0.05\n\

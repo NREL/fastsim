@@ -34,23 +34,27 @@ pub(crate) fn serde_api(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     }
 
-    // Add serde(from = "Helper") if we have SI fields
+    // Add serde(try_from = "Helper") if we have SI fields.
     if !si_fields.is_empty() {
         let helper_name_str = helper_name.to_string();
-        let from_attr: syn::Attribute = syn::parse_quote! {
-            #[serde(from = #helper_name_str)]
+        let try_from_attr: syn::Attribute = syn::parse_quote! {
+            #[serde(try_from = #helper_name_str)]
         };
-        struct_ast.attrs.push(from_attr);
+        struct_ast.attrs.push(try_from_attr);
     }
 
     output.extend(struct_ast.to_token_stream());
 
-    // Generate helper struct and From impl
+    // Generate helper struct and TryFrom impl
     if !si_fields.is_empty() {
         let helper_struct =
             serde_utils::generate_helper_struct(&helper_name, &struct_ast, &si_fields);
-        let from_impl =
-            serde_utils::generate_from_impl(&struct_name, &helper_name, &struct_ast, &si_fields);
+        let from_impl = serde_utils::generate_try_from_impl(
+            &struct_name,
+            &helper_name,
+            &struct_ast,
+            &si_fields,
+        );
         output.extend(helper_struct);
         output.extend(from_impl);
     }
