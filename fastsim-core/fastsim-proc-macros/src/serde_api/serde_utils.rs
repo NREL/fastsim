@@ -422,18 +422,23 @@ pub fn generate_helper_struct(
         }
     }
 
-    // Propagate deny_unknown_fields from the original struct to the helper so that
-    // the same strictness applies during deserialization.
+    // Propagate struct-level serde attributes to the helper.
     let deny_unknown = if has_serde_deny_unknown_fields(struct_ast) {
         quote! { #[serde(deny_unknown_fields)] }
     } else {
         quote! {}
     };
+    let (struct_default_attr, default_derive) = if has_serde_struct_default(struct_ast) {
+        (quote! { #[serde(default)] }, quote! { Default, })
+    } else {
+        (quote! {}, quote! {})
+    };
 
     quote! {
-        #[derive(::serde::Deserialize)]
+        #[derive(::serde::Deserialize, #default_derive)]
         #[serde(crate = "::serde")]
         #deny_unknown
+        #struct_default_attr
         struct #helper_name {
             #(#helper_fields),*
         }
@@ -532,9 +537,16 @@ pub fn generate_from_impl(
                             let ts_path = outer_type_path_tokens(field_ty).unwrap_or_else(
                                 || quote! { crate::utils::tracked_state::TrackedState },
                             );
-                            quote! {
-                                (#conversion).map(|val| #ts_path::new(val))
-                                    .expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                            if has_serde_struct_default(struct_ast) {
+                                quote! {
+                                    (#conversion).map(|val| #ts_path::new(val))
+                                        .unwrap_or_default()
+                                }
+                            } else {
+                                quote! {
+                                    (#conversion).map(|val| #ts_path::new(val))
+                                        .expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                                }
                             }
                         }
                         WrapperType::Option => {
@@ -548,8 +560,14 @@ pub fn generate_from_impl(
                             }
                         }
                         WrapperType::None => {
-                            quote! {
-                                (#conversion).expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                            if has_serde_struct_default(struct_ast) {
+                                quote! {
+                                    (#conversion).unwrap_or_default()
+                                }
+                            } else {
+                                quote! {
+                                    (#conversion).expect(&format!("Missing field {} in any unit variant", stringify!(#field_ident)))
+                                }
                             }
                         }
                     };
@@ -640,13 +658,22 @@ fn extract_serde_aliases(field: &syn::Field) -> Vec<String> {
 
 /// Returns true if the struct has `#[serde(deny_unknown_fields)]`.
 fn has_serde_deny_unknown_fields(struct_ast: &syn::ItemStruct) -> bool {
+    has_serde_struct_flag(struct_ast, "deny_unknown_fields")
+}
+
+/// Returns true if the struct has `#[serde(default)]` at the struct level.
+fn has_serde_struct_default(struct_ast: &syn::ItemStruct) -> bool {
+    has_serde_struct_flag(struct_ast, "default")
+}
+
+fn has_serde_struct_flag(struct_ast: &syn::ItemStruct, flag: &str) -> bool {
     struct_ast.attrs.iter().any(|attr| {
         if !attr.path().is_ident("serde") {
             return false;
         }
         let mut found = false;
         let _ = attr.parse_nested_meta(|meta| {
-            if meta.path.is_ident("deny_unknown_fields") {
+            if meta.path.is_ident(flag) {
                 found = true;
             }
             if meta.input.peek(syn::Token![=]) {
