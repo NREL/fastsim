@@ -219,102 +219,16 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
 
     let inner_path = extract_type_path(inner_type)?;
     if let Some(quantity) = extract_si_quantity(inner_path) {
-        // Each arm returns (unit_impls, serialize_with).
-        // unit_impls:    sets the rename key added to the struct field for **serialization**.
-        // serialize_with: optional path to a fn in crate::utils::serde_helpers that converts
-        //                 the UOM base-unit value to the target unit before writing.
-        //                 Must match the unit in unit_impls. Leave None to serialize in base units.
-        //
-        // Example — to serialize Power in kilowatts instead of watts, change the "Power" arm to:
-        //   "Power" => (
-        //       extract_units!(uom::si::power::kilowatt),
-        //       Some("fastsim_core::utils::serde_helpers::power_as_kilowatts"),
-        //   ),
-        // and uncomment the matching line in fastsim_core::utils::serde_helpers.
-        let (unit_impls, serialize_with): (Vec<(TokenStream2, String)>, Option<&str>) =
-            match quantity.as_str() {
-                "Acceleration" => (
-                    extract_units!(uom::si::acceleration::meter_per_second_squared),
-                    None,
-                ),
-                "Angle" => (extract_units!(uom::si::angle::radian), None),
-                "Area" => (extract_units!(uom::si::area::square_meter), None),
-                "SpecificEnergy" => (
-                    extract_units!(uom::si::available_energy::joule_per_kilogram),
-                    None,
-                ),
-                "Energy" => (extract_units!(uom::si::energy::joule), None),
-                "Force" => (extract_units!(uom::si::force::newton), None),
-                "InverseVelocity" => (
-                    extract_units!(uom::si::inverse_velocity::second_per_meter),
-                    None,
-                ),
-                "Length" => (extract_units!(uom::si::length::meter), None),
-                "Mass" => (extract_units!(uom::si::mass::kilogram), None),
-                "MomentOfInertia" => (
-                    extract_units!(uom::si::moment_of_inertia::kilogram_square_meter),
-                    None,
-                ),
-                "Power" => (extract_units!(uom::si::power::watt), None),
-                // "Power" => (
-                //     extract_units!(uom::si::power::kilowatt),
-                //     Some("fastsim_core::utils::serde_helpers::power_as_kilowatts"),
-                // ),
-                "SpecificPower" => (
-                    extract_units!(uom::si::specific_power::watt_per_kilogram),
-                    None,
-                ),
-                "PowerRate" => (extract_units!(uom::si::power_rate::watt_per_second), None),
-                "Pressure" => (extract_units!(uom::si::pressure::kilopascal), None),
-                "Ratio" => (extract_units!(uom::si::ratio::ratio), None),
-                "Time" => (extract_units!(uom::si::time::second), None),
-                "HeatTransferCoeff" => (
-                    extract_units!(uom::si::heat_transfer::watt_per_square_meter_kelvin),
-                    None,
-                ),
-                "Curvature" => (extract_units!(uom::si::curvature::radian_per_meter), None),
-                "HeatCapacity" => (
-                    extract_units!(uom::si::heat_capacity::joule_per_kelvin),
-                    None,
-                ),
-                "TemperatureInterval" => {
-                    (extract_units!(uom::si::temperature_interval::kelvin), None)
-                }
-                "Temperature" => (
-                    extract_units!(uom::si::thermodynamic_temperature::kelvin),
-                    None,
-                ),
-                "ThermalConductance" => (
-                    extract_units!(uom::si::thermal_conductance::watt_per_kelvin),
-                    None,
-                ),
-                "ThermalConductivity" => (
-                    extract_units!(uom::si::thermal_conductivity::watt_per_meter_kelvin),
-                    None,
-                ),
-                "DynamicViscosity" => (
-                    extract_units!(uom::si::dynamic_viscosity::pascal_second),
-                    None,
-                ),
-                "Velocity" => (extract_units!(uom::si::velocity::meter_per_second), None),
-                "Volume" => (extract_units!(uom::si::volume::cubic_meter), None),
-                "EnergyDensity" => (
-                    vec![(
-                        quote! {EnergyDensity},
-                        String::from("joule_per_cubic_meter"),
-                    )],
-                    None,
-                ),
-                "MassDensity" => (
-                    extract_units!(uom::si::mass_density::kilogram_per_cubic_meter),
-                    None,
-                ),
-                _ => abort!(
-                    inner_path.span(),
-                    "Unknown si quantity! Make sure it's implemented in `impl_getters_and_setters`"
-                ),
-            };
-        for (_, unit_name) in &unit_impls {
+        // quantity_config is the single source of truth for all SI quantities.
+        // Only the first (canonical) unit is applied here for the serialization rename;
+        // all accepted deserialization units are handled by get_units_for_quantity.
+        let Some((unit_impls, serialize_with)) = quantity_config(quantity.as_str()) else {
+            abort!(
+                inner_path.span(),
+                "Unknown si quantity! Make sure it's implemented in `impl_getters_and_setters`"
+            );
+        };
+        if let Some((_, unit_name)) = unit_impls.first() {
             serde_attrs_for_si_field(field, unit_name, serialize_with);
         }
     }
@@ -363,34 +277,129 @@ pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
 }
 
 /// NOTE: this is where each available unit is defined for each quantity.
-/// To support a new unit in **deserialization**, add it to the appropriate quantity arm here.
-/// The first entry in each arm is the **primary (canonical) unit** used for round-trip:
-/// it is the one selected when neither a unit-suffixed key nor a bare key is present (for structs
-/// with `#[serde(default)]`), and its suffix is the only one guaranteed to appear in serialized output.
-fn get_units_for_quantity(quantity: &str) -> Vec<(TokenStream2, String)> {
+/// Both the serialization rename (first entry = canonical) and the accepted
+/// deserialization alternates are derived from this single function.
+///
+/// To support a new unit in deserialization, add it to the appropriate quantity arm.
+/// To change the serialized unit for a quantity, move its entry to first position
+/// and set serialize_with to a matching helper path.
+fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Option<&'static str>)> {
     match quantity {
-        "Mass" => extract_units!(uom::si::mass::kilogram),
-        "Power" => extract_units!(
-            uom::si::power::watt,
-            uom::si::power::kilowatt,
-            uom::si::power::horsepower
-        ),
-        "Time" => extract_units!(uom::si::time::second, uom::si::time::hour),
-        "Temperature" => extract_units!(
-            uom::si::thermodynamic_temperature::kelvin,
-            uom::si::thermodynamic_temperature::degree_celsius,
-            uom::si::thermodynamic_temperature::degree_fahrenheit
-        ),
-        "Velocity" => extract_units!(
-            uom::si::velocity::meter_per_second,
-            uom::si::velocity::kilometer_per_hour,
-            uom::si::velocity::mile_per_hour
-        ),
-        "Energy" => extract_units!(uom::si::energy::joule, uom::si::energy::kilowatt_hour),
-        "Ratio" => extract_units!(uom::si::ratio::ratio, uom::si::ratio::percent),
-        "Area" => extract_units!(uom::si::area::square_meter),
-        _ => vec![],
+        "Acceleration" => Some((
+            extract_units!(uom::si::acceleration::meter_per_second_squared),
+            None,
+        )),
+        "Angle" => Some((extract_units!(uom::si::angle::radian), None)),
+        "Area" => Some((extract_units!(uom::si::area::square_meter), None)),
+        "Curvature" => Some((extract_units!(uom::si::curvature::radian_per_meter), None)),
+        "DynamicViscosity" => Some((
+            extract_units!(uom::si::dynamic_viscosity::pascal_second),
+            None,
+        )),
+        "Energy" => Some((
+            extract_units!(uom::si::energy::joule, uom::si::energy::kilowatt_hour),
+            None,
+        )),
+        "EnergyDensity" => Some((
+            vec![(
+                quote! {EnergyDensity},
+                String::from("joule_per_cubic_meter"),
+            )],
+            None,
+        )),
+        "Force" => Some((extract_units!(uom::si::force::newton), None)),
+        "HeatCapacity" => Some((
+            extract_units!(uom::si::heat_capacity::joule_per_kelvin),
+            None,
+        )),
+        "HeatTransferCoeff" => Some((
+            extract_units!(uom::si::heat_transfer::watt_per_square_meter_kelvin),
+            None,
+        )),
+        "InverseVelocity" => Some((
+            extract_units!(uom::si::inverse_velocity::second_per_meter),
+            None,
+        )),
+        "Length" => Some((extract_units!(uom::si::length::meter), None)),
+        "Mass" => Some((extract_units!(uom::si::mass::kilogram), None)),
+        "MassDensity" => Some((
+            extract_units!(uom::si::mass_density::kilogram_per_cubic_meter),
+            None,
+        )),
+        "MomentOfInertia" => Some((
+            extract_units!(uom::si::moment_of_inertia::kilogram_square_meter),
+            None,
+        )),
+        // First entry = canonical serialization unit.
+        // To serialize Power in kilowatts, move kilowatt to first and set serialize_with:
+        // "Power" => Some((extract_units!(uom::si::power::kilowatt, uom::si::power::watt, uom::si::power::horsepower), Some("fastsim_core::utils::serde_helpers::power_as_kilowatts"))),
+        "Power" => Some((
+            extract_units!(
+                uom::si::power::watt,
+                uom::si::power::kilowatt,
+                uom::si::power::horsepower
+            ),
+            None,
+        )),
+        "PowerRate" => Some((extract_units!(uom::si::power_rate::watt_per_second), None)),
+        "Pressure" => Some((extract_units!(uom::si::pressure::kilopascal), None)),
+        // Ratio: bare field name is canonical (no _ratio suffix); see serde_attrs_for_si_field.
+        "Ratio" => Some((
+            extract_units!(uom::si::ratio::ratio, uom::si::ratio::percent),
+            None,
+        )),
+        "SpecificEnergy" => Some((
+            extract_units!(uom::si::available_energy::joule_per_kilogram),
+            None,
+        )),
+        "SpecificPower" => Some((
+            extract_units!(uom::si::specific_power::watt_per_kilogram),
+            None,
+        )),
+        "Temperature" => Some((
+            extract_units!(
+                uom::si::thermodynamic_temperature::kelvin,
+                uom::si::thermodynamic_temperature::degree_celsius,
+                uom::si::thermodynamic_temperature::degree_fahrenheit
+            ),
+            None,
+        )),
+        "TemperatureInterval" => {
+            Some((extract_units!(uom::si::temperature_interval::kelvin), None))
+        }
+        "ThermalConductance" => Some((
+            extract_units!(uom::si::thermal_conductance::watt_per_kelvin),
+            None,
+        )),
+        "ThermalConductivity" => Some((
+            extract_units!(uom::si::thermal_conductivity::watt_per_meter_kelvin),
+            None,
+        )),
+        "Time" => Some((
+            extract_units!(uom::si::time::second, uom::si::time::hour),
+            None,
+        )),
+        "Velocity" => Some((
+            extract_units!(
+                uom::si::velocity::meter_per_second,
+                uom::si::velocity::kilometer_per_hour,
+                uom::si::velocity::mile_per_hour
+            ),
+            None,
+        )),
+        "Volume" => Some((extract_units!(uom::si::volume::cubic_meter), None)),
+        _ => None,
     }
+}
+
+/// Returns the accepted deserialization units for `quantity`, primary first.
+/// All quantities in quantity_config get multi-unit helper support.
+/// To add a new quantity, add it to quantity_config and add the corresponding
+/// `uom::si::f64::Foo` arm to `quantity_type` in generate_try_from_impl.
+fn get_units_for_quantity(quantity: &str) -> Vec<(TokenStream2, String)> {
+    quantity_config(quantity)
+        .map(|(units, _)| units)
+        .unwrap_or_default()
 }
 
 pub fn generate_helper_struct(
@@ -583,14 +592,34 @@ pub fn generate_try_from_impl(
                 {
                     let quantity_str = &si_field.quantity;
                     let quantity_type = match quantity_str.as_str() {
-                        "Mass" => quote! { uom::si::f64::Mass },
-                        "Power" => quote! { uom::si::f64::Power },
-                        "Time" => quote! { uom::si::f64::Time },
-                        "Temperature" => quote! { uom::si::f64::ThermodynamicTemperature },
-                        "Velocity" => quote! { uom::si::f64::Velocity },
-                        "Energy" => quote! { uom::si::f64::Energy },
-                        "Ratio" => quote! { uom::si::f64::Ratio },
+                        "Acceleration" => quote! { uom::si::f64::Acceleration },
+                        "Angle" => quote! { uom::si::f64::Angle },
                         "Area" => quote! { uom::si::f64::Area },
+                        "Curvature" => quote! { uom::si::f64::Curvature },
+                        "DynamicViscosity" => quote! { uom::si::f64::DynamicViscosity },
+                        "Energy" => quote! { uom::si::f64::Energy },
+                        "EnergyDensity" => quote! { uom::si::f64::Pressure },
+                        "Force" => quote! { uom::si::f64::Force },
+                        "HeatCapacity" => quote! { uom::si::f64::HeatCapacity },
+                        "HeatTransferCoeff" => quote! { uom::si::f64::HeatTransfer },
+                        "InverseVelocity" => quote! { uom::si::f64::InverseVelocity },
+                        "Length" => quote! { uom::si::f64::Length },
+                        "Mass" => quote! { uom::si::f64::Mass },
+                        "MassDensity" => quote! { uom::si::f64::MassDensity },
+                        "MomentOfInertia" => quote! { uom::si::f64::MomentOfInertia },
+                        "Power" => quote! { uom::si::f64::Power },
+                        "PowerRate" => quote! { uom::si::f64::PowerRate },
+                        "Pressure" => quote! { uom::si::f64::Pressure },
+                        "Ratio" => quote! { uom::si::f64::Ratio },
+                        "SpecificEnergy" => quote! { uom::si::f64::AvailableEnergy },
+                        "SpecificPower" => quote! { uom::si::f64::SpecificPower },
+                        "Temperature" => quote! { uom::si::f64::ThermodynamicTemperature },
+                        "TemperatureInterval" => quote! { uom::si::f64::TemperatureInterval },
+                        "ThermalConductance" => quote! { uom::si::f64::ThermalConductance },
+                        "ThermalConductivity" => quote! { uom::si::f64::ThermalConductivity },
+                        "Time" => quote! { uom::si::f64::Time },
+                        "Velocity" => quote! { uom::si::f64::Velocity },
+                        "Volume" => quote! { uom::si::f64::Volume },
                         _ => continue,
                     };
 
