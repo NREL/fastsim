@@ -592,3 +592,33 @@ fn test_alias_prefix_expands_to_all_unit_variants() {
         serde_json::from_str(&json).expect("renamed_power_kilowatts should deserialize");
     assert!((d.renamed_power.get::<si::watt>() - 150.0).abs() < 1e-9);
 }
+
+#[test]
+fn test_multi_unit_conflict_is_rejected() {
+    // Supplying two unit variants for the same field must fail with a descriptive error.
+    let json = r#"{
+        "mass_kilograms": 1000.0,
+        "power_watts": 100.0,
+        "power_kilowatts": 0.1,
+        "speed_meters_per_second": 10.0,
+        "duration_seconds": 60.0,
+        "area_square_meters": 2.0,
+        "temperature_kelvin": 293.0,
+        "energy_joules": 500.0,
+        "efficiency_ratio": 0.80,
+        "tracked_power_watts": 50.0,
+        "tracked_efficiency_ratio": 0.90,
+        "renamed_power_watts": 200.0
+    }"#;
+
+    let result: Result<TestDevice, _> = serde_json::from_str(json);
+    assert!(
+        result.is_err(),
+        "deserializing with two unit variants for `power` must return an error"
+    );
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("power"),
+        "error message should mention the conflicting field; got: {err_msg}"
+    );
+}

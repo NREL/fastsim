@@ -577,6 +577,7 @@ pub fn generate_try_from_impl(
         .map(|f| f.field_ident.to_string())
         .collect();
 
+    let mut conflict_checks = vec![];
     let mut field_conversions = vec![];
 
     if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &struct_ast.fields {
@@ -659,6 +660,46 @@ pub fn generate_try_from_impl(
                         continue;
                     }
 
+                    // Reject inputs that supply more than one unit variant for the same field.
+                    // The .or_else() chain would otherwise silently use whichever came first.
+                    let conflict_check = if si_field.units.len() > 1 {
+                        let field_name_str = field_ident.to_string();
+                        let unit_names: Vec<String> = si_field
+                            .units
+                            .iter()
+                            .map(|(_, u)| format!("{}_{}", field_ident, u))
+                            .collect();
+                        let unit_names_display = unit_names.join(", ");
+                        let populated_flags: Vec<TokenStream2> = si_field
+                            .units
+                            .iter()
+                            .map(|(_, unit_name)| {
+                                let helper_field_name = syn::Ident::new(
+                                    &format!("__{}_{}", field_ident, unit_name),
+                                    field_ident.span(),
+                                );
+                                quote! { helper.#helper_field_name.is_some() }
+                            })
+                            .collect();
+                        quote! {
+                            {
+                                let __count = [#(#populated_flags),*]
+                                    .iter()
+                                    .filter(|&&b| b)
+                                    .count();
+                                if __count > 1 {
+                                    return ::std::result::Result::Err(::std::format!(
+                                        "field `{}`: multiple unit variants supplied; \
+                                         provide exactly one of: {}",
+                                        #field_name_str, #unit_names_display
+                                    ));
+                                }
+                            }
+                        }
+                    } else {
+                        quote! {}
+                    };
+
                     // Combine all match arms with .or_else()
                     let conversion = if match_arms.len() == 1 {
                         match_arms.into_iter().next().unwrap()
@@ -712,6 +753,9 @@ pub fn generate_try_from_impl(
                         }
                     };
 
+                    if !conflict_check.is_empty() {
+                        conflict_checks.push(conflict_check);
+                    }
                     field_conversions.push(quote! {
                         #field_ident: #wrapped_conversion
                     });
@@ -736,6 +780,7 @@ pub fn generate_try_from_impl(
             type Error = ::std::string::String;
 
             fn try_from(helper: #helper_name) -> ::std::result::Result<Self, ::std::string::String> {
+                #(#conflict_checks)*
                 ::std::result::Result::Ok(Self {
                     #(#field_conversions),*
                 })
