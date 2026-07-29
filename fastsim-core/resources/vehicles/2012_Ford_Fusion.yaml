@@ -5,7 +5,7 @@ year: 2012
 pt_type:
   Conv:
     fs:
-      pwr_out_max_kilowatts: 1000.0
+      pwr_out_max_watts: 1000000.0
       pwr_ramp_lag_seconds: 1.0
       energy_capacity_joules: 2124000000.0
       specific_energy_joules_per_kilogram: ~
@@ -14,8 +14,8 @@ pt_type:
       thrml: None
       mass_kilograms: ~
       specific_pwr_watts_per_kilogram: ~
-      pwr_out_max_kilowatts: 130.5
-      pwr_out_max_init_kilowatts: 21.75
+      pwr_out_max_watts: 130500.0
+      pwr_out_max_init_watts: 21750.0
       pwr_ramp_lag_seconds: 6.0
       eff_interp_from_pwr_out:
         data:
@@ -55,34 +55,34 @@ pt_type:
               - 0.3
         strategy: Linear
         extrapolate: Error
-      pwr_idle_fuel_kilowatts: 0.0
+      pwr_idle_fuel_watts: 0.0
       state:
         i: 0
-        pwr_out_max_kilowatts: 0.0
-        pwr_prop_max_kilowatts: 0.0
+        pwr_out_max_watts: 0.0
+        pwr_prop_max_watts: 0.0
         eff: 0.0
-        pwr_prop_kilowatts: 0.0
+        pwr_prop_watts: 0.0
         energy_prop_joules: 0.0
-        pwr_aux_kilowatts: 0.0
+        pwr_aux_watts: 0.0
         energy_aux_joules: 0.0
-        pwr_fuel_kilowatts: 0.0
+        pwr_fuel_watts: 0.0
         energy_fuel_joules: 0.0
-        pwr_loss_kilowatts: 0.0
+        pwr_loss_watts: 0.0
         energy_loss_joules: 0.0
         fc_on: false
         time_on_seconds: 0.0
       history:
         i: []
-        pwr_out_max_kilowatts: []
-        pwr_prop_max_kilowatts: []
+        pwr_out_max_watts: []
+        pwr_prop_max_watts: []
         eff: []
-        pwr_prop_kilowatts: []
+        pwr_prop_watts: []
         energy_prop_joules: []
-        pwr_aux_kilowatts: []
+        pwr_aux_watts: []
         energy_aux_joules: []
-        pwr_fuel_kilowatts: []
+        pwr_fuel_watts: []
         energy_fuel_joules: []
-        pwr_loss_kilowatts: []
+        pwr_loss_watts: []
         energy_loss_joules: []
         fc_on: []
         time_on_seconds: []
@@ -92,25 +92,25 @@ pt_type:
       eff_interp: 0.875
       state:
         i: 0
-        pwr_out_fwd_max_kilowatts: 0.0
-        pwr_out_regen_max_kilowatts: 0.0
+        pwr_out_fwd_max_watts: 0.0
+        pwr_out_regen_max_watts: 0.0
         eff: 0.0
-        pwr_out_kilowatts: 0.0
+        pwr_out_watts: 0.0
         energy_out_joules: 0.0
-        pwr_in_kilowatts: 0.0
+        pwr_in_watts: 0.0
         energy_in_joules: 0.0
-        pwr_loss_kilowatts: 0.0
+        pwr_loss_watts: 0.0
         energy_loss_joules: 0.0
       history:
         i: []
-        pwr_out_fwd_max_kilowatts: []
-        pwr_out_regen_max_kilowatts: []
+        pwr_out_fwd_max_watts: []
+        pwr_out_regen_max_watts: []
         eff: []
-        pwr_out_kilowatts: []
+        pwr_out_watts: []
         energy_out_joules: []
-        pwr_in_kilowatts: []
+        pwr_in_watts: []
         energy_in_joules: []
-        pwr_loss_kilowatts: []
+        pwr_loss_watts: []
         energy_loss_joules: []
       save_interval: 1
     pt_cntrl: Normal
@@ -146,30 +146,30 @@ chassis:
 cabin: None
 hvac: None
 mass_kilograms: 1644.2724500334996
-pwr_aux_base_kilowatts: 0.7
+pwr_aux_base_watts: 700.0
 save_interval: 1
 state:
   i: 0
   time_seconds: 0.0
-  pwr_prop_fwd_max_kilowatts: 0.0
+  pwr_prop_fwd_max_watts: 0.0
   speed_trac_fwd_max_meters_per_second: 0.0
-  pwr_prop_bwd_max_kilowatts: 0.0
-  pwr_tractive_kilowatts: 0.0
-  pwr_tractive_for_cyc_kilowatts: 0.0
+  pwr_prop_bwd_max_watts: 0.0
+  pwr_tractive_watts: 0.0
+  pwr_tractive_for_cyc_watts: 0.0
   energy_tractive_joules: 0.0
-  pwr_aux_kilowatts: 0.0
+  pwr_aux_watts: 0.0
   energy_aux_joules: 0.0
-  pwr_drag_kilowatts: 0.0
+  pwr_drag_watts: 0.0
   energy_drag_joules: 0.0
-  pwr_accel_kilowatts: 0.0
+  pwr_accel_watts: 0.0
   energy_accel_joules: 0.0
-  pwr_ascent_kilowatts: 0.0
+  pwr_ascent_watts: 0.0
   energy_ascent_joules: 0.0
-  pwr_rr_kilowatts: 0.0
+  pwr_rr_watts: 0.0
   energy_rr_joules: 0.0
-  pwr_whl_inertia_kilowatts: 0.0
+  pwr_whl_inertia_watts: 0.0
   energy_whl_inertia_joules: 0.0
-  pwr_brake_kilowatts: 0.0
+  pwr_brake_watts: 0.0
   energy_brake_joules: 0.0
   cyc_met: true
   cyc_met_overall: true
@@ -182,25 +182,25 @@ state:
 history:
   i: []
   time_seconds: []
-  pwr_prop_fwd_max_kilowatts: []
+  pwr_prop_fwd_max_watts: []
   speed_trac_fwd_max_meters_per_second: []
-  pwr_prop_bwd_max_kilowatts: []
-  pwr_tractive_kilowatts: []
-  pwr_tractive_for_cyc_kilowatts: []
+  pwr_prop_bwd_max_watts: []
+  pwr_tractive_watts: []
+  pwr_tractive_for_cyc_watts: []
   energy_tractive_joules: []
-  pwr_aux_kilowatts: []
+  pwr_aux_watts: []
   energy_aux_joules: []
-  pwr_drag_kilowatts: []
+  pwr_drag_watts: []
   energy_drag_joules: []
-  pwr_accel_kilowatts: []
+  pwr_accel_watts: []
   energy_accel_joules: []
-  pwr_ascent_kilowatts: []
+  pwr_ascent_watts: []
   energy_ascent_joules: []
-  pwr_rr_kilowatts: []
+  pwr_rr_watts: []
   energy_rr_joules: []
-  pwr_whl_inertia_kilowatts: []
+  pwr_whl_inertia_watts: []
   energy_whl_inertia_joules: []
-  pwr_brake_kilowatts: []
+  pwr_brake_watts: []
   energy_brake_joules: []
   cyc_met: []
   cyc_met_overall: []
