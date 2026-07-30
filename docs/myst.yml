@@ -50,6 +50,7 @@ project:
     - url: https://docs.rs/fastsim-core/latest/fastsim_core/
       title: Rust API Documentation
     - file: content/migration-guide.ipynb
+      title: Migration Guide (FASTSim-2 to FASTSim-3)
 site:
   template: book-theme
   options:
