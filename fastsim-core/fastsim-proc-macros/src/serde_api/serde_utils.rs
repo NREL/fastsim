@@ -80,8 +80,11 @@ fn serde_attrs_for_si_field(field: &mut syn::Field, unit_name: &str, serialize_w
 /// Given a base serialize_with path (for plain `T`) and a field type, insert the
 /// wrapper-appropriate prefix before the function name:
 ///   Vec<TrackedState<T>>  → vec_tracked_fn
+///   Vec<TrackedState<Option<T>>> → vec_tracked_opt_fn
 ///   Vec<T>                → vec_fn
+///   Option<TrackedState<T>> → opt_tracked_fn
 ///   Option<T>             → opt_fn
+///   TrackedState<Option<T>> → tracked_opt_fn
 ///   TrackedState<T>       → tracked_fn
 ///   T                     → fn (unchanged)
 fn adjust_serialize_with_for_wrapper(base_path: &str, field_ty: &syn::Type) -> String {
@@ -90,7 +93,15 @@ fn adjust_serialize_with_for_wrapper(base_path: &str, field_ty: &syn::Type) -> S
             // Check if the inner type is TrackedState (Vec<TrackedState<T>>)
             if let Some(inner) = extract_type_from_vec(field_ty) {
                 if detect_outer_wrapper(inner) == WrapperType::TrackedState {
-                    "vec_tracked_"
+                    if let Some(tracked_inner) = extract_type_from_container(inner) {
+                        if detect_outer_wrapper(tracked_inner) == WrapperType::Option {
+                            "vec_tracked_opt_"
+                        } else {
+                            "vec_tracked_"
+                        }
+                    } else {
+                        "vec_tracked_"
+                    }
                 } else {
                     "vec_"
                 }
@@ -98,8 +109,28 @@ fn adjust_serialize_with_for_wrapper(base_path: &str, field_ty: &syn::Type) -> S
                 "vec_"
             }
         }
-        WrapperType::Option => "opt_",
-        WrapperType::TrackedState => "tracked_",
+        WrapperType::Option => {
+            if let Some(inner) = extract_type_from_container(field_ty) {
+                if detect_outer_wrapper(inner) == WrapperType::TrackedState {
+                    "opt_tracked_"
+                } else {
+                    "opt_"
+                }
+            } else {
+                "opt_"
+            }
+        }
+        WrapperType::TrackedState => {
+            if let Some(inner) = extract_type_from_container(field_ty) {
+                if detect_outer_wrapper(inner) == WrapperType::Option {
+                    "tracked_opt_"
+                } else {
+                    "tracked_"
+                }
+            } else {
+                "tracked_"
+            }
+        }
         WrapperType::None => return base_path.to_string(),
     };
     // Insert prefix before the last path segment: "a::b::fn_name" → "a::b::prefix_fn_name"
