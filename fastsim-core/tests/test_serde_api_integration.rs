@@ -66,6 +66,15 @@ struct TestDevice {
     #[serde(alias = "old_power")]
     renamed_power: si::Power,
 
+    /// Battery / fuel specific energy.  Optional so that existing test fixtures that omit it
+    /// continue to work.  Supports four unit variants:
+    ///   - joules_per_kilogram (SI base, primary)
+    ///   - kilojoules_per_kilogram
+    ///   - watt_hours_per_kilogram   (custom uom unit defined in fastsim_core::si)
+    ///   - kilowatt_hours_per_kilogram (custom uom unit defined in fastsim_core::si)
+    #[serde(default)]
+    specific_energy: Option<si::SpecificEnergy>,
+
     /// Current operational state
     #[serde(default)]
     state: TestDeviceState,
@@ -752,6 +761,102 @@ fn test_si_unit_override_changes_serialization_key() {
 
     // speed uses the global default (meters_per_second)
     assert!(value.get("speed_meters_per_second").is_some());
+}
+
+// ============================================================================
+// TESTS: SpecificEnergy — custom wh/kg and kWh/kg units
+// ============================================================================
+
+/// Base JSON for SpecificEnergy tests — all required TestDevice fields, specific_energy omitted.
+const SE_BASE: &str = r#"{
+    "mass_kilograms": 1000.0,
+    "power_watts": 100.0,
+    "speed_meters_per_second": 10.0,
+    "duration_seconds": 60.0,
+    "area_square_meters": 2.0,
+    "temperature_kelvin": 293.15,
+    "energy_joules": 500.0,
+    "efficiency_ratio": 0.85,
+    "tracked_power_watts": 50.0,
+    "tracked_efficiency_ratio": 0.90,
+    "renamed_power_watts": 200.0
+}"#;
+
+#[test]
+fn test_specific_energy_serializes_as_joules_per_kilogram() {
+    // Primary serialization key for SpecificEnergy is joules_per_kilogram.
+    let json = SE_BASE.replace(
+        "}",
+        r#", "specific_energy_watt_hours_per_kilogram": 100.0}"#,
+    );
+    let device: TestDevice = serde_json::from_str(&json).unwrap();
+    let serialized = serde_json::to_string(&device).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+    assert!(
+        value.get("specific_energy_joules_per_kilogram").is_some(),
+        "expected specific_energy_joules_per_kilogram in serialized output; got: {serialized}"
+    );
+    // 100 Wh/kg = 360 000 J/kg
+    let stored = value["specific_energy_joules_per_kilogram"]
+        .as_f64()
+        .unwrap();
+    assert!((stored - 360_000.0).abs() < 1.0);
+}
+
+#[test]
+fn test_specific_energy_multi_unit_round_trip() {
+    // All four unit keys should round-trip to the same internal value.
+    let expected_j_per_kg = 3_600_000.0_f64; // = 1 kWh/kg = 1000 Wh/kg = 3600 kJ/kg
+
+    let cases: &[(&str, f64)] = &[
+        ("specific_energy_joules_per_kilogram", expected_j_per_kg),
+        (
+            "specific_energy_kilojoules_per_kilogram",
+            expected_j_per_kg / 1_000.0,
+        ),
+        (
+            "specific_energy_watt_hours_per_kilogram",
+            expected_j_per_kg / 3_600.0,
+        ),
+        (
+            "specific_energy_kilowatt_hours_per_kilogram",
+            expected_j_per_kg / 3_600_000.0,
+        ),
+    ];
+
+    for (key, value) in cases {
+        let json = SE_BASE.replace("}", &format!(", \"{key}\": {value}}}"));
+        let device: TestDevice = serde_json::from_str(&json)
+            .unwrap_or_else(|e| panic!("failed to deserialize {key}: {e}"));
+        let se = device
+            .specific_energy
+            .unwrap_or_else(|| panic!("{key} gave None"));
+        assert!(
+            (se.get::<si::joule_per_kilogram>() - expected_j_per_kg).abs() < 1.0,
+            "{key}={value} → {:.0} J/kg (expected {expected_j_per_kg:.0})",
+            se.get::<si::joule_per_kilogram>()
+        );
+    }
+    // Also verify the custom unit types themselves read back correctly.
+    let wh_json = SE_BASE.replace(
+        "}",
+        ", \"specific_energy_watt_hours_per_kilogram\": 1000.0}",
+    );
+    let se = serde_json::from_str::<TestDevice>(&wh_json)
+        .unwrap()
+        .specific_energy
+        .unwrap();
+    assert!((se.get::<si::watt_hour_per_kilogram>() - 1000.0).abs() < 1e-6);
+
+    let kwh_json = SE_BASE.replace(
+        "}",
+        ", \"specific_energy_kilowatt_hours_per_kilogram\": 0.5}",
+    );
+    let se = serde_json::from_str::<TestDevice>(&kwh_json)
+        .unwrap()
+        .specific_energy
+        .unwrap();
+    assert!((se.get::<si::kilowatt_hour_per_kilogram>() - 0.5).abs() < 1e-9);
 }
 
 #[test]

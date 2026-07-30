@@ -30,6 +30,21 @@ macro_rules! extract_units {
     }};
 }
 
+/// Like extract_units!, but for custom units defined outside of the uom crate whose types
+/// are not available in the proc-macro binary. Each entry is a `("type::path", "unit_name")`
+/// string-literal tuple; the type path is emitted as tokens into the generated code, and the
+/// unit name is used directly as the serde rename suffix.
+macro_rules! extract_custom_units {
+    ($(($path:literal, $name:literal)),+) => {{
+        let mut unit_impls: Vec<(TokenStream2, String)> = vec![];
+        $(
+            let field_units: TokenStream2 = $path.parse().expect("failed to parse custom unit path");
+            unit_impls.push((field_units, $name.to_string()));
+        )+
+        unit_impls
+    }};
+}
+
 /// Generates serde attributes for si fields
 ///
 /// - field: struct field name as ident
@@ -474,15 +489,27 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
             extract_units!(uom::si::ratio::ratio, uom::si::ratio::percent),
             None,
         )),
-        "SpecificEnergy" => Some((
-            // Note: uom 0.35 has no watt_hour_per_kilogram; kilojoule_per_kilogram is the
-            // closest standard unit (1 kJ/kg ≈ 0.278 Wh/kg).
-            extract_units!(
+        "SpecificEnergy" => {
+            // fastsim_core::si defines watt_hour_per_kilogram and kilowatt_hour_per_kilogram
+            // as custom uom units (not present upstream). extract_custom_units! takes
+            // ("path", "name") string literals because the proc-macro binary cannot link
+            // against downstream crates to call Unit::plural().
+            let mut units = extract_units!(
                 uom::si::available_energy::joule_per_kilogram,
                 uom::si::available_energy::kilojoule_per_kilogram
-            ),
-            None,
-        )),
+            );
+            units.extend(extract_custom_units!(
+                (
+                    "fastsim_core::si::watt_hour_per_kilogram",
+                    "watt_hours_per_kilogram"
+                ),
+                (
+                    "fastsim_core::si::kilowatt_hour_per_kilogram",
+                    "kilowatt_hours_per_kilogram"
+                )
+            ));
+            Some((units, None))
+        }
         "SpecificPower" => Some((
             extract_units!(
                 uom::si::specific_power::watt_per_kilogram,
