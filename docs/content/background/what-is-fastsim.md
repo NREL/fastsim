@@ -1,0 +1,57 @@
+# What is FASTSim?
+
+FASTSim (**Future Automotive Systems Technology Simulator**) is a vehicle simulation tool for evaluating the efficiency and performance of on-road vehicles.
+Developed by the National Laboratory of the Rockies (NLR), it provides fast, accurate estimates of powertrain performance and energy consumption.
+FASTSim models powertrain technologies from conventional fuel-burning vehicles to hybrids and battery electric vehicles, and has been used to simulate light-duty passenger cars, two-wheelers, and a wide variety of medium- and heavy-duty vocational vehicles.
+
+FASTSim is used to answer common technology-assessment questions quickly, with fewer required inputs than high-fidelity physics models. This page describes FASTSim's history and the level of fidelity to real-world performance it aims to achieve.
+
+## History
+
+:::{note}
+This section is a stub. More information on FASTSim's history will be added soon.
+:::
+
+Today, the actively maintained [GitHub page](https://github.com/NatLabRockies/fastsim) houses the latest version of the open-source FASTSim Python package, with core logic written in Rust for maximum simulation speed, modeling flexibility, and runtime stability guarantees.
+Releases are made to the [PyPI](https://pypi.org/project/fastsim) (Python Package Index) for easy distribution and installation via `pip`. The [NLR.gov FASTSim homepage](https://www.nlr.gov/transportation/fastsim) distributes the legacy Excel and Python-only versions and describes FASTSim's extensive publication history.
+
+## Modeling Philosophy
+
+FASTSim sits between very simple screening tools and highly detailed component/control models,
+with flexibility to increase model detail when required.
+The core philosophy is to balance:
+
+- Accuracy
+- Input burden and calibration effort
+- Runtime speed
+- Transparency and reproducibility
+
+FASTSim occupies a “sweet spot” along the continuum of modeling tools based on each tool’s
+trade-off between accuracy and complexity, where “complexity” includes the required number of
+input parameters, availability of required input data, time required to obtain the inputs and perform
+calibration, software requirements, and computational overhead to run (Figure ES-1). FASTSim
+is designed to balance predictive accuracy with model complexity across a wide range of analytical
+tasks. Across its range of capabilities, FASTSim is particularly well suited for quickly and
+conveniently conducting large numbers of simulations over representative real-world driving
+distributions and/or myriad vehicle design variations. In such analyses, the uncertainties and
+efficiency impacts from the broad spectrum of operating conditions or design variants far exceed
+small uncertainties resulting from modeling simplifications within FASTSim.
+
+For more information on FASTSim's modeling philosophy and validation against real-world data,
+refer to the [2021 FASTSim Validation Report](https://docs.nlr.gov/docs/fy22osti/81097.pdf).
+
+The validation report compares FASTSim outputs with laboratory and on-road data across
+all modeled powertrains. It shows that:
+
+- Basic FASTSim models perform well for many high-level efficiency and energy studies.
+- Calibrated FASTSim models can closely match second-by-second and trip-level data in
+  targeted calibration efforts.
+
+## Conclusion
+
+Because FASTSim is open source, computationally lightweight, and built for
+large batches of simulations, it is well suited for analyses that need to be
+shared, replicated, and debated across many stakeholders.
+
+Across NLR's suite of analysis software, FASTSim also serves as a core simulation layer that can
+feed downstream tools for routing, cost of ownership, market adoption analysis, and more. For NLR tools related to FASTSim, see [](related-tools.md).
