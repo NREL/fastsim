@@ -705,6 +705,7 @@ pub enum HEVPowertrainControls {
     RGWDB(Box<RESGreedyWithDynamicBuffers>),
     /// Uses the [ReversibleEnergyStorage] only for supplying auxiliary power.
     /// Also, includes logic for when the [FuelConverter] must be on.
+    #[serde(alias = "StopStart")]
     StartStop(Box<HEVStartStopControl>),
 }
 
