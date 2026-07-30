@@ -199,6 +199,42 @@ fn extract_si_quantity(path: &syn::Path) -> Option<String> {
     Some(path.segments[i + 1].ident.to_string())
 }
 
+/// Extracts the unit name from `#[si_unit(name)]` on a field and removes the attribute.
+///
+/// Supports both ident (`#[si_unit(kilowatts)]`) and string (`#[si_unit("kilowatts")]`) forms.
+/// Returns `None` if the attribute is absent.
+fn extract_and_strip_si_unit(field: &mut syn::Field) -> Option<String> {
+    let mut unit_name = None;
+    field.attrs.retain(|attr| {
+        if !attr.path().is_ident("si_unit") {
+            return true; // keep
+        }
+        if let syn::Meta::List(list) = &attr.meta {
+            if let Ok(ident) = syn::parse2::<syn::Ident>(list.tokens.clone()) {
+                unit_name = Some(ident.to_string());
+            } else if let Ok(lit) = syn::parse2::<syn::LitStr>(list.tokens.clone()) {
+                unit_name = Some(lit.value());
+            }
+        }
+        false // strip
+    });
+    unit_name
+}
+
+/// Converts a CamelCase identifier to snake_case.
+/// Used to derive the `serialize_with` helper path from a quantity name:
+/// `"Power"` → `"power"`, `"ThermodynamicTemperature"` → `"thermodynamic_temperature"`.
+fn to_snake_case(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 4);
+    for (i, c) in s.chars().enumerate() {
+        if c.is_uppercase() && i > 0 {
+            out.push('_');
+        }
+        out.push(c.to_ascii_lowercase());
+    }
+    out
+}
+
 pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
     let ftype = field.ty.clone();
     let mut vec_layers: u8 = 0;
@@ -218,19 +254,74 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
     }
 
     let inner_path = extract_type_path(inner_type)?;
+
+    // Strip `#[si_unit(...)]` now so it is never emitted in the output struct.
+    // If the field is not an SI type we abort below.
+    let unit_override = extract_and_strip_si_unit(field);
+
     if let Some(quantity) = extract_si_quantity(inner_path) {
         // quantity_config is the single source of truth for all SI quantities.
         // Only the first (canonical) unit is applied here for the serialization rename;
         // all accepted deserialization units are handled by get_units_for_quantity.
-        let Some((unit_impls, serialize_with)) = quantity_config(quantity.as_str()) else {
+        let Some((unit_impls, global_serialize_with)) = quantity_config(quantity.as_str()) else {
             abort!(
                 inner_path.span(),
                 "Unknown si quantity! Make sure it's implemented in `impl_getters_and_setters`"
             );
         };
-        if let Some((_, unit_name)) = unit_impls.first() {
-            serde_attrs_for_si_field(field, unit_name, serialize_with);
-        }
+
+        // Determine the canonical (serialization) unit and serialize_with path.
+        //
+        // With no field-level override: use the first entry from quantity_config.
+        // With `#[si_unit(name)]`: use the specified unit, constructing a serialize_with
+        // path of the form `fastsim_core::utils::serde_helpers::{quantity_snake}_as_{unit}`
+        // unless the unit is the SI base unit (first entry, no global serialize_with),
+        // in which case the raw uom float serializes correctly without a converter.
+        let (canonical_unit, sw_owned): (String, Option<String>) =
+            if let Some(ref override_name) = unit_override {
+                let valid = unit_impls.iter().any(|(_, n)| n == override_name);
+                if !valid {
+                    let choices: Vec<&str> = unit_impls.iter().map(|(_, n)| n.as_str()).collect();
+                    abort!(
+                        field.span(),
+                        "#[si_unit]: unknown unit '{}' for quantity '{}'. \
+                         Valid units: {}",
+                        override_name,
+                        quantity,
+                        choices.join(", ")
+                    );
+                }
+
+                // The raw uom float is always in the SI base unit.  Serializing it without
+                // a conversion helper is correct if and only if the target unit IS the base unit.
+                let is_base = base_unit_for_quantity(&quantity)
+                    .map(|base| base == override_name.as_str())
+                    .unwrap_or(false);
+
+                let serialize_with = if is_base {
+                    None
+                } else {
+                    Some(format!(
+                        "fastsim_core::utils::serde_helpers::{}_as_{}",
+                        to_snake_case(&quantity),
+                        override_name
+                    ))
+                };
+                (override_name.clone(), serialize_with)
+            } else {
+                let canonical = unit_impls
+                    .first()
+                    .map(|(_, n)| n.clone())
+                    .unwrap_or_default();
+                (canonical, global_serialize_with.map(String::from))
+            };
+
+        serde_attrs_for_si_field(field, &canonical_unit, sw_owned.as_deref());
+    } else if unit_override.is_some() {
+        abort!(
+            field.span(),
+            "#[si_unit] can only be applied to fields whose type is an SI quantity"
+        );
     }
     Some(())
 }
@@ -400,6 +491,44 @@ fn get_units_for_quantity(quantity: &str) -> Vec<(TokenStream2, String)> {
     quantity_config(quantity)
         .map(|(units, _)| units)
         .unwrap_or_default()
+}
+
+/// Returns the unit name that corresponds to the raw internal SI float for each quantity.
+/// uom always stores values in the SI base unit regardless of how the field was constructed,
+/// so serializing WITHOUT a `serialize_with` function gives the value in THIS unit.
+/// Any other unit requires a `serialize_with` conversion helper.
+fn base_unit_for_quantity(quantity: &str) -> Option<&'static str> {
+    match quantity {
+        "Acceleration" => Some("meters_per_second_squared"),
+        "Angle" => Some("radians"),
+        "Area" => Some("square_meters"),
+        "Curvature" => Some("radians_per_meter"),
+        "DynamicViscosity" => Some("pascal_seconds"),
+        "Energy" => Some("joules"),
+        "EnergyDensity" => Some("joule_per_cubic_meter"),
+        "Force" => Some("newtons"),
+        "HeatCapacity" => Some("joules_per_kelvin"),
+        "HeatTransferCoeff" => Some("watts_per_square_meter_kelvin"),
+        "InverseVelocity" => Some("seconds_per_meter"),
+        "Length" => Some("meters"),
+        "Mass" => Some("kilograms"),
+        "MassDensity" => Some("kilograms_per_cubic_meter"),
+        "MomentOfInertia" => Some("kilogram_square_meters"),
+        "Power" => Some("watts"),
+        "PowerRate" => Some("watts_per_second"),
+        "Pressure" => Some("pascals"),
+        "Ratio" => Some("ratio"),
+        "SpecificEnergy" => Some("joules_per_kilogram"),
+        "SpecificPower" => Some("watts_per_kilogram"),
+        "Temperature" => Some("kelvin"),
+        "TemperatureInterval" => Some("kelvin"),
+        "ThermalConductance" => Some("watts_per_kelvin"),
+        "ThermalConductivity" => Some("watts_per_meter_kelvin"),
+        "Time" => Some("seconds"),
+        "Velocity" => Some("meters_per_second"),
+        "Volume" => Some("cubic_meters"),
+        _ => None,
+    }
 }
 
 pub fn generate_helper_struct(

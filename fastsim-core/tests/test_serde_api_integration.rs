@@ -713,3 +713,58 @@ fn test_state_history_deserializes_alternate_units() {
     assert!((device.history.eff[0].get::<si::ratio>() - 0.9).abs() < 1e-9);
     assert!((device.history.eff[1].get::<si::ratio>() - 0.85).abs() < 1e-9);
 }
+
+// ============================================================================
+// TEST: #[si_unit(...)] field-level serialization unit override
+// ============================================================================
+
+/// Device that overrides the serialization unit for one field via #[si_unit(...)].
+/// `pwr_out` serializes as kilowatts; all other fields use the global default.
+#[serde_api]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(default)]
+struct OverrideDevice {
+    #[si_unit(kilowatts)]
+    pwr_out: si::Power,
+    speed: si::Velocity,
+}
+
+#[test]
+fn test_si_unit_override_changes_serialization_key() {
+    // Build a device with 500 W output and 10 m/s speed
+    let device = OverrideDevice {
+        pwr_out: si::Power::new::<si::watt>(500.0),
+        speed: si::Velocity::new::<si::meter_per_second>(10.0),
+    };
+
+    let json = serde_json::to_string(&device).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+    // pwr_out should be serialized under the kilowatts key
+    assert!(
+        value.get("pwr_out_kilowatts").is_some(),
+        "expected pwr_out_kilowatts key; got: {json}"
+    );
+    assert!(
+        value.get("pwr_out_watts").is_none(),
+        "unexpected pwr_out_watts key when kilowatts override is set"
+    );
+
+    // speed uses the global default (meters_per_second)
+    assert!(value.get("speed_meters_per_second").is_some());
+}
+
+#[test]
+fn test_si_unit_override_round_trips() {
+    // Deserialize from any supported unit key; serialization uses the override unit
+    let json = r#"{ "pwr_out_watts": 500.0, "speed_meters_per_second": 10.0 }"#;
+    let device: OverrideDevice = serde_json::from_str(json).unwrap();
+
+    // Internal representation is always SI base units
+    assert!((device.pwr_out.get::<si::watt>() - 500.0).abs() < 1e-9);
+
+    // Round-trip: serializes as kilowatts, deserializes back correctly
+    let out = serde_json::to_string(&device).unwrap();
+    let rt: OverrideDevice = serde_json::from_str(&out).unwrap();
+    assert!((rt.pwr_out.get::<si::watt>() - 500.0).abs() < 1e-9);
+}
