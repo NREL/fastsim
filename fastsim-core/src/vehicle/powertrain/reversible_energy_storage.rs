@@ -1132,10 +1132,7 @@ impl RESThermalOption {
 
 #[serde_api]
 #[derive(Default, Deserialize, Serialize, Debug, Clone, PartialEq, StateMethods, SetCumulative)]
-#[cfg_attr(
-    feature = "pyo3",
-    pyclass(module = "fastsim", subclass, eq, from_py_object)
-)]
+#[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
 /// Struct for modeling [ReversibleEnergyStorage] (e.g. battery) thermal plant
 pub struct RESLumpedThermal {

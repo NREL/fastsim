@@ -27,6 +27,8 @@ fn rewrite_serialize_with_for_vec(attr: &syn::Attribute) -> TokenStream2 {
             } else {
                 format!("vec_{base}")
             };
+            let vec_lit = syn::LitStr::new(&vec_path, lit.span());
+            parts.push(quote! { serialize_with = #vec_lit });
         } else {
             let path = &meta.path;
             if meta.input.peek(syn::Token![=]) {

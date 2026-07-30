@@ -38,5 +38,4 @@
 #[allow(unused_imports)]
 use crate::si;
 
-// ── Power ────────────────────────────────────────────────────────────────────
 crate::impl_si_serialize_as!(power_as_kilowatts, si::Power, uom::si::power::kilowatt);

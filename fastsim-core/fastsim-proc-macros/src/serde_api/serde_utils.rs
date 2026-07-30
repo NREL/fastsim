@@ -283,7 +283,7 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
         let Some((unit_impls, global_serialize_with)) = quantity_config(quantity.as_str()) else {
             abort!(
                 inner_path.span(),
-                "Unknown si quantity! Make sure it's implemented in `impl_getters_and_setters`"
+                "Unknown si quantity! Make sure it's implemented in `quantity_config`"
             );
         };
 
