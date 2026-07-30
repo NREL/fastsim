@@ -11,6 +11,7 @@ pub struct FuelStorage {
     /// time to peak power
     pub pwr_ramp_lag: si::Time,
     /// energy capacity
+    #[si_unit(kilowatt_hours)]
     pub energy_capacity: si::Energy,
     /// Fuel and tank specific energy
     pub(in super::super) specific_energy: Option<si::SpecificEnergy>,
