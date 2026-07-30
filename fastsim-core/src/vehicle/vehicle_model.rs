@@ -29,10 +29,13 @@ impl Init for AuxSource {}
 /// Struct for simulating vehicle
 pub struct Vehicle {
     /// Vehicle name
+    #[py_get]
     pub name: String,
     /// Documentation (e.g. how this file was generated, calibration details)]
+    #[py_get]
     pub doc: Option<String>,
     /// Year manufactured
+    #[py_get]
     pub year: u32,
     #[has_state]
     /// type of vehicle powertrain including contained type-specific parameters and variables
