@@ -449,14 +449,26 @@ pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
 
     let mut inner_type = &field.ty;
 
-    // Unwrap Option<T>
-    if let Some(opt_inner) = extract_type_from_container(inner_type) {
-        inner_type = opt_inner;
-    }
-
-    // Unwrap Vec<T>
-    if let Some(vec_inner) = extract_type_from_vec(inner_type) {
-        inner_type = vec_inner;
+    // Unwrap known wrappers recursively (Vec, Option, TrackedState) so nested
+    // combinations like Vec<TrackedState<Option<si::Ratio>>> are recognized.
+    loop {
+        match detect_outer_wrapper(inner_type) {
+            WrapperType::Vec => {
+                if let Some(vec_inner) = extract_type_from_vec(inner_type) {
+                    inner_type = vec_inner;
+                } else {
+                    break;
+                }
+            }
+            WrapperType::Option | WrapperType::TrackedState => {
+                if let Some(container_inner) = extract_type_from_container(inner_type) {
+                    inner_type = container_inner;
+                } else {
+                    break;
+                }
+            }
+            WrapperType::None => break,
+        }
     }
 
     let inner_path = extract_type_path(inner_type)?;
@@ -1035,7 +1047,15 @@ pub fn generate_try_from_impl(
                             let ts_path = outer_type_path_tokens(field_ty).unwrap_or_else(
                                 || quote! { fastsim_core::utils::tracked_state::TrackedState },
                             );
-                            if has_serde_struct_default(struct_ast) {
+                            let tracked_inner_is_option = extract_type_from_container(field_ty)
+                                .map(|inner| detect_outer_wrapper(inner) == WrapperType::Option)
+                                .unwrap_or(false);
+                            if tracked_inner_is_option {
+                                quote! {
+                                    (#conversion).map(|val| #ts_path::new(Some(val)))
+                                        .unwrap_or_else(|| #ts_path::new(None))
+                                }
+                            } else if has_serde_struct_default(struct_ast) {
                                 quote! {
                                     (#conversion).map(|val| #ts_path::new(val))
                                         .unwrap_or_default()
@@ -1053,8 +1073,37 @@ pub fn generate_try_from_impl(
                             }
                         }
                         WrapperType::Vec => {
-                            quote! {
-                                (#conversion).unwrap_or_default()
+                            let vec_inner_ty = extract_type_from_vec(field_ty);
+                            let vec_inner_is_tracked = vec_inner_ty
+                                .map(|ty| detect_outer_wrapper(ty) == WrapperType::TrackedState)
+                                .unwrap_or(false);
+                            if vec_inner_is_tracked {
+                                let ts_path = vec_inner_ty
+                                    .and_then(outer_type_path_tokens)
+                                    .unwrap_or_else(|| {
+                                        quote! { fastsim_core::utils::tracked_state::TrackedState }
+                                    });
+                                let tracked_inner_is_option = vec_inner_ty
+                                    .and_then(extract_type_from_container)
+                                    .map(|inner| detect_outer_wrapper(inner) == WrapperType::Option)
+                                    .unwrap_or(false);
+                                if tracked_inner_is_option {
+                                    quote! {
+                                        (#conversion)
+                                            .map(|vals| vals.into_iter().map(|v| #ts_path::new(Some(v))).collect())
+                                            .unwrap_or_default()
+                                    }
+                                } else {
+                                    quote! {
+                                        (#conversion)
+                                            .map(|vals| vals.into_iter().map(|v| #ts_path::new(v)).collect())
+                                            .unwrap_or_default()
+                                    }
+                                }
+                            } else {
+                                quote! {
+                                    (#conversion).unwrap_or_default()
+                                }
                             }
                         }
                         WrapperType::None => {
