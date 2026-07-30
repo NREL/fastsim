@@ -119,12 +119,13 @@ impl Vehicle {
     #[allow(deprecated)]
     fn from_f2_file_py(py: pyo3::Python<'_>, file: PathBuf) -> anyhow::Result<Self> {
         if let Ok(warnings) = py.import("warnings") {
-            let _ = warnings.call_method1(
-                "warn",
-                (
-                    "Vehicle.from_f2_file is deprecated; use Vehicle.from_file / from_reader / from_yaml / from_json / from_toml instead.",
-                ),
-            );
+            let msg = "Vehicle.from_f2_file is deprecated; use Vehicle.from_file / from_reader / from_yaml / from_json / from_toml instead.";
+            let kwargs = pyo3::types::PyDict::new_bound(py);
+            let _ = kwargs.set_item("stacklevel", 2);
+            if let Ok(dep_warn) = warnings.getattr("DeprecationWarning") {
+                let _ = kwargs.set_item("category", dep_warn);
+            }
+            let _ = warnings.call_method("warn", (msg,), Some(&kwargs));
         }
         Self::from_f2_file(file)
     }
