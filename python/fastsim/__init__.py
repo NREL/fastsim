@@ -3,6 +3,7 @@
 import inspect
 import re
 import sys
+import warnings
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
@@ -10,6 +11,9 @@ from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
 import polars as pl
+
+import plotly.graph_objs as go
+import plotly.express as px
 
 import fastsim
 
@@ -212,17 +216,40 @@ def from_pydict(cls, pydict: dict, data_fmt: str = "msg_pack", skip_init: bool =
 
 def to_dataframe(
     self,
-    pandas: bool = False,
+    backend: str = "pandas",
     allow_partial: bool = False,
+    pandas: Optional[bool] = None,
 ) -> pd.DataFrame | pl.DataFrame:
     """
-    Return time series results from fastsim object as a Polars or Pandas dataframe.
+    Return time series results from fastsim object as a pandas or polars dataframe.
 
     # Arguments
-    - `pandas`: returns pandas dataframe if True; otherwise, returns polars dataframe by default
+    - `backend`: dataframe backend, one of "pandas" (default) or "polars"
     - `allow_partial`: tries to return dataframe of length equal to solved time
         steps if simulation fails early
+    - `pandas`: deprecated alias for backend selection (`True`->"pandas", `False`->"polars")
     """
+    if isinstance(backend, bool):
+        pandas = backend
+        backend = "pandas" if backend else "polars"
+
+    backend = backend.lower()
+    if backend not in {"pandas", "polars"}:
+        raise ValueError("`backend` must be one of {'pandas', 'polars'}")
+
+    if pandas is not None:
+        warnings.warn(
+            "`pandas` is deprecated for `to_dataframe`; use `backend='pandas'` or "
+            "`backend='polars'` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        pandas_backend = "pandas" if pandas else "polars"
+        if backend != pandas_backend:
+            raise ValueError("Conflicting `backend` and deprecated `pandas` arguments")
+
+    use_pandas = backend == "pandas"
+
     obj_dict = self.to_pydict(flatten=True)
     history_keys = ["history.", "cyc."]
     hist_len = get_hist_len(obj_dict)
@@ -238,7 +265,7 @@ def to_dataframe(
         cutoff = min(history_dict.values())
 
         df: pl.DataFrame | pd.DataFrame
-        if not pandas:
+        if not use_pandas:
             try:
                 df = pl.DataFrame({col: val[:cutoff] for col, val in history_dict.items()})
             except Exception as err:
@@ -250,7 +277,7 @@ def to_dataframe(
                 raise Exception(f"{err}\n`save_interval` may not be uniform")
 
     else:
-        if not pandas:
+        if not use_pandas:
             try:
                 df = pl.DataFrame(history_dict)
             except Exception as err:
@@ -269,9 +296,51 @@ def to_dataframe(
     return df
 
 
+def plot(self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True) -> go._figure.Figure:
+    """
+    Plot a drive cycle (default: speed vs. time) with Plotly.
+
+    x-axis options: ["time_seconds", "dist_meters"]
+    y-axis options: ["speed_meters_per_second", "grade"]
+    """
+    if x not in self.to_pydict():
+        raise ValueError(f"Column '{x}' not found in the drive cycle data")
+    if y not in self.to_pydict():
+        raise ValueError(f"Column '{y}' not found in the drive cycle data")
+
+    if x == "time_seconds":
+        x_label = "Time [s]"
+    elif x == "dist_meters":
+        x_label = "Distance [m]"
+    else:
+        x_label = x
+
+    if y == "speed_meters_per_second":
+        y_label = "Speed [m/s]"
+    elif y == "grade":
+        y_label = "Road Grade [-]"
+    else:
+        y_label = y
+
+    cyc_dict = self.to_pydict()
+    x_values = np.asarray(cyc_dict[x])
+    y_values = np.asarray(cyc_dict[y])
+    fig = px.line(
+        x=x_values,
+        y=y_values,
+        labels={"x": x, "y": y},
+    )
+    fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
+    if show:
+        fig.show()
+    return fig
+
+
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
 for item in ACCEPTED_RUST_STRUCTS:
     setattr(getattr(fastsim, item), "to_pydict", to_pydict)
     setattr(getattr(fastsim, item), "from_pydict", from_pydict)
     setattr(getattr(fastsim, item), "to_dataframe", to_dataframe)
+
+setattr(Cycle, "plot", plot)
