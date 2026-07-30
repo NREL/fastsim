@@ -52,9 +52,8 @@ macro_rules! extract_custom_units {
 fn serde_attrs_for_si_field(field: &mut syn::Field, unit_name: &str, serialize_with: Option<&str>) {
     let ident = field.ident.clone().unwrap();
     match unit_name {
-        // Empty unit name or "ratio" → canonical is the bare field name; no rename needed.
-        // TODO: remove ratio exception once all efficiencies use an efficiency enum
-        "" | "ratio" => {}
+        // Empty unit name → canonical is the bare field name; no rename needed.
+        "" => {}
         _ => {
             if !field_has_serde_rename(field) {
                 // add the rename attribute for any fields that don't already have it
@@ -216,26 +215,69 @@ fn extract_si_quantity(path: &syn::Path) -> Option<String> {
     Some(path.segments[i + 1].ident.to_string())
 }
 
-/// Extracts the unit name from `#[si_unit(name)]` on a field and removes the attribute.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SIUnitOverride {
+    Named(String),
+    Unitless,
+}
+
+/// Extracts the si-unit override from `#[si_unit(...)]` and removes the attribute.
 ///
-/// Supports both ident (`#[si_unit(kilowatts)]`) and string (`#[si_unit("kilowatts")]`) forms.
-/// Returns `None` if the attribute is absent.
-fn extract_and_strip_si_unit(field: &mut syn::Field) -> Option<String> {
-    let mut unit_name = None;
+/// Supported forms:
+/// - `#[si_unit(kilowatts)]` / `#[si_unit("kilowatts")]`
+/// - `#[si_unit(unitless)]` / `#[si_unit("unitless")]`
+fn extract_and_strip_si_unit(field: &mut syn::Field) -> Option<SIUnitOverride> {
+    let mut unit_override = None;
     field.attrs.retain(|attr| {
         if !attr.path().is_ident("si_unit") {
             return true; // keep
         }
         if let syn::Meta::List(list) = &attr.meta {
-            if let Ok(ident) = syn::parse2::<syn::Ident>(list.tokens.clone()) {
-                unit_name = Some(ident.to_string());
+            if list.tokens.is_empty() {
+                abort!(
+                    attr.span(),
+                    "#[si_unit()]: empty form is not allowed; use #[si_unit(unitless)]"
+                );
+            } else if let Ok(ident) = syn::parse2::<syn::Ident>(list.tokens.clone()) {
+                if ident == "unitless" {
+                    unit_override = Some(SIUnitOverride::Unitless);
+                } else {
+                    unit_override = Some(SIUnitOverride::Named(ident.to_string()));
+                }
             } else if let Ok(lit) = syn::parse2::<syn::LitStr>(list.tokens.clone()) {
-                unit_name = Some(lit.value());
+                if lit.value() == "unitless" {
+                    unit_override = Some(SIUnitOverride::Unitless);
+                } else {
+                    unit_override = Some(SIUnitOverride::Named(lit.value()));
+                }
             }
         }
         false // strip
     });
-    unit_name
+    unit_override
+}
+
+fn has_unitless_si_unit_override(field: &syn::Field) -> bool {
+    field.attrs.iter().any(|attr| {
+        if !attr.path().is_ident("si_unit") {
+            return false;
+        }
+        if let syn::Meta::List(list) = &attr.meta {
+            if list.tokens.is_empty() {
+                abort!(
+                    attr.span(),
+                    "#[si_unit()]: empty form is not allowed; use #[si_unit(unitless)]"
+                );
+            }
+            if let Ok(ident) = syn::parse2::<syn::Ident>(list.tokens.clone()) {
+                return ident == "unitless";
+            }
+            if let Ok(lit) = syn::parse2::<syn::LitStr>(list.tokens.clone()) {
+                return lit.value() == "unitless";
+            }
+        }
+        false
+    })
 }
 
 /// Converts a CamelCase identifier to snake_case.
@@ -289,42 +331,56 @@ pub(crate) fn serde_attrs_for_si_fields(field: &mut syn::Field) -> Option<()> {
 
         // Determine the canonical (serialization) unit and serialize_with path.
         //
-        // With no field-level override: use the first entry from quantity_config.
+        // With no field-level override: use the first entry from quantity_config,
+        // except Ratio which preserves a legacy bare-name canonical serialization key.
         // With `#[si_unit(name)]`: use the specified unit, constructing a serialize_with
         // path of the form `fastsim_core::utils::serde_helpers::{quantity_snake}_as_{unit}`
         // unless the unit is the SI base unit (first entry, no global serialize_with),
         // in which case the raw uom float serializes correctly without a converter.
+        //
+        // With `#[si_unit(unitless)]`: serialize bare using
+        // the raw SI-base scalar (no suffix, no serialize_with conversion).
         let (canonical_unit, sw_owned): (String, Option<String>) =
-            if let Some(ref override_name) = unit_override {
-                let valid = unit_impls.iter().any(|(_, n)| n == override_name);
-                if !valid {
-                    let choices: Vec<&str> = unit_impls.iter().map(|(_, n)| n.as_str()).collect();
-                    abort!(
-                        field.span(),
-                        "#[si_unit]: unknown unit '{}' for quantity '{}'. \
-                         Valid units: {}",
-                        override_name,
-                        quantity,
-                        choices.join(", ")
-                    );
+            if let Some(ref unit_override) = unit_override {
+                match unit_override {
+                    SIUnitOverride::Unitless => (String::new(), None),
+                    SIUnitOverride::Named(override_name) => {
+                        let valid = unit_impls.iter().any(|(_, n)| n == override_name);
+                        if !valid {
+                            let choices: Vec<&str> =
+                                unit_impls.iter().map(|(_, n)| n.as_str()).collect();
+                            abort!(
+                                field.span(),
+                                "#[si_unit]: unknown unit '{}' for quantity '{}'. \
+                                 Valid units: {}",
+                                override_name,
+                                quantity,
+                                choices.join(", ")
+                            );
+                        }
+
+                        // The raw uom float is always in the SI base unit.  Serializing it without
+                        // a conversion helper is correct if and only if the target unit IS the base unit.
+                        let is_base = base_unit_for_quantity(&quantity)
+                            .map(|base| base == override_name.as_str())
+                            .unwrap_or(false);
+
+                        let serialize_with = if is_base {
+                            None
+                        } else {
+                            Some(format!(
+                                "fastsim_core::utils::serde_helpers::{}_as_{}",
+                                to_snake_case(&quantity),
+                                override_name
+                            ))
+                        };
+                        (override_name.clone(), serialize_with)
+                    }
                 }
-
-                // The raw uom float is always in the SI base unit.  Serializing it without
-                // a conversion helper is correct if and only if the target unit IS the base unit.
-                let is_base = base_unit_for_quantity(&quantity)
-                    .map(|base| base == override_name.as_str())
-                    .unwrap_or(false);
-
-                let serialize_with = if is_base {
-                    None
-                } else {
-                    Some(format!(
-                        "fastsim_core::utils::serde_helpers::{}_as_{}",
-                        to_snake_case(&quantity),
-                        override_name
-                    ))
-                };
-                (override_name.clone(), serialize_with)
+            } else if quantity == "Ratio" {
+                // Legacy escape hatch: keep bare field names canonical for Ratio fields
+                // unless an explicit override is provided.
+                (String::new(), None)
             } else {
                 let canonical = unit_impls
                     .first()
@@ -348,6 +404,7 @@ pub struct SIFieldData {
     pub field_ident: syn::Ident,
     pub quantity: String,
     pub units: Vec<(TokenStream2, String)>, // (unit_type, plural_name)
+    pub unitless_canonical: bool,
 }
 
 /// Collect SI field information for helper struct generation
@@ -376,11 +433,13 @@ pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
 
     // Get units for this quantity
     let units = get_units_for_quantity(&quantity);
+    let unitless_canonical = has_unitless_si_unit_override(field);
 
     Some(SIFieldData {
         field_ident,
         quantity,
         units,
+        unitless_canonical,
     })
 }
 
@@ -484,7 +543,6 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
             ),
             None,
         )),
-        // Ratio: bare field name is canonical (no _ratio suffix); see serde_attrs_for_si_field.
         "Ratio" => Some((
             extract_units!(uom::si::ratio::ratio, uom::si::ratio::percent),
             None,
@@ -680,12 +738,14 @@ pub fn generate_helper_struct(
                         // The serde key is "field_unit"
                         let serde_key = format!("{}_{}", field_ident, unit_name);
 
-                        // For Ratio quantities, the canonical serialized name is the bare field
-                        // name (e.g. `grade`, not `grade_ratio`) for backward compatibility.
-                        // The unit-suffixed name becomes an alias instead.
-                        // For all other quantities, field_unit is canonical and bare is alias.
-                        let use_bare_as_canonical =
-                            si_field.quantity == "Ratio" && unit_name == "ratio";
+                        // Field-unit is canonical by default, with bare-field aliasing for the
+                        // SI base unit. A field-level `#[si_unit(unitless)]` override switches
+                        // canonical naming to bare field for the base unit.
+                        // Legacy escape hatch: unannotated Ratio fields also serialize bare.
+                        let ratio_escape_hatch = si_field.quantity == "Ratio";
+                        let use_bare_as_canonical = (si_field.unitless_canonical
+                            || ratio_escape_hatch)
+                            && idx == base_unit_idx;
                         let (canonical_name, unit_alias) = if use_bare_as_canonical {
                             (bare_name.clone(), serde_key.clone())
                         } else {

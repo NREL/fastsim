@@ -18,6 +18,7 @@ struct TestDeviceState {
     /// Instantaneous power output
     pwr_out: si::Power,
     /// Operating efficiency
+    #[si_unit(unitless)]
     eff: si::Ratio,
 }
 
@@ -53,12 +54,14 @@ struct TestDevice {
     temperature_readings: Vec<si::Temperature>,
 
     /// Efficiency ratio - supports ratio and percent
+    #[si_unit(unitless)]
     efficiency: si::Ratio,
 
     /// Tracked power state, wrapped in TrackedState - accepts watts or kilowatts
     tracked_power: TrackedState<si::Power>,
 
     /// Tracked efficiency state, wrapped in TrackedState - accepts ratio or percent
+    #[si_unit(unitless)]
     tracked_efficiency: TrackedState<si::Ratio>,
 
     /// Renamed from "old_power" - accepts old_power, old_power_watts, old_power_kilowatts, old_power_horsepower,
@@ -738,6 +741,17 @@ struct OverrideDevice {
     speed: si::Velocity,
 }
 
+#[serde_api]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(default)]
+struct UnitlessRatioDevice {
+    #[si_unit(unitless)]
+    alt_eff: si::Ratio,
+    #[si_unit(unitless)]
+    cop: si::Ratio,
+    grade: si::Ratio,
+}
+
 #[test]
 fn test_si_unit_override_changes_serialization_key() {
     // Build a device with 500 W output and 10 m/s speed
@@ -872,4 +886,32 @@ fn test_si_unit_override_round_trips() {
     let out = serde_json::to_string(&device).unwrap();
     let rt: OverrideDevice = serde_json::from_str(&out).unwrap();
     assert!((rt.pwr_out.get::<si::watt>() - 500.0).abs() < 1e-9);
+}
+
+#[test]
+fn test_si_unit_unitless_override_changes_ratio_canonical_name() {
+    let device = UnitlessRatioDevice {
+        alt_eff: si::Ratio::new::<si::ratio>(0.9),
+        cop: si::Ratio::new::<si::ratio>(2.5),
+        grade: si::Ratio::new::<si::ratio>(0.03),
+    };
+
+    let json = serde_json::to_string(&device).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+    // unitless override forms should serialize bare
+    assert!(
+        value.get("alt_eff").is_some(),
+        "expected bare alt_eff in {json}"
+    );
+    assert!(value.get("cop").is_some(), "expected bare cop in {json}");
+    assert!(value.get("alt_eff_ratio").is_none());
+    assert!(value.get("cop_ratio").is_none());
+
+    // Ratio escape hatch: unannotated ratio fields also serialize bare.
+    assert!(
+        value.get("grade").is_some(),
+        "expected bare grade in {json}"
+    );
+    assert!(value.get("grade_ratio").is_none());
 }
