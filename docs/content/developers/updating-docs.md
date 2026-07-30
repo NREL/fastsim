@@ -1,8 +1,6 @@
 # Updating the Docs
 
-This documentation is built using [Jupyter Book v2](https://mystmd.org/) (MyST).
-
-
+FASTSim's documentation is built using [Jupyter Book](https://jupyterbook.org/) v2, which is built upon the [MyST Document Engine](https://mystmd.org/).
 
 ## Setup
 
@@ -20,7 +18,7 @@ Install the doc build dependencies:
 
 ## Local Development
 
-Convert the demo scripts to notebooks and launch the jupyter book, executing notebooks
+Launch Jupyter Book with live reload and notebook execution.
 
 - Using Pixi:
   ```bash
@@ -50,13 +48,16 @@ The site will be available at `http://localhost:3000`
 jupyter book build --strict --html --execute
 ```
 
-Output is written to `docs/_build/html/`. The `--strict` flag checks for broken internal references.
+Output is written to `docs/_build/html/`.
+The `--strict` flag checks for broken internal references.
 
 ## Directory Layout
 
 ```
 docs/
   content/            Markdown pages and notebooks
+    old/              Outdated demo notebooks (still executed via pytest for additional coverage)
+    ...
   assets/             Images and icons
   myst.yml            Jupyter Book configuration and table of contents
 ```
@@ -65,9 +66,9 @@ docs/
 
 1. Add `.md` and/or `.ipynb` files to `docs/content/`
 
-1. Edit the table of contents `docs/myst.yml` to reflect the updated directory structure
+1. Edit the table of contents `docs/myst.yml` to reflect the updated doc structure
 
-1. Check that a 'strict' build of the docs runs cleanly
+1. Check that a strict docs build runs cleanly:
 
     `jupyter book build --strict --html --execute`
 

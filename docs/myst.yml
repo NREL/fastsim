@@ -2,20 +2,23 @@
 version: 1
 project:
   id: 61560401-8f58-4c7f-b78b-4754d2b0d3ae
-  title: FASTSim
+  title: FASTSim Documentation
   github: https://github.com/NatLabRockies/fastsim
   toc:
     - file: content/intro.md
-    - title: Overview
+    - title: Background
       children:
-        - file: content/overview/what-is-fastsim.md
+        - file: content/background/what-is-fastsim.md
+        - file: content/background/related-tools.md
     - file: content/installation.md
     - file: content/getting-started.ipynb
     - title: User Guide
       children:
+        - file: content/user-guide/user-guide.md
         - title: Vehicle Models
           children:
             - file: content/user-guide/vehicle-models/vehicle.md
+            - file: content/user-guide/vehicle-models/loading-vehicles.ipynb
             - file: content/user-guide/vehicle-models/modeling-vehicles.ipynb
         - title: Drive Cycles
           children:
@@ -37,15 +40,19 @@ project:
       children:
         - file: content/developers/environment-setup.md
         - file: content/developers/compiling-from-source.md
+        - file: content/developers/vehicle-databases.md
         - file: content/developers/making-releases.md
         - file: content/developers/updating-docs.md
+    - url: https://github.com/NatLabRockies/fastsim
+      title: GitHub Repository
+    - url: https://github.com/NatLabRockies/fastsim-vehicles
+      title: FASTSim Vehicle Database
     - url: https://docs.rs/fastsim-core/latest/fastsim_core/
       title: Rust API Documentation
-    - url: https://github.com/NatLabRockies/fastsim/releases
-      title: Release Notes
     # - file: content/migration-guide.md
 site:
   template: book-theme
   options:
-    logo: assets/fastsim-icon.svg
-    favicon: assets/fastsim-icon.ico
+    logo: assets/edit-nlr-logo-color-horizontal-png-v2.png
+    favicon: assets/nlr.ico
+    style: assets/site.css

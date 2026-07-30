@@ -1,41 +1,86 @@
 # Installation
 
-FASTSim supports Python 3.10 through 3.15. Install it from PyPI for the
-quickest start, or build it from source for the latest development version.
+FASTSim is available as a package for use in [Python 3.10 through 3.15](https://www.python.org).
 
-  - From [PyPI](https://pypi.org/project/fastsim/) (recommended):
-    - In an active Python environment, install the latest release with pip:
-      ```
-      pip install fastsim
-      ```
+For the quickest start, install from [PyPI](https://pypi.org/project/fastsim/). Install from source if you are developing FASTSim or need unreleased changes.
 
-  - From source code:
-      - Building from source gives you the latest development version. FASTSim's core
-      is written in Rust, so you will need the
-      [Rust toolchain](https://www.rust-lang.org/tools/install) installed first. The
-      build tool (maturin) is installed automatically during the build, so the Rust
-      toolchain is the only prerequisite you need to set up yourself.
+## Install from PyPI (recommended)
 
-      1. Clone the repository and enter it:
+In an active Python environment, run:
 
-         ```
-         git clone https://github.com/NatLabRockies/fastsim.git
-         cd fastsim
-         ```
+```bash
+pip install fastsim
+```
 
-      1. Install the package from the repository root:
+This will install the latest version of FASTSim as a Python package.
 
-         ```
-         pip install .
-         ```
+See [](#next-steps) for further resources.
 
-         - Add the editable `-e` flag to detect source changes each time FASTSim is imported.
-         - Add the `--group dev` flag to install optional developer dependencies.
+## Install from Source (developers)
 
-      Building from source is not necessary for most use cases. For more detail on
-      the developer build, see [](developers/compiling-from-source.md).
+FASTSim's backend is written entirely in Rust. Install the
+[Rust toolchain](https://www.rust-lang.org/tools/install) first (or
+[set up a developer environment](developers/environment-setup.md)).
 
+Then install FASTSim from source:
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/NatLabRockies/fastsim.git
+   cd fastsim
+   ```
+
+1. Install from the repository root:
+
+   ```bash
+   pip install .
+   ```
+
+Optional:
+
+- Add `-e` for an editable install so source changes are picked up without
+  reinstalling.
+- Add `--group dev` to install optional developer dependencies.
+
+For more detail on developer builds, see [](developers/compiling-from-source.md).
+
+(next-steps)=
 ## Next Steps
 
-With FASTSim installed, head to [](getting-started.ipynb)
-to load a vehicle, run a simulation, and inspect the results.
+See the following resources:
+
+:::{card} [](getting-started.ipynb)
+:link: getting-started.ipynb
+
+A high-level overview showing how to load pre-defined vehicles, run simulations, and inspect results.
+
+:::
+
+:::::{card}
+
+[](user-guide/user-guide.md):
+
+::::{grid} 1 1 2 2 3 3
+
+:::{grid-item-card} [Vehicle Models](user-guide/vehicle-models/vehicle.md)
+:link: user-guide/vehicle-models/vehicle.md
+:link-type: doc
+Define and configure vehicle models
+:::
+
+:::{grid-item-card} [Drive Cycles](user-guide/drive-cycles/drive-cycle.ipynb)
+:link: user-guide/drive-cycles/drive-cycle.ipynb
+:link-type: doc
+Work with built-in and custom cycles
+:::
+
+:::{grid-item-card} [Running Simulations](user-guide/running-simulations/simdrive.ipynb)
+:link: user-guide/running-simulations/simdrive.ipynb
+:link-type: doc
+Execute simulations and inspect results
+:::
+
+::::
+
+:::::
