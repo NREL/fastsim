@@ -23,6 +23,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             },
             None,
             None,
+            None,
             pt_type,
             Chassis::try_from(&f2veh).with_context(|| format_dbg!())?,
             Default::default(),

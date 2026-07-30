@@ -5,6 +5,7 @@ doc: ~
 year: "2022"
 make: ~
 model: ~
+trim: ~
 pt_type:
   BEV:
     res:

@@ -46,6 +46,8 @@ pub struct Vehicle {
     pub make: Option<String>,
     /// Vehicle model (e.g. Camry, F-150)
     pub model: Option<String>,
+    /// Vehicle trim (e.g. SE, XLE 4cyl)
+    pub trim: Option<String>,
 
     #[has_state]
     /// type of vehicle powertrain including contained type-specific parameters and variables
@@ -331,6 +333,7 @@ impl Vehicle {
         year: Option<String>,
         make: Option<String>,
         model: Option<String>,
+        trim: Option<String>,
         pt_type: PowertrainType,
         chassis: Chassis,
         cabin: CabinOption,
@@ -348,6 +351,7 @@ impl Vehicle {
             year,
             make,
             model,
+            trim,
             pt_type,
             chassis,
             cabin,
@@ -1492,7 +1496,8 @@ pub(crate) mod tests {
             None,
             Some(String::from("2026")),
             Some(String::from("Chrysler")),
-            Some(String::from("Pacifica Select")),
+            Some(String::from("Pacifica")),
+            Some(String::from("Select")),
             PowertrainType::ConventionalVehicle(boxed_conv),
             chassis,
             CabinOption::None,
@@ -1631,7 +1636,8 @@ pub(crate) mod tests {
             None,
             Some(String::from("2026")),
             Some(String::from("Chrysler")),
-            Some(String::from("Pacifica Select")),
+            Some(String::from("Pacifica")),
+            Some(String::from("Select")),
             PowertrainType::HybridElectricVehicle(boxed_hev),
             chassis,
             CabinOption::None,
