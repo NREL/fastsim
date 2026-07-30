@@ -22,6 +22,8 @@ macro_rules! extract_units {
             // fix UOM pluralization edge cases
             let unit_name = unit_name.replace("kelvins", "kelvin");
             let unit_name = unit_name.replace("ratios", "ratio");
+            // replace hyphens (e.g. "pounds-force") so the name is a valid identifier
+            let unit_name = unit_name.replace('-', "_");
             unit_impls.push((field_units, unit_name));
         )+
         unit_impls
@@ -377,7 +379,11 @@ pub fn collect_si_field_data(field: &syn::Field) -> Option<SIFieldData> {
 fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Option<&'static str>)> {
     match quantity {
         "Acceleration" => Some((
-            extract_units!(uom::si::acceleration::meter_per_second_squared),
+            extract_units!(
+                uom::si::acceleration::meter_per_second_squared,
+                uom::si::acceleration::foot_per_second_squared,
+                uom::si::acceleration::standard_gravity
+            ),
             None,
         )),
         "Angle" => Some((extract_units!(uom::si::angle::radian), None)),
@@ -398,7 +404,10 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
         //     )],
         //     None,
         // )),
-        "Force" => Some((extract_units!(uom::si::force::newton), None)),
+        "Force" => Some((
+            extract_units!(uom::si::force::newton, uom::si::force::pound_force),
+            None,
+        )),
         "HeatCapacity" => Some((
             extract_units!(uom::si::heat_capacity::joule_per_kelvin),
             None,
@@ -411,8 +420,19 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
             extract_units!(uom::si::inverse_velocity::second_per_meter),
             None,
         )),
-        "Length" => Some((extract_units!(uom::si::length::meter), None)),
-        "Mass" => Some((extract_units!(uom::si::mass::kilogram), None)),
+        "Length" => Some((
+            extract_units!(
+                uom::si::length::meter,
+                uom::si::length::kilometer,
+                uom::si::length::mile,
+                uom::si::length::foot
+            ),
+            None,
+        )),
+        "Mass" => Some((
+            extract_units!(uom::si::mass::kilogram, uom::si::mass::pound),
+            None,
+        )),
         "MassDensity" => Some((
             extract_units!(uom::si::mass_density::kilogram_per_cubic_meter),
             None,
@@ -441,7 +461,12 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
         )),
         "PowerRate" => Some((extract_units!(uom::si::power_rate::watt_per_second), None)),
         "Pressure" => Some((
-            extract_units!(uom::si::pressure::pascal, uom::si::pressure::kilopascal),
+            extract_units!(
+                uom::si::pressure::pascal,
+                uom::si::pressure::kilopascal,
+                uom::si::pressure::bar,
+                uom::si::pressure::pound_force_per_square_inch
+            ),
             None,
         )),
         // Ratio: bare field name is canonical (no _ratio suffix); see serde_attrs_for_si_field.
@@ -450,11 +475,19 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
             None,
         )),
         "SpecificEnergy" => Some((
-            extract_units!(uom::si::available_energy::joule_per_kilogram),
+            // Note: uom 0.35 has no watt_hour_per_kilogram; kilojoule_per_kilogram is the
+            // closest standard unit (1 kJ/kg ≈ 0.278 Wh/kg).
+            extract_units!(
+                uom::si::available_energy::joule_per_kilogram,
+                uom::si::available_energy::kilojoule_per_kilogram
+            ),
             None,
         )),
         "SpecificPower" => Some((
-            extract_units!(uom::si::specific_power::watt_per_kilogram),
+            extract_units!(
+                uom::si::specific_power::watt_per_kilogram,
+                uom::si::specific_power::kilowatt_per_kilogram
+            ),
             None,
         )),
         "Temperature" => Some((
@@ -465,9 +498,14 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
             ),
             None,
         )),
-        "TemperatureInterval" => {
-            Some((extract_units!(uom::si::temperature_interval::kelvin), None))
-        }
+        "TemperatureInterval" => Some((
+            extract_units!(
+                uom::si::temperature_interval::kelvin,
+                uom::si::temperature_interval::degree_celsius,
+                uom::si::temperature_interval::degree_fahrenheit
+            ),
+            None,
+        )),
         "ThermalConductance" => Some((
             extract_units!(uom::si::thermal_conductance::watt_per_kelvin),
             None,
@@ -477,7 +515,11 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
             None,
         )),
         "Time" => Some((
-            extract_units!(uom::si::time::second, uom::si::time::hour),
+            extract_units!(
+                uom::si::time::second,
+                uom::si::time::minute,
+                uom::si::time::hour
+            ),
             None,
         )),
         "Velocity" => Some((
@@ -488,7 +530,14 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
             ),
             None,
         )),
-        "Volume" => Some((extract_units!(uom::si::volume::cubic_meter), None)),
+        "Volume" => Some((
+            extract_units!(
+                uom::si::volume::cubic_meter,
+                uom::si::volume::liter,
+                uom::si::volume::gallon
+            ),
+            None,
+        )),
         _ => None,
     }
 }
