@@ -15,11 +15,18 @@ fn rewrite_serialize_with_for_vec(attr: &syn::Attribute) -> TokenStream2 {
             let lit: syn::LitStr = meta.input.parse()?;
             let base = lit.value();
             let vec_path = if let Some(sep) = base.rfind("::") {
-                format!("{}::vec_{}", &base[..sep], &base[sep + 2..])
+                let (head, tail_with_sep) = base.split_at(sep);
+                let tail = &tail_with_sep[2..];
+                if tail.starts_with("vec_") {
+                    base.clone()
+                } else {
+                    format!("{head}::vec_{tail}")
+                }
+            } else if base.starts_with("vec_") {
+                base.clone()
             } else {
-                format!("vec_{}", base)
+                format!("vec_{base}")
             };
-            parts.push(quote! { serialize_with = #vec_path });
         } else {
             let path = &meta.path;
             if meta.input.peek(syn::Token![=]) {
