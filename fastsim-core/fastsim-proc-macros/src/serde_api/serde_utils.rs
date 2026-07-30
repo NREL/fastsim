@@ -562,10 +562,20 @@ pub fn generate_helper_struct(
                     // canonical name is expanded.  The bare alias also routes to the base unit.
                     //
                     // Example: `budget_power: si::Power` with `#[serde(alias = "budget")]`
-                    //   primary helper  → rename "budget_power_watts",  alias "budget_power",
-                    //                     alias "budget" (bare), alias "budget_watts"
-                    //   alternate helper → rename "budget_power_kilowatts", alias "budget_kilowatts"
+                    //   base unit helper (watts) → rename "budget_power_watts",  alias "budget_power",
+                    //                              alias "budget" (bare), alias "budget_watts"
+                    //   other helpers             → rename "budget_power_kilowatts", alias "budget_kilowatts"
                     let extra_aliases = extract_serde_aliases(field);
+
+                    // The bare field name (no unit suffix) is a stable alias for the SI base
+                    // unit, regardless of what the current canonical serialization unit is.
+                    // This preserves backward compatibility: if the default changes from e.g.
+                    // `ratio` to `percent`, files with bare `grade: 0.05` still mean 0.05 ratio.
+                    let base_unit_idx = base_unit_for_quantity(&si_field.quantity)
+                        .and_then(|base| {
+                            si_field.units.iter().position(|(_, n)| n.as_str() == base)
+                        })
+                        .unwrap_or(0);
 
                     for (idx, (_unit_type, unit_name)) in si_field.units.iter().enumerate() {
                         let helper_field_name = syn::Ident::new(
@@ -596,10 +606,11 @@ pub fn generate_helper_struct(
                             (serde_key.clone(), bare_name.clone())
                         };
 
-                        // The primary unit (first in list) also accepts the bare field name as
-                        // alias.  Extra aliases are expanded: each alias A contributes
-                        // alias "A_{unit}" to this unit's helper, plus bare "A" on primary.
-                        let expanded_aliases: Vec<String> = if idx == 0 {
+                        // The SI base unit also accepts the bare field name as alias.
+                        // Extra aliases: each alias A contributes alias "A_{unit}" to every
+                        // unit's helper, plus bare "A" on the base unit only.
+                        let is_base_unit = idx == base_unit_idx;
+                        let expanded_aliases: Vec<String> = if is_base_unit {
                             extra_aliases
                                 .iter()
                                 .flat_map(|a| [a.clone(), format!("{}_{}", a, unit_name)])
@@ -611,7 +622,7 @@ pub fn generate_helper_struct(
                                 .collect()
                         };
 
-                        let serde_attr = if idx == 0 {
+                        let serde_attr = if is_base_unit {
                             let extra = std::iter::once(unit_alias.as_str())
                                 .chain(expanded_aliases.iter().map(String::as_str))
                                 .map(|a| quote! { , alias = #a });

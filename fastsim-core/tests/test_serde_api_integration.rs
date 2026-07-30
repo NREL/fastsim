@@ -571,10 +571,10 @@ fn test_alias_prefix_expands_to_all_unit_variants() {
         "renamed_power_watts": 0.0
     }"#;
 
-    // Old bare name routes to base unit (watts)
+    // Old bare name routes to SI base unit (watts), regardless of the current serialization default
     let json = base_json.replace(r#""renamed_power_watts": 0.0"#, r#""old_power": 200.0"#);
     let d: TestDevice = serde_json::from_str(&json).expect("old_power (bare) should deserialize");
-    assert_eq!(d.renamed_power.get::<si::watt>(), 200.0);
+    assert_eq!(d.renamed_power.get::<si::watt>(), 200.0); // 200 W
 
     // Old name + _watts suffix
     let json = base_json.replace(
