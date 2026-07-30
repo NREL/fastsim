@@ -391,13 +391,13 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
             extract_units!(uom::si::energy::joule, uom::si::energy::kilowatt_hour),
             None,
         )),
-        "EnergyDensity" => Some((
-            vec![(
-                quote! {EnergyDensity},
-                String::from("joule_per_cubic_meter"),
-            )],
-            None,
-        )),
+        // "EnergyDensity" => Some((
+        //     vec![(
+        //         quote! {EnergyDensity},
+        //         String::from("joule_per_cubic_meter"),
+        //     )],
+        //     None,
+        // )),
         "Force" => Some((extract_units!(uom::si::force::newton), None)),
         "HeatCapacity" => Some((
             extract_units!(uom::si::heat_capacity::joule_per_kelvin),
@@ -423,7 +423,14 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
         )),
         // First entry = canonical serialization unit.
         // To serialize Power in kilowatts, move kilowatt to first and set serialize_with:
-        // "Power" => Some((extract_units!(uom::si::power::kilowatt, uom::si::power::watt, uom::si::power::horsepower), Some("fastsim_core::utils::serde_helpers::power_as_kilowatts"))),
+        // "Power" => Some((
+        //     extract_units!(
+        //         uom::si::power::kilowatt,
+        //         uom::si::power::watt,
+        //         uom::si::power::horsepower
+        //     ),
+        //     Some("fastsim_core::utils::serde_helpers::power_as_kilowatts"),
+        // )),
         "Power" => Some((
             extract_units!(
                 uom::si::power::watt,
@@ -508,7 +515,7 @@ fn base_unit_for_quantity(quantity: &str) -> Option<&'static str> {
         "Curvature" => Some("radians_per_meter"),
         "DynamicViscosity" => Some("pascal_seconds"),
         "Energy" => Some("joules"),
-        "EnergyDensity" => Some("joule_per_cubic_meter"),
+        // "EnergyDensity" => Some("joule_per_cubic_meter"), // commented out — no active uom type
         "Force" => Some("newtons"),
         "HeatCapacity" => Some("joules_per_kelvin"),
         "HeatTransferCoeff" => Some("watts_per_square_meter_kelvin"),
@@ -742,7 +749,7 @@ pub fn generate_try_from_impl(
                         "Curvature" => quote! { uom::si::f64::Curvature },
                         "DynamicViscosity" => quote! { uom::si::f64::DynamicViscosity },
                         "Energy" => quote! { uom::si::f64::Energy },
-                        "EnergyDensity" => quote! { uom::si::f64::Pressure },
+                        // "EnergyDensity" => quote! { uom::si::f64::Pressure }, // commented out — no active uom type
                         "Force" => quote! { uom::si::f64::Force },
                         "HeatCapacity" => quote! { uom::si::f64::HeatCapacity },
                         "HeatTransferCoeff" => quote! { uom::si::f64::HeatTransfer },
@@ -1120,7 +1127,7 @@ mod tests {
             "Curvature",
             "DynamicViscosity",
             "Energy",
-            "EnergyDensity",
+            // "EnergyDensity", // commented out — no active uom type
             "Force",
             "HeatCapacity",
             "HeatTransferCoeff",
