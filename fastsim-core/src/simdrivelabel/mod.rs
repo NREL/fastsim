@@ -17,6 +17,15 @@ fn first_grtr(arr: &[f64], cut: f64) -> Option<usize> {
     Some(arr.iter().position(|&x| x > cut).unwrap_or(len - 1)) // unwrap_or allows for default if not found
 }
 
+fn parse_model_year_or_2017(veh_year: Option<&str>) -> u32 {
+    if let Some(parsed_year) = veh_year.and_then(|year| year.parse::<u32>().ok()) {
+        parsed_year
+    } else {
+        eprintln!("Model year could not be parsed; using 2017 adjustment coefficients.");
+        2017
+    }
+}
+
 /// Get the 0 to 60 mph accelaration time from the given times and speeds.
 pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Result<f64> {
     // Check if vehicle reaches 60 mph
@@ -1045,8 +1054,10 @@ pub fn run_label_simulations(
         })?;
     }
 
+    let veh_year = parse_model_year_or_2017(veh.year.as_deref());
+
     // find year-based adjustment parameters
-    let adj_params = if veh.year < 2017 {
+    let adj_params = if veh_year < 2017 {
         &phev_utilization_params.adj_coef_map["2008"]
     } else {
         // assume 2017 coefficients are valid
@@ -1063,7 +1074,7 @@ pub fn run_label_simulations(
     if is_hev || is_conv {
         Ok((
             SimulationDataForLabel::ConvOrHev {
-                veh_year: veh.year,
+                veh_year,
                 udds_mpgge: sd["udds"].veh.mpg(fuel_props.energy_density)?,
                 hwy_mpgge: sd["hwy"].veh.mpg(fuel_props.energy_density)?,
             },
@@ -1074,7 +1085,7 @@ pub fn run_label_simulations(
             let res_energy_capacity_kwh = bev.res.energy_capacity.get::<si::kilowatt_hour>();
             Ok((
                 SimulationDataForLabel::Bev {
-                    veh_year: veh.year,
+                    veh_year,
                     udds_kwh_per_mi: sd["udds"].veh.kwh_per_mi()?,
                     hwy_kwh_per_mi: sd["hwy"].veh.kwh_per_mi()?,
                     bev_energy_capacity_kwh: res_energy_capacity_kwh,
@@ -1122,7 +1133,7 @@ pub fn run_label_simulations(
         sd.insert("hwy-cs", cs_hwy_sd.clone());
         Ok((
             SimulationDataForLabel::Phev {
-                veh_year: veh.year,
+                veh_year,
                 info: PhevVehicleInfo {
                     max_soc,
                     min_soc,

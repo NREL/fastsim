@@ -5,6 +5,8 @@ use crate::{
 };
 pub mod fastsim2_interface;
 
+use semver::Version;
+
 /// Possible aux load power sources
 #[derive(
     Clone, Debug, Serialize, Deserialize, PartialEq, IsVariant, derive_more::From, TryInto,
@@ -30,10 +32,23 @@ impl Init for AuxSource {}
 pub struct Vehicle {
     /// Vehicle name
     pub name: String,
-    /// Documentation (e.g. how this file was generated, calibration details)]
+    /// Minimum FASTSim version required
+    #[serde(default = "crate::current_fastsim_version")]
+    pub min_fastsim_version: Version,
+    /// Where in the database this vehicle lives, if applicable
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub db_path: Option<database::Schema>,
+    /// Documentation (e.g. how this file was generated, calibration details)
     pub doc: Option<String>,
-    /// Year manufactured
-    pub year: u32,
+    /// Vehicle year (e.g. 2020, 2025)
+    pub year: Option<String>,
+    /// Vehicle make (e.g. Toyota, Ford)
+    pub make: Option<String>,
+    /// Vehicle model (e.g. Camry, F-150)
+    pub model: Option<String>,
+    /// Vehicle trim (e.g. SE, XLE 4cyl)
+    pub trim: Option<String>,
+
     #[has_state]
     /// type of vehicle powertrain including contained type-specific parameters and variables
     pub pt_type: PowertrainType,
@@ -63,7 +78,7 @@ pub struct Vehicle {
     #[serde(default)]
     pub state: VehicleState,
     /// Vector-like history of [Self::state]
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
     pub history: VehicleStateHistoryVec,
 }
 
@@ -118,6 +133,67 @@ impl Vehicle {
     #[staticmethod]
     fn from_f2_file_py(file: PathBuf) -> anyhow::Result<Self> {
         Self::from_f2_file(file)
+    }
+
+    /// Load from schema v1 using a pre-serialized path string.
+    /// Auto-detects local vs remote based on db_path_or_url.
+    #[pyo3(name = "from_db_path_v1")]
+    #[staticmethod]
+    #[pyo3(signature = (
+        db_path_or_url,
+        path,
+        extension,
+        skip_init=false,
+    ))]
+    fn from_db_path_v1_py(
+        db_path_or_url: Option<&str>,
+        path: &str,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        Self::from_db_path_v1(db_path_or_url, path, extension, skip_init)
+    }
+
+    /// Load from schema v1 using individual fields.
+    /// Auto-detects local vs remote based on db_path_or_url.
+    #[pyo3(name = "from_db_fields_v1")]
+    #[staticmethod]
+    #[pyo3(signature = (
+        db_path_or_url,
+        fastsim_version,
+        powertrain,
+        make,
+        model,
+        year,
+        variant,
+        revision,
+        extension,
+        skip_init=false,
+    ))]
+    fn from_db_fields_v1_py(
+        db_path_or_url: Option<&str>,
+        fastsim_version: u32,
+        powertrain: &str,
+        make: &str,
+        model: &str,
+        year: &str,
+        variant: &str,
+        revision: u32,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        Self::from_db_fields_v1(
+            db_path_or_url,
+            fastsim_version,
+            powertrain,
+            make,
+            model,
+            year,
+            variant,
+            revision,
+            extension,
+            skip_init,
+        )
     }
 
     #[pyo3(name = "reset_py")]
@@ -383,6 +459,100 @@ impl Mass for Vehicle {
 impl SerdeAPI for Vehicle {
     #[cfg(feature = "resources")]
     const RESOURCES_SUBDIR: &'static str = "vehicles";
+
+    /// Deserialize a [`Vehicle`] from a reader, emitting a warning if
+    /// [`Vehicle::min_fastsim_version`] exceeds the installed version before attempting full
+    /// deserialization. This ensures version incompatibilities produce a clear diagnostic even
+    /// when the full parse would fail due to unrecognized fields added in a newer release.
+    fn from_reader<R: std::io::Read>(
+        rdr: &mut R,
+        format: &str,
+        skip_init: bool,
+    ) -> Result<Self, crate::error::Error> {
+        // Minimal struct used only for the version pre-check. No
+        // `deny_unknown_fields` so it tolerates any extra vehicle fields.
+        #[derive(Deserialize)]
+        struct VersionCheck {
+            #[serde(default = "crate::current_fastsim_version")]
+            min_fastsim_version: semver::Version,
+        }
+
+        let mut buf = Vec::new();
+        rdr.read_to_end(&mut buf)
+            .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?;
+
+        // Try to extract `min_fastsim_version` from the raw buffer before the
+        // full deserialization so that a version mismatch is reported even when
+        // the full parse would fail due to fields added in a newer release.
+        let fmt = format.trim_start_matches('.').to_lowercase();
+        let min_ver: Option<semver::Version> = match fmt.as_str() {
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => serde_yaml::from_slice::<VersionCheck>(&buf)
+                .ok()
+                .map(|v| v.min_fastsim_version),
+            #[cfg(feature = "json")]
+            "json" => serde_json::from_slice::<VersionCheck>(&buf)
+                .ok()
+                .map(|v| v.min_fastsim_version),
+            #[cfg(feature = "msgpack")]
+            "msgpack" => rmp_serde::decode::from_slice::<VersionCheck>(&buf)
+                .ok()
+                .map(|v| v.min_fastsim_version),
+            #[cfg(feature = "toml")]
+            "toml" => std::str::from_utf8(&buf)
+                .ok()
+                .and_then(|s| toml::from_str::<VersionCheck>(s).ok())
+                .map(|v| v.min_fastsim_version),
+            _ => None,
+        };
+        if let Some(min_ver) = min_ver {
+            if min_ver > *crate::FASTSIM_VERSION {
+                eprintln!(
+                    "WARNING: vehicle file requires FASTSim >= {min_ver} but the installed \
+                    version is {}. Loading will be attempted but may fail or produce \
+                    unexpected results. Please update FASTSim.",
+                    *crate::FASTSIM_VERSION
+                );
+            } else if min_ver.major < crate::FASTSIM_VERSION.major {
+                eprintln!(
+                    "WARNING: vehicle file has min_fastsim_version {min_ver}, which is from \
+                    an older major version than the installed FASTSim {}. Major-version \
+                    upgrades may introduce breaking changes; loading will be attempted.",
+                    *crate::FASTSIM_VERSION
+                );
+            }
+        }
+
+        // Full deserialization from the buffered content
+        let mut deserialized: Self = match fmt.as_str() {
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => serde_yaml::from_slice(&buf)
+                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "json")]
+            "json" => serde_json::from_slice(&buf)
+                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "msgpack")]
+            "msgpack" => rmp_serde::decode::from_slice(&buf)
+                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "toml")]
+            "toml" => {
+                let s = String::from_utf8(buf)
+                    .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?;
+                toml::from_str(&s)
+                    .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?
+            }
+            _ => {
+                return Err(crate::error::Error::SerdeError(format!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_BYTE_FORMATS,
+                )))
+            }
+        };
+        if !skip_init {
+            deserialized.init()?;
+        }
+        Ok(deserialized)
+    }
 }
 impl Init for Vehicle {
     fn init(&mut self) -> Result<(), Error> {
@@ -1245,14 +1415,15 @@ pub(crate) mod tests {
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
+            Some(FuelType::Gasoline),
             2305080000.0 * uc::J,
-            Option::None,
-            Option::None,
+            None,
+            None,
         )?;
         let fc = FuelConverter::new(
             FuelConverterThermalOption::None, // thrml
-            Option::None,                     // mass
-            Option::None,                     // specific_pwr
+            None,                             // mass
+            None,                             // specific_pwr
             211088.0 * uc::W,                 // pwr_out_max
             34604.59016393443 * uc::W,        // pwr_out_max_init
             6.1 * uc::S,                      // pwr_ramp_lag
@@ -1281,12 +1452,12 @@ pub(crate) mod tests {
             )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
-            Option::None,
+            None,
         )?;
         let tx = Transmission::new(
-            Option::None,                   // mass
+            None,                           // mass
             InterpolatorEnum::new_0d(0.95), // eff_interp
-            Option::None,                   // save_interval
+            None,                           // save_interval
         )?;
         let pt_controls = {
             if with_conv_start_stop {
@@ -1314,13 +1485,13 @@ pub(crate) mod tests {
             with_dfco,       // dfco_enabled
             25.0 * uc::MPH,  // minimum_dfco_speed
             -0.2 * uc::MPS2, // minimum_dfco_deceleration
-            Option::None,    // save_interval
+            None,            // save_interval
         )?;
         let conv = ConventionalVehicle::new(
             fs,            // fs
             fc,            // fc
             tx,            // transmission
-            Option::None,  // mass
+            None,          // mass
             pt_controls,   // powertrain control
             dfco_controls, // dfco_cntrl
             1.0 * uc::R,   // alt_eff
@@ -1331,29 +1502,34 @@ pub(crate) mod tests {
             wheel_rr_coef: 0.0064798953284486704 * uc::R,
             wheel_inertia: 0.815 * uc::KGM2,
             num_wheels: 4,
-            wheel_radius: Option::Some(0.36865 * uc::M),
-            tire_code: Option::None,
+            wheel_radius: Some(0.36865 * uc::M),
+            tire_code: None,
             cg_height: 0.53 * uc::M,
             wheel_fric_coef: 0.8 * uc::R,
             drive_type: chassis::DriveTypes::FWD,
             drive_axle_weight_frac: 0.61 * uc::R,
             wheel_base: 3.08864 * uc::M,
-            mass: Option::None,
-            glider_mass: Option::None,
-            cargo_mass: Option::None,
+            mass: None,
+            glider_mass: None,
+            cargo_mass: None,
         };
         let boxed_conv = Box::new(conv);
         let mut veh = Vehicle::new(
-            String::from("2026 Chrysler Pacifica Select"),   // name
-            Option::None,                                    // doc
-            2026,                                            // year
-            PowertrainType::ConventionalVehicle(boxed_conv), // pt_type
-            chassis,                                         // chassis
-            CabinOption::None,                               // cabin
-            HVACOption::None,                                // hvac
-            Option::Some(2154.564 * uc::KG),                 // mass
-            700.0 * uc::W,                                   // pwr_aux_base
-            Option::None,                                    // save_interval
+            String::from("2026 Chrysler Pacifica Select"), // name
+            None,
+            None,
+            None,
+            Some(String::from("2026")),
+            Some(String::from("Chrysler")),
+            Some(String::from("Pacifica")),
+            Some(String::from("Select")),
+            PowertrainType::ConventionalVehicle(boxed_conv),
+            chassis,
+            CabinOption::None,
+            HVACOption::None,
+            Some(2154.564 * uc::KG),
+            700.0 * uc::W,
+            None,
         )?;
         veh.set_save_interval(Option::Some(1))?;
         Ok(veh)
@@ -1362,26 +1538,27 @@ pub(crate) mod tests {
     fn make_microhybrid_pacifica() -> anyhow::Result<Vehicle> {
         let res = ReversibleEnergyStorage::new(
             RESThermalOption::None,             // thrml
-            Option::None,                       // mass
-            Option::None,                       // specific_energy
+            None,                               // mass
+            None,                               // specific_energy
             5.0 * uc::KW,                       // pwr_out_max
             1.0 * uc::KWH,                      // energy_capacity
             EffInterp::Constant(Interp0D(0.9)), // eff_interp
             0.0 * uc::R,                        // min_soc
             1.0 * uc::R,                        // max_soc
-            Option::None,
+            None,
         )?;
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
+            Some(FuelType::Gasoline),
             2305080000.0 * uc::J,
-            Option::None,
-            Option::None,
+            None,
+            None,
         )?;
         let fc = FuelConverter::new(
             FuelConverterThermalOption::None, // thrml
-            Option::None,                     // mass
-            Option::None,                     // specific_pwr
+            None,                             // mass
+            None,                             // specific_pwr
             211088.0 * uc::W,                 // pwr_out_max
             34604.59016393443 * uc::W,        // pwr_out_max_init
             6.1 * uc::S,                      // pwr_ramp_lag
@@ -1410,7 +1587,7 @@ pub(crate) mod tests {
             )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
-            Option::None,
+            None,
         )?;
         let em = ElectricMachine::new(
             InterpolatorEnum::new_1d(
@@ -1419,16 +1596,16 @@ pub(crate) mod tests {
                 strategy::Linear,
                 Extrapolate::Error,
             )?, // eff_interp_achieved
-            Option::None, // eff_interp_at_max_input
+            None,         // eff_interp_at_max_input
             5.0 * uc::KW, // pwr_out_max
-            Option::None, // specific_pwr
-            Option::None, // mass
-            Option::None, // save_interval
+            None,         // specific_pwr
+            None,         // mass
+            None,         // save_interval
         )?;
         let tx = Transmission::new(
-            Option::None,                   // mass
+            None,                           // mass
             InterpolatorEnum::new_0d(0.95), // eff_interp
-            Option::None,                   // save_interval
+            None,                           // save_interval
         )?;
         let cntrl = HEVStartStopControl::new(
             Option::None, // fc_min_time_on
@@ -1465,29 +1642,34 @@ pub(crate) mod tests {
             wheel_rr_coef: 0.0064798953284486704 * uc::R,
             wheel_inertia: 0.815 * uc::KGM2,
             num_wheels: 4,
-            wheel_radius: Option::Some(0.36865 * uc::M),
-            tire_code: Option::None,
+            wheel_radius: Some(0.36865 * uc::M),
+            tire_code: None,
             cg_height: 0.53 * uc::M,
             wheel_fric_coef: 0.8 * uc::R,
             drive_type: chassis::DriveTypes::FWD,
             drive_axle_weight_frac: 0.61 * uc::R,
             wheel_base: 3.08864 * uc::M,
-            mass: Option::None,
-            glider_mass: Option::None,
-            cargo_mass: Option::None,
+            mass: None,
+            glider_mass: None,
+            cargo_mass: None,
         };
         let boxed_hev = Box::new(hev);
         let mut veh = Vehicle::new(
-            String::from("2026 Chrysler Pacifica Select (uHEV Test)"), // name
-            Option::None,                                              // doc
-            2026,                                                      // year
-            PowertrainType::HybridElectricVehicle(boxed_hev),          // pt_type
-            chassis,                                                   // chassis
-            CabinOption::None,                                         // cabin
-            HVACOption::None,                                          // hvac
-            Option::Some(2154.564 * uc::KG),                           // mass
-            700.0 * uc::W,                                             // pwr_aux_base
-            Option::None,                                              // save_interval
+            String::from("2026 Chrysler Pacifica Select (uHEV Test)"),
+            None,
+            None,
+            None,
+            Some(String::from("2026")),
+            Some(String::from("Chrysler")),
+            Some(String::from("Pacifica")),
+            Some(String::from("Select")),
+            PowertrainType::HybridElectricVehicle(boxed_hev),
+            chassis,
+            CabinOption::None,
+            HVACOption::None,
+            Some(2154.564 * uc::KG),
+            700.0 * uc::W,
+            None,
         )?;
         veh.set_save_interval(Option::Some(1))?;
         Ok(veh)

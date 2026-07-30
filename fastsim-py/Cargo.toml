@@ -7,7 +7,7 @@ rust-version = { workspace = true  }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-fastsim-core = { workspace = true, features = ["pyo3"] }
+fastsim-core = { workspace = true, features = ["pyo3", "web"] }
 pyo3 = { workspace = true, features = ["extension-module", "anyhow"] }
 ninterp = { workspace = true }
 
