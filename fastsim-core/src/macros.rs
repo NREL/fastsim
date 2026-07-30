@@ -97,7 +97,7 @@ macro_rules! timer {
 /// Generate a family of `#[serde(serialize_with)]`-compatible helpers that
 /// serialize a UOM SI quantity as a specific (non-base) unit.
 ///
-/// Expands to four functions covering all wrapper combinations used in this
+/// Expands to five functions covering all wrapper combinations used in this
 /// codebase:
 ///
 /// | Generated function        | Field type                   |
@@ -106,6 +106,7 @@ macro_rules! timer {
 /// | `tracked_$prefix`         | `TrackedState<$qty_type>`    |
 /// | `opt_$prefix`             | `Option<$qty_type>`          |
 /// | `vec_$prefix`             | `Vec<$qty_type>`             |
+/// | `vec_tracked_$prefix`     | `Vec<TrackedState<$qty_type>>` |
 ///
 /// # Example
 ///
