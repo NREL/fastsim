@@ -34,6 +34,17 @@ pub trait StartStopControl {
         Ok(())
     }
 
+    // TODO: bug https://github.com/NatLabRockies/fastsim/issues/312
+    //
+    // StartStopControl::handle_fc_on_causes_for_temp is intended to use a previous temperature (temp_prev) for hysteresis,
+    // but both tuple entries are populated from the same fc_temperature value.
+    // This makes the (temp_prev < temp_fc_forced_on && temperature < temp_fc_allowed_off) branch ineffective
+    // and effectively ignores the temp_fc_allowed_off threshold.
+    //
+    // To implement the intended hysteresis, you likely need to track a previous fuel-converter temperature
+    // (e.g., add a temp_prev/temperature_prev field to FuelConverterThermalState and update it each step)
+    // and use that here; otherwise consider simplifying the logic and error message so it doesn’t imply
+    // a non-existent fc.temp_prev() API.
     fn handle_fc_on_causes_for_temp(
         fc: &FuelConverter,
         temp_fc_forced_on: Option<si::Temperature>,
