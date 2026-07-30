@@ -57,7 +57,7 @@ pub struct Vehicle {
     pub pwr_aux_base: si::Power,
 
     /// time step interval at which `state` is saved into `history`
-    pub save_interval: Option<usize>,
+    pub(crate) save_interval: Option<usize>,
     /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
