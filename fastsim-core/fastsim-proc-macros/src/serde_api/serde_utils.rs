@@ -433,7 +433,10 @@ fn quantity_config(quantity: &str) -> Option<(Vec<(TokenStream2, String)>, Optio
             None,
         )),
         "PowerRate" => Some((extract_units!(uom::si::power_rate::watt_per_second), None)),
-        "Pressure" => Some((extract_units!(uom::si::pressure::kilopascal), None)),
+        "Pressure" => Some((
+            extract_units!(uom::si::pressure::pascal, uom::si::pressure::kilopascal),
+            None,
+        )),
         // Ratio: bare field name is canonical (no _ratio suffix); see serde_attrs_for_si_field.
         "Ratio" => Some((
             extract_units!(uom::si::ratio::ratio, uom::si::ratio::percent),
@@ -1093,5 +1096,72 @@ fn outer_type_path_tokens(ty: &syn::Type) -> Option<TokenStream2> {
         Some(quote! { #path })
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Asserts the invariant: for every quantity whose `quantity_config` entry has no
+    /// `serialize_with` function, the first unit listed must be the SI base unit.
+    ///
+    /// If this test fails for a quantity it means the serialized key will be mislabeled
+    /// (the raw internal float is always in the SI base unit, so the label must match).
+    /// Fix it by either:
+    ///   a) placing the base unit first in `quantity_config` (preferred, no conversion needed), or
+    ///   b) adding a `serialize_with` helper that converts from base to the desired unit.
+    #[test]
+    fn no_serialize_with_implies_first_unit_is_si_base() {
+        let quantities = [
+            "Acceleration",
+            "Angle",
+            "Area",
+            "Curvature",
+            "DynamicViscosity",
+            "Energy",
+            "EnergyDensity",
+            "Force",
+            "HeatCapacity",
+            "HeatTransferCoeff",
+            "InverseVelocity",
+            "Length",
+            "Mass",
+            "MassDensity",
+            "MomentOfInertia",
+            "Power",
+            "PowerRate",
+            "Pressure",
+            "Ratio",
+            "SpecificEnergy",
+            "SpecificPower",
+            "Temperature",
+            "TemperatureInterval",
+            "ThermalConductance",
+            "ThermalConductivity",
+            "Time",
+            "Velocity",
+            "Volume",
+        ];
+
+        for qty in &quantities {
+            let (units, serialize_with) = quantity_config(qty)
+                .unwrap_or_else(|| panic!("quantity_config returned None for '{qty}'"));
+
+            if serialize_with.is_some() {
+                // Explicit converter present — first entry need not be the base unit.
+                continue;
+            }
+
+            let first = units.first().map(|(_, n)| n.as_str()).unwrap_or("");
+            let base = base_unit_for_quantity(qty)
+                .unwrap_or_else(|| panic!("base_unit_for_quantity returned None for '{qty}'"));
+
+            assert_eq!(
+                first, base,
+                "Quantity '{qty}': first unit '{first}' ≠ SI base unit '{base}'. \
+                 Either place '{base}' first in quantity_config or add a serialize_with helper."
+            );
+        }
     }
 }
