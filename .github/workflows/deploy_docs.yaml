@@ -45,9 +45,6 @@ jobs:
       - name: Register Jupyter kernel
         run: python -m ipykernel install --user --name python3
 
-      - name: Convert demos to notebooks
-        run: python docs/demos_to_notebooks.py
-
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
@@ -58,10 +55,7 @@ jobs:
         # base path to build correct links to its static assets.
         env:
           BASE_URL: "/${{ github.event.repository.name }}"
-        # TODO: consider adding --strict once a strict + execute build is
-        # confirmed clean, so broken links/refs and execution errors fail the
-        # deploy instead of silently publishing.
-        run: jupyter book build --html --execute
+        run: jupyter book build --strict --html --execute
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

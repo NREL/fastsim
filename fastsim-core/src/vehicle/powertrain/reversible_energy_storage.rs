@@ -40,7 +40,10 @@ pub struct ReversibleEnergyStorage {
     #[serde(default)]
     pub state: ReversibleEnergyStorageState,
     /// Custom vector of [Self::state]
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "ReversibleEnergyStorageStateHistoryVec::is_empty"
+    )]
     pub history: ReversibleEnergyStorageStateHistoryVec,
     /// Time step interval at which history is saved
     pub save_interval: Option<usize>,
@@ -106,21 +109,25 @@ impl ReversibleEnergyStorage {
     }
 
     #[pyo3(name = "set_default_pwr_interp")]
+    #[cfg(all(feature = "yaml", feature = "resources"))]
     fn set_default_pwr_interp_py(&mut self) -> anyhow::Result<()> {
         self.set_default_pwr_interp()
     }
 
     #[pyo3(name = "set_default_pwr_and_soc_interp")]
+    #[cfg(all(feature = "yaml", feature = "resources"))]
     fn set_default_pwr_and_soc_interp_py(&mut self) -> anyhow::Result<()> {
         self.set_default_pwr_and_soc_interp()
     }
 
     #[pyo3(name = "set_default_pwr_and_temp_interp")]
+    #[cfg(all(feature = "yaml", feature = "resources"))]
     fn set_default_pwr_and_temp_interp_py(&mut self) -> anyhow::Result<()> {
         self.set_default_pwr_and_temp_interp()
     }
 
     #[pyo3(name = "set_default_pwr_soc_and_temp_interp")]
+    #[cfg(all(feature = "yaml", feature = "resources"))]
     fn set_default_pwr_soc_and_temp_interp_py(&mut self) -> anyhow::Result<()> {
         self.set_default_pwr_soc_and_temp_interp()
     }
@@ -1146,7 +1153,10 @@ pub struct RESLumpedThermal {
     #[serde(default)]
     pub state: RESLumpedThermalState,
     /// history of state
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "RESLumpedThermalStateHistoryVec::is_empty"
+    )]
     pub history: RESLumpedThermalStateHistoryVec,
     pub save_interval: Option<usize>,
 }

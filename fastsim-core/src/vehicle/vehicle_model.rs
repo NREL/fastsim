@@ -1,9 +1,11 @@
-use super::{hev::HEVPowertrainControls, hev::HEVStopStartControl, *};
+use super::{hev::HEVPowertrainControls, hev::HEVStartStopControl, *};
 use crate::{
     prelude::*,
-    vehicle::conv::{ConvPowertrainControls, ConvStopStartControl},
+    vehicle::conv::{ConvPowertrainControls, ConvStartStopControl},
 };
 pub mod fastsim2_interface;
+
+use semver::Version;
 
 /// Possible aux load power sources
 #[derive(
@@ -30,10 +32,23 @@ impl Init for AuxSource {}
 pub struct Vehicle {
     /// Vehicle name
     pub name: String,
-    /// Documentation (e.g. how this file was generated, calibration details)]
+    /// Minimum FASTSim version required
+    #[serde(default = "crate::current_fastsim_version")]
+    pub min_fastsim_version: Version,
+    /// Where in the database this vehicle lives, if applicable
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub db_path: Option<database::Schema>,
+    /// Documentation (e.g. how this file was generated, calibration details)
     pub doc: Option<String>,
-    /// Year manufactured
-    pub year: u32,
+    /// Vehicle year (e.g. 2020, 2025)
+    pub year: Option<String>,
+    /// Vehicle make (e.g. Toyota, Ford)
+    pub make: Option<String>,
+    /// Vehicle model (e.g. Camry, F-150)
+    pub model: Option<String>,
+    /// Vehicle trim (e.g. SE, XLE 4cyl)
+    pub trim: Option<String>,
+
     #[has_state]
     /// type of vehicle powertrain including contained type-specific parameters and variables
     pub pt_type: PowertrainType,
@@ -63,7 +78,7 @@ pub struct Vehicle {
     #[serde(default)]
     pub state: VehicleState,
     /// Vector-like history of [Self::state]
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
     pub history: VehicleStateHistoryVec,
 }
 
@@ -120,6 +135,67 @@ impl Vehicle {
         Self::from_f2_file(file)
     }
 
+    /// Load from schema v1 using a pre-serialized path string.
+    /// Auto-detects local vs remote based on db_path_or_url.
+    #[pyo3(name = "from_db_path_v1")]
+    #[staticmethod]
+    #[pyo3(signature = (
+        db_path_or_url,
+        path,
+        extension,
+        skip_init=false,
+    ))]
+    fn from_db_path_v1_py(
+        db_path_or_url: Option<&str>,
+        path: &str,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        Self::from_db_path_v1(db_path_or_url, path, extension, skip_init)
+    }
+
+    /// Load from schema v1 using individual fields.
+    /// Auto-detects local vs remote based on db_path_or_url.
+    #[pyo3(name = "from_db_fields_v1")]
+    #[staticmethod]
+    #[pyo3(signature = (
+        db_path_or_url,
+        fastsim_version,
+        powertrain,
+        make,
+        model,
+        year,
+        variant,
+        revision,
+        extension,
+        skip_init=false,
+    ))]
+    fn from_db_fields_v1_py(
+        db_path_or_url: Option<&str>,
+        fastsim_version: u32,
+        powertrain: &str,
+        make: &str,
+        model: &str,
+        year: &str,
+        variant: &str,
+        revision: u32,
+        extension: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        Self::from_db_fields_v1(
+            db_path_or_url,
+            fastsim_version,
+            powertrain,
+            make,
+            model,
+            year,
+            variant,
+            revision,
+            extension,
+            skip_init,
+        )
+    }
+
     #[pyo3(name = "reset_py")]
     /// Combines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
     fn reset_py(&mut self) -> anyhow::Result<()> {
@@ -144,88 +220,145 @@ impl Vehicle {
         self.reset_cumulative(|| format_dbg!())
     }
 
-    #[pyo3(name = "use_stop_start_controller")]
-    fn use_stop_start_controller_py(&mut self) -> anyhow::Result<()> {
-        match &mut self.pt_type {
-            PowertrainType::ConventionalVehicle(veh) => {
-                match veh.pt_cntrl {
-                    ConvPowertrainControls::Normal => {
-                        let save_interval = veh.save_interval().unwrap_or(Option::None);
-                        veh.pt_cntrl =
-                            ConvPowertrainControls::StopStart(Box::new(ConvStopStartControl::new(
-                                Option::None, // fc_min_time_on
-                                Option::None, // temp_fc_forced_on
-                                Option::None, // temp_fc_allowed_off
-                                Option::None, // time_delay_after_stop_until_fc_can_turn_off
-                                save_interval,
-                            )?));
-                    }
-                    ConvPowertrainControls::StopStart(_) => (),
-                }
-            }
-            PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
-                HEVPowertrainControls::RGWDB(_) => {
-                    let save_interval = veh.save_interval().unwrap_or(Option::None);
-                    veh.pt_cntrl =
-                        HEVPowertrainControls::StopStart(Box::new(HEVStopStartControl::new(
-                            Option::None, // fc_min_time_on
-                            Option::None, // soc_fc_forced_on
-                            Option::None, // frac_of_most_eff_pwr_to_run_fc
-                            Option::None, // temp_fc_forced_on
-                            Option::None, // temp_fc_allowed_off
-                            Option::None, // time_delay_after_stop_until_fc_can_turn_off
-                            Option::None, // em_can_regen
-                            save_interval,
-                        )?));
-                }
-                HEVPowertrainControls::StopStart(_) => (),
-            },
-            _ => (),
-        }
-        Ok(())
+    #[pyo3(name = "use_start_stop_controller")]
+    fn use_start_stop_controller_py(&mut self) -> anyhow::Result<()> {
+        self.use_start_stop_controller()
     }
 
     #[pyo3(name = "use_normal_controller")]
     fn use_normal_controller_py(&mut self) -> anyhow::Result<()> {
-        let save_interval = self.save_interval().unwrap_or(Option::None);
+        self.use_normal_controller()
+    }
+
+    #[pyo3(name = "set_dfco_params")]
+    fn set_dfco_params_py(
+        &mut self,
+        enabled: bool,
+        min_dfco_speed_m_per_s: f64,
+        max_accel_for_dfco_m_per_s2: f64,
+    ) -> anyhow::Result<()> {
+        self.set_dfco_params(enabled, min_dfco_speed_m_per_s, max_accel_for_dfco_m_per_s2)
+    }
+}
+
+/// implementing constructor function for Vehicle
+impl Vehicle {
+    /// Create new Vehicle with specified parameters
+    pub fn new(
+        name: String,
+        min_fastsim_version: Option<Version>,
+        db_path: Option<database::Schema>,
+        doc: Option<String>,
+        year: Option<String>,
+        make: Option<String>,
+        model: Option<String>,
+        trim: Option<String>,
+        pt_type: PowertrainType,
+        chassis: Chassis,
+        cabin: CabinOption,
+        hvac: HVACOption,
+        mass: Option<si::Mass>,
+        pwr_aux_base: si::Power,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
+        let mut veh = Self {
+            name,
+            min_fastsim_version: min_fastsim_version
+                .unwrap_or_else(|| crate::FASTSIM_VERSION.clone()),
+            db_path,
+            doc,
+            year,
+            make,
+            model,
+            trim,
+            pt_type,
+            chassis,
+            cabin,
+            hvac,
+            mass,
+            pwr_aux_base,
+            state: VehicleState::default(),
+            history: VehicleStateHistoryVec::default(),
+            save_interval,
+        };
+        veh.init()?;
+        Ok(veh)
+    }
+
+    pub fn use_start_stop_controller(&mut self) -> anyhow::Result<()> {
         match &mut self.pt_type {
-            PowertrainType::ConventionalVehicle(conv) => match &conv.pt_cntrl {
-                ConvPowertrainControls::StopStart(_) => {
-                    conv.pt_cntrl = ConvPowertrainControls::Normal;
+            PowertrainType::ConventionalVehicle(veh) => match veh.pt_cntrl {
+                ConvPowertrainControls::Normal => {
+                    let save_interval = veh.save_interval().unwrap_or(Option::None);
+                    veh.pt_cntrl =
+                        ConvPowertrainControls::StartStop(Box::new(ConvStartStopControl::new(
+                            None, // fc_min_time_on
+                            None, // temp_fc_forced_on
+                            None, // temp_fc_allowed_off
+                            None, // time_delay_after_stop_until_fc_can_turn_off
+                            save_interval,
+                        )?));
                 }
-                ConvPowertrainControls::Normal => (),
+                ConvPowertrainControls::StartStop(_) => (),
             },
-            PowertrainType::HybridElectricVehicle(hev) => {
-                match &hev.pt_cntrl {
-                    HEVPowertrainControls::StopStart(_) => {
-                        hev.pt_cntrl = HEVPowertrainControls::RGWDB(Box::new(
-                            RESGreedyWithDynamicBuffers::new(
-                                Option::None, // speed_soc_disch_buffer
-                                Option::None, // speed_soc_disch_buffer_coeff
-                                Option::None, // speed_soc_fc_on_buffer
-                                Option::None, // speed_soc_fc_on_buffer_coeff
-                                Option::None, // speed_soc_regen_buffer
-                                Option::None, // speed_soc_regen_buffer_coeff
-                                Option::None, // fc_min_time_on
-                                Option::None, // speed_fc_forced_on
-                                Option::None, // frac_pwr_demand_fc_forced_on
-                                Option::None, // frac_of_most_eff_pwr_to_run_fc
-                                Option::None, // temp_fc_forced_on
-                                Option::None, // temp_fc_allowed_off
-                                save_interval,
-                            )?,
-                        ))
-                    }
-                    HEVPowertrainControls::RGWDB(_) => (),
+            PowertrainType::HybridElectricVehicle(veh) => match veh.pt_cntrl {
+                HEVPowertrainControls::RGWDB(_) => {
+                    let save_interval = veh.save_interval().unwrap_or(Option::None);
+                    veh.pt_cntrl =
+                        HEVPowertrainControls::StartStop(Box::new(HEVStartStopControl::new(
+                            None, // fc_min_time_on
+                            None, // soc_fc_forced_on
+                            None, // frac_of_most_eff_pwr_to_run_fc
+                            None, // temp_fc_forced_on
+                            None, // temp_fc_allowed_off
+                            None, // time_delay_after_stop_until_fc_can_turn_off
+                            None, // em_can_regen
+                            save_interval,
+                        )?));
                 }
-            }
+                HEVPowertrainControls::StartStop(_) => (),
+            },
             _ => (),
         }
         Ok(())
     }
 
-    #[pyo3(name = "set_dfco_params")]
-    fn set_dfco_params_py(
+    pub fn use_normal_controller(&mut self) -> anyhow::Result<()> {
+        let save_interval = self.save_interval().unwrap_or(Option::None);
+        match &mut self.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => match &conv.pt_cntrl {
+                ConvPowertrainControls::StartStop(_) => {
+                    conv.pt_cntrl = ConvPowertrainControls::Normal;
+                }
+                ConvPowertrainControls::Normal => (),
+            },
+            PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
+                HEVPowertrainControls::StartStop(_) => {
+                    hev.pt_cntrl =
+                        HEVPowertrainControls::RGWDB(Box::new(RESGreedyWithDynamicBuffers::new(
+                            None, // speed_soc_disch_buffer
+                            None, // speed_soc_disch_buffer_coeff
+                            None, // speed_soc_fc_on_buffer
+                            None, // speed_soc_fc_on_buffer_coeff
+                            None, // speed_soc_regen_buffer
+                            None, // speed_soc_regen_buffer_coeff
+                            None, // fc_min_time_on
+                            None, // speed_fc_forced_on
+                            None, // frac_pwr_demand_fc_forced_on
+                            None, // frac_of_most_eff_pwr_to_run_fc
+                            None, // temp_fc_forced_on
+                            None, // temp_fc_allowed_off
+                            save_interval,
+                        )?))
+                }
+                HEVPowertrainControls::RGWDB(_) => (),
+            },
+            _ => (),
+        }
+        Ok(())
+    }
+
+    pub fn set_dfco_params(
         &mut self,
         enabled: bool,
         min_dfco_speed_m_per_s: f64,
@@ -243,40 +376,6 @@ impl Vehicle {
             _ => (),
         }
         Ok(())
-    }
-}
-
-/// implementing constructor function for Vehicle
-impl Vehicle {
-    /// Create new Vehicle with specified parameters
-    pub fn new(
-        name: String,
-        doc: Option<String>,
-        year: u32,
-        pt_type: PowertrainType,
-        chassis: Chassis,
-        cabin: CabinOption,
-        hvac: HVACOption,
-        mass: Option<si::Mass>,
-        pwr_aux_base: si::Power,
-        save_interval: Option<usize>,
-    ) -> anyhow::Result<Self> {
-        let mut veh = Self {
-            name,
-            doc,
-            year,
-            pt_type,
-            chassis,
-            cabin,
-            hvac,
-            mass,
-            pwr_aux_base,
-            state: VehicleState::default(),
-            history: VehicleStateHistoryVec::default(),
-            save_interval,
-        };
-        veh.init()?;
-        Ok(veh)
     }
 }
 
@@ -371,6 +470,100 @@ impl Mass for Vehicle {
 impl SerdeAPI for Vehicle {
     #[cfg(feature = "resources")]
     const RESOURCES_SUBDIR: &'static str = "vehicles";
+
+    /// Deserialize a [`Vehicle`] from a reader, emitting a warning if
+    /// [`Vehicle::min_fastsim_version`] exceeds the installed version before attempting full
+    /// deserialization. This ensures version incompatibilities produce a clear diagnostic even
+    /// when the full parse would fail due to unrecognized fields added in a newer release.
+    fn from_reader<R: std::io::Read>(
+        rdr: &mut R,
+        format: &str,
+        skip_init: bool,
+    ) -> Result<Self, crate::error::Error> {
+        // Minimal struct used only for the version pre-check. No
+        // `deny_unknown_fields` so it tolerates any extra vehicle fields.
+        #[derive(Deserialize)]
+        struct VersionCheck {
+            #[serde(default = "crate::current_fastsim_version")]
+            min_fastsim_version: semver::Version,
+        }
+
+        let mut buf = Vec::new();
+        rdr.read_to_end(&mut buf)
+            .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?;
+
+        // Try to extract `min_fastsim_version` from the raw buffer before the
+        // full deserialization so that a version mismatch is reported even when
+        // the full parse would fail due to fields added in a newer release.
+        let fmt = format.trim_start_matches('.').to_lowercase();
+        let min_ver: Option<semver::Version> = match fmt.as_str() {
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => serde_yaml::from_slice::<VersionCheck>(&buf)
+                .ok()
+                .map(|v| v.min_fastsim_version),
+            #[cfg(feature = "json")]
+            "json" => serde_json::from_slice::<VersionCheck>(&buf)
+                .ok()
+                .map(|v| v.min_fastsim_version),
+            #[cfg(feature = "msgpack")]
+            "msgpack" => rmp_serde::decode::from_slice::<VersionCheck>(&buf)
+                .ok()
+                .map(|v| v.min_fastsim_version),
+            #[cfg(feature = "toml")]
+            "toml" => std::str::from_utf8(&buf)
+                .ok()
+                .and_then(|s| toml::from_str::<VersionCheck>(s).ok())
+                .map(|v| v.min_fastsim_version),
+            _ => None,
+        };
+        if let Some(min_ver) = min_ver {
+            if min_ver > *crate::FASTSIM_VERSION {
+                eprintln!(
+                    "WARNING: vehicle file requires FASTSim >= {min_ver} but the installed \
+                    version is {}. Loading will be attempted but may fail or produce \
+                    unexpected results. Please update FASTSim.",
+                    *crate::FASTSIM_VERSION
+                );
+            } else if min_ver.major < crate::FASTSIM_VERSION.major {
+                eprintln!(
+                    "WARNING: vehicle file has min_fastsim_version {min_ver}, which is from \
+                    an older major version than the installed FASTSim {}. Major-version \
+                    upgrades may introduce breaking changes; loading will be attempted.",
+                    *crate::FASTSIM_VERSION
+                );
+            }
+        }
+
+        // Full deserialization from the buffered content
+        let mut deserialized: Self = match fmt.as_str() {
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => serde_yaml::from_slice(&buf)
+                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "json")]
+            "json" => serde_json::from_slice(&buf)
+                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "msgpack")]
+            "msgpack" => rmp_serde::decode::from_slice(&buf)
+                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            #[cfg(feature = "toml")]
+            "toml" => {
+                let s = String::from_utf8(buf)
+                    .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?;
+                toml::from_str(&s)
+                    .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?
+            }
+            _ => {
+                return Err(crate::error::Error::SerdeError(format!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_BYTE_FORMATS,
+                )))
+            }
+        };
+        if !skip_init {
+            deserialized.init()?;
+        }
+        Ok(deserialized)
+    }
 }
 impl Init for Vehicle {
     fn init(&mut self) -> Result<(), Error> {
@@ -832,6 +1025,21 @@ impl Vehicle {
                     .update(self.pwr_aux_base, || format_dbg!())?;
                 (None, None, Some(te_cab))
             }
+            (CabinOption::LumpedCabin(cab), HVACOption::None, None) => {
+                let te_cab = cab
+                    .solve(
+                        te_amb_air,
+                        &self.state,
+                        si::Power::ZERO,
+                        si::Power::ZERO,
+                        dt,
+                    )
+                    .with_context(|| format_dbg!())?;
+                self.state
+                    .pwr_aux
+                    .update(self.pwr_aux_base, || format_dbg!())?;
+                (None, None, Some(te_cab))
+            }
             (_, _, _) => {
                 bail!(
                     "{}\nCabin, HVAC, and RESThermal configuration is either invalid or not yet implemented.\n{} - {} - {}",
@@ -907,10 +1115,19 @@ impl Vehicle {
             trans.state.energy_in.mark_stale();
             trans.state.energy_loss.mark_stale();
         }
+        if let PowertrainType::ConventionalVehicle(conv) = &mut self.pt_type {
+            match &mut conv.pt_cntrl {
+                ConvPowertrainControls::StartStop(cntrl) => cntrl.state.i.mark_stale(),
+                ConvPowertrainControls::Normal => {}
+            }
+            conv.pt_cntrl.mark_fresh(|| format_dbg!())?;
+            conv.dfco_cntrl.state.i.mark_stale();
+            conv.dfco_cntrl.mark_fresh(|| format_dbg!())?;
+        }
         if let PowertrainType::HybridElectricVehicle(hev) = &mut self.pt_type {
             match &mut hev.pt_cntrl {
                 HEVPowertrainControls::RGWDB(rgwdb) => rgwdb.state.i.mark_stale(),
-                HEVPowertrainControls::StopStart(ctrl) => ctrl.state.i.mark_stale(),
+                HEVPowertrainControls::StartStop(cntrl) => cntrl.state.i.mark_stale(),
             }
             hev.pt_cntrl.mark_fresh(|| format_dbg!())?
         }
@@ -1041,8 +1258,8 @@ impl Default for VehicleState {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::vehicle::conv::{ConvPowertrainControls, ConvStopStartControl};
-    use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, HEVStopStartControl};
+    use crate::vehicle::conv::{ConvPowertrainControls, ConvStartStopControl};
+    use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, HEVStartStopControl};
     use crate::vehicle::powertrain::reversible_energy_storage::EffInterp;
 
     use super::*;
@@ -1205,18 +1422,19 @@ pub(crate) mod tests {
         }
     }
 
-    fn make_conv_pacifica(with_conv_stop_start: bool, with_dfco: bool) -> anyhow::Result<Vehicle> {
+    fn make_conv_pacifica(with_conv_start_stop: bool, with_dfco: bool) -> anyhow::Result<Vehicle> {
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
+            Some(FuelType::Gasoline),
             2305080000.0 * uc::J,
-            Option::None,
-            Option::None,
+            None,
+            None,
         )?;
         let fc = FuelConverter::new(
             FuelConverterThermalOption::None, // thrml
-            Option::None,                     // mass
-            Option::None,                     // specific_pwr
+            None,                             // mass
+            None,                             // specific_pwr
             211088.0 * uc::W,                 // pwr_out_max
             34604.59016393443 * uc::W,        // pwr_out_max_init
             6.1 * uc::S,                      // pwr_ramp_lag
@@ -1245,31 +1463,31 @@ pub(crate) mod tests {
             )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
-            Option::None,
+            None,
         )?;
         let tx = Transmission::new(
-            Option::None,                   // mass
+            None,                           // mass
             InterpolatorEnum::new_0d(0.95), // eff_interp
-            Option::None,                   // save_interval
+            None,                           // save_interval
         )?;
         let pt_controls = {
-            if with_conv_stop_start {
-                let ctrl = ConvStopStartControl::new(
-                    Option::None, // fc_min_time_on
-                    Option::None, // temp_fc_forced_on
-                    Option::None, // temp_fc_allowed_off
-                    Option::None, // time_delay_after_stop_until_fc_can_turn_off
-                    Option::None, // save_interval
+            if with_conv_start_stop {
+                let cntrl = ConvStartStopControl::new(
+                    None, // fc_min_time_on
+                    None, // temp_fc_forced_on
+                    None, // temp_fc_allowed_off
+                    None, // time_delay_after_stop_until_fc_can_turn_off
+                    None, // save_interval
                 )
                 .map_err(|err| {
                     assert!(
                         false,
-                        "Unable to create stop/start control for conv: {}",
+                        "Unable to create start-stop control for conv: {}",
                         err
                     );
                 });
-                let ctrl = ctrl.ok().unwrap();
-                ConvPowertrainControls::StopStart(Box::new(ctrl))
+                let cntrl = cntrl.ok().unwrap();
+                ConvPowertrainControls::StartStop(Box::new(cntrl))
             } else {
                 ConvPowertrainControls::Normal
             }
@@ -1278,13 +1496,13 @@ pub(crate) mod tests {
             with_dfco,       // dfco_enabled
             25.0 * uc::MPH,  // minimum_dfco_speed
             -0.2 * uc::MPS2, // minimum_dfco_deceleration
-            Option::None,    // save_interval
+            None,            // save_interval
         )?;
         let conv = ConventionalVehicle::new(
             fs,            // fs
             fc,            // fc
             tx,            // transmission
-            Option::None,  // mass
+            None,          // mass
             pt_controls,   // powertrain control
             dfco_controls, // dfco_cntrl
             1.0 * uc::R,   // alt_eff
@@ -1295,29 +1513,34 @@ pub(crate) mod tests {
             wheel_rr_coef: 0.0064798953284486704 * uc::R,
             wheel_inertia: 0.815 * uc::KGM2,
             num_wheels: 4,
-            wheel_radius: Option::Some(0.36865 * uc::M),
-            tire_code: Option::None,
+            wheel_radius: Some(0.36865 * uc::M),
+            tire_code: None,
             cg_height: 0.53 * uc::M,
             wheel_fric_coef: 0.8 * uc::R,
             drive_type: chassis::DriveTypes::FWD,
             drive_axle_weight_frac: 0.61 * uc::R,
             wheel_base: 3.08864 * uc::M,
-            mass: Option::None,
-            glider_mass: Option::None,
-            cargo_mass: Option::None,
+            mass: None,
+            glider_mass: None,
+            cargo_mass: None,
         };
         let boxed_conv = Box::new(conv);
         let mut veh = Vehicle::new(
-            String::from("2026 Chrysler Pacifica Select"),   // name
-            Option::None,                                    // doc
-            2026,                                            // year
-            PowertrainType::ConventionalVehicle(boxed_conv), // pt_type
-            chassis,                                         // chassis
-            CabinOption::None,                               // cabin
-            HVACOption::None,                                // hvac
-            Option::Some(2154.564 * uc::KG),                 // mass
-            700.0 * uc::W,                                   // pwr_aux_base
-            Option::None,                                    // save_interval
+            String::from("2026 Chrysler Pacifica Select"), // name
+            None,
+            None,
+            None,
+            Some(String::from("2026")),
+            Some(String::from("Chrysler")),
+            Some(String::from("Pacifica")),
+            Some(String::from("Select")),
+            PowertrainType::ConventionalVehicle(boxed_conv),
+            chassis,
+            CabinOption::None,
+            HVACOption::None,
+            Some(2154.564 * uc::KG),
+            700.0 * uc::W,
+            None,
         )?;
         veh.set_save_interval(Option::Some(1))?;
         Ok(veh)
@@ -1326,26 +1549,27 @@ pub(crate) mod tests {
     fn make_microhybrid_pacifica() -> anyhow::Result<Vehicle> {
         let res = ReversibleEnergyStorage::new(
             RESThermalOption::None,             // thrml
-            Option::None,                       // mass
-            Option::None,                       // specific_energy
+            None,                               // mass
+            None,                               // specific_energy
             5.0 * uc::KW,                       // pwr_out_max
             1.0 * uc::KWH,                      // energy_capacity
             EffInterp::Constant(Interp0D(0.9)), // eff_interp
             0.0 * uc::R,                        // min_soc
             1.0 * uc::R,                        // max_soc
-            Option::None,
+            None,
         )?;
         let fs = FuelStorage::new(
             2000000.0 * uc::W,
             1.1 * uc::S,
+            Some(FuelType::Gasoline),
             2305080000.0 * uc::J,
-            Option::None,
-            Option::None,
+            None,
+            None,
         )?;
         let fc = FuelConverter::new(
             FuelConverterThermalOption::None, // thrml
-            Option::None,                     // mass
-            Option::None,                     // specific_pwr
+            None,                             // mass
+            None,                             // specific_pwr
             211088.0 * uc::W,                 // pwr_out_max
             34604.59016393443 * uc::W,        // pwr_out_max_init
             6.1 * uc::S,                      // pwr_ramp_lag
@@ -1374,7 +1598,7 @@ pub(crate) mod tests {
             )?, // eff_interp_from_pwr_out
             0.4 * 211088.0 * uc::W,           // pwr_for_peak_eff
             0.0 * uc::W,                      // pwr_idle_fuel
-            Option::None,
+            None,
         )?;
         let em = ElectricMachine::new(
             InterpolatorEnum::new_1d(
@@ -1383,29 +1607,29 @@ pub(crate) mod tests {
                 strategy::Linear,
                 Extrapolate::Error,
             )?, // eff_interp_achieved
-            Option::None, // eff_interp_at_max_input
+            None,         // eff_interp_at_max_input
             5.0 * uc::KW, // pwr_out_max
-            Option::None, // specific_pwr
-            Option::None, // mass
-            Option::None, // save_interval
+            None,         // specific_pwr
+            None,         // mass
+            None,         // save_interval
         )?;
         let tx = Transmission::new(
-            Option::None,                   // mass
+            None,                           // mass
             InterpolatorEnum::new_0d(0.95), // eff_interp
-            Option::None,                   // save_interval
+            None,                           // save_interval
         )?;
-        let ctrl = HEVStopStartControl::new(
-            Option::None, // fc_min_time_on
-            Option::None, // soc_fc_forced_on
-            Option::None, // frac_of_most_eff_pwr_to_run_fc
-            Option::None, // temp_fc_forced_on
-            Option::None, // temp_fc_allowed_off
-            Option::None, // time_delay_after_stop_until_fc_can_turn_off
-            Option::None, // em_can_regen
-            Option::None, // save_interval
+        let cntrl = HEVStartStopControl::new(
+            None, // fc_min_time_on
+            None, // soc_fc_forced_on
+            None, // frac_of_most_eff_pwr_to_run_fc
+            None, // temp_fc_forced_on
+            None, // temp_fc_allowed_off
+            None, // time_delay_after_stop_until_fc_can_turn_off
+            None, // em_can_regen
+            None, // save_interval
         )?;
-        let pt_ctrl = HEVPowertrainControls::StopStart(Box::new(ctrl));
-        let aux_ctrl = HEVAuxControls::AuxOnResPriority;
+        let pt_cntrl = HEVPowertrainControls::StartStop(Box::new(cntrl));
+        let aux_cntrl = HEVAuxControls::AuxOnResPriority;
         let sim_params = HEVSimulationParams::new(
             0.05 * uc::R, // res_per_fuel_lim
             5,            // soc_balance_iter_err
@@ -1413,15 +1637,15 @@ pub(crate) mod tests {
             false,        // save_soc_bal_iters
         )?;
         let hev = HybridElectricVehicle::new(
-            res,          // res
-            fs,           // fs
-            fc,           // fc
-            em,           // em
-            tx,           // transmission
-            pt_ctrl,      // pt_cntrl
-            aux_ctrl,     // aux_cntrl
-            Option::None, // mass
-            sim_params,   // sim_params
+            res,        // res
+            fs,         // fs
+            fc,         // fc
+            em,         // em
+            tx,         // transmission
+            pt_cntrl,   // pt_cntrl
+            aux_cntrl,  // aux_cntrl
+            None,       // mass
+            sim_params, // sim_params
         )?;
         let chassis = Chassis {
             drag_coef: 0.3303036837542712 * uc::R,
@@ -1429,29 +1653,34 @@ pub(crate) mod tests {
             wheel_rr_coef: 0.0064798953284486704 * uc::R,
             wheel_inertia: 0.815 * uc::KGM2,
             num_wheels: 4,
-            wheel_radius: Option::Some(0.36865 * uc::M),
-            tire_code: Option::None,
+            wheel_radius: Some(0.36865 * uc::M),
+            tire_code: None,
             cg_height: 0.53 * uc::M,
             wheel_fric_coef: 0.8 * uc::R,
             drive_type: chassis::DriveTypes::FWD,
             drive_axle_weight_frac: 0.61 * uc::R,
             wheel_base: 3.08864 * uc::M,
-            mass: Option::None,
-            glider_mass: Option::None,
-            cargo_mass: Option::None,
+            mass: None,
+            glider_mass: None,
+            cargo_mass: None,
         };
         let boxed_hev = Box::new(hev);
         let mut veh = Vehicle::new(
-            String::from("2026 Chrysler Pacifica Select (uHEV Test)"), // name
-            Option::None,                                              // doc
-            2026,                                                      // year
-            PowertrainType::HybridElectricVehicle(boxed_hev),          // pt_type
-            chassis,                                                   // chassis
-            CabinOption::None,                                         // cabin
-            HVACOption::None,                                          // hvac
-            Option::Some(2154.564 * uc::KG),                           // mass
-            700.0 * uc::W,                                             // pwr_aux_base
-            Option::None,                                              // save_interval
+            String::from("2026 Chrysler Pacifica Select (uHEV Test)"),
+            None,
+            None,
+            None,
+            Some(String::from("2026")),
+            Some(String::from("Chrysler")),
+            Some(String::from("Pacifica")),
+            Some(String::from("Select")),
+            PowertrainType::HybridElectricVehicle(boxed_hev),
+            chassis,
+            CabinOption::None,
+            HVACOption::None,
+            Some(2154.564 * uc::KG),
+            700.0 * uc::W,
+            None,
         )?;
         veh.set_save_interval(Option::Some(1))?;
         Ok(veh)
@@ -1540,7 +1769,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn stop_start_conv_saves_more_fuel_than_normal_conventional() {
+    fn start_stop_conv_saves_more_fuel_than_normal_conventional() {
         let veh_ss_result = make_conv_pacifica(true, false);
         assert!(veh_ss_result.is_ok());
         let veh_ss = veh_ss_result.unwrap();
@@ -1597,11 +1826,11 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn that_use_stop_start_switches_the_conv_controller() {
+    fn that_use_start_stop_switches_the_conv_controller() {
         let veh_result = make_conv_pacifica(false, false);
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
-        let use_result = veh.use_stop_start_controller_py();
+        let use_result = veh.use_start_stop_controller();
         assert!(use_result.is_ok());
         match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
@@ -1614,11 +1843,11 @@ pub(crate) mod tests {
                 assert!(false, "Unexpected powertrain type");
             }
         }
-        let normal_result = veh.use_normal_controller_py();
+        let normal_result = veh.use_normal_controller();
         assert!(normal_result.is_ok());
         match &veh.pt_type {
             PowertrainType::ConventionalVehicle(conv) => match conv.pt_cntrl {
-                ConvPowertrainControls::StopStart(_) => {
+                ConvPowertrainControls::StartStop(_) => {
                     assert!(false, "Powertrain controls didn't change");
                 }
                 _ => (),
@@ -1630,15 +1859,15 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn that_use_stop_start_switches_the_hev_controller() {
+    fn that_use_start_stop_switches_the_hev_controller() {
         let veh_result = make_microhybrid_pacifica();
         assert!(veh_result.is_ok());
         let mut veh = veh_result.unwrap();
-        let use_result = veh.use_normal_controller_py();
+        let use_result = veh.use_normal_controller();
         assert!(use_result.is_ok());
         match &veh.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
-                HEVPowertrainControls::StopStart(_) => {
+                HEVPowertrainControls::StartStop(_) => {
                     assert!(false, "Powertrain controls didn't change");
                 }
                 HEVPowertrainControls::RGWDB(_) => (),
@@ -1647,17 +1876,17 @@ pub(crate) mod tests {
                 assert!(false, "Unexpected powertrain type");
             }
         }
-        let use_ss_result = veh.use_stop_start_controller_py();
+        let use_ss_result = veh.use_start_stop_controller();
         assert!(use_ss_result.is_ok());
         match &veh.pt_type {
             PowertrainType::HybridElectricVehicle(hev) => match &hev.pt_cntrl {
                 HEVPowertrainControls::RGWDB(_) => {
                     assert!(
                         false,
-                        "Powertrain controls didn't change: RGWDB => StopStart"
+                        "Powertrain controls didn't change: RGWDB => StartStop"
                     );
                 }
-                HEVPowertrainControls::StopStart(_) => (),
+                HEVPowertrainControls::StartStop(_) => (),
             },
             _ => {
                 assert!(false, "Unexpected powertrain type");

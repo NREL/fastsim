@@ -41,7 +41,10 @@ pub struct FuelConverter {
     #[serde(default)]
     pub state: FuelConverterState,
     /// Custom vector of [Self::state]
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "FuelConverterStateHistoryVec::is_empty"
+    )]
     pub history: FuelConverterStateHistoryVec,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
@@ -817,7 +820,10 @@ pub struct FuelConverterThermal {
     #[serde(default)]
     pub state: FuelConverterThermalState,
     /// Custom vector of [Self::state]
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "FuelConverterThermalStateHistoryVec::is_empty"
+    )]
     pub history: FuelConverterThermalStateHistoryVec,
     pub save_interval: Option<usize>,
 }
@@ -1356,8 +1362,8 @@ mod tests {
         fc_state.time_on.mark_stale();
         let mut fc = FuelConverter {
             thrml: FuelConverterThermalOption::None,
-            mass: Option::None,
-            specific_pwr: Option::None,
+            mass: None,
+            specific_pwr: None,
             pwr_out_max: peak_pwr,
             pwr_out_max_init: 5.0 * uc::KW,
             pwr_ramp_lag: 5.0 * uc::S,
@@ -1372,7 +1378,7 @@ mod tests {
             pwr_idle_fuel: idle_pwr,
             state: fc_state,
             history: FuelConverterStateHistoryVec::default(),
-            save_interval: Option::None,
+            save_interval: None,
         };
         let init_result = fc.init();
         assert!(init_result.is_ok());
@@ -1387,7 +1393,7 @@ mod tests {
     }
 
     #[test]
-    fn calling_solve_with_aux_load_and_engine_on() {
+    fn calling_solve_with_aux_load_and_fc_on() {
         let peak_pwr = PEAK_POWER_KW * uc::KW;
         let aux_pwr = 2.0 * uc::KW;
         let idle_pwr = 1.0 * uc::KW;
@@ -1412,7 +1418,7 @@ mod tests {
     }
 
     #[test]
-    fn calling_solve_with_no_aux_load_but_engine_on_causes_idle_fuel_use() {
+    fn calling_solve_with_no_aux_load_but_fc_on_causes_idle_fuel_use() {
         let aux_pwr = 0.0 * uc::KW;
         let idle_pwr = 1.0 * uc::KW;
         let fc_is_on = true;
