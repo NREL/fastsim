@@ -102,7 +102,7 @@ jobs:
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
           CIBW_PLATFORM: ${{ matrix.platform || matrix.os.base }}
           CIBW_BEFORE_TEST: python -m pip install --group test
-          CIBW_TEST_COMMAND: "pytest -v {project}"
+          CIBW_TEST_COMMAND: "pytest -v -n 1 {project}"
           CIBW_ARCHS_MACOS: "${{ matrix.os.arch }}"
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
