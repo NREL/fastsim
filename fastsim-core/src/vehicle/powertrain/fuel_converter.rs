@@ -19,9 +19,9 @@ pub struct FuelConverter {
     pub thrml: FuelConverterThermalOption,
     /// [Self] mass
     #[serde(default)]
-    pub(in super::super) mass: Option<si::Mass>,
+    pub(crate) mass: Option<si::Mass>,
     /// FuelConverter specific power
-    pub(in super::super) specific_pwr: Option<si::SpecificPower>,
+    pub(crate) specific_pwr: Option<si::SpecificPower>,
     /// max rated brake output power
     pub pwr_out_max: si::Power,
     /// starting/baseline transient power limit
@@ -504,36 +504,6 @@ impl FuelConverter {
             FuelConverterThermalOption::FuelConverterThermal(fct) => Some(&mut fct.state),
             FuelConverterThermalOption::None => None,
         }
-    }
-}
-
-impl TryFrom<fastsim_2::vehicle::RustVehicle> for FuelConverter {
-    type Error = anyhow::Error;
-    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<FuelConverter, anyhow::Error> {
-        let mut fc: FuelConverter = FCBuilder {
-            pwr_out_max: f2veh.fc_max_kw * uc::KW,
-            pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-            eff_interp_from_pwr_out: InterpolatorEnum::new_1d(
-                // hard-coded vec from fastsim-2
-                vec![
-                    0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
-                ]
-                .into(),
-                f2veh.fc_eff_map.clone().into(),
-                strategy::Linear,
-                Extrapolate::Error,
-            )
-            .with_context(|| format_dbg!())?,
-            pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
-            // this means that aux power must include idle fuel
-            pwr_idle_fuel: si::Power::ZERO,
-            aux_supply_eff: f2veh.alt_eff.into(),
-            save_interval: Some(1),
-        }
-        .try_into()
-        .with_context(|| format_dbg!())?;
-        fc.init()?;
-        Ok(fc)
     }
 }
 
@@ -1376,8 +1346,8 @@ mod tests {
         fc_state.time_on.mark_stale();
         let mut fc = FuelConverter {
             thrml: FuelConverterThermalOption::None,
-            mass: Option::None,
-            specific_pwr: Option::None,
+            mass: None,
+            specific_pwr: None,
             pwr_out_max: peak_pwr,
             pwr_out_max_init: 5.0 * uc::KW,
             pwr_ramp_lag: 5.0 * uc::S,
@@ -1393,7 +1363,7 @@ mod tests {
             aux_supply_eff: Default::default(),
             state: fc_state,
             history: FuelConverterStateHistoryVec::default(),
-            save_interval: Option::None,
+            save_interval: None,
         };
         let init_result = fc.init();
         assert!(init_result.is_ok());
@@ -1408,7 +1378,7 @@ mod tests {
     }
 
     #[test]
-    fn calling_solve_with_aux_load_and_engine_on() {
+    fn calling_solve_with_aux_load_and_fc_on() {
         let peak_pwr = PEAK_POWER_KW * uc::KW;
         let aux_pwr = 2.0 * uc::KW;
         let idle_pwr = 1.0 * uc::KW;
@@ -1433,7 +1403,7 @@ mod tests {
     }
 
     #[test]
-    fn calling_solve_with_no_aux_load_but_engine_on_causes_idle_fuel_use() {
+    fn calling_solve_with_no_aux_load_but_fc_on_causes_idle_fuel_use() {
         let aux_pwr = 0.0 * uc::KW;
         let idle_pwr = 1.0 * uc::KW;
         let fc_is_on = true;

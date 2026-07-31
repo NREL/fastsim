@@ -263,3 +263,131 @@ macro_rules! timer {
         );
     };
 }
+
+/// Generate a family of `#[serde(serialize_with)]`-compatible helpers that
+/// serialize a UOM SI quantity as a specific (non-base) unit.
+///
+/// Expands to helper functions covering wrapper combinations used in this
+/// codebase:
+///
+/// | Generated function        | Field type                   |
+/// |---------------------------|------------------------------|
+/// | `$prefix`                 | `$qty_type`                  |
+/// | `tracked_$prefix`         | `TrackedState<$qty_type>`    |
+/// | `opt_$prefix`             | `Option<$qty_type>`          |
+/// | `vec_$prefix`             | `Vec<$qty_type>`             |
+/// | `vec_tracked_$prefix`     | `Vec<TrackedState<$qty_type>>` |
+/// | `tracked_opt_$prefix`     | `TrackedState<Option<$qty_type>>` |
+/// | `opt_tracked_$prefix`     | `Option<TrackedState<$qty_type>>` |
+/// | `vec_tracked_opt_$prefix` | `Vec<TrackedState<Option<$qty_type>>>` |
+///
+/// # Example
+///
+/// ```ignore
+/// // In serde_helpers.rs:
+/// use crate::{si, utils::tracked_state::TrackedState};
+/// crate::impl_si_serialize_as!(power_as_kilowatts, si::Power, uom::si::power::kilowatt);
+///
+/// // In serde_api/serde_utils.rs serialize_with match:
+/// "Power" => Some("crate::serde_helpers::power_as_kilowatts"),
+///
+/// // In the unit_impls match (must match the target unit):
+/// "Power" => extract_units!(uom::si::power::kilowatt),
+/// ```
+#[macro_export]
+macro_rules! impl_si_serialize_as {
+    ($prefix:ident, $qty_type:ty, $unit:path) => {
+        ::paste::paste! {
+            /// Serialize as `$unit` (plain field).
+            pub fn $prefix<S: ::serde::Serializer>(
+                val: &$qty_type,
+                s: S,
+            ) -> ::std::result::Result<S::Ok, S::Error> {
+                s.serialize_f64(val.get::<$unit>())
+            }
+
+            /// Serialize `TrackedState<$qty_type>` as `$unit`.
+            pub fn [<tracked_ $prefix>]<S: ::serde::Serializer>(
+                val: &$crate::utils::tracked_state::TrackedState<$qty_type>,
+                s: S,
+            ) -> ::std::result::Result<S::Ok, S::Error> {
+                s.serialize_f64(val.inner().get::<$unit>())
+            }
+
+            /// Serialize `Option<$qty_type>` as `$unit` (`None` → `null`).
+            pub fn [<opt_ $prefix>]<S: ::serde::Serializer>(
+                val: &::std::option::Option<$qty_type>,
+                s: S,
+            ) -> ::std::result::Result<S::Ok, S::Error> {
+                match val {
+                    Some(v) => s.serialize_some(&v.get::<$unit>()),
+                    None => s.serialize_none(),
+                }
+            }
+
+            /// Serialize `Vec<$qty_type>` as `$unit`.
+            pub fn [<vec_ $prefix>]<S: ::serde::Serializer>(
+                val: &::std::vec::Vec<$qty_type>,
+                s: S,
+            ) -> ::std::result::Result<S::Ok, S::Error> {
+                use ::serde::ser::SerializeSeq;
+                let mut seq = s.serialize_seq(Some(val.len()))?;
+                for v in val {
+                    seq.serialize_element(&v.get::<$unit>())?;
+                }
+                seq.end()
+            }
+
+            /// Serialize `Vec<TrackedState<$qty_type>>` as `$unit` (state history vectors).
+            pub fn [<vec_tracked_ $prefix>]<S: ::serde::Serializer>(
+                val: &::std::vec::Vec<$crate::utils::tracked_state::TrackedState<$qty_type>>,
+                s: S,
+            ) -> ::std::result::Result<S::Ok, S::Error> {
+                use ::serde::ser::SerializeSeq;
+                let mut seq = s.serialize_seq(Some(val.len()))?;
+                for v in val {
+                    seq.serialize_element(&v.inner().get::<$unit>())?;
+                }
+                seq.end()
+            }
+
+            /// Serialize `TrackedState<Option<$qty_type>>` as `$unit` (`None` → `null`).
+            pub fn [<tracked_opt_ $prefix>]<S: ::serde::Serializer>(
+                val: &$crate::utils::tracked_state::TrackedState<::std::option::Option<$qty_type>>,
+                s: S,
+            ) -> ::std::result::Result<S::Ok, S::Error> {
+                match val.inner() {
+                    Some(v) => s.serialize_some(&v.get::<$unit>()),
+                    None => s.serialize_none(),
+                }
+            }
+
+            /// Serialize `Option<TrackedState<$qty_type>>` as `$unit` (`None` → `null`).
+            pub fn [<opt_tracked_ $prefix>]<S: ::serde::Serializer>(
+                val: &::std::option::Option<$crate::utils::tracked_state::TrackedState<$qty_type>>,
+                s: S,
+            ) -> ::std::result::Result<S::Ok, S::Error> {
+                match val {
+                    Some(v) => s.serialize_some(&v.inner().get::<$unit>()),
+                    None => s.serialize_none(),
+                }
+            }
+
+            /// Serialize `Vec<TrackedState<Option<$qty_type>>>` as `$unit` (`None` → `null`).
+            pub fn [<vec_tracked_opt_ $prefix>]<S: ::serde::Serializer>(
+                val: &::std::vec::Vec<$crate::utils::tracked_state::TrackedState<::std::option::Option<$qty_type>>>,
+                s: S,
+            ) -> ::std::result::Result<S::Ok, S::Error> {
+                use ::serde::ser::SerializeSeq;
+                let mut seq = s.serialize_seq(Some(val.len()))?;
+                for v in val {
+                    match v.inner() {
+                        Some(inner) => seq.serialize_element(&Some(inner.get::<$unit>()))?,
+                        None => seq.serialize_element(&::std::option::Option::<f64>::None)?,
+                    }
+                }
+                seq.end()
+            }
+        }
+    };
+}

@@ -1,13 +1,9 @@
-use crate::vehicle::common::{
-    handle_fc_on_causes_for_on_time, handle_fc_on_causes_for_propulsion_request,
-    handle_fc_on_causes_for_speed, handle_fc_on_causes_for_stopped_time,
-    handle_fc_on_causes_for_temp,
-};
+use crate::vehicle::common::StartStopControl;
 
 use super::*;
 
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -19,6 +15,9 @@ pub struct DfcoControls {
     /// The minimum vehicle acceleration required for
     /// DFCO to be able to activate.
     pub minimum_dfco_deceleration: si::Acceleration,
+    /// Speed threshold at or below which DFCO is considered unavailable due to near-stop operation.
+    #[serde(default = "DfcoControls::def_stopped_speed_threshold")]
+    pub stopped_speed_threshold: si::Velocity,
     #[serde(default)]
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
@@ -32,6 +31,41 @@ pub struct DfcoControls {
 
 #[pyo3_api]
 impl DfcoControls {}
+
+impl DfcoControls {
+    fn def_stopped_speed_threshold() -> si::Velocity {
+        0.05 * uc::MPS
+    }
+
+    /// Determine if decel fuel cut-off (DFCO) is disabled based on vehicle
+    /// dynamics considerations (i.e., speed, acceleration). Note: considerations
+    /// related to whether the engine is too cold and such would be handled
+    /// elsewhere.
+    pub fn is_dfco_disabled_due_to_veh_dynamics(
+        prev_speed: si::Velocity,
+        speed: si::Velocity,
+        dt: si::Time,
+        dfco_allowed: bool,
+        minimum_dfco_speed: si::Velocity,
+        minimum_dfco_deceleration: si::Acceleration,
+        stopped_speed_threshold: si::Velocity,
+    ) -> bool {
+        let decel = (speed - prev_speed) / dt;
+        let is_accel = decel > si::Acceleration::ZERO;
+        if !dfco_allowed {
+            true
+        } else if speed < minimum_dfco_speed {
+            true
+        } else if speed <= stopped_speed_threshold {
+            true
+        } else if is_accel || decel > minimum_dfco_deceleration {
+            true
+        } else {
+            // NOTE: we **can** apply DFCO
+            false
+        }
+    }
+}
 
 impl HistoryMethods for DfcoControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
@@ -66,6 +100,20 @@ impl Init for DfcoControls {
 
 impl SerdeAPI for DfcoControls {}
 
+impl Default for DfcoControls {
+    fn default() -> Self {
+        Self {
+            dfco_enabled: bool::default(),
+            minimum_dfco_speed: si::Velocity::default(),
+            minimum_dfco_deceleration: si::Acceleration::default(),
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
+            save_interval: Option::default(),
+            state: DfcoState::default(),
+            history: DfcoStateHistoryVec::default(),
+        }
+    }
+}
+
 impl DfcoControls {
     pub fn new(
         dfco_enabled: bool,
@@ -77,6 +125,7 @@ impl DfcoControls {
             dfco_enabled,
             minimum_dfco_speed,
             minimum_dfco_deceleration,
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
             save_interval,
             state: DfcoState::default(),
             history: DfcoStateHistoryVec::default(),
@@ -119,7 +168,7 @@ pub struct ConventionalVehicle {
     pub fc: FuelConverter,
     #[has_state]
     pub transmission: Transmission,
-    /// control strategy. Especially used for stop/start and DFCO.
+    /// control strategy. Especially used for start-stop and DFCO.
     #[has_state]
     #[serde(default)]
     pub pt_cntrl: ConvPowertrainControls,
@@ -256,7 +305,7 @@ impl Powertrain for Box<ConventionalVehicle> {
             .with_context(|| format_dbg!())?;
         match &mut self.pt_cntrl {
             ConvPowertrainControls::Normal => (),
-            ConvPowertrainControls::StopStart(ss) => {
+            ConvPowertrainControls::StartStop(ss) => {
                 ss.handle_fc_on_causes(&self.fc, veh_state, dt)?;
             }
         }
@@ -300,15 +349,15 @@ impl Powertrain for Box<ConventionalVehicle> {
             .with_context(|| format!("{}\nExpected `Some`", format_dbg!()))?;
         match &mut self.pt_cntrl {
             ConvPowertrainControls::Normal => (),
-            ConvPowertrainControls::StopStart(ss) => {
-                handle_fc_on_causes_for_propulsion_request(
+            ConvPowertrainControls::StartStop(ss) => {
+                ConvStartStopControl::handle_fc_on_causes_for_propulsion_request(
                     &mut ss.state.has_traction_power_request,
                     pwr_in_transmission,
                 )?;
             }
         }
         let fc_on: bool = {
-            let fc_on = self.pt_cntrl.engine_on()?;
+            let fc_on = self.pt_cntrl.fc_on()?;
             let fc_on_dfco = *self
                 .dfco_cntrl
                 .state
@@ -351,35 +400,6 @@ impl ConventionalVehicle {
     ) -> anyhow::Result<()> {
         self.fc
             .solve_thermal(te_amb, pwr_thrml_fc_to_cab, veh_state, dt)
-    }
-}
-
-impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
-    type Error = anyhow::Error;
-    #[allow(deprecated)]
-    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<ConventionalVehicle> {
-        let conv = ConventionalVehicle {
-            fs: {
-                let fs = FuelStorage {
-                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
-                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
-                    fuel_type: None,
-                    energy_capacity: f2veh.fs_kwh * uc::KWH,
-                    specific_energy: Some(
-                        super::vehicle_model::FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG,
-                    ),
-                    mass: None,
-                };
-                fs
-            },
-            fc: FuelConverter::try_from(f2veh.clone())?,
-            transmission: Transmission::try_from(f2veh.clone())?,
-            pt_cntrl: ConvPowertrainControls::Normal,
-            dfco_cntrl: DfcoControls::default(),
-            mass: None,
-            alt_eff: f2veh.alt_eff * uc::R,
-        };
-        Ok(conv)
     }
 }
 
@@ -473,7 +493,8 @@ pub enum ConvPowertrainControls {
     Normal,
     /// Start/Stop controller that allows the fuel converter to turn off at
     /// stop under certain conditions
-    StopStart(Box<ConvStopStartControl>),
+    #[serde(alias = "StopStart")]
+    StartStop(Box<ConvStartStopControl>),
 }
 
 impl Default for ConvPowertrainControls {
@@ -486,8 +507,8 @@ impl SetCumulative for ConvPowertrainControls {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => {
-                ctrl.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
+            Self::StartStop(cntrl) => {
+                cntrl.set_cumulative(dt, || format!("{}\n{}", loc(), format_dbg!()))?;
                 Ok(())
             }
         }
@@ -496,8 +517,8 @@ impl SetCumulative for ConvPowertrainControls {
     fn reset_cumulative<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => {
-                ctrl.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
+            Self::StartStop(cntrl) => {
+                cntrl.reset_cumulative(|| format!("{}\n{}", loc(), format_dbg!()))?;
                 Ok(())
             }
         }
@@ -508,14 +529,14 @@ impl Step for ConvPowertrainControls {
     fn step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => ctrl.step(loc),
+            Self::StartStop(cntrl) => cntrl.step(loc),
         }
     }
 
     fn reset_step<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrls) => ctrls.reset_step(loc),
+            Self::StartStop(cntrls) => cntrls.reset_step(loc),
         }
     }
 }
@@ -526,7 +547,7 @@ impl SaveState for ConvPowertrainControls {
     fn save_state<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => ctrl.save_state(loc),
+            Self::StartStop(cntrl) => cntrl.save_state(loc),
         }
     }
 }
@@ -535,14 +556,14 @@ impl TrackedStateMethods for ConvPowertrainControls {
     fn check_and_reset<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => ctrl.check_and_reset(loc),
+            Self::StartStop(cntrl) => cntrl.check_and_reset(loc),
         }
     }
 
     fn mark_fresh<F: Fn() -> String>(&mut self, loc: F) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => ctrl.mark_fresh(loc),
+            Self::StartStop(cntrl) => cntrl.mark_fresh(loc),
         }
     }
 }
@@ -551,21 +572,21 @@ impl HistoryMethods for ConvPowertrainControls {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => Ok(ctrl.set_save_interval(save_interval)?),
+            Self::StartStop(cntrl) => Ok(cntrl.set_save_interval(save_interval)?),
         }
     }
 
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
         match self {
             Self::Normal => Ok(Option::None),
-            Self::StopStart(ctrl) => ctrl.save_interval(),
+            Self::StartStop(cntrl) => cntrl.save_interval(),
         }
     }
 
     fn clear(&mut self) {
         match self {
             Self::Normal => (),
-            Self::StopStart(ctrl) => ctrl.clear(),
+            Self::StartStop(cntrl) => cntrl.clear(),
         }
     }
 }
@@ -574,35 +595,37 @@ impl Init for ConvPowertrainControls {
     fn init(&mut self) -> Result<(), Error> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => ctrl.init(),
+            Self::StartStop(cntrl) => cntrl.init(),
         }
     }
 }
 
 impl ConvPowertrainControls {
-    pub fn engine_on(&self) -> anyhow::Result<bool> {
+    pub fn fc_on(&self) -> anyhow::Result<bool> {
         match self {
             Self::Normal => Ok(true),
-            Self::StopStart(ctrl) => ctrl.state.engine_on(),
+            Self::StartStop(cntrl) => cntrl.state.fc_on(),
         }
     }
 
     pub fn handle_fc_on_causes_for_speed(&mut self, speed: si::Velocity) -> anyhow::Result<()> {
         match self {
             Self::Normal => Ok(()),
-            Self::StopStart(ctrl) => {
-                handle_fc_on_causes_for_speed(&mut ctrl.state.vehicle_not_stopped, speed)
-            }
+            Self::StartStop(cntrl) => ConvStartStopControl::handle_fc_on_causes_for_speed(
+                &mut cntrl.state.vehicle_not_stopped,
+                speed,
+                cntrl.stopped_speed_threshold,
+            ),
         }
     }
 }
 
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
-pub struct ConvStopStartControl {
+pub struct ConvStartStopControl {
     /// Minimum time engine must remain on if it was on during the previous
     /// simulation time step.
     #[serde(default)]
@@ -618,24 +641,29 @@ pub struct ConvStopStartControl {
     /// stop is only momentary.
     #[serde(default)]
     pub time_delay_after_stop_until_fc_can_turn_off: Option<si::Time>,
+    /// Speed threshold at or below which vehicle is considered stopped for start-stop logic.
+    #[serde(default = "ConvStartStopControl::def_stopped_speed_threshold")]
+    pub stopped_speed_threshold: si::Velocity,
     #[serde(default)]
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
     /// current state of control variables
     #[serde(default)]
-    pub state: ConvStopStartState,
+    pub state: ConvStartStopState,
     /// history of current state
     #[serde(
         default,
-        skip_serializing_if = "ConvStopStartStateHistoryVec::is_empty"
+        skip_serializing_if = "ConvStartStopStateHistoryVec::is_empty"
     )]
-    pub history: ConvStopStartStateHistoryVec,
+    pub history: ConvStartStopStateHistoryVec,
 }
 
 #[pyo3_api]
-impl ConvStopStartControl {}
+impl ConvStartStopControl {}
 
-impl HistoryMethods for ConvStopStartControl {
+impl StartStopControl for ConvStartStopControl {}
+
+impl HistoryMethods for ConvStartStopControl {
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.save_interval = save_interval;
         Ok(())
@@ -650,7 +678,7 @@ impl HistoryMethods for ConvStopStartControl {
     }
 }
 
-impl Init for ConvStopStartControl {
+impl Init for ConvStartStopControl {
     fn init(&mut self) -> Result<(), Error> {
         init_opt_default!(self, fc_min_time_on, uc::S * 5.0);
         init_opt_default!(
@@ -662,9 +690,28 @@ impl Init for ConvStopStartControl {
     }
 }
 
-impl SerdeAPI for ConvStopStartControl {}
+impl SerdeAPI for ConvStartStopControl {}
 
-impl ConvStopStartControl {
+impl Default for ConvStartStopControl {
+    fn default() -> Self {
+        Self {
+            fc_min_time_on: Option::default(),
+            temp_fc_forced_on: Option::default(),
+            temp_fc_allowed_off: Option::default(),
+            time_delay_after_stop_until_fc_can_turn_off: Option::default(),
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
+            save_interval: Option::default(),
+            state: ConvStartStopState::default(),
+            history: ConvStartStopStateHistoryVec::default(),
+        }
+    }
+}
+
+impl ConvStartStopControl {
+    fn def_stopped_speed_threshold() -> si::Velocity {
+        0.05 * uc::MPS
+    }
+
     pub fn new(
         fc_min_time_on: Option<si::Time>,
         temp_fc_forced_on: Option<si::Temperature>,
@@ -677,9 +724,10 @@ impl ConvStopStartControl {
             temp_fc_forced_on,
             temp_fc_allowed_off,
             time_delay_after_stop_until_fc_can_turn_off,
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
             save_interval,
-            state: ConvStopStartState::default(),
-            history: ConvStopStartStateHistoryVec::default(),
+            state: ConvStartStopState::default(),
+            history: ConvStartStopStateHistoryVec::default(),
         };
         result.init()?;
         Ok(result)
@@ -692,21 +740,22 @@ impl ConvStopStartControl {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // NOTE: handle_fc_on_causes_for_propulsion_request called elsewhere
-        handle_fc_on_causes_for_stopped_time(
+        Self::handle_fc_on_causes_for_stopped_time(
             &mut self.state.time_vehicle_stopped,
             &mut self.state.vehicle_not_stopped_long_enough,
             veh_state,
             dt,
             self.time_delay_after_stop_until_fc_can_turn_off,
+            self.stopped_speed_threshold,
         )?;
-        handle_fc_on_causes_for_temp(
+        Self::handle_fc_on_causes_for_temp(
             fc,
             self.temp_fc_forced_on,
             self.temp_fc_allowed_off,
             &mut self.state.fc_temperature_too_low,
         )?;
         // NOTE: handle_fc_on_causes_for_speed(speed) called elsewhere
-        handle_fc_on_causes_for_on_time(
+        Self::handle_fc_on_causes_for_on_time(
             fc,
             self.fc_min_time_on,
             &mut self.state.on_time_too_short,
@@ -729,12 +778,12 @@ impl ConvStopStartControl {
 )]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
-pub struct ConvStopStartState {
+pub struct ConvStartStopState {
     /// time step index
     pub i: TrackedState<usize>,
     /// Engine must be on to self heat if thermal model is enabled
     pub fc_temperature_too_low: TrackedState<bool>,
-    /// Engine stop/start can only happen while vehicle is stopped
+    /// Engine start-stop can only happen while vehicle is stopped
     pub vehicle_not_stopped: TrackedState<bool>,
     /// Engine has not been on long enough (usually 30 s)
     pub on_time_too_short: TrackedState<bool>,
@@ -746,9 +795,9 @@ pub struct ConvStopStartState {
     pub has_traction_power_request: TrackedState<bool>,
 }
 
-impl ConvStopStartState {
+impl ConvStartStopState {
     /// If any of the causes are true, engine must be on
-    fn engine_on(&self) -> anyhow::Result<bool> {
+    fn fc_on(&self) -> anyhow::Result<bool> {
         let c1 = *self.fc_temperature_too_low.get_fresh(|| format_dbg!())?;
         let c2 = *self.vehicle_not_stopped.get_fresh(|| format_dbg!())?;
         let c3 = *self.on_time_too_short.get_fresh(|| format_dbg!())?;
@@ -759,5 +808,96 @@ impl ConvStopStartState {
             .has_traction_power_request
             .get_fresh(|| format_dbg!())?;
         Ok(c1 || c2 || c3 || c4 || c5)
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+
+    fn make_favorable_dfco_conditions() -> (
+        si::Velocity,     // prev_speed
+        si::Velocity,     // speed
+        si::Time,         // dt
+        bool,             // dfco_allowed
+        si::Velocity,     // minimum_dfco_speed
+        si::Acceleration, // minimum_dfco_deceleration
+    ) {
+        (
+            40.0 * uc::MPH,
+            36.0 * uc::MPH,
+            1.0 * uc::S,
+            true,
+            20.0 * uc::MPH,
+            0.0 * uc::MPS2,
+        )
+    }
+
+    #[test]
+    fn dfco_activates_when_all_conditions_are_good() {
+        let (prev_speed, speed, dt, dfco_allowed, minimum_dfco_speed, minimum_dfco_deceleration) =
+            make_favorable_dfco_conditions();
+        let result = DfcoControls::is_dfco_disabled_due_to_veh_dynamics(
+            prev_speed,
+            speed,
+            dt,
+            dfco_allowed,
+            minimum_dfco_speed,
+            minimum_dfco_deceleration,
+            0.05 * uc::MPS,
+        );
+        assert_eq!(false, result);
+    }
+
+    #[test]
+    fn dfco_cannot_be_active_if_speed_too_low() {
+        let (_prev_speed, _speed, dt, dfco_allowed, minimum_dfco_speed, minimum_dfco_deceleration) =
+            make_favorable_dfco_conditions();
+        let prev_speed = 10.0 * uc::MPH;
+        let speed = 8.0 * uc::MPH;
+        let result = DfcoControls::is_dfco_disabled_due_to_veh_dynamics(
+            prev_speed,
+            speed,
+            dt,
+            dfco_allowed,
+            minimum_dfco_speed,
+            minimum_dfco_deceleration,
+            0.05 * uc::MPS,
+        );
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn dfco_cannot_be_active_if_not_decelerating() {
+        let (prev_speed, _speed, dt, dfco_allowed, minimum_dfco_speed, minimum_dfco_deceleration) =
+            make_favorable_dfco_conditions();
+        let speed = prev_speed + 2.0 * uc::MPH;
+        let result = DfcoControls::is_dfco_disabled_due_to_veh_dynamics(
+            prev_speed,
+            speed,
+            dt,
+            dfco_allowed,
+            minimum_dfco_speed,
+            minimum_dfco_deceleration,
+            0.05 * uc::MPS,
+        );
+        assert_eq!(true, result);
+    }
+
+    #[test]
+    fn dfco_cannot_be_active_if_not_allowed() {
+        let (prev_speed, speed, dt, _dfco_allowed, minimum_dfco_speed, minimum_dfco_deceleration) =
+            make_favorable_dfco_conditions();
+        let dfco_allowed = false;
+        let result = DfcoControls::is_dfco_disabled_due_to_veh_dynamics(
+            prev_speed,
+            speed,
+            dt,
+            dfco_allowed,
+            minimum_dfco_speed,
+            minimum_dfco_deceleration,
+            0.05 * uc::MPS,
+        );
+        assert_eq!(true, result);
     }
 }
