@@ -199,19 +199,6 @@ impl Mass for Transmission {
     }
 }
 
-impl TryFrom<fastsim_2::vehicle::RustVehicle> for Transmission {
-    type Error = anyhow::Error;
-    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> anyhow::Result<Transmission> {
-        let transmission = Transmission {
-            mass: None,
-            eff_interp: InterpolatorEnum::new_0d(f2veh.trans_eff),
-            state: Default::default(),
-            history: Default::default(),
-            save_interval: Some(1),
-        };
-        Ok(transmission)
-    }
-}
 #[serde_api]
 #[derive(
     Clone,

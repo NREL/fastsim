@@ -3,7 +3,7 @@ use crate::vehicle::common::StartStopControl;
 use super::*;
 
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -99,6 +99,20 @@ impl Init for DfcoControls {
 }
 
 impl SerdeAPI for DfcoControls {}
+
+impl Default for DfcoControls {
+    fn default() -> Self {
+        Self {
+            dfco_enabled: bool::default(),
+            minimum_dfco_speed: si::Velocity::default(),
+            minimum_dfco_deceleration: si::Acceleration::default(),
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
+            save_interval: Option::default(),
+            state: DfcoState::default(),
+            history: DfcoStateHistoryVec::default(),
+        }
+    }
+}
 
 impl DfcoControls {
     pub fn new(
@@ -352,34 +366,6 @@ impl ConventionalVehicle {
     }
 }
 
-impl TryFrom<&fastsim_2::vehicle::RustVehicle> for ConventionalVehicle {
-    type Error = anyhow::Error;
-    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<ConventionalVehicle> {
-        let conv = ConventionalVehicle {
-            fs: {
-                let fs = FuelStorage {
-                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
-                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
-                    fuel_type: None,
-                    energy_capacity: f2veh.fs_kwh * uc::KWH,
-                    specific_energy: Some(
-                        super::vehicle_model::FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG,
-                    ),
-                    mass: None,
-                };
-                fs
-            },
-            fc: FuelConverter::try_from(f2veh.clone())?,
-            transmission: Transmission::try_from(f2veh.clone())?,
-            pt_cntrl: ConvPowertrainControls::Normal,
-            dfco_cntrl: DfcoControls::default(),
-            mass: None,
-            alt_eff: f2veh.alt_eff * uc::R,
-        };
-        Ok(conv)
-    }
-}
-
 impl Mass for ConventionalVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self
@@ -598,7 +584,7 @@ impl ConvPowertrainControls {
 }
 
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -668,6 +654,21 @@ impl Init for ConvStartStopControl {
 }
 
 impl SerdeAPI for ConvStartStopControl {}
+
+impl Default for ConvStartStopControl {
+    fn default() -> Self {
+        Self {
+            fc_min_time_on: Option::default(),
+            temp_fc_forced_on: Option::default(),
+            temp_fc_allowed_off: Option::default(),
+            time_delay_after_stop_until_fc_can_turn_off: Option::default(),
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
+            save_interval: Option::default(),
+            state: ConvStartStopState::default(),
+            history: ConvStartStopStateHistoryVec::default(),
+        }
+    }
+}
 
 impl ConvStartStopControl {
     fn def_stopped_speed_threshold() -> si::Velocity {
