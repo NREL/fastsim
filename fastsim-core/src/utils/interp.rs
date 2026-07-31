@@ -1,5 +1,51 @@
 use crate::imports::*;
 
+pub(crate) trait InterpolatorScanValues {
+    fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, f: F) -> Result<(), E>;
+}
+
+impl InterpolatorScanValues for Interp0D<f64> {
+    fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
+        f(self.0)
+    }
+}
+
+impl InterpolatorScanValues for Interp1DOwned<f64, strategy::enums::Strategy1DEnum> {
+    fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
+        self.data.values.iter().copied().try_for_each(&mut f)
+    }
+}
+
+impl InterpolatorScanValues for Interp2DOwned<f64, strategy::enums::Strategy2DEnum> {
+    fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
+        self.data.values.iter().copied().try_for_each(&mut f)
+    }
+}
+
+impl InterpolatorScanValues for Interp3DOwned<f64, strategy::enums::Strategy3DEnum> {
+    fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
+        self.data.values.iter().copied().try_for_each(&mut f)
+    }
+}
+
+impl InterpolatorScanValues for InterpNDOwned<f64, strategy::enums::StrategyNDEnum> {
+    fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
+        self.data.values.iter().copied().try_for_each(&mut f)
+    }
+}
+
+impl InterpolatorScanValues for InterpolatorEnumOwned<f64> {
+    fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
+        match self {
+            Self::Interp0D(interp) => interp.try_for_each_value(f),
+            Self::Interp1D(interp) => interp.try_for_each_value(f),
+            Self::Interp2D(interp) => interp.try_for_each_value(f),
+            Self::Interp3D(interp) => interp.try_for_each_value(f),
+            Self::InterpND(interp) => interp.try_for_each_value(f),
+        }
+    }
+}
+
 /// Methods for mutating interpolator data, e.g. proportionally scaling
 /// interpolator function data
 pub trait InterpolatorMutMethods {
