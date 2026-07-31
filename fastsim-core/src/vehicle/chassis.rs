@@ -52,9 +52,9 @@ pub struct Chassis {
     /// Wheel base length
     pub wheel_base: si::Length,
 
-    pub mass: Option<si::Mass>,
+    pub(crate) mass: Option<si::Mass>,
     /// Vehicle mass excluding cargo, passengers, and powertrain components
-    pub glider_mass: Option<si::Mass>,
+    pub(crate) glider_mass: Option<si::Mass>,
     /// Cargo mass including passengers
     #[serde(default)]
     pub cargo_mass: Option<si::Mass>,
