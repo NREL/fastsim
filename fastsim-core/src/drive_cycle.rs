@@ -6,7 +6,6 @@ use crate::drive_cycle::manipulation_utils::{
 };
 use crate::imports::*;
 use crate::prelude::*;
-use fastsim_2::cycle::RustCycle as Cycle2;
 use std::cmp;
 
 #[serde_api]
@@ -602,23 +601,6 @@ impl Cycle {
             csv_de.init()?;
         }
         Ok(csv_de)
-    }
-
-    pub fn to_fastsim2(&self) -> anyhow::Result<Cycle2> {
-        let cyc2 = Cycle2 {
-            name: self.name.clone(),
-            time_s: self.time.iter().map(|t| t.get::<si::second>()).collect(),
-            mps: self
-                .speed
-                .iter()
-                .map(|s| s.get::<si::meter_per_second>())
-                .collect(),
-            grade: self.grade.iter().map(|g| g.get::<si::ratio>()).collect(),
-            orphaned: false,
-            road_type: vec![0.; self.len_checked().with_context(|| format_dbg!())?].into(),
-        };
-
-        Ok(cyc2)
     }
 
     /// convert cycle to a vector of CycleElement

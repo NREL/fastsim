@@ -26,7 +26,4 @@ pyo3 = "0.29.0"
 thiserror = "2.0.11"
 uom = { version = "0.35.0", features = ["use_serde"] }
 ninterp = { version = "0.7.3", features = ["serde"] }
-fastsim-2 = { package = "fastsim-core", version = "0.1.11", features = [
-    "resources",
-] }
 lazy_static = "1.4.0"
