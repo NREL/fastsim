@@ -5,7 +5,7 @@ members = [
     "fastsim-core/fastsim-proc-macros",
     "fastsim-py",                       # python module exposing fastsim-core
     "fastsim-cli",                      # command line interface for fastsim-core
-    "fastsim-vehicle-schema",           # schema for vehicle databases
+    "fastsim-schema",                   # schema for vehicle databases
 ]
 resolver = "2"
 
@@ -22,7 +22,7 @@ opt-level = 3
 [workspace.dependencies]
 document-features = "0.2.10"
 fastsim-core = { path = "fastsim-core" }
-fastsim-vehicle-schema = { path = "fastsim-vehicle-schema" }
+fastsim-schema = { path = "fastsim-schema" }
 anyhow = "1.0.71"
 serde = { version = "1.0.136", features = ["derive"] }
 pyo3 = "0.29.0"

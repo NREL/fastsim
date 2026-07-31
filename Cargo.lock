@@ -586,7 +586,7 @@ dependencies = [
  "eng_fmt",
  "fastsim-core 0.1.11",
  "fastsim-proc-macros 3.1.0",
- "fastsim-vehicle-schema",
+ "fastsim-schema",
  "home",
  "include_dir",
  "itertools 0.12.1",
@@ -652,7 +652,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fastsim-vehicle-schema"
+name = "fastsim-schema"
 version = "0.1.0"
 dependencies = [
  "serde",

@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Debug, thiserror::Error)]
-pub enum SchemaV1Error {
+pub enum VehicleSchemaV1Error {
     #[error("expected 8 path segments, got {actual}: {input:?}")]
     SegmentCount { input: String, actual: usize },
 
@@ -53,7 +53,7 @@ pub enum SchemaV1Error {
 /// 8. `r{N}` — model revision/version for corrections
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(into = "String", try_from = "String")]
-pub struct SchemaV1 {
+pub struct VehicleSchemaV1 {
     /// FASTSim version
     pub fastsim_version: u32,
     /// Powertrain type (e.g., "conv", "hev", "phev", "bev")
@@ -70,7 +70,7 @@ pub struct SchemaV1 {
     pub revision: u32,
 }
 
-impl std::fmt::Display for SchemaV1 {
+impl std::fmt::Display for VehicleSchemaV1 {
     /// Display the schema as its path-segment string representation.
     ///
     /// Formats as: `v1/fastsim-{N}/{powertrain}/{make}/{model}/{year}/{variant}/r{N}`
@@ -79,14 +79,14 @@ impl std::fmt::Display for SchemaV1 {
     }
 }
 
-impl From<SchemaV1> for String {
-    fn from(s: SchemaV1) -> Self {
+impl From<VehicleSchemaV1> for String {
+    fn from(s: VehicleSchemaV1) -> Self {
         s.to_string()
     }
 }
 
-impl std::str::FromStr for SchemaV1 {
-    type Err = SchemaV1Error;
+impl std::str::FromStr for VehicleSchemaV1 {
+    type Err = VehicleSchemaV1Error;
     /// Parse a schema from its path-segment string representation.
     ///
     /// Expected format (8 segments):
@@ -112,14 +112,14 @@ impl std::str::FromStr for SchemaV1 {
     }
 }
 
-impl TryFrom<String> for SchemaV1 {
-    type Error = SchemaV1Error;
+impl TryFrom<String> for VehicleSchemaV1 {
+    type Error = VehicleSchemaV1Error;
     fn try_from(s: String) -> Result<Self, Self::Error> {
         s.parse()
     }
 }
 
-impl SchemaV1 {
+impl VehicleSchemaV1 {
     /// Parse a v1 schema path structurally, without canonical identifier validation.
     ///
     /// This only validates path shape and numeric fields:
@@ -130,36 +130,36 @@ impl SchemaV1 {
     /// It intentionally does not enforce canonical formatting for `powertrain`,
     /// `make`, `model`, `year`, or `variant`. Call `new` (or `from_str`) for full
     /// canonical validation.
-    pub(crate) fn parse_structural(s: &str) -> Result<Self, SchemaV1Error> {
+    pub(crate) fn parse_structural(s: &str) -> Result<Self, VehicleSchemaV1Error> {
         let parts: Vec<&str> = s.split('/').collect();
         if parts.len() != 8 {
-            return Err(SchemaV1Error::SegmentCount {
+            return Err(VehicleSchemaV1Error::SegmentCount {
                 input: s.to_string(),
                 actual: parts.len(),
             });
         }
         if parts[0] != "v1" {
-            return Err(SchemaV1Error::WrongSchemaPrefix {
+            return Err(VehicleSchemaV1Error::WrongSchemaPrefix {
                 found: parts[0].to_string(),
             });
         }
         let fastsim_version = parts[1]
             .strip_prefix("fastsim-")
-            .ok_or_else(|| SchemaV1Error::MissingFastsimVersionPrefix {
+            .ok_or_else(|| VehicleSchemaV1Error::MissingFastsimVersionPrefix {
                 segment: parts[1].to_string(),
             })?
             .parse::<u32>()
-            .map_err(|source| SchemaV1Error::InvalidFastsimVersion {
+            .map_err(|source| VehicleSchemaV1Error::InvalidFastsimVersion {
                 segment: parts[1].to_string(),
                 source,
             })?;
         let revision = parts[7]
             .strip_prefix('r')
-            .ok_or_else(|| SchemaV1Error::MissingRevisionPrefix {
+            .ok_or_else(|| VehicleSchemaV1Error::MissingRevisionPrefix {
                 segment: parts[7].to_string(),
             })?
             .parse::<u32>()
-            .map_err(|source| SchemaV1Error::InvalidRevision {
+            .map_err(|source| VehicleSchemaV1Error::InvalidRevision {
                 segment: parts[7].to_string(),
                 source,
             })?;
@@ -188,7 +188,7 @@ impl SchemaV1 {
         year: String,
         variant: String,
         revision: u32,
-    ) -> Result<Self, SchemaV1Error> {
+    ) -> Result<Self, VehicleSchemaV1Error> {
         for (field, segment) in [
             ("powertrain", &powertrain),
             ("make", &make),
@@ -197,7 +197,7 @@ impl SchemaV1 {
             ("variant", &variant),
         ] {
             if !Self::validate_identifier(segment) {
-                return Err(SchemaV1Error::InvalidIdentifier {
+                return Err(VehicleSchemaV1Error::InvalidIdentifier {
                     field,
                     value: segment.to_string(),
                     suggestion: Self::normalize_identifier(segment),
@@ -347,8 +347,8 @@ impl SchemaV1 {
 mod tests {
     use super::*;
 
-    fn sample_schema() -> SchemaV1 {
-        SchemaV1::new(
+    fn sample_schema() -> VehicleSchemaV1 {
+        VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "ford".to_string(),
@@ -365,7 +365,7 @@ mod tests {
         let schema = sample_schema();
         let serialized = serde_json::to_string(&schema).unwrap();
         assert_eq!(serialized, "\"v1/fastsim-3/conv/ford/fusion/2012/base/r1\"");
-        let deserialized: SchemaV1 = serde_json::from_str(&serialized).unwrap();
+        let deserialized: VehicleSchemaV1 = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, schema);
     }
 
@@ -381,21 +381,21 @@ mod tests {
     #[test]
     fn test_from_str() {
         let s = "v1/fastsim-3/conv/ford/fusion/2012/base/r1";
-        let schema = SchemaV1::from_str(s).unwrap();
+        let schema = VehicleSchemaV1::from_str(s).unwrap();
         assert_eq!(schema, sample_schema());
     }
 
     #[test]
     fn test_from_str_errors() {
-        assert!(SchemaV1::from_str("v2/fastsim-3/conv/ford/fusion/2012/base/r1").is_err());
-        assert!(SchemaV1::from_str("v1/fastsim-3/conv/ford/fusion/2012/base").is_err());
-        assert!(SchemaV1::from_str("v1/bad-3/conv/ford/fusion/2012/base/r1").is_err());
-        assert!(SchemaV1::from_str("v1/fastsim-3/conv/ford/fusion/2012/base/v1").is_err());
+        assert!(VehicleSchemaV1::from_str("v2/fastsim-3/conv/ford/fusion/2012/base/r1").is_err());
+        assert!(VehicleSchemaV1::from_str("v1/fastsim-3/conv/ford/fusion/2012/base").is_err());
+        assert!(VehicleSchemaV1::from_str("v1/bad-3/conv/ford/fusion/2012/base/r1").is_err());
+        assert!(VehicleSchemaV1::from_str("v1/fastsim-3/conv/ford/fusion/2012/base/v1").is_err());
     }
 
     #[test]
     fn test_new_rejects_slash_in_fields() {
-        assert!(SchemaV1::new(
+        assert!(VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "ford".to_string(),
@@ -405,7 +405,7 @@ mod tests {
             1,
         )
         .is_err());
-        assert!(SchemaV1::new(
+        assert!(VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "ford".to_string(),
@@ -419,7 +419,7 @@ mod tests {
 
     #[test]
     fn test_new_allows_expected_characters() {
-        assert!(SchemaV1::new(
+        assert!(VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "a-b-c-d-e-f0".to_string(),
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_new_rejects_disallowed_characters() {
-        assert!(SchemaV1::new(
+        assert!(VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "ford".to_string(),
@@ -447,58 +447,64 @@ mod tests {
 
     #[test]
     fn test_normalize_identifier_simple_cases() {
-        assert_eq!(SchemaV1::normalize_identifier("Outback XT"), "outback-xt");
         assert_eq!(
-            SchemaV1::normalize_identifier("Model__3   Performance"),
+            VehicleSchemaV1::normalize_identifier("Outback XT"),
+            "outback-xt"
+        );
+        assert_eq!(
+            VehicleSchemaV1::normalize_identifier("Model__3   Performance"),
             "model-3-performance"
         );
         assert_eq!(
-            SchemaV1::normalize_identifier("f-150/raptor"),
+            VehicleSchemaV1::normalize_identifier("f-150/raptor"),
             "f-150-raptor"
         );
-        assert_eq!(SchemaV1::normalize_identifier("foo@bar"), "foo-bar");
-        assert_eq!(SchemaV1::normalize_identifier("foo..bar"), "foo.bar");
-        assert_eq!(SchemaV1::normalize_identifier("foo.-..bar"), "foo.-.bar");
-        assert_eq!(SchemaV1::normalize_identifier("foo/bar"), "foo-bar");
-        assert_eq!(SchemaV1::normalize_identifier("---"), "");
+        assert_eq!(VehicleSchemaV1::normalize_identifier("foo@bar"), "foo-bar");
+        assert_eq!(VehicleSchemaV1::normalize_identifier("foo..bar"), "foo.bar");
+        assert_eq!(
+            VehicleSchemaV1::normalize_identifier("foo.-..bar"),
+            "foo.-.bar"
+        );
+        assert_eq!(VehicleSchemaV1::normalize_identifier("foo/bar"), "foo-bar");
+        assert_eq!(VehicleSchemaV1::normalize_identifier("---"), "");
     }
 
     #[test]
     fn test_normalize_engine_displacement() {
         assert_eq!(
-            SchemaV1::normalize_identifier("Golf 1.5 TSI"),
+            VehicleSchemaV1::normalize_identifier("Golf 1.5 TSI"),
             "golf-1.5-tsi"
         );
         assert_eq!(
-            SchemaV1::normalize_identifier("F-150 3.5 EcoBoost"),
+            VehicleSchemaV1::normalize_identifier("F-150 3.5 EcoBoost"),
             "f-150-3.5-ecoboost"
         );
     }
 
     #[test]
     fn test_vehicle_model_identifiers_with_engine_displacement() {
-        assert!(SchemaV1::validate_identifier("golf-1.5tsi"));
-        assert!(SchemaV1::validate_identifier("f-150-3.5-ecoboost"));
+        assert!(VehicleSchemaV1::validate_identifier("golf-1.5tsi"));
+        assert!(VehicleSchemaV1::validate_identifier("f-150-3.5-ecoboost"));
     }
 
     #[test]
     fn test_validate_identifier_passes_for_slug_strings() {
-        assert!(SchemaV1::validate_identifier("ford"));
-        assert!(SchemaV1::validate_identifier("model-3"));
-        assert!(SchemaV1::validate_identifier("golf-1.5tsi"));
-        assert!(SchemaV1::validate_identifier("2020"));
-        assert!(SchemaV1::validate_identifier("a1-b2-c3"));
+        assert!(VehicleSchemaV1::validate_identifier("ford"));
+        assert!(VehicleSchemaV1::validate_identifier("model-3"));
+        assert!(VehicleSchemaV1::validate_identifier("golf-1.5tsi"));
+        assert!(VehicleSchemaV1::validate_identifier("2020"));
+        assert!(VehicleSchemaV1::validate_identifier("a1-b2-c3"));
     }
 
     #[test]
     fn test_validate_identifier_fails_for_non_slug_strings() {
-        assert!(!SchemaV1::validate_identifier("Outback XT"));
-        assert!(!SchemaV1::validate_identifier("model_3"));
-        assert!(!SchemaV1::validate_identifier("model+3"));
-        assert!(!SchemaV1::validate_identifier("model--3"));
-        assert!(!SchemaV1::validate_identifier("/model3"));
-        assert!(!SchemaV1::validate_identifier(""));
-        assert!(!SchemaV1::validate_identifier("-model"));
+        assert!(!VehicleSchemaV1::validate_identifier("Outback XT"));
+        assert!(!VehicleSchemaV1::validate_identifier("model_3"));
+        assert!(!VehicleSchemaV1::validate_identifier("model+3"));
+        assert!(!VehicleSchemaV1::validate_identifier("model--3"));
+        assert!(!VehicleSchemaV1::validate_identifier("/model3"));
+        assert!(!VehicleSchemaV1::validate_identifier(""));
+        assert!(!VehicleSchemaV1::validate_identifier("-model"));
     }
 
     #[test]

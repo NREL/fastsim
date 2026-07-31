@@ -1,11 +1,11 @@
 use super::*;
 
-pub use fastsim_vehicle_schema::{Schema, SchemaV1};
+pub use fastsim_schema::{VehicleSchema, VehicleSchemaV1};
 
 impl Vehicle {
     /// Load a vehicle using a parsed v1 database schema from the schema crate.
     ///
-    /// This is the core adapter that converts a `SchemaV1` into either a
+    /// This is the core adapter that converts a `VehicleSchemaV1` into either a
     /// local file path or remote URL and then loads the vehicle with
     /// `Vehicle::from_file` or `Vehicle::from_url`.
     ///
@@ -14,8 +14,8 @@ impl Vehicle {
     /// - Other values are treated as local filesystem roots.
     ///
     /// The schema-to-path/URL mapping is delegated to crate methods:
-    /// - `SchemaV1::build_filepath` for local loading.
-    /// - `SchemaV1::build_url` for remote loading (defaults to
+    /// - `VehicleSchemaV1::build_filepath` for local loading.
+    /// - `VehicleSchemaV1::build_url` for remote loading (defaults to
     ///   `DEFAULT_DB_URL` when `db_path_or_url` is `None`).
     ///
     /// # Errors
@@ -23,7 +23,7 @@ impl Vehicle {
     /// requested without the `web` feature.
     pub fn from_db_schema_v1(
         db_path_or_url: Option<&str>,
-        schema: SchemaV1,
+        schema: VehicleSchemaV1,
         extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
@@ -49,7 +49,7 @@ impl Vehicle {
 
     /// Load a vehicle from a serialized v1 schema path string.
     ///
-    /// This convenience wrapper parses `path` with `SchemaV1::from_str`
+    /// This convenience wrapper parses `path` with `VehicleSchemaV1::from_str`
     /// and delegates loading to `from_db_schema_v1`.
     ///
     /// # Errors
@@ -60,14 +60,14 @@ impl Vehicle {
         extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
-        let schema: SchemaV1 = path.parse()?;
+        let schema: VehicleSchemaV1 = path.parse()?;
         Self::from_db_schema_v1(db_path_or_url, schema, extension, skip_init)
     }
 
     /// Load a vehicle from explicit v1 schema fields.
     ///
-    /// This convenience wrapper validates/builds a `SchemaV1` via
-    /// `SchemaV1::new` and delegates loading to `from_db_schema_v1`.
+    /// This convenience wrapper validates/builds a `VehicleSchemaV1` via
+    /// `VehicleSchemaV1::new` and delegates loading to `from_db_schema_v1`.
     ///
     /// # Errors
     /// Returns an error if any schema field fails validation or delegated
@@ -84,7 +84,7 @@ impl Vehicle {
         extension: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
-        let schema = SchemaV1::new(
+        let schema = VehicleSchemaV1::new(
             fastsim_version,
             powertrain.to_string(),
             make.to_string(),
@@ -101,8 +101,8 @@ impl Vehicle {
 mod tests {
     use super::*;
 
-    fn sample_schema() -> SchemaV1 {
-        SchemaV1::new(
+    fn sample_schema() -> VehicleSchemaV1 {
+        VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "ford".to_string(),
