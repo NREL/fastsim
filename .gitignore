@@ -25,7 +25,6 @@ activate.sh
 .pixi
 *.egg-info
 *.code-workspace
-*.png
 .github/copilot-instructions.md
 
 _build

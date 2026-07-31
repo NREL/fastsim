@@ -45,15 +45,10 @@ Homepage = "https://www.nlr.gov/transportation/fastsim"
 
 [dependency-groups]
 # Internal groups for development, CI/CD, testing, documentation purposes
-build = [
-    "maturin~=1.8",
-]
-release = [
-    {include-group = "build"},
-    "twine",
-]
+build = ["maturin~=1.8"]
+release = [{ include-group = "build" }, "twine"]
 test = [
-    {include-group = "build"},
+    { include-group = "build" },
     "ruff>=0.11.9",
     "pytest>=9.1,<10.0",
     "memory_profiler~=0.61.0",
@@ -62,21 +57,18 @@ test = [
     "pytest-xdist",
 ]
 wheels = [
-    {include-group = "build"},
-    {include-group = "test"},
+    { include-group = "build" },
+    { include-group = "test" },
     "build",
     "cibuildwheel",
 ]
-docs = [
-    "jupyter-book>=2.0.0",
-    "nbformat>=4.2.0",
-]
+docs = ["jupyter-book>=2.0.0", "nbformat>=4.2.0"]
 dev = [
-    {include-group = "build"},
-    {include-group = "release"},
-    {include-group = "test"},
-    {include-group = "wheels"},
-    {include-group = "docs"},
+    { include-group = "build" },
+    { include-group = "release" },
+    { include-group = "test" },
+    { include-group = "wheels" },
+    { include-group = "docs" },
     "pylsp-mypy>=0.7.0",
     "pylsp-rope>=0.1.17",
     "python-lsp-server~=1.10",
@@ -119,8 +111,6 @@ nodejs = "26.4.*"
 
 [tool.pixi.feature.build.dependencies]
 rust = ">=1.47.0"
-
-[tool.pixi.feature.wheels.dependencies]
 zlib = "*"
 
 [tool.pixi.environments]
@@ -130,7 +120,14 @@ release = { features = ["release", "build"], solve-group = "default" }
 test = { features = ["test", "build"], solve-group = "default" }
 wheels = { features = ["wheels", "build", "test"], solve-group = "default" }
 docs = { features = ["docs", "build"], solve-group = "default" }
-dev = { features = ["dev", "build", "release", "test", "wheels", "docs"], solve-group = "default" }
+dev = { features = [
+    "dev",
+    "build",
+    "release",
+    "test",
+    "wheels",
+    "docs",
+], solve-group = "default" }
 
 [tool.pixi.tasks]
 cargo_test = "cargo test --release"
