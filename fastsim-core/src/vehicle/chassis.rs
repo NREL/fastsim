@@ -12,6 +12,8 @@ pub enum DriveTypes {
     /// All-wheel drive
     AWD,
     /// 4-wheel drive
+    #[serde(alias = "FourWD")]
+    #[serde(rename = "4WD")]
     FourWD,
 }
 

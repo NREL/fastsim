@@ -94,34 +94,34 @@ impl HybridElectricVehicle {
             }
         };
         if fc_on_soc > self.res.max_soc {
-            eprintln!("fc_on_soc > self.res.max_soc");
-            eprintln!("fc_on_soc: {:?}", fc_on_soc);
+            // eprintln!("fc_on_soc > self.res.max_soc");
+            // eprintln!("fc_on_soc: {:?}", fc_on_soc);
         }
         if fc_on_soc < self.res.min_soc {
-            eprintln!("fc_on_soc < self.res.min_soc");
-            eprintln!("fc_on_soc: {:?}", fc_on_soc);
+            // eprintln!("fc_on_soc < self.res.min_soc");
+            // eprintln!("fc_on_soc: {:?}", fc_on_soc);
         }
         if disch_buffer > self.res.energy_capacity_usable() {
-            eprintln!("disch_buffer < self.res.energy_capacity_usable()");
-            eprintln!(
-                "disch_buffer: {:?} kWh",
-                disch_buffer.get::<si::kilowatt_hour>()
-            );
-            eprintln!(
-                "RES usable energy capacity: {:?} kWh",
-                self.res.energy_capacity_usable().get::<si::kilowatt_hour>()
-            );
+            // eprintln!("disch_buffer > self.res.energy_capacity_usable()");
+            // eprintln!(
+            //     "disch_buffer: {:?} kWh",
+            //     disch_buffer.get::<si::kilowatt_hour>()
+            // );
+            // eprintln!(
+            //     "RES usable energy capacity: {:?} kWh",
+            //     self.res.energy_capacity_usable().get::<si::kilowatt_hour>()
+            // );
         }
         if chrg_buffer > self.res.energy_capacity_usable() {
-            eprintln!("disch_buffer < self.res.energy_capacity_usable()");
-            eprintln!(
-                "chrg_buffer: {:?} kWh",
-                chrg_buffer.get::<si::kilowatt_hour>()
-            );
-            eprintln!(
-                "RES usable energy capacity: {:?} kWh",
-                self.res.energy_capacity_usable().get::<si::kilowatt_hour>()
-            );
+            // eprintln!("chrg_buffer > self.res.energy_capacity_usable()");
+            // eprintln!(
+            //     "chrg_buffer: {:?} kWh",
+            //     chrg_buffer.get::<si::kilowatt_hour>()
+            // );
+            // eprintln!(
+            //     "RES usable energy capacity: {:?} kWh",
+            //     self.res.energy_capacity_usable().get::<si::kilowatt_hour>()
+            // );
         }
         Ok(())
     }
@@ -899,8 +899,8 @@ pub struct RESGreedyWithDynamicBuffers {
     /// current state of control variables
     #[serde(default)]
     pub state: RGWDBState,
-    #[serde(default)]
     /// history of current state
+    #[serde(default, skip_serializing_if = "RGWDBStateHistoryVec::is_empty")]
     pub history: RGWDBStateHistoryVec,
 }
 
@@ -1290,6 +1290,7 @@ pub struct HEVStopStartControl {
     #[serde(default)]
     pub state: StopStartState,
     /// history of current state
+    #[serde(default, skip_serializing_if = "StopStartStateHistoryVec::is_empty")]
     pub history: StopStartStateHistoryVec,
 }
 

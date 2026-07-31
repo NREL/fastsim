@@ -368,7 +368,12 @@ impl Vehicle {
                 PowertrainType::PlugInHybridElectricVehicle(_) => "PHEV".into(),
                 PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
             },
-            veh_year: self.year,
+            veh_year: self
+                .year
+                .as_ref()
+                .map(|y| y.parse::<u32>())
+                .transpose()?
+                .with_context(|| anyhow!(format_dbg!()))?,
             wheel_base_m: self.chassis.wheel_base.get::<si::meter>(),
             wheel_base_m_doc: None,
             wheel_coef_of_fric: self.chassis.wheel_fric_coef.get::<si::ratio>(),
@@ -417,24 +422,27 @@ impl TryFrom<fastsim_core::vehicle::RustVehicle> for Vehicle {
         let save_interval = Some(1);
         let pt_type = PowertrainType::try_from(&f2veh).with_context(|| anyhow!(format_dbg!()))?;
 
-        let mut f3veh = Self {
-            name: f2veh.scenario_name.clone(),
-            year: f2veh.veh_year,
-            doc: f2veh.doc.clone(),
+        Ok(Vehicle::new(
+            f2veh.scenario_name.clone(),
+            None,
+            None,
+            f2veh.doc.clone(),
+            if f2veh.veh_year == 0 {
+                None
+            } else {
+                Some(f2veh.veh_year.to_string())
+            },
+            None,
+            None,
+            None,
             pt_type,
-            chassis: Chassis::try_from(&f2veh).with_context(|| format_dbg!())?,
-            cabin: Default::default(),
-            hvac: Default::default(),
-            pwr_aux_base: f2veh.aux_kw * uc::KW,
-            state: Default::default(),
+            Chassis::try_from(&f2veh).with_context(|| format_dbg!())?,
+            Default::default(),
+            Default::default(),
+            Some(f2veh.veh_kg * uc::KG),
+            f2veh.aux_kw * uc::KW,
             save_interval,
-            history: Default::default(),
-            mass: Some(f2veh.veh_kg * uc::KG),
-        };
-        f3veh.expunge_mass_fields();
-        f3veh.init().with_context(|| anyhow!(format_dbg!()))?;
-
-        Ok(f3veh)
+        )?)
     }
 }
 
@@ -505,6 +513,7 @@ impl TryFrom<&fastsim_core::vehicle::RustVehicle> for ConventionalVehicle {
                 let fs = FuelStorage {
                     pwr_out_max: f2veh.fs_max_kw * uc::KW,
                     pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                    fuel_type: None,
                     energy_capacity: f2veh.fs_kwh * uc::KWH,
                     specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
                     mass: None,
@@ -638,6 +647,7 @@ impl TryFrom<&fastsim_core::vehicle::RustVehicle> for HybridElectricVehicle {
             fs: FuelStorage {
                 pwr_out_max: f2veh.fs_max_kw * uc::KW,
                 pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                fuel_type: None,
                 energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
                 specific_energy: None,
                 mass: None,

@@ -1,46 +1,86 @@
 # Installation
 
-FASTSim supports Python 3.10 through 3.12. Install it from PyPI for the
-quickest start, or build it from source for the latest development version.
+FASTSim is available as a package for use in [Python 3.10 through 3.15](https://www.python.org).
 
-## From PyPI
+For the quickest start, install from [PyPI](https://pypi.org/project/fastsim/). Install from source if you are developing FASTSim or need unreleased changes.
 
-In an active Python environment, install the latest release with pip:
+## Install from PyPI (recommended)
 
-```
+In an active Python environment, run:
+
+```bash
 pip install fastsim
 ```
 
-## From Source
+This will install the latest version of FASTSim as a Python package.
 
-Building from source gives you the latest development version. FASTSim's core
-is written in Rust, so you will need the
-[Rust toolchain](https://www.rust-lang.org/tools/install) installed first. The
-build tool (maturin) is installed automatically during the build, so the Rust
-toolchain is the only prerequisite you need to set up yourself.
+See [](#next-steps) for further resources.
 
-1. Clone the repository and enter it:
+## Install from Source (developers)
 
-   ```
+FASTSim's backend is written entirely in Rust. Install the
+[Rust toolchain](https://www.rust-lang.org/tools/install) first (or
+[set up a developer environment](developers/environment-setup.md)).
+
+Then install FASTSim from source:
+
+1. Clone the repository:
+
+   ```bash
    git clone https://github.com/NatLabRockies/fastsim.git
    cd fastsim
    ```
 
-2. Install the package from the repository root:
+1. Install from the repository root:
 
-   ```
+   ```bash
    pip install .
    ```
 
-For an editable install that also includes the development dependencies, run
-`pip install -e ".[dev]"` from the repository root instead. Source changes are
-then picked up the next time FASTSim is imported.
+Optional:
 
-Building from source is not necessary for most use cases. For more detail on
-the developer build, see [Compilation from Source](compilation-from-source.md).
+- Add `-e` for an editable install so source changes are picked up without
+  reinstalling.
+- Add `--group dev` to install optional developer dependencies.
 
+For more detail on developer builds, see [](developers/compiling-from-source.md).
+
+(next-steps)=
 ## Next Steps
 
-With FASTSim installed, head to
-[Getting Started](../demo_notebooks/getting_started/demo_getting_started.ipynb)
-to load a vehicle, run a simulation, and inspect the results.
+See the following resources:
+
+:::{card} [](getting-started.ipynb)
+:link: getting-started.ipynb
+
+A high-level overview showing how to load pre-defined vehicles, run simulations, and inspect results.
+
+:::
+
+:::::{card}
+
+[](user-guide/user-guide.md):
+
+::::{grid} 1 1 2 2 3 3
+
+:::{grid-item-card} [Vehicle Models](user-guide/vehicle-models/vehicle.md)
+:link: user-guide/vehicle-models/vehicle.md
+:link-type: doc
+Define and configure vehicle models
+:::
+
+:::{grid-item-card} [Drive Cycles](user-guide/drive-cycles/drive-cycle.ipynb)
+:link: user-guide/drive-cycles/drive-cycle.ipynb
+:link-type: doc
+Work with built-in and custom cycles
+:::
+
+:::{grid-item-card} [Running Simulations](user-guide/running-simulations/simdrive.ipynb)
+:link: user-guide/running-simulations/simdrive.ipynb
+:link-type: doc
+Execute simulations and inspect results
+:::
+
+::::
+
+:::::

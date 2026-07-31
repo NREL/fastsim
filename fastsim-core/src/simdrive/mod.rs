@@ -46,7 +46,7 @@ impl SimDrive {
         self.walk()
     }
 
-    #[pyo3(name = "reset_py")]
+    #[pyo3(name = "reset")]
     /// Combines [Self::reset_cumulative], [Self::reset_step], [Self::clear]
     fn reset_py(&mut self) -> anyhow::Result<()> {
         self.reset_cumulative(|| format_dbg!())?;
