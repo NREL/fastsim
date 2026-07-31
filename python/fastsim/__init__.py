@@ -301,9 +301,10 @@ def to_dataframe(
 def _plot_cycle(
     self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True
 ) -> go._figure.Figure:
-    if x not in self.to_pydict():
+    cyc_dict = self.to_pydict()
+    if x not in cyc_dict:
         raise ValueError(f"Column '{x}' not found in the drive cycle data")
-    if y not in self.to_pydict():
+    if y not in cyc_dict:
         raise ValueError(f"Column '{y}' not found in the drive cycle data")
 
     if x == "time_seconds":
@@ -320,7 +321,6 @@ def _plot_cycle(
     else:
         y_label = y
 
-    cyc_dict = self.to_pydict()
     x_values = np.asarray(cyc_dict[x])
     y_values = np.asarray(cyc_dict[y])
     fig = px.line(

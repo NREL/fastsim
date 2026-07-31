@@ -1,6 +1,7 @@
 use fastsim_core::traits::SerdeAPI as _;
 
 use super::*;
+
 pub use ::fastsim_2 as fastsim_core;
 
 use include_dir::{include_dir, Dir};
@@ -104,7 +105,7 @@ impl Vehicle {
             ess_round_trip_eff: self
                 .res()
                 .map(|res| {
-                    if let crate::vehicle::powertrain::reversible_energy_storage::EffInterp::Constant(Interp0D(eff)) = res.eff_interp {
+                    if let crate::vehicle::powertrain::reversible_energy_storage::RESEfficiency::Constant(Interp0D(eff)) = res.eff_interp {
                         Ok(eff.powi(2))
                     } else {
                         bail!("`to_fastsim2` is not implemented for non-0D `res.eff_interp`")
