@@ -586,6 +586,7 @@ dependencies = [
  "eng_fmt",
  "fastsim-core 0.1.11",
  "fastsim-proc-macros 3.1.0",
+ "fastsim-vehicle-schema",
  "home",
  "include_dir",
  "itertools 0.12.1",
