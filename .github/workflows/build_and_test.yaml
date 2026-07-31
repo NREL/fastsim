@@ -7,6 +7,56 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  linux-checks:
+    name: Lint, test, and build wasm (Linux-only checks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          environments: build wasm
+
+      - name: Check version consistency
+        run: pixi run -e build python python/fastsim/check_versions.py
+
+      # - name: Check Python formatting & linting
+      #   run: pixi run -e build ruff check .
+
+      - name: Check Rust formatting
+        run: pixi run -e build cargo fmt --check
+
+      - name: Install cargo-hack
+        run: pixi run -e build cargo install cargo-hack --locked
+
+      # - name: Check Rust linting
+      #   run: pixi run -e test cargo clippy -- -D warnings
+
+      - name: Run Rust tests
+        run: pixi run -e build cargo test --workspace --all-features --release
+
+      - name: Check each feature
+        run: pixi run -e build cargo hack check -p fastsim-core --each-feature
+
+      - name: Install wasm-pack and wasm-bindgen-cli
+        run: pixi run -e wasm wasm_setup
+
+      - name: Verify wasm-bindgen crate and CLI versions match
+        run: |
+          CRATE_VERSION=$(pixi run -e wasm cargo tree -p fastsim-schema --features wasm -i wasm-bindgen | head -n 1 | awk '{print $2}' | tr -d 'v')
+          CLI_VERSION=$(pixi run -e wasm wasm-bindgen --version | awk '{print $2}')
+          echo "fastsim-schema depends on wasm-bindgen $CRATE_VERSION; installed wasm-bindgen-cli is $CLI_VERSION"
+          if [ "$CRATE_VERSION" != "$CLI_VERSION" ]; then
+            echo "::error::wasm-bindgen version mismatch: crate=$CRATE_VERSION cli=$CLI_VERSION."
+            exit 1
+          fi
+
+      - name: Run wasm tests
+        run: pixi run -e wasm wasm_test
+
+      - name: Build wasm package
+        run: pixi run -e wasm wasm_build
+
   build-and-test-wheels:
     name: Build and test wheels on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
     strategy:
@@ -51,34 +101,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --group wheels
-
-      - name: Check version consistency
-        if: matrix.os.base == 'ubuntu'
-        run: python python/fastsim/check_versions.py
-
-      # - name: Check Python formatting & linting
-      #   if: matrix.os.base == 'ubuntu'
-      #   run: ruff check .
-      
-      - name: Check Rust formatting
-        if: matrix.os.base == 'ubuntu'
-        run: cargo fmt --check
-
-      - name: Install cargo-hack
-        if: matrix.os.base == 'ubuntu'
-        run: cargo install cargo-hack --locked
-
-      # - name: Check Rust linting
-      #   if: matrix.os.base == 'ubuntu'
-      #   run: cargo clippy -- -D warnings
-
-      - name: Run Rust tests
-        if: matrix.os.base == 'ubuntu'
-        run: cargo test --workspace --all-features --release
-
-      - name: Check each feature
-        if: matrix.os.base == 'ubuntu'
-        run: cargo hack check -p fastsim-core --each-feature
 
       - name: Build source distribution
         if: matrix.os.base == 'ubuntu'
