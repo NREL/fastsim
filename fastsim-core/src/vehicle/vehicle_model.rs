@@ -246,8 +246,13 @@ impl Vehicle {
     /// Create new Vehicle with specified parameters
     pub fn new(
         name: String,
+        min_fastsim_version: Option<Version>,
+        db_path: Option<database::Schema>,
         doc: Option<String>,
-        year: u32,
+        year: Option<String>,
+        make: Option<String>,
+        model: Option<String>,
+        trim: Option<String>,
         pt_type: PowertrainType,
         chassis: Chassis,
         cabin: CabinOption,
@@ -258,8 +263,14 @@ impl Vehicle {
     ) -> anyhow::Result<Self> {
         let mut veh = Self {
             name,
+            min_fastsim_version: min_fastsim_version
+                .unwrap_or_else(|| crate::FASTSIM_VERSION.clone()),
+            db_path,
             doc,
             year,
+            make,
+            model,
+            trim,
             pt_type,
             chassis,
             cabin,
@@ -281,10 +292,10 @@ impl Vehicle {
                     let save_interval = veh.save_interval().unwrap_or(Option::None);
                     veh.pt_cntrl =
                         ConvPowertrainControls::StartStop(Box::new(ConvStartStopControl::new(
-                            Option::None, // fc_min_time_on
-                            Option::None, // temp_fc_forced_on
-                            Option::None, // temp_fc_allowed_off
-                            Option::None, // time_delay_after_stop_until_fc_can_turn_off
+                            None, // fc_min_time_on
+                            None, // temp_fc_forced_on
+                            None, // temp_fc_allowed_off
+                            None, // time_delay_after_stop_until_fc_can_turn_off
                             save_interval,
                         )?));
                 }
@@ -295,13 +306,13 @@ impl Vehicle {
                     let save_interval = veh.save_interval().unwrap_or(Option::None);
                     veh.pt_cntrl =
                         HEVPowertrainControls::StartStop(Box::new(HEVStartStopControl::new(
-                            Option::None, // fc_min_time_on
-                            Option::None, // soc_fc_forced_on
-                            Option::None, // frac_of_most_eff_pwr_to_run_fc
-                            Option::None, // temp_fc_forced_on
-                            Option::None, // temp_fc_allowed_off
-                            Option::None, // time_delay_after_stop_until_fc_can_turn_off
-                            Option::None, // em_can_regen
+                            None, // fc_min_time_on
+                            None, // soc_fc_forced_on
+                            None, // frac_of_most_eff_pwr_to_run_fc
+                            None, // temp_fc_forced_on
+                            None, // temp_fc_allowed_off
+                            None, // time_delay_after_stop_until_fc_can_turn_off
+                            None, // em_can_regen
                             save_interval,
                         )?));
                 }
@@ -325,18 +336,18 @@ impl Vehicle {
                 HEVPowertrainControls::StartStop(_) => {
                     hev.pt_cntrl =
                         HEVPowertrainControls::RGWDB(Box::new(RESGreedyWithDynamicBuffers::new(
-                            Option::None, // speed_soc_disch_buffer
-                            Option::None, // speed_soc_disch_buffer_coeff
-                            Option::None, // speed_soc_fc_on_buffer
-                            Option::None, // speed_soc_fc_on_buffer_coeff
-                            Option::None, // speed_soc_regen_buffer
-                            Option::None, // speed_soc_regen_buffer_coeff
-                            Option::None, // fc_min_time_on
-                            Option::None, // speed_fc_forced_on
-                            Option::None, // frac_pwr_demand_fc_forced_on
-                            Option::None, // frac_of_most_eff_pwr_to_run_fc
-                            Option::None, // temp_fc_forced_on
-                            Option::None, // temp_fc_allowed_off
+                            None, // speed_soc_disch_buffer
+                            None, // speed_soc_disch_buffer_coeff
+                            None, // speed_soc_fc_on_buffer
+                            None, // speed_soc_fc_on_buffer_coeff
+                            None, // speed_soc_regen_buffer
+                            None, // speed_soc_regen_buffer_coeff
+                            None, // fc_min_time_on
+                            None, // speed_fc_forced_on
+                            None, // frac_pwr_demand_fc_forced_on
+                            None, // frac_of_most_eff_pwr_to_run_fc
+                            None, // temp_fc_forced_on
+                            None, // temp_fc_allowed_off
                             save_interval,
                         )?))
                 }
@@ -1462,11 +1473,11 @@ pub(crate) mod tests {
         let pt_controls = {
             if with_conv_start_stop {
                 let cntrl = ConvStartStopControl::new(
-                    Option::None, // fc_min_time_on
-                    Option::None, // temp_fc_forced_on
-                    Option::None, // temp_fc_allowed_off
-                    Option::None, // time_delay_after_stop_until_fc_can_turn_off
-                    Option::None, // save_interval
+                    None, // fc_min_time_on
+                    None, // temp_fc_forced_on
+                    None, // temp_fc_allowed_off
+                    None, // time_delay_after_stop_until_fc_can_turn_off
+                    None, // save_interval
                 )
                 .map_err(|err| {
                     assert!(
@@ -1608,14 +1619,14 @@ pub(crate) mod tests {
             None,                           // save_interval
         )?;
         let cntrl = HEVStartStopControl::new(
-            Option::None, // fc_min_time_on
-            Option::None, // soc_fc_forced_on
-            Option::None, // frac_of_most_eff_pwr_to_run_fc
-            Option::None, // temp_fc_forced_on
-            Option::None, // temp_fc_allowed_off
-            Option::None, // time_delay_after_stop_until_fc_can_turn_off
-            Option::None, // em_can_regen
-            Option::None, // save_interval
+            None, // fc_min_time_on
+            None, // soc_fc_forced_on
+            None, // frac_of_most_eff_pwr_to_run_fc
+            None, // temp_fc_forced_on
+            None, // temp_fc_allowed_off
+            None, // time_delay_after_stop_until_fc_can_turn_off
+            None, // em_can_regen
+            None, // save_interval
         )?;
         let pt_cntrl = HEVPowertrainControls::StartStop(Box::new(cntrl));
         let aux_cntrl = HEVAuxControls::AuxOnResPriority;
@@ -1626,15 +1637,15 @@ pub(crate) mod tests {
             false,        // save_soc_bal_iters
         )?;
         let hev = HybridElectricVehicle::new(
-            res,          // res
-            fs,           // fs
-            fc,           // fc
-            em,           // em
-            tx,           // transmission
-            pt_cntrl,     // pt_cntrl
-            aux_cntrl,    // aux_cntrl
-            Option::None, // mass
-            sim_params,   // sim_params
+            res,        // res
+            fs,         // fs
+            fc,         // fc
+            em,         // em
+            tx,         // transmission
+            pt_cntrl,   // pt_cntrl
+            aux_cntrl,  // aux_cntrl
+            None,       // mass
+            sim_params, // sim_params
         )?;
         let chassis = Chassis {
             drag_coef: 0.3303036837542712 * uc::R,

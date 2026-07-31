@@ -1362,8 +1362,8 @@ mod tests {
         fc_state.time_on.mark_stale();
         let mut fc = FuelConverter {
             thrml: FuelConverterThermalOption::None,
-            mass: Option::None,
-            specific_pwr: Option::None,
+            mass: None,
+            specific_pwr: None,
             pwr_out_max: peak_pwr,
             pwr_out_max_init: 5.0 * uc::KW,
             pwr_ramp_lag: 5.0 * uc::S,
@@ -1378,7 +1378,7 @@ mod tests {
             pwr_idle_fuel: idle_pwr,
             state: fc_state,
             history: FuelConverterStateHistoryVec::default(),
-            save_interval: Option::None,
+            save_interval: None,
         };
         let init_result = fc.init();
         assert!(init_result.is_ok());
