@@ -1,42 +1,15 @@
+//! Contains Err
+
 use super::*;
 
-#[derive(Debug, thiserror::Error)]
-pub enum VehicleSchemaV1Error {
-    #[error("expected 8 path segments, got {actual}: {input:?}")]
-    SegmentCount { input: String, actual: usize },
+pub mod error;
+pub mod index;
 
-    #[error("expected schema prefix 'v1', got {found:?}")]
-    WrongSchemaPrefix { found: String },
+#[cfg(feature = "wasm")]
+pub mod wasm;
 
-    #[error("expected 'fastsim-N' segment, got {segment:?}")]
-    MissingFastsimVersionPrefix { segment: String },
-
-    #[error("invalid FASTSim version in {segment:?}")]
-    InvalidFastsimVersion {
-        segment: String,
-        #[source]
-        source: std::num::ParseIntError,
-    },
-
-    #[error("expected 'rN' revision segment, got {segment:?}")]
-    MissingRevisionPrefix { segment: String },
-
-    #[error("invalid revision in {segment:?}")]
-    InvalidRevision {
-        segment: String,
-        #[source]
-        source: std::num::ParseIntError,
-    },
-
-    #[error(
-        "{field} contains invalid identifier {value:?}, proper identifier would be {suggestion:?}"
-    )]
-    InvalidIdentifier {
-        field: &'static str,
-        value: String,
-        suggestion: String,
-    },
-}
+pub use error::*;
+pub use index::*;
 
 /// Database organizational schema version 1 for the `fastsim-vehicles` repository.
 ///

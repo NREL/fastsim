@@ -4,9 +4,21 @@ version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 
+[lib]
+crate-type = [
+    "rlib",
+    "cdylib",
+] # cdylib is what wasm-bindgen needs to produce a .wasm binary
+
 [dependencies]
-serde = { workspace = true }
-thiserror = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+wasm-bindgen = { version = "0.2", optional = true }
+serde-wasm-bindgen = { version = "0.6", optional = true }
 
 [dev-dependencies]
-serde_json = "1.0"
+wasm-bindgen-test = "0.3"
+
+[features]
+wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen"]

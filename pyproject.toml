@@ -113,6 +113,10 @@ nodejs = "26.4.*"
 rust = ">=1.47.0"
 zlib = "*"
 
+[tool.pixi.feature.wasm.dependencies]
+rust-std-wasm32-unknown-unknown = "*"
+nodejs = "26.4.*"  # for `wasm-pack test --node`; version matches the docs feature
+
 [tool.pixi.environments]
 default = { solve-group = "default" }
 build = { features = ["build"], solve-group = "default" }
@@ -120,6 +124,7 @@ release = { features = ["release", "build"], solve-group = "default" }
 test = { features = ["test", "build"], solve-group = "default" }
 wheels = { features = ["wheels", "build", "test"], solve-group = "default" }
 docs = { features = ["docs", "build"], solve-group = "default" }
+wasm = { features = ["wasm", "build"], solve-group = "default" }
 dev = { features = [
     "dev",
     "build",
@@ -127,6 +132,7 @@ dev = { features = [
     "test",
     "wheels",
     "docs",
+    "wasm",
 ], solve-group = "default" }
 
 [tool.pixi.tasks]
@@ -139,6 +145,28 @@ build-docs = { cmd = "jupyter book build --strict --html --execute", cwd = "docs
 fmt = "ruff format"
 # lint = "pylint"
 # style = { depends-on = ["fmt", "lint"] }
+
+# One-time (or version-bump-triggered) setup: installs wasm-pack + a
+# version-matched wasm-bindgen-cli. Not conda-installable as far as could be
+# confirmed, so these go through cargo install inside the wasm env instead.
+wasm_setup = "cargo install wasm-pack wasm-bindgen-cli --locked"
+
+# Verifies fastsim-schema actually compiles for wasm32-unknown-unknown and
+# its wasm_bindgen_test suite passes. Cheap — no fastsim-core dependency,
+# single small crate — safe to run on every relevant PR.
+wasm_test = "wasm-pack test --node fastsim-schema --features wasm"
+
+# Produces the actual pkg/ output (wasm binary + JS glue) for local
+# inspection/manual embedding tests. Not wired to any publish step yet.
+wasm_build = "wasm-pack build fastsim-schema --target web --out-dir pkg -- --features wasm"
+
+# Sanity check that wasm-bindgen (Cargo.toml) and wasm-bindgen-cli (installed
+# via wasm_setup) agree — mismatches are the single most common wasm-pack
+# failure and are otherwise a confusing error to debug blind.
+wasm_check_versions = { cmd = """
+  cargo tree -p fastsim-schema --features wasm -i wasm-bindgen | head -n 1
+  wasm-bindgen --version
+""" }
 
 [tool.pytest.ini_options]
 # Pytest configuration for running notebook tests with nbmake and parallel execution
