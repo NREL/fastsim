@@ -1260,7 +1260,7 @@ impl Default for VehicleState {
 pub(crate) mod tests {
     use crate::vehicle::conv::{ConvPowertrainControls, ConvStartStopControl};
     use crate::vehicle::hev::{HEVAuxControls, HEVSimulationParams, HEVStartStopControl};
-    use crate::vehicle::powertrain::reversible_energy_storage::EffInterp;
+    use crate::vehicle::powertrain::reversible_energy_storage::RESEfficiency;
 
     use super::*;
 
@@ -1548,14 +1548,14 @@ pub(crate) mod tests {
 
     fn make_microhybrid_pacifica() -> anyhow::Result<Vehicle> {
         let res = ReversibleEnergyStorage::new(
-            RESThermalOption::None,             // thrml
-            None,                               // mass
-            None,                               // specific_energy
-            5.0 * uc::KW,                       // pwr_out_max
-            1.0 * uc::KWH,                      // energy_capacity
-            EffInterp::Constant(Interp0D(0.9)), // eff_interp
-            0.0 * uc::R,                        // min_soc
-            1.0 * uc::R,                        // max_soc
+            RESThermalOption::None,                 // thrml
+            None,                                   // mass
+            None,                                   // specific_energy
+            5.0 * uc::KW,                           // pwr_out_max
+            1.0 * uc::KWH,                          // energy_capacity
+            RESEfficiency::Constant(Interp0D(0.9)), // eff_interp
+            0.0 * uc::R,                            // min_soc
+            1.0 * uc::R,                            // max_soc
             None,
         )?;
         let fs = FuelStorage::new(
