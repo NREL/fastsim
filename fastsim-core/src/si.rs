@@ -7,6 +7,19 @@ use uom::si;
 pub use si::acceleration::meter_per_second_squared;
 pub use si::area::square_meter;
 pub use si::available_energy::{joule_per_kilogram, kilojoule_per_kilogram};
+
+// Custom units not present in uom: watt-hour and kilowatt-hour per kilogram.
+// 1 Wh/kg  = 3 600 J/kg
+// 1 kWh/kg = 3 600 000 J/kg
+uom::unit! {
+    system: uom::si;
+    quantity: uom::si::available_energy;
+
+    @watt_hour_per_kilogram: 3.6_E3;
+        "Wh/kg", "watt hour per kilogram", "watt hours per kilogram";
+    @kilowatt_hour_per_kilogram: 3.6_E6;
+        "kWh/kg", "kilowatt hour per kilogram", "kilowatt hours per kilogram";
+}
 pub use si::dynamic_viscosity::pascal_second;
 pub use si::energy::{joule, kilowatt_hour, watt_hour};
 pub use si::f64::{

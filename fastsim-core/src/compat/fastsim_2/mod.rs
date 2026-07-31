@@ -1,6 +1,7 @@
 use fastsim_core::traits::SerdeAPI as _;
 
 use super::*;
+
 pub use ::fastsim_2 as fastsim_core;
 
 use include_dir::{include_dir, Dir};

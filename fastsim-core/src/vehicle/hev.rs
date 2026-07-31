@@ -1258,7 +1258,7 @@ impl StartStopState {
 }
 
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -1334,6 +1334,24 @@ impl Init for HEVStartStopControl {
 }
 
 impl SerdeAPI for HEVStartStopControl {}
+
+impl Default for HEVStartStopControl {
+    fn default() -> Self {
+        Self {
+            fc_min_time_on: Option::default(),
+            soc_fc_forced_on: Option::default(),
+            frac_of_most_eff_pwr_to_run_fc: Option::default(),
+            temp_fc_forced_on: Option::default(),
+            temp_fc_allowed_off: Option::default(),
+            time_delay_after_stop_until_fc_can_turn_off: Option::default(),
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
+            em_can_regen: Option::default(),
+            save_interval: Option::default(),
+            state: StartStopState::default(),
+            history: StartStopStateHistoryVec::default(),
+        }
+    }
+}
 
 impl StartStopControl for HEVStartStopControl {}
 

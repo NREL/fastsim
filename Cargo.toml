@@ -24,6 +24,6 @@ fastsim-core = { path = "fastsim-core" }
 anyhow = "1.0.71"
 pyo3 = "0.29.0"
 thiserror = "2.0.11"
-uom = { version = "0.35.0", features = ["use_serde"] }
+uom = { version = "0.38.0", features = ["use_serde"] }
 ninterp = { version = "0.7.3", features = ["serde"] }
 lazy_static = "1.4.0"

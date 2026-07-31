@@ -18,6 +18,8 @@
 #[macro_use]
 pub mod macros;
 
+extern crate self as fastsim_core;
+#[macro_use]
 extern crate uom;
 
 pub mod drive_cycle;

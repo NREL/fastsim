@@ -3,7 +3,7 @@ use crate::vehicle::common::StartStopControl;
 use super::*;
 
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -99,6 +99,20 @@ impl Init for DfcoControls {
 }
 
 impl SerdeAPI for DfcoControls {}
+
+impl Default for DfcoControls {
+    fn default() -> Self {
+        Self {
+            dfco_enabled: bool::default(),
+            minimum_dfco_speed: si::Velocity::default(),
+            minimum_dfco_deceleration: si::Acceleration::default(),
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
+            save_interval: Option::default(),
+            state: DfcoState::default(),
+            history: DfcoStateHistoryVec::default(),
+        }
+    }
+}
 
 impl DfcoControls {
     pub fn new(
@@ -570,7 +584,7 @@ impl ConvPowertrainControls {
 }
 
 #[serde_api]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default, StateMethods, SetCumulative)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, StateMethods, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
@@ -640,6 +654,21 @@ impl Init for ConvStartStopControl {
 }
 
 impl SerdeAPI for ConvStartStopControl {}
+
+impl Default for ConvStartStopControl {
+    fn default() -> Self {
+        Self {
+            fc_min_time_on: Option::default(),
+            temp_fc_forced_on: Option::default(),
+            temp_fc_allowed_off: Option::default(),
+            time_delay_after_stop_until_fc_can_turn_off: Option::default(),
+            stopped_speed_threshold: Self::def_stopped_speed_threshold(),
+            save_interval: Option::default(),
+            state: ConvStartStopState::default(),
+            history: ConvStartStopStateHistoryVec::default(),
+        }
+    }
+}
 
 impl ConvStartStopControl {
     fn def_stopped_speed_threshold() -> si::Velocity {
