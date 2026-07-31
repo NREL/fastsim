@@ -2,6 +2,8 @@
 
 A vehicle model is a structured representation of the physical parameters of a real-world vehicle. FASTSim’s modeling framework has been exercised over a wide variety of on-road vehicles, from passenger cars, to two-wheelers, to medium- and heavy-duty vocational vehicles.
 
+For guidance on creation of custom vehicle models, see [](modeling-vehicles.ipynb).
+
 FASTSim's vehicle model is a hierarchy of components:
 
 <!-- open main dropdown -->
@@ -821,7 +823,7 @@ FASTSim's vehicle model is a hierarchy of components:
 :::
 
 
-:::::{dropdown} Cabin model (`cabin`)
+:::::{dropdown} Cabin thermal model (`cabin`)
 :open:
 
 Models cabin temperature, heat can flow between cabin and:
@@ -940,7 +942,7 @@ Examples:
 :::::
 
 
-:::::{dropdown} HVAC model (`hvac`)
+:::::{dropdown} HVAC thermal model (`hvac`)
 :open:
 
 Models HVAC behavior and related heat flow.
@@ -1207,4 +1209,6 @@ hvac:
 
 ---
 
-**Mass can be set for the entire vehicle at the outermost level of the hierarchy `mass_kilograms`, or set on each component and calculated automatically on initialization.*  
+*\*Mass can be set for the entire vehicle at the outermost level of the hierarchy (`mass_kilograms`), or on each component and calculated automatically during initialization.*
+
+For guidance on creation of custom vehicle models, see [](modeling-vehicles.ipynb).

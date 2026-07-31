@@ -135,13 +135,24 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     ///
     fn from_file<P: AsRef<Path>>(filepath: P, skip_init: bool) -> Result<Self, Error> {
         let filepath = filepath.as_ref();
+        // Expand a leading `~` so all callers can pass shell-style home-relative paths.
+        let filepath = match filepath.to_str() {
+            Some("~") => home::home_dir().unwrap_or_else(|| filepath.to_path_buf()),
+            Some(path_str) if path_str.starts_with("~/") || path_str.starts_with("~\\") => {
+                match home::home_dir() {
+                    Some(home_path) => home_path.join(&path_str[2..]),
+                    None => filepath.to_path_buf(),
+                }
+            }
+            _ => filepath.to_path_buf(),
+        };
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
             .ok_or_else(|| {
                 Error::SerdeError(format!("File extension could not be parsed: {filepath:?}"))
             })?;
-        let mut file = File::open(filepath)
+        let mut file = File::open(&filepath)
             .with_context(|| {
                 if !filepath.exists() {
                     format!("File not found: {filepath:?}")

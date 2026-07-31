@@ -46,7 +46,10 @@ pub struct FuelConverter {
     #[serde(default)]
     pub state: FuelConverterState,
     /// Custom vector of [Self::state]
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "FuelConverterStateHistoryVec::is_empty"
+    )]
     pub history: FuelConverterStateHistoryVec,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
     pub save_interval: Option<usize>,
@@ -831,7 +834,10 @@ pub struct FuelConverterThermal {
     #[serde(default)]
     pub state: FuelConverterThermalState,
     /// Custom vector of [Self::state]
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "FuelConverterThermalStateHistoryVec::is_empty"
+    )]
     pub history: FuelConverterThermalStateHistoryVec,
     pub save_interval: Option<usize>,
 }

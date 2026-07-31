@@ -477,6 +477,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for HybridElectricVehicle {
             fs: FuelStorage {
                 pwr_out_max: f2veh.fs_max_kw * uc::KW,
                 pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                fuel_type: None,
                 energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
                 specific_energy: None,
                 mass: None,
@@ -946,8 +947,8 @@ pub struct RESGreedyWithDynamicBuffers {
     /// current state of control variables
     #[serde(default)]
     pub state: RGWDBState,
-    #[serde(default)]
     /// history of current state
+    #[serde(default, skip_serializing_if = "RGWDBStateHistoryVec::is_empty")]
     pub history: RGWDBStateHistoryVec,
 }
 
@@ -1337,6 +1338,7 @@ pub struct HEVStopStartControl {
     #[serde(default)]
     pub state: StopStartState,
     /// history of current state
+    #[serde(default, skip_serializing_if = "StopStartStateHistoryVec::is_empty")]
     pub history: StopStartStateHistoryVec,
 }
 
