@@ -760,9 +760,9 @@ impl TryFrom<fastsim_core::vehicle::RustVehicle> for ReversibleEnergyStorage {
             specific_energy: None,
             pwr_out_max: f2veh.ess_max_kw * uc::KW,
             energy_capacity: f2veh.ess_max_kwh * uc::KWH,
-            eff_interp: powertrain::reversible_energy_storage::EffInterp::Constant(Interp0D::new(
-                f2veh.ess_round_trip_eff.sqrt(),
-            )),
+            eff_interp: powertrain::reversible_energy_storage::RESEfficiency::Constant(
+                Interp0D::new(f2veh.ess_round_trip_eff.sqrt()),
+            ),
             min_soc: f2veh.min_soc * uc::R,
             max_soc: f2veh.max_soc * uc::R,
             save_interval: Some(1),
