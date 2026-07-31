@@ -44,6 +44,9 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install wheel build dependencies
         run: |
           python -m pip install --upgrade pip
@@ -61,14 +64,21 @@ jobs:
         if: matrix.os.base == 'ubuntu'
         run: cargo fmt --check
 
+      - name: Install cargo-hack
+        if: matrix.os.base == 'ubuntu'
+        run: cargo install cargo-hack --locked
+
       # - name: Check Rust linting
       #   if: matrix.os.base == 'ubuntu'
       #   run: cargo clippy -- -D warnings
 
       - name: Run Rust tests
         if: matrix.os.base == 'ubuntu'
-        shell: bash -e {0}
-        run: cargo test --release
+        run: cargo test --workspace --all-features --release
+
+      - name: Check each feature
+        if: matrix.os.base == 'ubuntu'
+        run: cargo hack check -p fastsim-core --each-feature
 
       - name: Build source distribution
         if: matrix.os.base == 'ubuntu'

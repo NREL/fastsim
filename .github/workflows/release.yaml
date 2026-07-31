@@ -6,11 +6,27 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+
+  build-and-test-wheels:
     uses: ./.github/workflows/build_and_test.yaml
 
+  feature-powerset:
+    name: Check fastsim-core feature powerset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-hack
+        run: cargo install cargo-hack --locked
+
+      - name: Check fastsim-core feature powerset
+        run: cargo hack check -p fastsim-core --feature-powerset --depth 2
+
   release:
-    needs: build
+    needs: [build-and-test-wheels, feature-powerset]
     name: Publish release artifacts
     runs-on: ubuntu-latest
     defaults:
