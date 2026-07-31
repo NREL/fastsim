@@ -2,6 +2,48 @@ use crate::imports::*;
 mod serde_utils;
 use serde_utils::*;
 
+/// Returns true if the struct's derive list includes `Default`.
+fn struct_derives_default(ast: &syn::ItemStruct) -> bool {
+    ast.attrs.iter().any(|attr| {
+        if let Meta::List(ml) = &attr.meta {
+            if !ml.path.is_ident("derive") {
+                return false;
+            }
+            ml.tokens
+                .to_string()
+                .split(',')
+                .any(|tok| tok.trim() == "Default")
+        } else {
+            false
+        }
+    })
+}
+
+/// Returns true if the field has `#[serde(default = "...")]` (a function form, not bare `default`).
+fn field_has_serde_default_fn(field: &syn::Field) -> bool {
+    field.attrs.iter().any(|attr| {
+        if let Meta::List(ml) = &attr.meta {
+            if !ml.path.is_ident("serde") {
+                return false;
+            }
+            // Parse the comma-separated meta items inside #[serde(...)] and look
+            // specifically for `default = "..."` (NameValue form), not bare `default`.
+            let nested = ml.parse_args_with(
+                syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated,
+            );
+            if let Ok(metas) = nested {
+                metas
+                    .iter()
+                    .any(|m| matches!(m, Meta::NameValue(nv) if nv.path.is_ident("default")))
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    })
+}
+
 pub(crate) fn serde_api(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut output = TokenStream2::default();
 
@@ -15,9 +57,28 @@ pub(crate) fn serde_api(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // Collect SI field data
     let mut si_fields = vec![];
 
+    let derives_default = struct_derives_default(&struct_ast);
+
     if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &mut struct_ast.fields {
         // struct with named fields
         for field in named.iter_mut() {
+            if derives_default && field_has_serde_default_fn(field) {
+                let field_name = field
+                    .ident
+                    .as_ref()
+                    .map(|i| i.to_string())
+                    .unwrap_or_default();
+                abort!(
+                    field.span(),
+                    "Field `{}` uses `#[serde(default = \"...\")]` but the struct derives \
+                     `Default`. The derived `Default` will use `<FieldType>::default()` (typically \
+                     zero) instead of the serde default function, causing inconsistent behavior \
+                     when the struct is constructed in code vs. deserialized with the field absent. \
+                     Remove `Default` from the `#[derive(...)]` list and implement it manually, \
+                     calling the same default function for this field.",
+                    field_name
+                );
+            }
             // Collect SI field data before modifying
             if let Some(data) = serde_utils::collect_si_field_data(field) {
                 // Only include SI fields that have unit definitions
