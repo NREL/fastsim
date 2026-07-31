@@ -3,7 +3,6 @@ use crate::{
     prelude::*,
     vehicle::conv::{ConvPowertrainControls, ConvStartStopControl},
 };
-pub mod fastsim2_interface;
 
 use semver::Version;
 
@@ -73,7 +72,7 @@ pub struct Vehicle {
     pub pwr_aux_base: si::Power,
 
     /// time step interval at which `state` is saved into `history`
-    save_interval: Option<usize>,
+    pub(crate) save_interval: Option<usize>,
     /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
@@ -118,20 +117,21 @@ impl Vehicle {
         self.pt_type.to_string()
     }
 
-    // #[getter]
-    // fn get_pwr_rated_kilowatts(&self) -> f64 {
-    //     self.get_pwr_rated().get::<si::kilowatt>()
-    // }
-
-    // #[getter]
-    // fn get_mass_kg(&self) -> PyResult<Option<f64>> {
-    //     Ok(self.mass()?.map(|m| m))
-    // }
-
     /// Load vehicle from file saved in fastsim-2 format
+    #[cfg(feature = "compat")]
     #[pyo3(name = "from_f2_file")]
     #[staticmethod]
-    fn from_f2_file_py(file: PathBuf) -> anyhow::Result<Self> {
+    #[allow(deprecated)]
+    fn from_f2_file_py(py: pyo3::Python<'_>, file: PathBuf) -> anyhow::Result<Self> {
+        if let Ok(warnings) = py.import("warnings") {
+            let msg = "Vehicle.from_f2_file is deprecated; use Vehicle.from_file / from_reader / from_yaml / from_json / from_toml instead.";
+            let kwargs = pyo3::types::PyDict::new(py);
+            let _ = kwargs.set_item("stacklevel", 2);
+            if let Ok(dep_warn) = warnings.getattr("DeprecationWarning") {
+                let _ = kwargs.set_item("category", dep_warn);
+            }
+            let _ = warnings.call_method("warn", (msg,), Some(&kwargs));
+        }
         Self::from_f2_file(file)
     }
 
@@ -467,6 +467,28 @@ impl Mass for Vehicle {
     }
 }
 
+impl Vehicle {
+    fn warn_if_version_mismatch(min_ver: Option<Version>) {
+        if let Some(min_ver) = min_ver {
+            if min_ver > *crate::FASTSIM_VERSION {
+                eprintln!(
+                    "WARNING: vehicle file requires FASTSim >= {min_ver} but the installed \
+                    version is {}. Loading will be attempted but may fail or produce \
+                    unexpected results. Please update FASTSim.",
+                    *crate::FASTSIM_VERSION
+                );
+            } else if min_ver.major < crate::FASTSIM_VERSION.major {
+                eprintln!(
+                    "WARNING: vehicle file has min_fastsim_version {min_ver}, which is from \
+                    an older major version than the installed FASTSim {}. Major-version \
+                    upgrades may introduce breaking changes; loading will be attempted.",
+                    *crate::FASTSIM_VERSION
+                );
+            }
+        }
+    }
+}
+
 impl SerdeAPI for Vehicle {
     #[cfg(feature = "resources")]
     const RESOURCES_SUBDIR: &'static str = "vehicles";
@@ -475,28 +497,29 @@ impl SerdeAPI for Vehicle {
     /// [`Vehicle::min_fastsim_version`] exceeds the installed version before attempting full
     /// deserialization. This ensures version incompatibilities produce a clear diagnostic even
     /// when the full parse would fail due to unrecognized fields added in a newer release.
+    ///
+    /// If deserialization in contemporary vehicle format fails and the `compat` feature is
+    /// enabled, this will fall back to the FASTSim-2 vehicle format.
     fn from_reader<R: std::io::Read>(
         rdr: &mut R,
         format: &str,
         skip_init: bool,
-    ) -> Result<Self, crate::error::Error> {
-        // Minimal struct used only for the version pre-check. No
-        // `deny_unknown_fields` so it tolerates any extra vehicle fields.
+    ) -> Result<Self, Error> {
         #[derive(Deserialize)]
         struct VersionCheck {
             #[serde(default = "crate::current_fastsim_version")]
-            min_fastsim_version: semver::Version,
+            min_fastsim_version: Version,
         }
 
         let mut buf = Vec::new();
         rdr.read_to_end(&mut buf)
-            .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?;
+            .map_err(|err| Error::SerdeError(format!("{err}")))?;
 
-        // Try to extract `min_fastsim_version` from the raw buffer before the
-        // full deserialization so that a version mismatch is reported even when
-        // the full parse would fail due to fields added in a newer release.
         let fmt = format.trim_start_matches('.').to_lowercase();
-        let min_ver: Option<semver::Version> = match fmt.as_str() {
+
+        // Try to extract `min_fastsim_version` from the raw buffer before full deserialization so
+        // that a version mismatch is reported even when full parsing fails due to newer fields.
+        let min_ver: Option<Version> = match fmt.as_str() {
             #[cfg(feature = "yaml")]
             "yaml" | "yml" => serde_yaml::from_slice::<VersionCheck>(&buf)
                 .ok()
@@ -516,55 +539,204 @@ impl SerdeAPI for Vehicle {
                 .map(|v| v.min_fastsim_version),
             _ => None,
         };
-        if let Some(min_ver) = min_ver {
-            if min_ver > *crate::FASTSIM_VERSION {
-                eprintln!(
-                    "WARNING: vehicle file requires FASTSim >= {min_ver} but the installed \
-                    version is {}. Loading will be attempted but may fail or produce \
-                    unexpected results. Please update FASTSim.",
-                    *crate::FASTSIM_VERSION
-                );
-            } else if min_ver.major < crate::FASTSIM_VERSION.major {
-                eprintln!(
-                    "WARNING: vehicle file has min_fastsim_version {min_ver}, which is from \
-                    an older major version than the installed FASTSim {}. Major-version \
-                    upgrades may introduce breaking changes; loading will be attempted.",
-                    *crate::FASTSIM_VERSION
-                );
-            }
-        }
+        Self::warn_if_version_mismatch(min_ver);
 
-        // Full deserialization from the buffered content
-        let mut deserialized: Self = match fmt.as_str() {
+        // Try deserializing from the contemporary vehicle format
+        let parse_result: Result<Self, Error> = match fmt.as_str() {
             #[cfg(feature = "yaml")]
-            "yaml" | "yml" => serde_yaml::from_slice(&buf)
-                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            "yaml" | "yml" => {
+                serde_yaml::from_slice(&buf).map_err(|err| Error::SerdeError(format!("{err}")))
+            }
             #[cfg(feature = "json")]
-            "json" => serde_json::from_slice(&buf)
-                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+            "json" => {
+                serde_json::from_slice(&buf).map_err(|err| Error::SerdeError(format!("{err}")))
+            }
             #[cfg(feature = "msgpack")]
             "msgpack" => rmp_serde::decode::from_slice(&buf)
-                .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?,
+                .map_err(|err| Error::SerdeError(format!("{err}"))),
             #[cfg(feature = "toml")]
             "toml" => {
-                let s = String::from_utf8(buf)
-                    .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?;
-                toml::from_str(&s)
-                    .map_err(|err| crate::error::Error::SerdeError(format!("{err}")))?
+                let toml_str =
+                    std::str::from_utf8(&buf).map_err(|err| Error::SerdeError(format!("{err}")))?;
+                toml::from_str(toml_str).map_err(|err| Error::SerdeError(format!("{err}")))
             }
-            _ => {
-                return Err(crate::error::Error::SerdeError(format!(
-                    "Unsupported format {format:?}, must be one of {:?}",
-                    Self::ACCEPTED_BYTE_FORMATS,
-                )))
-            }
+            _ => Err(Error::SerdeError(format!(
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS,
+            ))),
         };
-        if !skip_init {
-            deserialized.init()?;
+        match parse_result {
+            // Normal behavior:
+            // If deserialization in contemporary vehicle format succeeds,
+            // return the deserialized initialized vehicle
+            Ok(mut deserialized) => {
+                if !skip_init {
+                    deserialized.init()?;
+                }
+                Ok(deserialized)
+            }
+            // Fallback behavior:
+            // If deserialization in contemporary vehicle format fails
+            // (and the `compat` feature is enabled),
+            // attempt to deserialize in fastsim-2 format,
+            // otherwise return the original error
+            Err(format_parse_err) => {
+                #[cfg(feature = "compat")]
+                {
+                    let mut buf_rdr = std::io::Cursor::new(buf.as_slice());
+                    use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+                    if let Ok(f2_veh) =
+                        crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_reader(
+                            &mut buf_rdr,
+                            format,
+                            skip_init,
+                        )
+                    {
+                        return Vehicle::try_from(f2_veh)
+                            .map_err(|err| Error::SerdeError(format!("{err}")));
+                    }
+                }
+                Err(format_parse_err)
+            }
         }
-        Ok(deserialized)
+    }
+
+    // Specialized `from_yaml` that allows for compatibility with fastsim-2 vehicle format
+    #[cfg(feature = "yaml")]
+    fn from_yaml<S: AsRef<str>>(yaml_str: S, skip_init: bool) -> anyhow::Result<Self> {
+        #[derive(Deserialize)]
+        struct VersionCheck {
+            #[serde(default = "crate::current_fastsim_version")]
+            min_fastsim_version: Version,
+        }
+        let min_ver = serde_yaml::from_str::<VersionCheck>(yaml_str.as_ref())
+            .ok()
+            .map(|v| v.min_fastsim_version);
+        Self::warn_if_version_mismatch(min_ver);
+
+        match serde_yaml::from_str::<Self>(yaml_str.as_ref()) {
+            // Normal behavior:
+            // If deserialization in contemporary vehicle format succeeds,
+            // return the deserialized initialized vehicle
+            Ok(mut yaml_de) => {
+                if !skip_init {
+                    yaml_de.init()?;
+                }
+                Ok(yaml_de)
+            }
+            // Fallback behavior:
+            // If deserialization in contemporary vehicle format fails
+            // (and the `compat` feature is enabled),
+            // attempt to deserialize in fastsim-2 format,
+            // otherwise return the original error
+            Err(format_parse_err) => {
+                #[cfg(feature = "compat")]
+                {
+                    use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+                    if let Ok(f2_veh) =
+                        crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_yaml(
+                            &yaml_str, skip_init,
+                        )
+                    {
+                        return Vehicle::try_from(f2_veh);
+                    }
+                }
+                Err(format_parse_err.into())
+            }
+        }
+    }
+
+    // Specialized `from_json` that allows for compatibility with fastsim-2 vehicle format
+    #[cfg(feature = "json")]
+    fn from_json<S: AsRef<str>>(json_str: S, skip_init: bool) -> anyhow::Result<Self> {
+        #[derive(Deserialize)]
+        struct VersionCheck {
+            #[serde(default = "crate::current_fastsim_version")]
+            min_fastsim_version: Version,
+        }
+        let min_ver = serde_json::from_str::<VersionCheck>(json_str.as_ref())
+            .ok()
+            .map(|v| v.min_fastsim_version);
+        Self::warn_if_version_mismatch(min_ver);
+
+        match serde_json::from_str::<Self>(json_str.as_ref()) {
+            // Normal behavior:
+            // If deserialization in contemporary vehicle format succeeds,
+            // return the deserialized initialized vehicle
+            Ok(mut json_de) => {
+                if !skip_init {
+                    json_de.init()?;
+                }
+                Ok(json_de)
+            }
+            // Fallback behavior:
+            // If deserialization in contemporary vehicle format fails
+            // (and the `compat` feature is enabled),
+            // attempt to deserialize in fastsim-2 format,
+            // otherwise return the original error
+            Err(format_parse_err) => {
+                #[cfg(feature = "compat")]
+                {
+                    use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+                    if let Ok(f2_veh) =
+                        crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_json(
+                            &json_str, skip_init,
+                        )
+                    {
+                        return Vehicle::try_from(f2_veh);
+                    }
+                }
+                Err(format_parse_err.into())
+            }
+        }
+    }
+
+    // Specialized `from_toml` that allows for compatibility with fastsim-2 vehicle format
+    #[cfg(feature = "toml")]
+    fn from_toml<S: AsRef<str>>(toml_str: S, skip_init: bool) -> anyhow::Result<Self> {
+        #[derive(Deserialize)]
+        struct VersionCheck {
+            #[serde(default = "crate::current_fastsim_version")]
+            min_fastsim_version: Version,
+        }
+        let min_ver = toml::from_str::<VersionCheck>(toml_str.as_ref())
+            .ok()
+            .map(|v| v.min_fastsim_version);
+        Self::warn_if_version_mismatch(min_ver);
+
+        match toml::from_str::<Self>(toml_str.as_ref()) {
+            // Normal behavior:
+            // If deserialization in contemporary vehicle format succeeds,
+            // return the deserialized initialized vehicle
+            Ok(mut toml_de) => {
+                if !skip_init {
+                    toml_de.init()?;
+                }
+                Ok(toml_de)
+            }
+            // Fallback behavior:
+            // If deserialization in contemporary vehicle format fails
+            // (and the `compat` feature is enabled),
+            // attempt to deserialize in fastsim-2 format,
+            // otherwise return the original error
+            Err(format_parse_err) => {
+                #[cfg(feature = "compat")]
+                {
+                    use crate::compat::fastsim_2::fastsim_core::traits::SerdeAPI;
+                    if let Ok(f2_veh) =
+                        crate::compat::fastsim_2::fastsim_core::vehicle::RustVehicle::from_toml(
+                            &toml_str, skip_init,
+                        )
+                    {
+                        return Vehicle::try_from(f2_veh);
+                    }
+                }
+                Err(format_parse_err.into())
+            }
+        }
     }
 }
+
 impl Init for Vehicle {
     fn init(&mut self) -> Result<(), Error> {
         let _mass = self
@@ -606,13 +778,6 @@ impl HistoryMethods for Vehicle {
         self.hvac.clear();
     }
 }
-
-/// TODO: update this constant to match fastsim-2 for gasoline
-pub(super) const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
-const CONV: &str = "Conv";
-const HEV: &str = "HEV";
-const PHEV: &str = "PHEV";
-const BEV: &str = "BEV";
 
 impl SetCumulative for Vehicle {
     fn set_cumulative<F: Fn() -> String>(&mut self, dt: si::Time, loc: F) -> anyhow::Result<()> {
@@ -1056,14 +1221,6 @@ impl Vehicle {
         Ok((pwr_thrml_fc_to_cabin, pwr_thrml_hvac_to_res, te_cab))
     }
 
-    #[allow(dead_code)]
-    fn from_f2_file(file: PathBuf) -> anyhow::Result<Self> {
-        use fastsim_2::traits::SerdeAPI;
-        let f2veh = fastsim_2::vehicle::RustVehicle::from_file(file, false)
-            .with_context(|| format_dbg!())?;
-        Self::try_from(f2veh)
-    }
-
     pub(crate) fn mark_non_thermal_fresh(&mut self) -> Result<(), anyhow::Error> {
         self.state.i.mark_stale();
         self.state.time.mark_stale();
@@ -1269,104 +1426,51 @@ pub(crate) mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/vehicles")
     }
 
-    #[cfg(feature = "yaml")]
-    /// Load representative conv from fastsim-2, convert to fastsim-3 format, and
-    /// save to file in the resources folder
-    pub(crate) fn mock_conv_veh() -> Vehicle {
-        let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let veh = {
-            let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
-            let veh = Vehicle::try_from(f2veh);
-            veh.unwrap()
-        };
-
-        veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
-            .unwrap();
-        assert!(veh.pt_type.is_conventional_vehicle());
-        veh
-    }
-
-    #[cfg(feature = "yaml")]
-    /// Load representative HEV from fastsim-2, convert to fastsim-3 format, and
-    /// save to file in the resources folder
-    pub(crate) fn mock_hev() -> Vehicle {
-        let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let veh = {
-            let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
-            let veh = Vehicle::try_from(f2veh);
-            veh.unwrap()
-        };
-
-        veh.to_file(vehicles_dir().join("2016_TOYOTA_Prius_Two.yaml"))
-            .unwrap();
-        assert!(veh.pt_type.is_hybrid_electric_vehicle());
-        veh
-    }
-
-    #[cfg(feature = "yaml")]
-    /// Load representative BEV from fastsim-2, convert to fastsim-3 format, and
-    /// save to file in the resources folder
-    pub(crate) fn mock_bev() -> Vehicle {
-        let file_contents = include_str!("fastsim-2_2022_Renault_Zoe_ZE50_R135.yaml");
-        use fastsim_2::traits::SerdeAPI;
-        let veh = {
-            let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents, false).unwrap();
-            let veh = Vehicle::try_from(f2veh);
-            veh.unwrap()
-        };
-
-        veh.to_file(vehicles_dir().join("2022_Renault_Zoe_ZE50_R135.yaml"))
-            .unwrap();
-        assert!(veh.pt_type.is_battery_electric_vehicle());
-        veh
-    }
-
     #[test]
     #[cfg(feature = "yaml")]
     pub(crate) fn test_conv_veh_init() {
-        use pretty_assertions::assert_eq;
-        let veh = mock_conv_veh();
-        let mut veh1 = veh.clone();
-        // NOTE: eventually figure out why the following assertions fail if
-        // `.to_yaml().uwrap()` is removed.  It's probably related to f64::NAN
-        assert_eq!(veh.to_yaml().unwrap(), veh1.to_yaml().unwrap());
-        veh1.init().unwrap();
-        assert_eq!(veh.to_yaml().unwrap(), veh1.to_yaml().unwrap());
-    }
-
-    #[test]
-    #[cfg(all(feature = "csv", feature = "resources"))]
-    fn test_to_fastsim2_conv() {
-        let veh = mock_conv_veh();
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
-    }
-
-    #[test]
-    #[cfg(all(feature = "csv", feature = "resources"))]
-    fn test_to_fastsim2_hev() {
-        let veh = mock_hev();
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
-    }
-
-    #[test]
-    #[cfg(all(feature = "csv", feature = "resources"))]
-    fn test_to_fastsim2_bev() {
-        let veh = mock_bev();
-        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
-        let sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
+        assert!(Vehicle::from_resource("2012_Ford_Fusion.yaml", false).is_ok());
     }
 
     type StructWithResources = Vehicle;
+
+    #[test]
+    #[cfg(all(feature = "compat", feature = "yaml"))]
+    fn test_f2_vehicle_assets_load_via_from_reader() {
+        let vehicle_assets = crate::compat::fastsim_2::ASSETS_DIR
+            .get_dir("vehicles")
+            .unwrap();
+
+        for file in vehicle_assets.files() {
+            let mut contents = file.contents();
+            let result = Vehicle::from_reader(&mut contents, "yaml", false);
+            assert!(
+                result.is_ok(),
+                "from_reader failed for {:?}: {:?}",
+                file.path(),
+                result.err()
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(all(feature = "compat", feature = "yaml"))]
+    fn test_f2_vehicle_assets_load_via_from_yaml() {
+        let vehicle_assets = crate::compat::fastsim_2::ASSETS_DIR
+            .get_dir("vehicles")
+            .unwrap();
+
+        for file in vehicle_assets.files() {
+            let yaml_str = std::str::from_utf8(file.contents()).unwrap();
+            let result = Vehicle::from_yaml(yaml_str, false);
+            assert!(
+                result.is_ok(),
+                "from_yaml failed for {:?}: {:?}",
+                file.path(),
+                result.err()
+            );
+        }
+    }
 
     #[test]
     fn test_resources() {
