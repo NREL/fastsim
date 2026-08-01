@@ -14,7 +14,7 @@ mod search;
 pub mod wasm;
 
 pub use error::VehicleSchemaV1Error;
-pub use index::IndexEntryV1;
+pub use index::{read_jsonl, write_jsonl, IndexEntryV1};
 pub use search::{search, Query};
 
 /// Database organizational schema version 1 for the `fastsim-vehicles` repository.
