@@ -23,12 +23,12 @@ pub fn build_download_url(
 
 /// Parse `vehicles.jsonl` text (as fetched client-side) into index entries.
 ///
-/// This is the wasm-facing counterpart to `IndexEntryV1::read_jsonl` — the
+/// This is the wasm-facing counterpart to `read_jsonl` — the
 /// browser widget should fetch the raw file text and pass it here rather
 /// than re-implementing line-splitting/JSON-parsing in JS.
 #[wasm_bindgen]
 pub fn parse_vehicles_jsonl(text: &str) -> Result<JsValue, JsError> {
-    let entries = IndexEntryV1::read_jsonl(text).map_err(|e| JsError::new(&e.to_string()))?;
+    let entries = crate::v1::read_jsonl(text).map_err(|e| JsError::new(&e.to_string()))?;
     serde_wasm_bindgen::to_value(&entries).map_err(|e| JsError::new(&e.to_string()))
 }
 

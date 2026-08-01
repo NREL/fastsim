@@ -6,6 +6,7 @@
 
 use super::{VehicleSchemaV1, VehicleSchemaV1Error};
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 
 /// A single entry in the vehicle index (i.e. `vehicles.jsonl`).
 ///
@@ -61,31 +62,33 @@ impl IndexEntryV1 {
             date_added: date_added.into(),
         })
     }
+}
 
-    /// Serialize a slice of entries into JSON Lines text, one entry per line
-    /// in the given order. Callers wanting a specific ordering (e.g. sorted
-    /// by path) should sort `entries` beforehand — this function preserves
-    /// input order rather than imposing one.
-    pub fn write_jsonl(entries: &[IndexEntryV1]) -> Result<String, serde_json::Error> {
-        let mut buf = String::new();
-        for entry in entries {
-            buf.push_str(&serde_json::to_string(entry)?);
-            buf.push('\n');
-        }
-        Ok(buf)
+/// Serialize a slice of entries into JSON Lines, one entry per line
+/// in the given order, written to `writer`. Callers wanting a specific
+/// ordering (e.g. sorted by path) should sort `entries` beforehand —
+/// this function preserves input order rather than imposing one.
+pub fn write_jsonl<W: Write>(
+    writer: &mut W,
+    entries: &[IndexEntryV1],
+) -> Result<(), serde_json::Error> {
+    for entry in entries {
+        serde_json::to_writer(&mut *writer, entry)?;
+        writer.write_all(b"\n").map_err(serde_json::Error::io)?;
     }
+    Ok(())
+}
 
-    /// Parse JSON Lines text (as read from `vehicles.jsonl`, or fetched
-    /// client-side in the browser widget) into entries.
-    ///
-    /// Blank lines are skipped; any malformed line surfaces its
-    /// `serde_json::Error` rather than being silently dropped.
-    pub fn read_jsonl(text: &str) -> Result<Vec<IndexEntryV1>, serde_json::Error> {
-        text.lines()
-            .filter(|line| !line.trim().is_empty())
-            .map(serde_json::from_str)
-            .collect()
-    }
+/// Parse JSON Lines text (as read from `vehicles.jsonl`, or fetched
+/// client-side in the browser widget) into entries.
+///
+/// Blank lines are skipped; any malformed line surfaces its
+/// `serde_json::Error` rather than being silently dropped.
+pub fn read_jsonl(text: &str) -> Result<Vec<IndexEntryV1>, serde_json::Error> {
+    text.lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(serde_json::from_str)
+        .collect()
 }
 
 #[cfg(test)]
@@ -170,28 +173,31 @@ mod jsonl_tests {
     #[test]
     fn write_then_read_round_trips() {
         let entries = sample_entries();
-        let jsonl = IndexEntryV1::write_jsonl(&entries).unwrap();
+        let mut buf = Vec::new();
+        write_jsonl(&mut buf, &entries).unwrap();
+        let jsonl = String::from_utf8(buf).unwrap();
         assert_eq!(jsonl.lines().count(), 2);
 
-        let parsed = IndexEntryV1::read_jsonl(&jsonl).unwrap();
+        let parsed = read_jsonl(&jsonl).unwrap();
         assert_eq!(parsed, entries);
     }
 
     #[test]
-    fn write_jsonl_of_empty_slice_is_empty_string() {
-        let jsonl = IndexEntryV1::write_jsonl(&[]).unwrap();
-        assert_eq!(jsonl, "");
+    fn write_jsonl_of_empty_slice_writes_nothing() {
+        let mut buf = Vec::new();
+        write_jsonl(&mut buf, &[]).unwrap();
+        assert!(buf.is_empty());
     }
 
     #[test]
     fn read_jsonl_of_empty_string_is_empty_vec() {
-        let parsed = IndexEntryV1::read_jsonl("").unwrap();
+        let parsed = read_jsonl("").unwrap();
         assert!(parsed.is_empty());
     }
 
     #[test]
     fn read_jsonl_surfaces_malformed_line_error() {
         let text = "{\"not\": \"a valid IndexEntryV1\"}\n";
-        assert!(IndexEntryV1::read_jsonl(text).is_err());
+        assert!(read_jsonl(text).is_err());
     }
 }
