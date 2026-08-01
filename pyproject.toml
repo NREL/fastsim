@@ -171,6 +171,10 @@ wasm_check_versions = { cmd = """
 [tool.pytest.ini_options]
 # Pytest configuration for running notebook tests with nbmake and parallel execution
 addopts = "--nbmake --nbmake-timeout=600 -n auto"
+filterwarnings = [
+    # memory_profiler 0.61.0 uses deprecated asyncio.iscoroutinefunction (fixed in a future release)
+    "ignore::DeprecationWarning:memory_profiler",
+]
 
 [tool.ruff]
 # Specify Python version
