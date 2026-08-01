@@ -154,11 +154,11 @@ wasm_setup = "cargo install wasm-pack wasm-bindgen-cli --locked"
 # Verifies fastsim-schema actually compiles for wasm32-unknown-unknown and
 # its wasm_bindgen_test suite passes. Cheap — no fastsim-core dependency,
 # single small crate — safe to run on every relevant PR.
-wasm_test = "wasm-pack test --node fastsim-schema --features wasm"
+wasm_test = "wasm-pack test --node fastsim-schema --no-default-features --features wasm"
 
 # Produces the actual pkg/ output (wasm binary + JS glue) for local
 # inspection/manual embedding tests. Not wired to any publish step yet.
-wasm_build = "wasm-pack build fastsim-schema --target web --out-dir pkg -- --features wasm"
+wasm_build = "wasm-pack build fastsim-schema --target web --out-dir pkg -- --no-default-features --features wasm"
 
 # Sanity check that wasm-bindgen (Cargo.toml) and wasm-bindgen-cli (installed
 # via wasm_setup) agree — mismatches are the single most common wasm-pack
