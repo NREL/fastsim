@@ -11,11 +11,11 @@ mod index;
 mod search;
 
 #[cfg(feature = "wasm")]
-pub mod wasm;
+mod wasm;
 
 pub use error::VehicleSchemaV1Error;
-pub use index::{read_jsonl, write_jsonl, IndexEntryV1};
-pub use search::{search, Query};
+pub use index::{read_jsonl_v1, write_jsonl_v1, IndexEntryV1};
+pub use search::{search_v1, QueryV1};
 
 /// Database organizational schema version 1 for the `fastsim-vehicles` repository.
 ///

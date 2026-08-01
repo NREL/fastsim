@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// All fields left as `None` (the `Default`) matches every entry.
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Query {
+pub struct QueryV1 {
     pub fastsim_version: Option<u32>,
     pub powertrain: Option<String>,
     pub make: Option<String>,
@@ -26,11 +26,11 @@ pub struct Query {
 /// This is intentionally I/O-free and allocation-light (no cloning of entries)
 /// so it can back both `fastsim-core`'s `Vehicle::from_db` and the wasm-bound
 /// browser search widget from the same implementation.
-pub fn search<'a>(entries: &'a [IndexEntryV1], query: &Query) -> Vec<&'a IndexEntryV1> {
+pub fn search_v1<'a>(entries: &'a [IndexEntryV1], query: &QueryV1) -> Vec<&'a IndexEntryV1> {
     entries.iter().filter(|e| matches(e, query)).collect()
 }
 
-fn matches(entry: &IndexEntryV1, query: &Query) -> bool {
+fn matches(entry: &IndexEntryV1, query: &QueryV1) -> bool {
     query
         .fastsim_version
         .is_none_or(|v| entry.fastsim_version == v)
@@ -77,18 +77,18 @@ mod tests {
     #[test]
     fn empty_query_matches_everything() {
         let entries = sample_entries();
-        let results = search(&entries, &Query::default());
+        let results = search_v1(&entries, &QueryV1::default());
         assert_eq!(results.len(), 4);
     }
 
     #[test]
     fn filters_by_make_case_insensitively() {
         let entries = sample_entries();
-        let query = Query {
+        let query = QueryV1 {
             make: Some("FORD".to_string()),
             ..Default::default()
         };
-        let results = search(&entries, &query);
+        let results = search_v1(&entries, &query);
         assert_eq!(results.len(), 3);
         assert!(results.iter().all(|e| e.make == "ford"));
     }
@@ -96,12 +96,12 @@ mod tests {
     #[test]
     fn filters_by_powertrain_and_make_together() {
         let entries = sample_entries();
-        let query = Query {
+        let query = QueryV1 {
             powertrain: Some("bev".to_string()),
             make: Some("ford".to_string()),
             ..Default::default()
         };
-        let results = search(&entries, &query);
+        let results = search_v1(&entries, &query);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].model, "f-150-lightning");
     }
@@ -109,37 +109,37 @@ mod tests {
     #[test]
     fn model_substring_match_is_case_insensitive() {
         let entries = sample_entries();
-        let query = Query {
+        let query = QueryV1 {
             model: Some("F-150".to_string()),
             ..Default::default()
         };
-        let results = search(&entries, &query);
+        let results = search_v1(&entries, &query);
         assert_eq!(results.len(), 2); // f-150 and f-150-lightning
     }
 
     #[test]
     fn no_matches_returns_empty() {
         let entries = sample_entries();
-        let query = Query {
+        let query = QueryV1 {
             make: Some("toyota".to_string()),
             ..Default::default()
         };
-        assert!(search(&entries, &query).is_empty());
+        assert!(search_v1(&entries, &query).is_empty());
     }
 
     #[test]
     fn fastsim_version_filters_correctly() {
         let entries = sample_entries();
-        let query = Query {
+        let query = QueryV1 {
             fastsim_version: Some(3),
             ..Default::default()
         };
-        assert_eq!(search(&entries, &query).len(), 4);
+        assert_eq!(search_v1(&entries, &query).len(), 4);
 
-        let query = Query {
+        let query = QueryV1 {
             fastsim_version: Some(4),
             ..Default::default()
         };
-        assert!(search(&entries, &query).is_empty());
+        assert!(search_v1(&entries, &query).is_empty());
     }
 }

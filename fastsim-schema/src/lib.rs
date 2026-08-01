@@ -7,9 +7,12 @@
 use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize};
 use std::str::FromStr;
 
-pub mod v1;
+mod v1;
 
-pub use v1::{IndexEntryV1, VehicleSchemaV1, VehicleSchemaV1Error};
+pub use v1::{
+    read_jsonl_v1, search_v1, write_jsonl_v1, IndexEntryV1, QueryV1, VehicleSchemaV1,
+    VehicleSchemaV1Error,
+};
 
 pub const DEFAULT_DB_URL: &str =
     "https://raw.githubusercontent.com/NatLabRockies/fastsim-vehicles/main";
