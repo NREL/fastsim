@@ -1,3 +1,8 @@
+//! Error types for `VehicleSchemaV1` parsing and validation.
+//!
+//! Provides detailed error variants for schema path parsing failures, including
+//! segment count mismatches, invalid formats, and identifier validation issues.
+
 #[derive(Debug, thiserror::Error)]
 pub enum VehicleSchemaV1Error {
     #[error("expected 8 path segments, got {actual}: {input:?}")]

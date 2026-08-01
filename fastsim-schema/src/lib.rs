@@ -1,9 +1,15 @@
+//! Vehicle database schema for the `fastsim-vehicles` repository.
+//!
+//! This crate provides serialization/deserialization of vehicle identification paths
+//! into structured data, along with index management and WebAssembly bindings.
+//! Currently supports schema version 1.
+
 use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize};
 use std::str::FromStr;
 
 pub mod v1;
 
-pub use v1::*;
+pub use v1::{IndexEntryV1, VehicleSchemaV1, VehicleSchemaV1Error};
 
 pub const DEFAULT_DB_URL: &str =
     "https://raw.githubusercontent.com/NatLabRockies/fastsim-vehicles/main";

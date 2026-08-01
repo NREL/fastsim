@@ -1,3 +1,9 @@
+//! Index entry structures for vehicle discovery and filtering.
+//!
+//! Defines `IndexEntryV1` for representing vehicles in the `vehicles.jsonl` index file,
+//! with fields for filtering (powertrain, make, model, etc.) and utilities for
+//! parsing index files and building download URLs.
+
 use super::{VehicleSchemaV1, VehicleSchemaV1Error};
 use serde::{Deserialize, Serialize};
 

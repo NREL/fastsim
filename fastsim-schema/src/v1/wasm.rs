@@ -1,6 +1,11 @@
+//! WebAssembly bindings for schema parsing and vehicle index operations.
+//!
+//! Provides WASM-friendly APIs for parsing vehicle IDs, building download URLs,
+//! and processing vehicle index files in browser environments. Requires the `wasm` feature.
+
 #![cfg(feature = "wasm")]
 
-use crate::{IndexEntryV1, VehicleSchemaV1};
+use super::{search, IndexEntryV1, Query, VehicleSchemaV1};
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 
@@ -27,22 +32,22 @@ pub fn parse_vehicles_jsonl(text: &str) -> Result<JsValue, JsError> {
     serde_wasm_bindgen::to_value(&entries).map_err(|e| JsError::new(&e.to_string()))
 }
 
-// /// Filter a JSON array of `IndexEntryV1` objects against a JSON-encoded
-// /// `Query`. Returns matching entries as a JS array, preserving original order.
-// ///
-// /// Typical usage: call `parse_vehicles_jsonl` once on page load, keep the
-// /// resulting entries in JS, and call this on every filter-input change with
-// /// `JSON.stringify(entries)` and the current query.
-// #[wasm_bindgen]
-// pub fn search_entries(entries_json: &str, query_json: &str) -> Result<JsValue, JsError> {
-//     let entries: Vec<IndexEntryV1> =
-//         serde_json::from_str(entries_json).map_err(|e| JsError::new(&e.to_string()))?;
-//     let query: Query =
-//         serde_json::from_str(query_json).map_err(|e| JsError::new(&e.to_string()))?;
+/// Filter a JSON array of `IndexEntryV1` objects against a JSON-encoded
+/// `Query`. Returns matching entries as a JS array, preserving original order.
+///
+/// Typical usage: call `parse_vehicles_jsonl` once on page load, keep the
+/// resulting entries in JS, and call this on every filter-input change with
+/// `JSON.stringify(entries)` and the current query.
+#[wasm_bindgen]
+pub fn search_entries(entries_json: &str, query_json: &str) -> Result<JsValue, JsError> {
+    let entries: Vec<IndexEntryV1> =
+        serde_json::from_str(entries_json).map_err(|e| JsError::new(&e.to_string()))?;
+    let query: Query =
+        serde_json::from_str(query_json).map_err(|e| JsError::new(&e.to_string()))?;
 
-//     let results = search(&entries, &query);
-//     serde_wasm_bindgen::to_value(&results).map_err(|e| JsError::new(&e.to_string()))
-// }
+    let results = search(&entries, &query);
+    serde_wasm_bindgen::to_value(&results).map_err(|e| JsError::new(&e.to_string()))
+}
 
 #[cfg(test)]
 mod tests {

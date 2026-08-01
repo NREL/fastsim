@@ -1,15 +1,21 @@
-//! Contains Err
+//! Database organizational schema version 1 for the `fastsim-vehicles` repository.
+//!
+//! Provides parsing, validation, and serialization of vehicle identification paths
+//! (e.g., `v1/fastsim-3/conv/ford/fusion/2012/base/r1`) along with error handling
+//! and index entry structures for vehicle discovery.
 
 use super::*;
 
-pub mod error;
-pub mod index;
+mod error;
+mod index;
+mod search;
 
 #[cfg(feature = "wasm")]
 pub mod wasm;
 
-pub use error::*;
-pub use index::*;
+pub use error::VehicleSchemaV1Error;
+pub use index::IndexEntryV1;
+pub use search::{search, Query};
 
 /// Database organizational schema version 1 for the `fastsim-vehicles` repository.
 ///
