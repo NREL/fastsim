@@ -50,7 +50,7 @@ jobs:
       - name: Install wheel build dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --group wheels
+          python -m pip install cibuildwheel build --group test
 
       - name: Check version consistency
         if: matrix.os.base == 'ubuntu'
@@ -59,7 +59,7 @@ jobs:
       # - name: Check Python formatting & linting
       #   if: matrix.os.base == 'ubuntu'
       #   run: ruff check .
-      
+
       - name: Check Rust formatting
         if: matrix.os.base == 'ubuntu'
         run: cargo fmt --check
@@ -94,6 +94,9 @@ jobs:
       # NOTE: parts inspired by https://cibuildwheel.pypa.io/en/stable/setup/
       # One invocation per platform builds every target Python version --
       # cibuildwheel manages fetching/using each target interpreter internally.
+      # Maturin profile: cibuildwheel invokes maturin via pip (PEP 517), which
+      # reads [tool.maturin] profile = "release" from pyproject.toml.  No
+      # MATURIN_PEP517_ARGS override is set here, so wheels are always release.
       - name: Build ${{ matrix.platform || matrix.os.base }} binaries
         run: python -m cibuildwheel --output-dir dist
         env:
@@ -102,7 +105,7 @@ jobs:
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
           CIBW_PLATFORM: ${{ matrix.platform || matrix.os.base }}
           CIBW_BEFORE_TEST: python -m pip install --group test
-          CIBW_TEST_COMMAND: "pytest -v -n 1 {project}"
+          CIBW_TEST_COMMAND: "pytest -v {project}"
           CIBW_ARCHS_MACOS: "${{ matrix.os.arch }}"
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
