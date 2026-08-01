@@ -5,8 +5,7 @@
 
 #![cfg(feature = "wasm")]
 
-use super::{search, IndexEntryV1, Query, VehicleSchemaV1};
-use std::str::FromStr;
+use super::{read_jsonl_v1, search_v1, IndexEntryV1, QueryV1, VehicleSchemaV1};
 use wasm_bindgen::prelude::*;
 
 /// Build a download URL for a vehicle id, defaulting to the GitHub raw-content
@@ -17,7 +16,9 @@ pub fn build_download_url(
     extension: &str,
     base_url: Option<String>,
 ) -> Result<String, JsError> {
-    let schema = VehicleSchemaV1::from_str(id).map_err(|e| JsError::new(&e.to_string()))?;
+    let schema = id
+        .parse::<VehicleSchemaV1>()
+        .map_err(|e| JsError::new(&e.to_string()))?;
     Ok(schema.build_url(base_url.as_deref(), extension))
 }
 
@@ -28,7 +29,7 @@ pub fn build_download_url(
 /// than re-implementing line-splitting/JSON-parsing in JS.
 #[wasm_bindgen]
 pub fn parse_vehicles_jsonl(text: &str) -> Result<JsValue, JsError> {
-    let entries = crate::v1::read_jsonl(text).map_err(|e| JsError::new(&e.to_string()))?;
+    let entries = read_jsonl_v1(text).map_err(|e| JsError::new(&e.to_string()))?;
     serde_wasm_bindgen::to_value(&entries).map_err(|e| JsError::new(&e.to_string()))
 }
 
@@ -42,10 +43,10 @@ pub fn parse_vehicles_jsonl(text: &str) -> Result<JsValue, JsError> {
 pub fn search_entries(entries_json: &str, query_json: &str) -> Result<JsValue, JsError> {
     let entries: Vec<IndexEntryV1> =
         serde_json::from_str(entries_json).map_err(|e| JsError::new(&e.to_string()))?;
-    let query: Query =
+    let query: QueryV1 =
         serde_json::from_str(query_json).map_err(|e| JsError::new(&e.to_string()))?;
 
-    let results = search(&entries, &query);
+    let results = search_v1(&entries, &query);
     serde_wasm_bindgen::to_value(&results).map_err(|e| JsError::new(&e.to_string()))
 }
 
