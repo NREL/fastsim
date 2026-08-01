@@ -30,5 +30,5 @@ build-index = []
 cli = ["dep:clap", "dep:anyhow", "dep:walkdir"]
 
 [[bin]]
-name = "fastsim-schema"
+name = "build-index"
 required-features = ["cli"]

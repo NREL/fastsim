@@ -1,20 +1,11 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 #[derive(Parser)]
-#[command(version, about = "fastsim-schema CLI tools", long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Build an index file (vehicles.jsonl) from a database directory
-    BuildIndex(BuildIndexArgs),
-}
-
-#[derive(clap::Args)]
-struct BuildIndexArgs {
+#[command(
+    version,
+    about = "Build an index file (vehicles.jsonl) from a database directory"
+)]
+struct Args {
     /// Database root directory containing versioned schema folders (v1, v2, ...)
     root: std::path::PathBuf,
 
@@ -22,7 +13,10 @@ struct BuildIndexArgs {
     #[arg(short, long, value_name = "SCHEMA", default_value_t = 1)]
     schema: u32,
 
-    /// Output index file path, relative to directory ROOT/vSCHEMA.
+    /// Output index file path, relative to ROOT/vSCHEMA.
+    ///
+    /// Relative values resolve under ROOT/vSCHEMA. With defaults, this resolves
+    /// to ROOT/v1/vehicles.jsonl.
     #[arg(
         short,
         long = "output",
@@ -33,13 +27,7 @@ struct BuildIndexArgs {
 }
 
 fn main() -> anyhow::Result<()> {
-    let cli = Cli::parse();
-    match cli.command {
-        Commands::BuildIndex(args) => run_build_index(args),
-    }
-}
-
-fn run_build_index(args: BuildIndexArgs) -> anyhow::Result<()> {
+    let args = Args::parse();
     let schema_version = args.schema;
 
     let schema_dir = std::path::absolute(&args.root)?.join(format!("v{}", schema_version));
