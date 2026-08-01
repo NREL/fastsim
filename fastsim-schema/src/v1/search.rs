@@ -62,7 +62,7 @@ mod tests {
     use std::str::FromStr;
 
     fn entry(id: &str) -> IndexEntryV1 {
-        IndexEntryV1::new(format!("{id}.yaml"), "2026-01-01T00:00:00Z").unwrap()
+        format!("{id}.yaml").parse::<IndexEntryV1>().unwrap()
     }
 
     fn sample_entries() -> Vec<IndexEntryV1> {

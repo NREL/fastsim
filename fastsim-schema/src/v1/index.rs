@@ -7,6 +7,7 @@
 use super::{VehicleSchemaV1, VehicleSchemaV1Error};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
+use std::str::FromStr;
 
 /// A single entry in the vehicle index (i.e. `vehicles.jsonl`).
 ///
@@ -24,33 +25,30 @@ pub struct IndexEntryV1 {
     pub year: String,
     pub variant: String,
     pub revision: u32,
-    pub date_added: String,
 }
 
-impl IndexEntryV1 {
-    /// Construct an entry from a vehicle file's path, relative to the
-    /// repository root and including its extension
-    /// (e.g. `"v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml"`), and its
-    /// `date_added` timestamp.
+impl IndexEntryV1 {}
+
+impl FromStr for IndexEntryV1 {
+    type Err = VehicleSchemaV1Error;
+
+    /// Parse an entry from a repository-relative file path including its extension
+    /// (e.g. `"v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml"`).
     ///
-    /// The path (minus its extension) is parsed and canonically validated as
-    /// a `VehicleSchemaV1` id — an `IndexEntryV1` can only be constructed from a path
+    /// The path minus its extension is parsed and canonically validated as a
+    /// `VehicleSchemaV1` id — an `IndexEntryV1` can only be constructed from a path
     /// that's already valid, so no separate validation step is needed by
     /// callers building an index from a directory scan.
     ///
     /// # Errors
     /// Returns `VehicleSchemaV1Error` if the path (minus extension) isn't a valid,
     /// canonical `v1` schema path.
-    pub fn new(
-        path: impl Into<String>,
-        date_added: impl Into<String>,
-    ) -> Result<Self, VehicleSchemaV1Error> {
-        let path = path.into();
-        let id_str = path.rsplit_once('.').map(|(id, _ext)| id).unwrap_or(&path);
+    fn from_str(path: &str) -> Result<Self, Self::Err> {
+        let id_str = path.rsplit_once('.').map(|(id, _ext)| id).unwrap_or(path);
         let schema = id_str.parse::<VehicleSchemaV1>()?;
 
         Ok(Self {
-            path,
+            path: path.to_string(),
             id: schema.to_string(),
             fastsim_version: schema.fastsim_version,
             powertrain: schema.powertrain,
@@ -59,7 +57,6 @@ impl IndexEntryV1 {
             year: schema.year,
             variant: schema.variant,
             revision: schema.revision,
-            date_added: date_added.into(),
         })
     }
 }
@@ -97,11 +94,9 @@ mod index_tests {
 
     #[test]
     fn new_parses_and_populates_all_fields() {
-        let entry = IndexEntryV1::new(
-            "v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml",
-            "2026-07-31T00:00:00Z",
-        )
-        .unwrap();
+        let entry = "v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml"
+            .parse::<IndexEntryV1>()
+            .unwrap();
 
         assert_eq!(
             entry.path,
@@ -115,12 +110,11 @@ mod index_tests {
         assert_eq!(entry.year, "2012");
         assert_eq!(entry.variant, "base");
         assert_eq!(entry.revision, 1);
-        assert_eq!(entry.date_added, "2026-07-31T00:00:00Z");
     }
 
     #[test]
     fn new_rejects_invalid_schema_path() {
-        let result = IndexEntryV1::new("v1/not-enough-segments.yaml", "2026-01-01T00:00:00Z");
+        let result = "v1/not-enough-segments.yaml".parse::<IndexEntryV1>();
         assert!(result.is_err());
     }
 
@@ -128,10 +122,7 @@ mod index_tests {
     fn new_rejects_non_canonical_identifiers() {
         // "Ford" is not canonical (must be lowercase) — new should surface
         // the same InvalidIdentifier error SchemaV1::from_str would.
-        let result = IndexEntryV1::new(
-            "v1/fastsim-3/conv/Ford/fusion/2012/base/r1.yaml",
-            "2026-01-01T00:00:00Z",
-        );
+        let result = "v1/fastsim-3/conv/Ford/fusion/2012/base/r1.yaml".parse::<IndexEntryV1>();
         assert!(matches!(
             result,
             Err(VehicleSchemaV1Error::InvalidIdentifier { .. })
@@ -140,11 +131,9 @@ mod index_tests {
 
     #[test]
     fn new_round_trips_through_json() {
-        let entry = IndexEntryV1::new(
-            "v1/fastsim-3/bev/tesla/model-3/2020/base/r1.yaml",
-            "2026-01-01T00:00:00Z",
-        )
-        .unwrap();
+        let entry = "v1/fastsim-3/bev/tesla/model-3/2020/base/r1.yaml"
+            .parse::<IndexEntryV1>()
+            .unwrap();
         let json = serde_json::to_string(&entry).unwrap();
         let round_tripped: IndexEntryV1 = serde_json::from_str(&json).unwrap();
         assert_eq!(entry, round_tripped);
@@ -157,16 +146,12 @@ mod jsonl_tests {
 
     fn sample_entries() -> Vec<IndexEntryV1> {
         vec![
-            IndexEntryV1::new(
-                "v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml",
-                "2026-01-01T00:00:00Z",
-            )
-            .unwrap(),
-            IndexEntryV1::new(
-                "v1/fastsim-3/bev/tesla/model-3/2020/base/r1.yaml",
-                "2026-02-01T00:00:00Z",
-            )
-            .unwrap(),
+            "v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml"
+                .parse::<IndexEntryV1>()
+                .unwrap(),
+            "v1/fastsim-3/bev/tesla/model-3/2020/base/r1.yaml"
+                .parse::<IndexEntryV1>()
+                .unwrap(),
         ]
     }
 
@@ -178,7 +163,7 @@ mod jsonl_tests {
         let jsonl = String::from_utf8(buf).unwrap();
         assert_eq!(jsonl.lines().count(), 2);
 
-        let parsed = read_jsonl(&jsonl).unwrap();
+        let parsed = read_jsonl_v1(&jsonl).unwrap();
         assert_eq!(parsed, entries);
     }
 
@@ -191,13 +176,13 @@ mod jsonl_tests {
 
     #[test]
     fn read_jsonl_of_empty_string_is_empty_vec() {
-        let parsed = read_jsonl("").unwrap();
+        let parsed = read_jsonl_v1("").unwrap();
         assert!(parsed.is_empty());
     }
 
     #[test]
     fn read_jsonl_surfaces_malformed_line_error() {
         let text = "{\"not\": \"a valid IndexEntryV1\"}\n";
-        assert!(read_jsonl(text).is_err());
+        assert!(read_jsonl_v1(text).is_err());
     }
 }
