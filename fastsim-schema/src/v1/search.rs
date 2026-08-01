@@ -58,8 +58,6 @@ fn matches(entry: &IndexEntryV1, query: &QueryV1) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::VehicleSchemaV1;
-    use std::str::FromStr;
 
     fn entry(id: &str) -> IndexEntryV1 {
         format!("{id}.yaml").parse::<IndexEntryV1>().unwrap()
