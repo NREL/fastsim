@@ -33,7 +33,6 @@ wasm-bindgen-test = "0.3"
 
 [features]
 wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen"]
-build-index = []
 cli = ["dep:clap", "dep:anyhow", "dep:walkdir"]
 
 [[bin]]
