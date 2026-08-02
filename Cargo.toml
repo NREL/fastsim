@@ -21,8 +21,9 @@ opt-level = 3
 
 [workspace.dependencies]
 document-features = "0.2.10"
-fastsim-core = { path = "fastsim-core" }
-fastsim-schema = { path = "fastsim-schema" }
+fastsim-core = { path = "fastsim-core", version = "3.1.0" }
+fastsim-proc-macros = { path = "fastsim-core/fastsim-proc-macros", version = "3.1.0" }
+fastsim-schema = { path = "fastsim-schema", version = "0.1.0" }
 anyhow = "1.0.71"
 serde = { version = "1.0.136", features = ["derive"] }
 pyo3 = "0.29.0"

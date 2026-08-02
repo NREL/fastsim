@@ -13,7 +13,7 @@ repository = "https://github.com/NatLabRockies/fastsim"
 documentation = "https://natlabrockies.github.io/fastsim/"
 
 [dependencies]
-fastsim-proc-macros = { path = "fastsim-proc-macros", version = "3.1.0" }
+fastsim-proc-macros = { workspace = true }
 fastsim-2 = { package = "fastsim-core", version = "0.1.11", optional = true, features = [
     "resources",
 ] }
