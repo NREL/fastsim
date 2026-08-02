@@ -103,6 +103,7 @@ zlib = "*"
 openssl = "*"
 libcurl = "*"
 pkg-config = "*"
+uv = "*"
 
 # Explicit release marker — redundant with [tool.maturin] profile = "release" but
 # makes the intent unambiguous per environment.
