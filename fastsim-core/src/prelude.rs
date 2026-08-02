@@ -21,6 +21,7 @@ pub use crate::vehicle::powertrain::fuel_converter::{
     FuelConverter, FuelConverterState, FuelConverterStateHistoryVec, FuelConverterThermal,
     FuelConverterThermalOption, FuelConverterThermalState, FuelConverterThermalStateHistoryVec,
 };
+pub use crate::vehicle::powertrain::fuel_storage::{FuelStorage, FuelType};
 pub use crate::vehicle::powertrain::reversible_energy_storage::{
     RESLumpedThermal, RESLumpedThermalState, RESLumpedThermalStateHistoryVec, RESThermalOption,
     ReversibleEnergyStorage, ReversibleEnergyStorageState, ReversibleEnergyStorageStateHistoryVec,

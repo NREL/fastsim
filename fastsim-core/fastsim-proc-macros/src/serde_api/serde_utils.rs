@@ -920,6 +920,7 @@ pub fn generate_try_from_impl(
                     .iter()
                     .find(|f| f.field_ident.to_string() == field_ident_str)
                 {
+                    let field_default_expr = serde_default_expr(field);
                     let quantity_str = &si_field.quantity;
                     let quantity_type = match quantity_str.as_str() {
                         "Acceleration" => quote! { uom::si::f64::Acceleration },
@@ -1051,9 +1052,21 @@ pub fn generate_try_from_impl(
                                 .map(|inner| detect_outer_wrapper(inner) == WrapperType::Option)
                                 .unwrap_or(false);
                             if tracked_inner_is_option {
+                                if let Some(default_expr) = &field_default_expr {
+                                    quote! {
+                                        (#conversion).map(|val| #ts_path::new(Some(val)))
+                                            .unwrap_or_else(|| #default_expr)
+                                    }
+                                } else {
+                                    quote! {
+                                        (#conversion).map(|val| #ts_path::new(Some(val)))
+                                            .unwrap_or_else(|| #ts_path::new(None))
+                                    }
+                                }
+                            } else if let Some(default_expr) = &field_default_expr {
                                 quote! {
-                                    (#conversion).map(|val| #ts_path::new(Some(val)))
-                                        .unwrap_or_else(|| #ts_path::new(None))
+                                    (#conversion).map(|val| #ts_path::new(val))
+                                        .unwrap_or_else(|| #default_expr)
                                 }
                             } else if has_serde_struct_default(struct_ast) {
                                 quote! {
@@ -1068,8 +1081,14 @@ pub fn generate_try_from_impl(
                             }
                         }
                         WrapperType::Option => {
-                            quote! {
-                                (#conversion)
+                            if let Some(default_expr) = &field_default_expr {
+                                quote! {
+                                    (#conversion).or_else(|| #default_expr)
+                                }
+                            } else {
+                                quote! {
+                                    (#conversion)
+                                }
                             }
                         }
                         WrapperType::Vec => {
@@ -1088,17 +1107,37 @@ pub fn generate_try_from_impl(
                                     .map(|inner| detect_outer_wrapper(inner) == WrapperType::Option)
                                     .unwrap_or(false);
                                 if tracked_inner_is_option {
-                                    quote! {
-                                        (#conversion)
-                                            .map(|vals| vals.into_iter().map(|v| #ts_path::new(Some(v))).collect())
-                                            .unwrap_or_default()
+                                    if let Some(default_expr) = &field_default_expr {
+                                        quote! {
+                                            (#conversion)
+                                                .map(|vals| vals.into_iter().map(|v| #ts_path::new(Some(v))).collect())
+                                                .unwrap_or_else(|| #default_expr)
+                                        }
+                                    } else {
+                                        quote! {
+                                            (#conversion)
+                                                .map(|vals| vals.into_iter().map(|v| #ts_path::new(Some(v))).collect())
+                                                .unwrap_or_default()
+                                        }
                                     }
                                 } else {
-                                    quote! {
-                                        (#conversion)
-                                            .map(|vals| vals.into_iter().map(|v| #ts_path::new(v)).collect())
-                                            .unwrap_or_default()
+                                    if let Some(default_expr) = &field_default_expr {
+                                        quote! {
+                                            (#conversion)
+                                                .map(|vals| vals.into_iter().map(|v| #ts_path::new(v)).collect())
+                                                .unwrap_or_else(|| #default_expr)
+                                        }
+                                    } else {
+                                        quote! {
+                                            (#conversion)
+                                                .map(|vals| vals.into_iter().map(|v| #ts_path::new(v)).collect())
+                                                .unwrap_or_default()
+                                        }
                                     }
+                                }
+                            } else if let Some(default_expr) = &field_default_expr {
+                                quote! {
+                                    (#conversion).unwrap_or_else(|| #default_expr)
                                 }
                             } else {
                                 quote! {
@@ -1107,7 +1146,11 @@ pub fn generate_try_from_impl(
                             }
                         }
                         WrapperType::None => {
-                            if has_serde_struct_default(struct_ast) {
+                            if let Some(default_expr) = &field_default_expr {
+                                quote! {
+                                    (#conversion).unwrap_or_else(|| #default_expr)
+                                }
+                            } else if has_serde_struct_default(struct_ast) {
                                 quote! {
                                     (#conversion).unwrap_or_default()
                                 }
@@ -1163,6 +1206,54 @@ fn has_serde_skip(field: &syn::Field) -> bool {
 /// Returns true if the field has `#[serde(default)]`
 fn has_serde_default(field: &syn::Field) -> bool {
     has_serde_flag(field, "default")
+}
+
+/// Builds an expression to use when a field has `#[serde(default)]`.
+///
+/// - `#[serde(default)]` -> `::std::default::Default::default()`
+/// - `#[serde(default = "path::to::func")]` -> `path::to::func()`
+fn serde_default_expr(field: &syn::Field) -> Option<TokenStream2> {
+    for attr in &field.attrs {
+        if !attr.path().is_ident("serde") {
+            continue;
+        }
+
+        let mut default_kind: Option<Option<String>> = None;
+        let _ = attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("default") {
+                if meta.input.peek(syn::Token![=]) {
+                    let _: syn::Token![=] = meta.input.parse().unwrap();
+                    let lit: syn::LitStr = meta.input.parse().unwrap();
+                    default_kind = Some(Some(lit.value()));
+                } else {
+                    default_kind = Some(None);
+                }
+            } else if meta.input.peek(syn::Token![=]) {
+                // consume unrelated `key = value` entries
+                let _: syn::Token![=] = meta.input.parse().unwrap();
+                let _: proc_macro2::TokenTree = meta.input.parse().unwrap();
+            }
+            Ok(())
+        });
+
+        if let Some(kind) = default_kind {
+            return match kind {
+                Some(path_str) => {
+                    let path: syn::Path = syn::parse_str(&path_str).unwrap_or_else(|_| {
+                        abort!(
+                            field.span(),
+                            "Invalid serde default path `{}`. Expected a path like `Type::func`",
+                            path_str
+                        )
+                    });
+                    Some(quote! { #path() })
+                }
+                None => Some(quote! { ::std::default::Default::default() }),
+            };
+        }
+    }
+
+    None
 }
 
 fn has_serde_flag(field: &syn::Field, flag: &str) -> bool {
