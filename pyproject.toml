@@ -18,19 +18,13 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 dependencies = [
-    "pandas>=2.1.2, <=2.3.2",
+    "pandas>=2.1.2",
     "polars~=1.4",
-    "matplotlib~=3.3",
     "plotly~=6.0",
-    "numpy>=1.18, <=2.3.2",
-    "seaborn>=0.11.0,<13.2",
+    "numpy>=1.18",
     "typing_extensions~=4.12",
-    "PyYAML==6.0.2",
-    "msgpack==1.2.1",
-    "ipykernel~=6.29",
-    "executing~=2.0",
-    "pip",
-    "types-seaborn~=0.13.2",
+    "PyYAML>=6.0",
+    "msgpack>=1.2.1",
 ]
 
 [project.urls]
@@ -49,11 +43,14 @@ build = ["maturin~=1.8"]
 test = [
     { include-group = "build" },
     "ruff>=0.11.9",
-    "pytest>=9.1,<10.0",
-    "memory_profiler~=0.61.0",
+    "pytest>=9.1",
+    "memory_profiler>=0.61",
     "nbformat>=4.2.0",
     "nbmake",
     "pytest-xdist",
+    "matplotlib~=3.3",
+    "ipykernel~=6.29",
+    "executing~=2.0",
 ]
 docs = ["jupyter-book>=2.0.0", "nbformat>=4.2.0"]
 dev = [
@@ -103,12 +100,9 @@ nodejs = "26.4.*"
 [tool.pixi.feature.build.dependencies]
 rust = ">=1.47.0"
 zlib = "*"
-
-# Prevent C23 mode in the conda cross-compiler so that vendored OpenSSL (from
-# curl/isahc static-ssl) does not reference __isoc23_strtol, a glibc 2.38+
-# symbol absent from the conda sysroot.
-[tool.pixi.feature.build.activation.env]
-CFLAGS = "-std=gnu11"
+openssl = "*"
+libcurl = "*"
+pkg-config = "*"
 
 [tool.pixi.feature.wasm.dependencies]
 rust-std-wasm32-unknown-unknown = "*"

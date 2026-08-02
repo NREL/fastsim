@@ -61,7 +61,15 @@ thiserror = { workspace = true }
 typenum = "1.18.0"
 num-traits = "0.2.19"
 semver = { version = "1.0.28", features = ["serde"] }
-## Force static-ssl for fastsim-2 transitive deps to fix cross-platform build failures
+## curl/isahc: optional deps for the compat feature.
+## On macOS, static-ssl bundles OpenSSL so pkg-config isn't needed during
+## `pixi install` (before conda activation). On Linux, system/conda OpenSSL
+## is used instead to avoid the __isoc23_strtol glibc 2.38+ linking error
+## that occurs when the conda cross-compiler compiles vendored OpenSSL.
+curl = { version = "0.4", optional = true }
+isahc = { version = "1.7", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
 curl = { version = "0.4", features = ["static-ssl"], optional = true }
 isahc = { version = "1.7", features = ["static-ssl"], optional = true }
 
@@ -72,7 +80,6 @@ serde_json = "1.0"
 [features]
 default = ["resources", "serde-default", "simdrivelabel"]
 ## Enables conversion functions from FASTSim 2 data structures
-## Force static-ssl for fastsim-2 transitive deps to fix cross-platform build failures
 compat = ["dep:fastsim-2", "dep:curl", "dep:isahc", "dep:include_dir"]
 ## Enables `pyo3` to provide fastsim-3 structs, methods, and functions to Python
 pyo3 = ["dep:pyo3"]
