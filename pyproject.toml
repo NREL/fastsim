@@ -142,7 +142,7 @@ dev = { features = [
 
 [tool.pixi.tasks]
 # Full local dev-loop check: replaces build_and_test.sh.
-check = { cmd = "pixi run check-versions && pixi run rust-check && pixi run py-build-dev && pixi run py-test", default-environment = "build" }
+check = { cmd = "pixi run check-versions && pixi run rust-check && pixi run py-build-dev && pixi run py-test-xdist", default-environment = "build" }
 rust-check = "cargo fmt --check && cargo test"
 
 # Check consistency of versions across project
@@ -151,8 +151,10 @@ check-versions = "python python/fastsim/check_versions.py"
 py-build = "maturin develop --uv --release"
 # Debug build: flag is explicit because [tool.maturin] profile is read by maturin develop directly.
 py-build-dev = "maturin develop --uv --profile dev"
-# Runs pytest in the build env.
+# Python tests (including nbmake notebook testing), runs serially
 py-test = { cmd = "pixi run -e build pytest -v" }
+# Python tests (including nbmake notebook testing), runs in parallel using pytest-xdist
+py-test-xdist = { cmd = "pixi run -e build pytest -v -n auto --dist=loadscope" }
 
 docs = { cmd = "jupyter book start --execute", cwd = "docs", default-environment = "dev" }
 build-docs = { cmd = "jupyter book build --strict --html --execute", cwd = "docs", default-environment = "dev" }

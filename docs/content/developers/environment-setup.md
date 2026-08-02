@@ -55,7 +55,8 @@ All tasks:
 | `cargo-test` | `cargo fmt --check` + `cargo test --release` |
 | `py-build` | `maturin develop --release` (explicit release build) |
 | `py-build-dev` | `maturin develop --profile dev` (fast debug build) |
-| `py-test` | `pytest -v` inside the `build` env, parallelized, with notebook coverage |
+| `py-test` | `pytest -v` inside the `build` env, with notebook coverage |
+| `py-test-xdist` | `pytest -v -n auto` inside the `build` env for parallel tests, with notebook coverage |
 | `docs` | Start a live-reloading Jupyter Book server |
 | `build-docs` | Full docs build (strict, HTML) |
 
