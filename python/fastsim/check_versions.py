@@ -8,7 +8,7 @@ the versions declared in Cargo manifests for:
 - fastsim-core
 - fastsim-proc-macros
 
-Also verifies that the `fastsim-proc-macros` dependency in
+Also verifies that the `fastsim-proc-macros` and `fastsim-schema` dependencies in
 `fastsim-core/Cargo.toml` and workspace manifests are configured correctly.
 """
 
