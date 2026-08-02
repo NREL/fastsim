@@ -123,11 +123,12 @@ build = { features = [
     "test",
     "profile-debug",
 ], solve-group = "default" }
-# Docs: notebooks execute against release fastsim for accurate performance output.
+# Docs: debug profile is fine for now; switch to profile-release if notebooks
+# include performance benchmarks or run-time demonstrations.
 docs = { features = [
     "docs",
     "build",
-    "profile-release",
+    "profile-debug",
 ], solve-group = "default" }
 # Day-to-day iteration (direnv default): debug profile on env install/rebuild.
 dev = { features = [
