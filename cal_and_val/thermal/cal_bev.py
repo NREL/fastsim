@@ -6,7 +6,6 @@ import pprint
 from pathlib import Path
 import numpy as np  # noqa: F401
 import matplotlib.pyplot as plt  # noqa: F401
-import seaborn as sns
 import pandas as pd  # noqa: F401
 import polars as pl  # noqa: F401
 from pymoo.core.problem import StarmapParallelization
@@ -19,11 +18,7 @@ from fastsim import pymoo_api
 mps_per_mph = 0.447
 celsius_to_kelvin_offset = 273.15
 
-# Initialize seaborn plot configuration
-sns.set_style("darkgrid")
-
-veh = fsim.Vehicle.from_file(
-    Path(__file__).parent / "f3-vehicles/2020 Chevrolet Bolt EV.yaml")
+veh = fsim.Vehicle.from_file(Path(__file__).parent / "f3-vehicles/2020 Chevrolet Bolt EV.yaml")
 veh_dict = veh.to_pydict()
 
 sim_params_dict = fsim.SimParams.default().to_pydict()
@@ -34,8 +29,7 @@ sim_params = fsim.SimParams.from_pydict(sim_params_dict, skip_init=False)
 # Obtain the data from
 # https://www.anl.gov/taps/d3-2020-chevrolet-bolt
 # and then copy it to the local folder below
-cyc_folder_path = Path(__file__).parent / \
-    "dyno_test_data/2020 Chevrolet Bolt/Extended Datasets"
+cyc_folder_path = Path(__file__).parent / "dyno_test_data/2020 Chevrolet Bolt/Extended Datasets"
 assert cyc_folder_path.exists(), cyc_folder_path
 
 # Test data columns
@@ -105,8 +99,7 @@ cyc_files_dict: dict[str, dict] = {
     # },
 }
 assert len(cyc_files_dict) > 0
-cyc_files: list[Path] = [cyc_folder_path /
-                         cyc_file for cyc_file in cyc_files_dict.keys()]
+cyc_files: list[Path] = [cyc_folder_path / cyc_file for cyc_file in cyc_files_dict.keys()]
 print("\ncyc_files:\n", "\n".join([cf.name for cf in cyc_files]), sep="")
 
 # use random or manual selection to retain ~70% of cycles for calibration,
@@ -124,8 +117,7 @@ cyc_files_for_cal: list[Path] = [
     cyc_file for cyc_file in cyc_files if cyc_file.name in cyc_files_for_cal
 ]
 assert len(cyc_files_for_cal) > 0, cyc_files_for_cal
-print("\ncyc_files_for_cal:\n", "\n".join(
-    [cf.name for cf in cyc_files_for_cal]), sep="")
+print("\ncyc_files_for_cal:\n", "\n".join([cf.name for cf in cyc_files_for_cal]), sep="")
 
 
 def df_to_cyc(df: pd.DataFrame) -> fsim.Cycle:
@@ -193,8 +185,7 @@ def resample_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df[::10]  # convert to ~1 Hz
     df.reset_index(inplace=True)
     dt_new = np.diff(df[time_column])
-    df[speed_column] = np.concatenate(
-        ([init_speed], np.diff(df["cumu. dist [mph*s]"]) / dt_new))
+    df[speed_column] = np.concatenate(([init_speed], np.diff(df["cumu. dist [mph*s]"]) / dt_new))
     df = df[df[time_column] < 2160]
 
     return df
@@ -222,13 +213,11 @@ for cyc_file_stem, cyc in cycs_for_cal.items():
     cyc: fsim.Cycle
     # NOTE: maybe change `save_interval` to 5
     veh = veh_init(cyc_file_stem, dfs_for_cal)
-    sds_for_cal[cyc_file_stem] = fsim.SimDrive(
-        veh, cyc, sim_params).to_pydict()
+    sds_for_cal[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_pydict()
 
 cyc_files_for_val: list[Path] = list(set(cyc_files) - set(cyc_files_for_cal))
 assert len(cyc_files_for_val) > 0
-print("\ncyc_files_for_val:\n", "\n".join(
-    [cf.name for cf in cyc_files_for_val]), sep="")
+print("\ncyc_files_for_val:\n", "\n".join([cf.name for cf in cyc_files_for_val]), sep="")
 
 dfs_for_val: dict[str, pd.DataFrame] = {
     # `delimiter="\t"` should work for tab separated variables
@@ -253,8 +242,7 @@ for cyc_file_stem, cyc in cycs_for_val.items():
     cyc_file_stem: str
     cyc: fsim.Cycle
     veh = veh_init(cyc_file_stem, dfs_for_val)
-    sds_for_val[cyc_file_stem] = fsim.SimDrive(
-        veh, cyc, sim_params).to_pydict()
+    sds_for_val[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_pydict()
 
 
 # Setup model objectives
@@ -264,8 +252,7 @@ def new_em_eff_max(sd_dict: dict, new_eff_max: float) -> dict:
     """
     Set `new_eff_max` in `ElectricMachine`
     """
-    em = fsim.ElectricMachine.from_pydict(
-        sd_dict["veh"]["pt_type"][pt_type_var]["em"])
+    em = fsim.ElectricMachine.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
     em.__eff_fwd_max = new_eff_max
     sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_pydict()
     return sd_dict
@@ -275,8 +262,7 @@ def new_em_eff_range(sd_dict, new_eff_range) -> dict:
     """
     Set `new_eff_range` in `ElectricMachine`
     """
-    em = fsim.ElectricMachine.from_pydict(
-        sd_dict["veh"]["pt_type"][pt_type_var]["em"])
+    em = fsim.ElectricMachine.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
     em.__eff_fwd_range = new_eff_range
     sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_pydict()
     return sd_dict
@@ -383,8 +369,7 @@ def get_exp_soc(df):
 
 def get_mod_cab_temp_celsius(sd_dict):
     return (
-        np.array(sd_dict["veh"]["cabin"][cabin_type_var]
-                 ["history"]["temperature_kelvin"])
+        np.array(sd_dict["veh"]["cabin"][cabin_type_var]["history"]["temperature_kelvin"])
         - celsius_to_kelvin_offset
     )
 
@@ -394,12 +379,16 @@ def get_exp_cab_temp_celsius(df):
 
 
 def get_mod_batt_temp_celsius(sd_dict):
-    mod_batt_temp_celsiusi_float = np.array(
-        sd_dict["veh"]["pt_type"][pt_type_var]["res"]["thrml"]["RESLumpedThermal"]["history"]["temperature_kelvin"]
-    ) - celsius_to_kelvin_offset
+    mod_batt_temp_celsiusi_float = (
+        np.array(
+            sd_dict["veh"]["pt_type"][pt_type_var]["res"]["thrml"]["RESLumpedThermal"]["history"][
+                "temperature_kelvin"
+            ]
+        )
+        - celsius_to_kelvin_offset
+    )
     # the test data temperature is quantized
-    mod_batt_temp_celsius_int = np.array(
-        [int(temp) for temp in mod_batt_temp_celsiusi_float])
+    mod_batt_temp_celsius_int = np.array([int(temp) for temp in mod_batt_temp_celsiusi_float])
     return mod_batt_temp_celsius_int
 
 
@@ -409,8 +398,7 @@ def get_exp_batt_temp_celsius(df):
 
 def get_mod_pwr_hvac_kw(sd_dict):
     return (
-        np.array(sd_dict["veh"]["hvac"][cabin_type_var]
-                 ["history"]["pwr_aux_for_hvac_watts"]) / 1e3
+        np.array(sd_dict["veh"]["hvac"][cabin_type_var]["history"]["pwr_aux_for_hvac_watts"]) / 1e3
     )
 
 
@@ -424,8 +412,7 @@ def get_exp_pwr_hvac_kw(df):
 
 # post-processing functions
 def get_mod_soc_delta(sd_dict: dict) -> float:
-    soc = np.array(sd_dict["veh"]["pt_type"]
-                   [pt_type_var]["res"]["history"]["soc"])
+    soc = np.array(sd_dict["veh"]["pt_type"][pt_type_var]["res"]["history"]["soc"])
     soc_delta: float = soc[-1] - soc[0]
     return soc_delta
 
@@ -490,8 +477,7 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
     # - `pos_perturb_doc`: perturbation percentage added to all params.  Can be overridden invididually
     # - `neg_perturb_doc`: perturbation percentage subtracted from all params.  Can be overridden invididually
     """
-    em = fsim.ElectricMachine.from_pydict(
-        veh_dict["pt_type"][pt_type_var]["em"], skip_init=False)
+    em = fsim.ElectricMachine.from_pydict(veh_dict["pt_type"][pt_type_var]["em"], skip_init=False)
     baseline_params_and_bounds = [
         (em.eff_fwd_max, None),
         (em.eff_fwd_range, None),
@@ -503,8 +489,7 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
             veh_dict["cabin"][cabin_type_var]["cab_htc_to_amb_stop_watts_per_square_meter_kelvin"],
             None,
         ),
-        (veh_dict["cabin"][cabin_type_var]
-         ["heat_capacitance_joules_per_kelvin"], None),
+        (veh_dict["cabin"][cabin_type_var]["heat_capacitance_joules_per_kelvin"], None),
         (veh_dict["cabin"][cabin_type_var]["length_meters"], None),
         (
             veh_dict["pt_type"][pt_type_var]["res"]["thrml"]["RESLumpedThermal"][
@@ -558,8 +543,7 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
 
         perturbed_params = baseline_params.copy()
         perturbed_params[i] = param * (1 + param_pos_perturb_dec)
-        perturbed_errors = cal_mod_obj.get_errors(
-            cal_mod_obj.update_params(perturbed_params))
+        perturbed_errors = cal_mod_obj.get_errors(cal_mod_obj.update_params(perturbed_params))
         if np.all(perturbed_errors == baseline_errors):
             print("\nperturbed_errros:")
             pprint.pp(perturbed_errors)
@@ -573,8 +557,7 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
         # -5%
         perturbed_params = baseline_params.copy()
         perturbed_params[i] = param * (1 - param_neg_perturb_dec)
-        perturbed_errors = cal_mod_obj.get_errors(
-            cal_mod_obj.update_params(perturbed_params))
+        perturbed_errors = cal_mod_obj.get_errors(cal_mod_obj.update_params(perturbed_params))
         if np.all(perturbed_errors == baseline_errors):
             print("\nperturbed_errros:")
             pprint.pp(perturbed_errors)
