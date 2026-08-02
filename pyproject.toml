@@ -106,11 +106,13 @@ nodejs = "26.4.*"
 rust = ">=1.47.0"
 zlib = "*"
 
-# Used by envs that build or ship artifacts.
+# Explicit release marker — redundant with [tool.maturin] profile = "release" but
+# makes the intent unambiguous per environment.
 [tool.pixi.feature.profile-release.activation.env]
-MATURIN_PEP517_ARGS = "--release"
+MATURIN_PEP517_ARGS = "--profile release"
 
-# Used by envs that iterate or run tests. "dev" is cargo's name for the debug profile.
+# Override the [tool.maturin] profile = "release" default for environments where
+# fast rebuilds matter more than runtime performance. Only needed for dev.
 [tool.pixi.feature.profile-debug.activation.env]
 MATURIN_PEP517_ARGS = "--profile dev"
 
@@ -135,7 +137,7 @@ docs = { features = [
     "build",
     "profile-release",
 ], solve-group = "default" }
-# Day-to-day iteration (direnv default): debug profile for fastest rebuilds.
+# Day-to-day iteration (direnv default): debug profile on env install/rebuild.
 dev = { features = [
     "dev",
     "build",
