@@ -46,7 +46,6 @@ Homepage = "https://www.nlr.gov/transportation/fastsim"
 [dependency-groups]
 # Internal groups for development, CI/CD, testing, documentation purposes
 build = ["maturin~=1.8"]
-release = [{ include-group = "build" }, "twine"]
 test = [
     { include-group = "build" },
     "ruff>=0.11.9",
@@ -59,7 +58,6 @@ test = [
 docs = ["jupyter-book>=2.0.0", "nbformat>=4.2.0"]
 dev = [
     { include-group = "build" },
-    { include-group = "release" },
     { include-group = "test" },
     { include-group = "docs" },
     "pylsp-mypy>=0.7.0",
@@ -125,12 +123,6 @@ build = { features = [
     "test",
     "profile-debug",
 ], solve-group = "default" }
-# Publish step: twine upload + release artifact.
-release = { features = [
-    "release",
-    "build",
-    "profile-release",
-], solve-group = "default" }
 # Docs: notebooks execute against release fastsim for accurate performance output.
 docs = { features = [
     "docs",
@@ -141,7 +133,6 @@ docs = { features = [
 dev = { features = [
     "dev",
     "build",
-    "release",
     "test",
     "docs",
     "profile-debug",

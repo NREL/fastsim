@@ -6,9 +6,93 @@ on:
   workflow_dispatch:
 
 jobs:
+  build-wheels:
+    name: Build wheels on ${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - base: ubuntu
+            version: latest
+          - base: macos
+            version: "15-intel"
+            arch: "x86_64"
+          - base: macos
+            version: "latest"
+            arch: "arm64"
+          - base: windows
+            version: latest
+            arch: "amd64"
+        include:
+          - os:
+              base: ubuntu
+              version: latest
+            platform: linux
+          - os:
+              base: windows
+              version: latest
+            ls: dir
+    runs-on: ${{ format('{0}-{1}', matrix.os.base, matrix.os.version) }}
+    env:
+      CARGO_HTTP_MULTIPLEXING: "false"
+    steps:
+      - uses: actions/checkout@v4
 
-  build-and-test-wheels:
-    uses: ./.github/workflows/build_and_test.yaml
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cibuildwheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cibuildwheel build
+
+      # Widens wheel compatibility on the Intel Mac runner, which otherwise
+      # defaults to a higher minimum macOS version than we want to require.
+      - name: Update minimum supported MacOS (Intel Mac)
+        if: matrix.os.base == 'macos' && matrix.os.version == '15-intel'
+        run: echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
+
+      # NOTE: parts inspired by https://cibuildwheel.pypa.io/en/stable/setup/
+      # One invocation per platform builds every target Python version --
+      # cibuildwheel manages fetching/using each target interpreter internally.
+      # Maturin profile: cibuildwheel invokes maturin via pip (PEP 517), which
+      # reads [tool.maturin] profile = "release" from pyproject.toml.
+      - name: Build ${{ matrix.platform || matrix.os.base }} binaries
+        run: python -m cibuildwheel --output-dir dist
+        env:
+          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
+          CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
+          CIBW_PLATFORM: ${{ matrix.platform || matrix.os.base }}
+          CIBW_BEFORE_TEST: python -m pip install --group test
+          CIBW_TEST_COMMAND: "pytest -v {project}"
+          CIBW_ARCHS_MACOS: "${{ matrix.os.arch }}"
+          CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
+          CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
+          CIBW_BEFORE_BUILD: rustup show
+          # Linux builds run in an isolated container with no Rust preinstalled,
+          # so it needs its own toolchain install.
+          CIBW_BEFORE_BUILD_LINUX: >
+            yum -y install openssl openssl-devel perl perl-IPC-Cmd &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --profile=minimal -y &&
+            rustup show
+
+      - name: Build source distribution
+        if: matrix.os.base == 'ubuntu'
+        run: python -m build --sdist --outdir dist
+
+      - name: List dist files
+        run: ${{ matrix.ls || 'ls -lh' }} dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastsim-${{ matrix.platform || matrix.os.base }}-${{ matrix.os.version }}-${{ strategy.job-index }}
+          path: ./dist/*
 
   feature-powerset:
     name: Check fastsim-core feature powerset
@@ -25,31 +109,31 @@ jobs:
       - name: Check fastsim-core feature powerset
         run: cargo hack check -p fastsim-core --feature-powerset --depth 2
 
-  release:
-    needs: [build-and-test-wheels, feature-powerset]
+  publish:
+    needs: [build-wheels, feature-powerset]
     name: Publish release artifacts
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: pixi run -e release bash -e {0}
-    # Protection Strategies -- use ONE of the following two lines:
-    # publish on via explicit publish
+    # Protection: only publish on an explicit GitHub release, not workflow_dispatch re-runs.
     if: github.event_name == 'release' && github.event.action == 'published'
-    # publish on tag starting w/ 'v'
-    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download files
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           merge-multiple: true
           path: artifact
 
-      - name: Set up Pixi
-        uses: prefix-dev/setup-pixi@v0.8.14
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          environments: release
+          python-version: "3.14"
+
+      - name: Install twine
+        run: pip install twine
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Check distribution with Twine
         run: python -m twine check ./artifact/*
