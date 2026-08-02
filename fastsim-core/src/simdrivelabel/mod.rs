@@ -2470,12 +2470,18 @@ mod tests {
         eprintln!(
             "udds start soc: {:?}; min soc: {:?}",
             udds_result.soc[0],
-            udds_result.soc.min()
+            udds_result
+                .soc
+                .iter()
+                .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         );
         eprintln!(
             "hwy start soc: {:?}; min soc: {:?}",
             hwy_result.soc[0],
-            hwy_result.soc.min()
+            hwy_result
+                .soc
+                .iter()
+                .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         );
         let fuel_props = FuelProperties::default();
         let sim_data = SimulationDataForLabel::Phev {
