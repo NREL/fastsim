@@ -31,6 +31,8 @@ pub fn search_v1<'a>(entries: &'a [IndexEntryV1], query: &QueryV1) -> Vec<&'a In
 }
 
 fn matches(entry: &IndexEntryV1, query: &QueryV1) -> bool {
+    let model_query = query.model.as_deref().map(|v| v.to_ascii_lowercase());
+
     query
         .fastsim_version
         .is_none_or(|v| entry.fastsim_version == v)
@@ -42,12 +44,9 @@ fn matches(entry: &IndexEntryV1, query: &QueryV1) -> bool {
             .make
             .as_deref()
             .is_none_or(|v| entry.make.eq_ignore_ascii_case(v))
-        && query.model.as_deref().is_none_or(|v| {
-            entry
-                .model
-                .to_ascii_lowercase()
-                .contains(&v.to_ascii_lowercase())
-        })
+        && model_query
+            .as_deref()
+            .is_none_or(|v| entry.model.to_ascii_lowercase().contains(v))
         && query.year.as_deref().is_none_or(|v| entry.year == v)
         && query
             .variant
