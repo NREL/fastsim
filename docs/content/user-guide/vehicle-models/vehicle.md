@@ -74,7 +74,7 @@ FASTSim's vehicle model is a hierarchy of components:
     ```python
     {
       ...
-      'therml': 'None',
+       'thrml': 'None',
       ...
     }
     ```
@@ -113,19 +113,10 @@ FASTSim's vehicle model is a hierarchy of components:
         tstat_interp:
           data:
             grid:
-              - v: 1
-                dim:
-                  - 2
-                data:
-                  - 85.0
-                  - 90.0
+              - [85.0, 90.0]
             values:
-              v: 1
-              dim:
-                - 2
-              data:
-                - 0.0
-                - 1.0
+              - 0.0
+              - 1.0
           strategy: Linear
           extrapolate: Clamp
         radiator_effectiveness: 168.06311964877182
@@ -183,16 +174,9 @@ FASTSim's vehicle model is a hierarchy of components:
           'tstat_te_delta_kelvin': 5.0,
           'tstat_interp': {
             'data': {
-              'grid': [{
-                'v': 1,
-                'dim': [2],
-                'data': [85.0, 90.0]
-              }],
-            'values': {
-              'v': 1,
-              'dim': [2],
-              'data': [0.0, 1.0]
-            }},
+               'grid': [[85.0, 90.0]],
+               'values': [0.0, 1.0]
+             },
             'strategy': 'Linear',
             'extrapolate': 'Clamp'
           },
@@ -302,7 +286,7 @@ FASTSim's vehicle model is a hierarchy of components:
     ```python
     {
       ...
-      'therml': 'None',
+       'thrml': 'None',
       ...
     }
     ```
@@ -441,7 +425,7 @@ FASTSim's vehicle model is a hierarchy of components:
     ```python
     {
       ...
-      'therml': 'None',
+      'thrml': 'None',
       ...
     }
     ```
@@ -480,19 +464,10 @@ FASTSim's vehicle model is a hierarchy of components:
         tstat_interp:
           data:
             grid:
-              - v: 1
-                dim:
-                  - 2
-                data:
-                  - 85.0
-                  - 90.0
+              - [85.0, 90.0]
             values:
-              v: 1
-              dim:
-                - 2
-              data:
-                - 0.0
-                - 1.0
+              - 0.0
+              - 1.0
           strategy: Linear
           extrapolate: Clamp
         radiator_effectiveness: 168.06311964877182
@@ -550,16 +525,9 @@ FASTSim's vehicle model is a hierarchy of components:
           'tstat_te_delta_kelvin': 5.0,
           'tstat_interp': {
             'data': {
-              'grid': [{
-                'v': 1,
-                'dim': [2],
-                'data': [85.0, 90.0]
-              }],
-            'values': {
-              'v': 1,
-              'dim': [2],
-              'data': [0.0, 1.0]
-            }},
+               'grid': [[85.0, 90.0]],
+               'values': [0.0, 1.0]
+             },
             'strategy': 'Linear',
             'extrapolate': 'Clamp'
           },
@@ -677,7 +645,7 @@ FASTSim's vehicle model is a hierarchy of components:
     ```python
     {
       ...
-      'therml': 'None',
+       'thrml': 'None',
       ...
     }
     ```
