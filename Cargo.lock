@@ -694,7 +694,7 @@ dependencies = [
  "itertools 0.12.1",
  "lazy_static",
  "log",
- "ndarray",
+ "ndarray 0.16.1",
  "rayon",
  "regex",
  "serde",
@@ -729,7 +729,6 @@ dependencies = [
  "isahc",
  "itertools 0.12.1",
  "lazy_static",
- "ndarray",
  "ninterp",
  "nohash-hasher",
  "num-traits",
@@ -1395,16 +1394,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "ninterp"
-version = "0.7.3"
+name = "ndarray"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b9a8917fb3e2ae0574a15c14f29d1855cb53f483edfde819bc218238830ca11"
+checksum = "520080814a7a6b4a6e9070823bb24b4531daac8c4627e08ba5de8c5ef2f2752d"
+dependencies = [
+ "matrixmultiply",
+ "num-complex",
+ "num-integer",
+ "num-traits",
+ "portable-atomic",
+ "portable-atomic-util",
+ "rawpointer",
+ "serde",
+]
+
+[[package]]
+name = "ninterp"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "673df9b96cc68bb7e014192a1d608efd68fc725d5de7f06517fd86bd96b7f72b"
 dependencies = [
  "dyn-clone",
  "itertools 0.13.0",
- "ndarray",
+ "ndarray 0.17.2",
  "num-traits",
  "serde",
+ "serde-ndim",
  "serde_unit_struct",
  "thiserror 1.0.69",
 ]
@@ -2029,6 +2045,16 @@ checksum = "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba"
 dependencies = [
  "serde_core",
  "serde_derive",
+]
+
+[[package]]
+name = "serde-ndim"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c73dbec765bf3c21a1f08f92f0b8964957d5faf32dec72f51e06d69c6208c69"
+dependencies = [
+ "ndarray 0.17.2",
+ "serde",
 ]
 
 [[package]]
