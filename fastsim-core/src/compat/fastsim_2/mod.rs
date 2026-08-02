@@ -454,8 +454,6 @@ impl TryFrom<&fastsim_core::vehicle::RustVehicle> for PowertrainType {
     /// # Arguments
     /// * `f2veh` - fastsim-2 vehicle
     fn try_from(f2veh: &fastsim_core::vehicle::RustVehicle) -> anyhow::Result<PowertrainType> {
-        // TODO: implement the `_doc` fields in fastsim-3 and make sure they get carried over from fastsim-2
-        // see https://github.com/NREL/fastsim/blob/fastsim-2/rust/fastsim-core/fastsim-proc-macros/src/doc_field.rs and do something similar
         match f2veh.veh_pt_type.as_str() {
             fastsim_core::vehicle::CONV => {
                 let conv = ConventionalVehicle::try_from(f2veh)?;

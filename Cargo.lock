@@ -798,7 +798,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.19",
  "walkdir",
  "wasm-bindgen",
  "wasm-bindgen-test",
