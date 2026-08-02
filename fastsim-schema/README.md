@@ -27,14 +27,9 @@ the main FASTSim simulation crates.
 	 cargo publish --manifest-path fastsim-schema/Cargo.toml --locked
 	 ```
 
-	 `--locked` ensures publishing uses the existing `Cargo.lock` resolution and
-	 fails if dependency resolution would change, which improves release
-	 reproducibility.
-
 ## Why This Is Not Lockstep-Versioned With FASTSim
 
-`fastsim-schema` has a different compatibility surface and release cadence than
-`fastsim-core` / `fastsim-py`.
+`fastsim-schema` has a different compatibility surface and release cadence than `fastsim-core`.
 
 - Schema updates may happen for data/modeling workflows that do not require a
 	simulation-engine release.
