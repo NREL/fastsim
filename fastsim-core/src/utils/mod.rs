@@ -4,6 +4,7 @@ use regex::Regex;
 
 pub mod interp;
 pub use interp::*;
+pub mod serde_helpers;
 pub mod tracked_state;
 pub use tracked_state::*;
 

@@ -32,7 +32,7 @@ pub fn timer(attr: TokenStream, item: TokenStream) -> TokenStream {
     timer::timer(attr, item)
 }
 
-#[proc_macro_derive(HistoryVec, attributes(api))]
+#[proc_macro_derive(HistoryVec, attributes(history_vec))]
 /// Generate HistoryVec that acts like a vec of states but
 /// stores each field of state as a vec field.
 pub fn history_vec_derive(input: TokenStream) -> TokenStream {

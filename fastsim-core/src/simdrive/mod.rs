@@ -9,8 +9,7 @@ use super::vehicle::Vehicle;
 use crate::drive_cycle::manipulation_utils::calc_best_rendezvous;
 use crate::imports::*;
 use crate::prelude::*;
-use crate::vehicle::common::is_dfco_disabled_due_to_veh_dynamics;
-use crate::vehicle::common::VehicleDynamicState;
+use crate::vehicle::conv::DfcoControls;
 
 #[serde_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, StateMethods)]
@@ -425,16 +424,16 @@ impl SimDrive {
                         .pt_cntrl
                         .handle_fc_on_causes_for_speed(self.cyc.speed[i])?,
                     PowertrainType::ConventionalVehicle(conv) => {
-                        let dynamic_state = VehicleDynamicState {
-                            prev_speed: self.cyc.speed[i - 1],
-                            speed: self.cyc.speed[i],
-                            dt,
-                            dfco_allowed: conv.dfco_cntrl.dfco_enabled,
-                            minimum_dfco_speed: conv.dfco_cntrl.minimum_dfco_speed,
-                            minimum_dfco_deceleration: conv.dfco_cntrl.minimum_dfco_deceleration,
-                        };
                         conv.dfco_cntrl.state.vehicle_dynamics_prevent_dfco.update(
-                            is_dfco_disabled_due_to_veh_dynamics(&dynamic_state),
+                            DfcoControls::is_dfco_disabled_due_to_veh_dynamics(
+                                self.cyc.speed[i - 1],
+                                self.cyc.speed[i],
+                                dt,
+                                conv.dfco_cntrl.dfco_enabled,
+                                conv.dfco_cntrl.minimum_dfco_speed,
+                                conv.dfco_cntrl.minimum_dfco_deceleration,
+                                conv.dfco_cntrl.stopped_speed_threshold,
+                            ),
                             || format_dbg!(),
                         )?;
                         conv.pt_cntrl
@@ -868,18 +867,6 @@ impl SimDrive {
         Ok(())
     }
 
-    pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
-        let veh2 = self
-            .veh
-            .to_fastsim2()
-            .with_context(|| anyhow!(format_dbg!()))?;
-        let cyc2 = self
-            .cyc
-            .to_fastsim2()
-            .with_context(|| anyhow!(format_dbg!()))?;
-        Ok(fastsim_2::simdrive::RustSimDrive::new(cyc2, veh2))
-    }
-
     pub fn clear(&mut self) {
         self.veh.clear();
     }
@@ -907,7 +894,7 @@ mod tests {
     #[test]
     #[cfg(feature = "resources")]
     fn test_sim_drive_conv() {
-        let _veh = mock_conv_veh();
+        let _veh = Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
@@ -930,7 +917,7 @@ mod tests {
     #[test]
     #[cfg(feature = "resources")]
     fn test_sim_drive_hev() {
-        let _veh = mock_hev();
+        let _veh = Vehicle::from_resource("2016_TOYOTA_Prius_Two.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
         sd.walk().unwrap();
@@ -1401,7 +1388,7 @@ mod tests {
     #[test]
     #[cfg(feature = "resources")]
     fn test_sim_drive_bev() {
-        let _veh = mock_bev();
+        let _veh = Vehicle::from_resource("2022_Renault_Zoe_ZE50_R135.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive {
             veh: _veh,

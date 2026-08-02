@@ -18,11 +18,23 @@ See [](#next-steps) for further resources.
 
 ## Install from Source (developers)
 
-FASTSim's backend is written entirely in Rust. Install the
-[Rust toolchain](https://www.rust-lang.org/tools/install) first (or
-[set up a developer environment](developers/environment-setup.md)).
+FASTSim's backend is written entirely in Rust, so a Rust toolchain is required to build from source.
 
-Then install FASTSim from source:
+**Option A: Pixi (recommended)**
+
+[Pixi](https://pixi.prefix.dev/latest/) manages the Rust toolchain and Python dependencies for you. After [installing pixi](https://pixi.prefix.dev/latest/installation/), clone the repository and run:
+
+```bash
+git clone https://github.com/NatLabRockies/fastsim.git
+cd fastsim
+pixi install
+```
+
+This uses the `default` pixi environment, which compiles FASTSim with a release-profile build. See [](developers/environment-setup.md) for the full list of environments and developer tooling.
+
+**Option B: Manual**
+
+Install Python and the [Rust toolchain](https://www.rust-lang.org/tools/install) first, then:
 
 1. Clone the repository:
 
@@ -37,11 +49,7 @@ Then install FASTSim from source:
    pip install .
    ```
 
-Optional:
-
-- Add `-e` for an editable install so source changes are picked up without
-  reinstalling.
-- Add `--group dev` to install optional developer dependencies.
+   Add `-e` for an editable install, or `--group dev` for developer dependencies.
 
 For more detail on developer builds, see [](developers/compiling-from-source.md).
 

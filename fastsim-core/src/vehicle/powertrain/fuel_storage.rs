@@ -1,5 +1,12 @@
 use super::*;
 
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub enum FuelType {
+    Gasoline,
+    Diesel,
+    Hydrogen,
+}
+
 #[serde_api]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, SetCumulative)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
@@ -10,13 +17,16 @@ pub struct FuelStorage {
     pub pwr_out_max: si::Power,
     /// time to peak power
     pub pwr_ramp_lag: si::Time,
+    /// fuel type
+    #[serde(default)]
+    pub fuel_type: Option<FuelType>,
     /// energy capacity
     pub energy_capacity: si::Energy,
     /// Fuel and tank specific energy
-    pub(in super::super) specific_energy: Option<si::SpecificEnergy>,
+    pub(crate) specific_energy: Option<si::SpecificEnergy>,
     /// Mass of fuel storage
     #[serde(default)]
-    pub(in super::super) mass: Option<si::Mass>,
+    pub(crate) mass: Option<si::Mass>,
     // TODO: add state to track fuel level and make sure mass changes propagate up to vehicle level,
     // which should then include vehicle mass in state
 }
@@ -40,6 +50,7 @@ impl FuelStorage {
     pub fn new(
         pwr_out_max: si::Power,
         pwr_ramp_lag: si::Time,
+        fuel_type: Option<FuelType>,
         energy_capacity: si::Energy,
         specific_energy: Option<si::SpecificEnergy>,
         mass: Option<si::Mass>,
@@ -47,6 +58,7 @@ impl FuelStorage {
         let mut fs = Self {
             pwr_out_max,
             pwr_ramp_lag,
+            fuel_type,
             energy_capacity,
             specific_energy,
             mass,

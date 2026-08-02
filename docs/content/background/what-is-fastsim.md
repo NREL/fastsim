@@ -9,17 +9,8 @@ FASTSim is used to answer common technology-assessment questions quickly, with f
 ## History
 
 :::{note}
-This section needs more detailed input
+This section is a stub. More information on FASTSim's history will be added soon.
 :::
-
-<!-- FASTSim started as an NLR vehicle powertrain analysis model focused on speed,
-accessibility, and broad scenario coverage. The 2015 SAE paper documents the
-core approach: use high-level component representations and drive-cycle
-simulation to compare powertrains quickly.
-
-NLR's 2021 validation report then formalized FASTSim's modeling philosophy as
-an accuracy-complexity tradeoff, with FASTSim occupying a practical "sweet
-spot" for large batch analysis and real-world cycle studies. -->
 
 Today, the actively maintained [GitHub page](https://github.com/NatLabRockies/fastsim) houses the latest version of the open-source FASTSim Python package, with core logic written in Rust for maximum simulation speed, modeling flexibility, and runtime stability guarantees.
 Releases are made to the [PyPI](https://pypi.org/project/fastsim) (Python Package Index) for easy distribution and installation via `pip`. The [NLR.gov FASTSim homepage](https://www.nlr.gov/transportation/fastsim) distributes the legacy Excel and Python-only versions and describes FASTSim's extensive publication history.
