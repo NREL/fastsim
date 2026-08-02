@@ -22,7 +22,9 @@ activate
 activate.sh
 
 # pixi environments
-.pixi
+.pixi/*
+!.pixi/config.toml
+
 *.egg-info
 *.code-workspace
 .github/copilot-instructions.md
