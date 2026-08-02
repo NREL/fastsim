@@ -4,7 +4,8 @@ members = [
     "fastsim-core",                     # pure rust core with optional pyo3 feature
     "fastsim-core/fastsim-proc-macros",
     "fastsim-py",                       # python module exposing fastsim-core
-    "fastsim-cli",                      # CLI apps
+    "fastsim-cli",                      # command line interface for fastsim-core
+    "fastsim-schema",                   # schema for vehicle databases
 ]
 resolver = "2"
 
@@ -20,8 +21,11 @@ opt-level = 3
 
 [workspace.dependencies]
 document-features = "0.2.10"
-fastsim-core = { path = "fastsim-core" }
+fastsim-core = { path = "fastsim-core", version = "3.1.0" }
+fastsim-proc-macros = { path = "fastsim-core/fastsim-proc-macros", version = "3.1.0" }
+fastsim-schema = { path = "fastsim-schema", version = "0.1.0" }
 anyhow = "1.0.71"
+serde = { version = "1.0.136", features = ["derive"] }
 pyo3 = "0.29.0"
 thiserror = "2.0.11"
 uom = { version = "0.38.0", features = ["use_serde"] }

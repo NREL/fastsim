@@ -36,7 +36,7 @@ pub struct Vehicle {
     pub min_fastsim_version: Version,
     /// Where in the database this vehicle lives, if applicable
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub db_path: Option<database::Schema>,
+    pub db_path: Option<database::VehicleSchema>,
     /// Documentation (e.g. how this file was generated, calibration details)
     pub doc: Option<String>,
     /// Vehicle year (e.g. 2020, 2025)
@@ -247,7 +247,7 @@ impl Vehicle {
     pub fn new(
         name: String,
         min_fastsim_version: Option<Version>,
-        db_path: Option<database::Schema>,
+        db_path: Option<database::VehicleSchema>,
         doc: Option<String>,
         year: Option<String>,
         make: Option<String>,

@@ -105,6 +105,10 @@ libcurl = "*"
 pkg-config = "*"
 uv = "*"
 
+[tool.pixi.feature.wasm.dependencies]
+rust-std-wasm32-unknown-unknown = "*"
+nodejs = "26.4.*"  # for `wasm-pack test --node`; version matches the docs feature
+
 # Explicit release marker — redundant with [tool.maturin] profile = "release" but
 # makes the intent unambiguous per environment.
 [tool.pixi.feature.profile-release.activation.env]
@@ -131,12 +135,15 @@ docs = { features = [
     "build",
     "profile-debug",
 ], solve-group = "default" }
+# WASM artifact for fastsim-schema. wasm-pack controls optimization via task flags.
+wasm = { features = ["wasm", "build"], solve-group = "default" }
 # Day-to-day iteration (direnv default): debug profile on env install/rebuild.
 dev = { features = [
     "dev",
     "build",
     "test",
     "docs",
+    "wasm",
     "profile-debug",
 ], solve-group = "default" }
 
@@ -158,6 +165,25 @@ py-test-xdist = { cmd = "pixi run -e build pytest -v -n auto --dist=loadscope" }
 
 docs = { cmd = "jupyter book start --execute", cwd = "docs", default-environment = "dev" }
 build-docs = { cmd = "jupyter book build --strict --html --execute", cwd = "docs", default-environment = "dev" }
+
+# One-time (or version-bump-triggered) setup: installs wasm-pack + a
+# version-matched wasm-bindgen-cli. Not conda-installable as far as could be
+# confirmed, so these go through cargo install inside the wasm env instead.
+wasm-setup = "cargo install wasm-pack wasm-bindgen-cli --locked"
+# Sanity check that wasm-bindgen (Cargo.toml) and wasm-bindgen-cli (installed
+# via wasm-setup) agree — mismatches are the single most common wasm-pack
+# failure and are otherwise a confusing error to debug blind.
+wasm-check-versions = { cmd = """
+  cargo tree -p fastsim-schema --features wasm -i wasm-bindgen | head -n 1
+  wasm-bindgen --version
+""" }
+# Verifies fastsim-schema actually compiles for wasm32-unknown-unknown and
+# its wasm_bindgen_test suite passes. Cheap — no fastsim-core dependency,
+# single small crate — safe to run on every relevant PR.
+wasm-test = "wasm-pack test --node fastsim-schema --no-default-features --features wasm"
+# Produces the actual pkg/ output (wasm binary + JS glue) for local
+# inspection/manual embedding tests. Not wired to any publish step yet.
+wasm-build = "wasm-pack build fastsim-schema --target web --out-dir pkg -- --no-default-features --features wasm"
 
 # fmt = "ruff format"
 # lint = "pylint"
