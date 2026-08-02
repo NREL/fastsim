@@ -114,7 +114,7 @@ pt_type:
         energy_loss_joules: []
       save_interval: 1
     pt_cntrl:
-      StopStart:
+      StartStop:
         fc_min_time_on_seconds: 5.0
         temp_fc_forced_on_kelvin: ~
         temp_fc_allowed_off_kelvin: ~

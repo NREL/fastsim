@@ -21,6 +21,7 @@ dependencies = [
     "pandas>=2.1.2, <=2.3.2",
     "polars~=1.4",
     "matplotlib~=3.3",
+    "plotly~=6.0",
     "numpy>=1.18, <=2.3.2",
     "seaborn>=0.11.0,<13.2",
     "typing_extensions~=4.12",
@@ -44,39 +45,24 @@ Homepage = "https://www.nlr.gov/transportation/fastsim"
 
 [dependency-groups]
 # Internal groups for development, CI/CD, testing, documentation purposes
-build = [
-    "maturin~=1.8",
-]
-release = [
-    {include-group = "build"},
-    "twine",
-]
+build = ["maturin~=1.8"]
 test = [
-    {include-group = "build"},
+    { include-group = "build" },
     "ruff>=0.11.9",
-    "pytest~=8.3",
+    "pytest>=9.1,<10.0",
     "memory_profiler~=0.61.0",
+    "nbformat>=4.2.0",
+    "nbmake",
+    "pytest-xdist",
 ]
-wheels = [
-    {include-group = "build"},
-    {include-group = "test"},
-    "build",
-    "cibuildwheel",
-]
-docs = [
-    "jupyter-book>=2.0.0",
-    "nbformat",
-]
+docs = ["jupyter-book>=2.0.0", "nbformat>=4.2.0"]
 dev = [
-    {include-group = "build"},
-    {include-group = "release"},
-    {include-group = "test"},
-    {include-group = "wheels"},
-    {include-group = "docs"},
+    { include-group = "build" },
+    { include-group = "test" },
+    { include-group = "docs" },
     "pylsp-mypy>=0.7.0",
     "pylsp-rope>=0.1.17",
     "python-lsp-server~=1.10",
-    "plotly~=6.0",
     "deepdiff>=8.4.2",
 ]
 
@@ -116,28 +102,75 @@ nodejs = "26.4.*"
 
 [tool.pixi.feature.build.dependencies]
 rust = ">=1.47.0"
-
-[tool.pixi.feature.wheels.dependencies]
 zlib = "*"
 
+# Explicit release marker — redundant with [tool.maturin] profile = "release" but
+# makes the intent unambiguous per environment.
+[tool.pixi.feature.profile-release.activation.env]
+MATURIN_PEP517_ARGS = "--profile release"
+
+# Override the [tool.maturin] profile = "release" default for environments where
+# fast rebuilds matter more than runtime performance. Only needed for dev.
+[tool.pixi.feature.profile-debug.activation.env]
+MATURIN_PEP517_ARGS = "--profile dev"
+
 [tool.pixi.environments]
-default = { solve-group = "default" }
-build = { features = ["build"], solve-group = "default" }
-release = { features = ["release", "build"], solve-group = "default" }
-test = { features = ["test", "build"], solve-group = "default" }
-wheels = { features = ["wheels", "build", "test"], solve-group = "default" }
-docs = { features = ["docs", "build"], solve-group = "default" }
-dev = { features = ["dev", "build", "release", "test", "wheels", "docs"], solve-group = "default" }
+# Install from source: optimized for runtime performance.
+default = { features = ["build", "profile-release"], solve-group = "default" }
+# CI: rust checks + python tests. Debug profile favors compile speed; cibw handles release wheels.
+build = { features = [
+    "build",
+    "test",
+    "profile-debug",
+], solve-group = "default" }
+# Docs: notebooks execute against release fastsim for accurate performance output.
+docs = { features = [
+    "docs",
+    "build",
+    "profile-release",
+], solve-group = "default" }
+# Day-to-day iteration (direnv default): debug profile on env install/rebuild.
+dev = { features = [
+    "dev",
+    "build",
+    "test",
+    "docs",
+    "profile-debug",
+], solve-group = "default" }
 
 [tool.pixi.tasks]
-cargo_test = "cargo test --release"
-py_build = "maturin develop --release"
-py_test = { cmd = "pixi run -e test pytest -v", depends-on = ["py_build"] }
-build_and_test = { depends-on = ["cargo_test", "py_test"] }
-docs = { cmd = "python demos_to_notebooks.py && jupyter book start --execute", cwd = "docs", default-environment = "docs" }
-fmt = "ruff format"
+# Full local dev-loop check: replaces build_and_test.sh.
+check = { depends-on = [
+    "check-versions",
+    "rust-check",
+    "py-build-dev",
+    "py-test",
+] }
+rust-check = "cargo fmt --check && cargo test --release"
+
+# Check consistency of versions across project
+check-versions = "python python/fastsim/check_versions.py"
+# Release build: use for local performance checks.
+py-build = "maturin develop --release"
+# Debug build: flag is explicit because [tool.maturin] profile is read by maturin develop directly.
+py-build-dev = "maturin develop --profile dev"
+# Runs pytest in the build env.
+py-test = { cmd = "pixi run -e build pytest -v" }
+
+docs = { cmd = "jupyter book start --execute", cwd = "docs", default-environment = "dev" }
+build-docs = { cmd = "jupyter book build --strict --html --execute", cwd = "docs", default-environment = "dev" }
+
+# fmt = "ruff format"
 # lint = "pylint"
 # style = { depends-on = ["fmt", "lint"] }
+
+[tool.pytest.ini_options]
+# Pytest configuration for running notebook tests with nbmake and parallel execution
+addopts = "--nbmake --nbmake-timeout=600"
+filterwarnings = [
+    # memory_profiler 0.61.0 uses deprecated asyncio.iscoroutinefunction (fixed in a future release)
+    "ignore::DeprecationWarning:memory_profiler",
+]
 
 [tool.ruff]
 # Specify Python version

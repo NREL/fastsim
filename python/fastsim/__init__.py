@@ -3,6 +3,7 @@
 import inspect
 import re
 import sys
+import warnings
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
@@ -10,6 +11,9 @@ from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
 import polars as pl
+
+import plotly.graph_objs as go
+import plotly.express as px
 
 import fastsim
 
@@ -121,7 +125,6 @@ def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict:
         return cast(dict[Any, Any], pydict)
     else:
         hist_len = get_hist_len(pydict)
-        assert hist_len is not None, "Cannot be flattened"
         flat_dict = get_flattened(pydict, hist_len)
         return flat_dict
 
@@ -150,7 +153,7 @@ def get_hist_len(obj: dict) -> int | None:
     return None
 
 
-def get_flattened(obj: dict | list, hist_len: int, prepend_str: str = "") -> dict:
+def get_flattened(obj: dict | list, hist_len: int | None, prepend_str: str = "") -> dict:
     """
     Flatten and return dictionary, separating keys and indices with a `"."`
 
@@ -163,14 +166,18 @@ def get_flattened(obj: dict | list, hist_len: int, prepend_str: str = "") -> dic
     if isinstance(obj, dict):
         for k, v in obj.items():
             new_key = k if (prepend_str == "") else prepend_str + "." + k
-            if isinstance(v, dict) or (isinstance(v, list) and len(v) != hist_len):
+            if isinstance(v, dict) or (
+                isinstance(v, list) and hist_len is not None and len(v) != hist_len
+            ):
                 flat.update(get_flattened(v, hist_len, prepend_str=new_key))
             else:
                 flat[new_key] = v
     elif isinstance(obj, list):
         for i, v in enumerate(obj):
             new_key = i if (prepend_str == "") else prepend_str + "." + f"[{i}]"
-            if isinstance(v, dict) or (isinstance(v, list) and len(v) != hist_len):
+            if isinstance(v, dict) or (
+                isinstance(v, list) and hist_len is not None and len(v) != hist_len
+            ):
                 flat.update(get_flattened(v, hist_len, prepend_str=new_key))
             else:
                 flat[new_key] = v
@@ -212,21 +219,43 @@ def from_pydict(cls, pydict: dict, data_fmt: str = "msg_pack", skip_init: bool =
 
 def to_dataframe(
     self,
-    pandas: bool = False,
+    backend: str = "pandas",
     allow_partial: bool = False,
+    pandas: Optional[bool] = None,
 ) -> pd.DataFrame | pl.DataFrame:
     """
-    Return time series results from fastsim object as a Polars or Pandas dataframe.
+    Return time series results from fastsim object as a pandas or polars dataframe.
 
     # Arguments
-    - `pandas`: returns pandas dataframe if True; otherwise, returns polars dataframe by default
+    - `backend`: dataframe backend, one of "pandas" (default) or "polars"
     - `allow_partial`: tries to return dataframe of length equal to solved time
         steps if simulation fails early
+    - `pandas`: deprecated alias for backend selection (`True`->"pandas", `False`->"polars")
     """
+    if isinstance(backend, bool):
+        pandas = backend
+        backend = "pandas" if backend else "polars"
+
+    backend = backend.lower()
+    if backend not in {"pandas", "polars"}:
+        raise ValueError("`backend` must be one of {'pandas', 'polars'}")
+
+    if pandas is not None:
+        warnings.warn(
+            "`pandas` is deprecated for `to_dataframe`; use `backend='pandas'` or "
+            "`backend='polars'` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        pandas_backend = "pandas" if pandas else "polars"
+        if backend != pandas_backend:
+            raise ValueError("Conflicting `backend` and deprecated `pandas` arguments")
+
+    use_pandas = backend == "pandas"
+
     obj_dict = self.to_pydict(flatten=True)
     history_keys = ["history.", "cyc."]
     hist_len = get_hist_len(obj_dict)
-    assert hist_len is not None
 
     history_dict: dict[str, Any] = {}
     for k, v in obj_dict.items():
@@ -238,7 +267,7 @@ def to_dataframe(
         cutoff = min(history_dict.values())
 
         df: pl.DataFrame | pd.DataFrame
-        if not pandas:
+        if not use_pandas:
             try:
                 df = pl.DataFrame({col: val[:cutoff] for col, val in history_dict.items()})
             except Exception as err:
@@ -250,7 +279,7 @@ def to_dataframe(
                 raise Exception(f"{err}\n`save_interval` may not be uniform")
 
     else:
-        if not pandas:
+        if not use_pandas:
             try:
                 df = pl.DataFrame(history_dict)
             except Exception as err:
@@ -269,9 +298,112 @@ def to_dataframe(
     return df
 
 
+def _plot_cycle(
+    self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True
+) -> go._figure.Figure:
+    cyc_dict = self.to_pydict()
+    if x not in cyc_dict:
+        raise ValueError(f"Column '{x}' not found in the drive cycle data")
+    if y not in cyc_dict:
+        raise ValueError(f"Column '{y}' not found in the drive cycle data")
+
+    if x == "time_seconds":
+        x_label = "Time [s]"
+    elif x == "dist_meters":
+        x_label = "Distance [m]"
+    else:
+        x_label = x
+
+    if y == "speed_meters_per_second":
+        y_label = "Speed [m/s]"
+    elif y == "grade":
+        y_label = "Road Grade [-]"
+    else:
+        y_label = y
+
+    x_values = np.asarray(cyc_dict[x])
+    y_values = np.asarray(cyc_dict[y])
+    fig = px.line(
+        x=x_values,
+        y=y_values,
+        labels={"x": x, "y": y},
+    )
+    fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
+    if show:
+        fig.show()
+    return fig
+
+
+@classmethod
+def _vehicle_from_db(
+    cls,
+    db_path_or_url: str | Path | None = None,
+    schema: int = 1,
+    **kwargs: Any,
+) -> Self:
+    if isinstance(db_path_or_url, Path):
+        db_path_or_url = str(db_path_or_url)
+    skip_init = bool(kwargs.get("skip_init", False))
+    extension = str(kwargs.get("extension", "yaml"))
+
+    # Schema-agnostic: parse path and extension from path string if provided
+    path: str | None = None
+    if "path" in kwargs:
+        path = str(kwargs["path"])
+        last_segment = path.split("/")[-1]
+        if "." in last_segment:
+            if "extension" in kwargs:
+                raise ValueError(
+                    "Cannot specify extension both in path "
+                    "and as a separate parameter. Use one or the other."
+                )
+            path, extension = path.rsplit(".", 1)
+
+    if schema == 1:
+        if path is not None:
+            return cls.from_db_path_v1(
+                db_path_or_url,
+                path,
+                extension,
+                skip_init,
+            )
+
+        # Fields mode
+        required = ("powertrain", "make", "model", "year", "revision")
+        missing = [key for key in required if key not in kwargs]
+        if missing:
+            raise TypeError(f"Missing required kwargs: {', '.join(missing)}")
+
+        fastsim_version = int(kwargs.get("fastsim_version", __version__.split(".", 1)[0].strip()))
+        powertrain = str(kwargs["powertrain"])
+        make = kwargs["make"]
+        model = kwargs["model"]
+        year = kwargs["year"]
+        variant = str(kwargs.get("variant", "base"))
+        revision = int(str(kwargs["revision"]).strip().removeprefix("r").removeprefix("R"))
+
+        return cls.from_db_fields_v1(
+            db_path_or_url,
+            fastsim_version,
+            powertrain,
+            make,
+            model,
+            year,
+            variant,
+            revision,
+            extension,
+            skip_init,
+        )
+
+    raise ValueError(f"Unsupported schema: {schema}. Only schema=1 is currently supported.")
+
+
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
 for item in ACCEPTED_RUST_STRUCTS:
     setattr(getattr(fastsim, item), "to_pydict", to_pydict)
     setattr(getattr(fastsim, item), "from_pydict", from_pydict)
     setattr(getattr(fastsim, item), "to_dataframe", to_dataframe)
+
+setattr(Cycle, "plot", _plot_cycle)
+setattr(Vehicle, "from_db", _vehicle_from_db)

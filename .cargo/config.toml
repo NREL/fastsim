@@ -1,0 +1,5 @@
+[env]
+# serde's deny_unknown_fields visitor generates large FIELDS arrays for structs
+# with many fields (e.g. VehicleState with full SI quantity helper support).
+# 16 MB is sufficient; the default Rust test-thread stack of 8 MB is not.
+RUST_MIN_STACK = "16777216"

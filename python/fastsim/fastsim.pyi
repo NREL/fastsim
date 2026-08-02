@@ -2,6 +2,7 @@ from __future__ import annotations  # noqa: I001
 from typing import Self, Any
 from pathlib import Path
 import pandas as pd
+import polars as pl
 
 class SerdeAPI:
     """Base class that provides serialization/deserialization and initialization methods."""
@@ -108,6 +109,14 @@ class Cycle(SerdeAPI):
     @classmethod
     def list_resources(cls) -> list[str]: ...
     def len(self) -> int: ...
+    def plot(self, x="time_seconds", y="speed_meters_per_second", show=True) -> Any | None:
+        """
+        Plot a drive cycle (default: speed vs. time) with Plotly.
+
+        x-axis options: ["time_seconds", "dist_meters"]
+        y-axis options: ["speed_meters_per_second", "grade"]
+        """
+        ...
 
 class CycleElement(SerdeAPI): ...
 
@@ -133,6 +142,92 @@ class Vehicle(SerdeAPI):
     def list_resources(cls) -> list[str]: ...
     @classmethod
     def from_f2_file(cls, file_path: str | Path) -> Vehicle: ...
+    @classmethod
+    def from_db_path_v1(
+        cls,
+        db_path_or_url: str | None,
+        path: str,
+        extension: str,
+        skip_init: bool = False,
+    ) -> Vehicle: ...
+    @classmethod
+    def from_db_fields_v1(
+        cls,
+        db_path_or_url: str | None,
+        fastsim_version: int,
+        powertrain: str,
+        make: str,
+        model: str,
+        year: str,
+        variant: str,
+        revision: int,
+        extension: str,
+        skip_init: bool = False,
+    ) -> Vehicle: ...
+    @classmethod
+    def from_db(
+        cls,
+        db_path_or_url: str | Path | None = None,
+        schema: int = 1,
+        **kwargs: Any,
+    ) -> Vehicle:
+        """Load a vehicle from a schema-versioned FASTSim vehicle database.
+
+        Parameters
+        ----------
+        db_path_or_url : str | None, default None
+            Database source selector (auto-detects local vs. remote):
+
+            - ``None``: load from default remote database
+              (https://github.com/NatLabRockies/fastsim-vehicles)
+            - ``"http://..."`` or ``"https://..."``: load from remote database base URL
+            - any other string: treat as local filesystem database path
+
+        schema : int, default 1
+            Database schema version. Currently only ``schema=1`` is supported.
+
+        **kwargs
+            **Path-string mode** (schema-agnostic; takes precedence over fields mode):
+
+            - ``path`` (str): pre-serialized schema path string, e.g.
+                            ``"v1/fastsim-3/conv/ford/fusion/2012/base/r1"``.
+              The file extension may be embedded directly in the path
+                            (e.g. ``"v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml"``),
+              or supplied separately via ``extension``. Specifying both raises
+              a ``ValueError``.
+            - ``extension`` (str, optional): file extension when not embedded in
+              ``path``, e.g. ``"yaml"`` or ``"json"``. Defaults to ``"yaml"``.
+            - ``skip_init`` (bool, optional): skip vehicle initialization after
+              loading. Defaults to ``False``.
+
+            **Individual fields mode** (schema=1 only; used when ``path`` is not provided):
+
+            - ``powertrain`` (str): powertrain type, e.g. ``"conv"``, ``"hev"``, ``"phev"``, ``"bev"``
+            - ``make`` (str): vehicle make, e.g. ``"Ford"``, ``"Tesla"``
+            - ``model`` (str): vehicle model, e.g. ``"F-150"``, ``"Model-3"``
+            - ``year`` (str): vehicle model year or range, e.g. ``"2022"``, ``"2020-2023"``
+            - ``revision`` (str | int): model revision, e.g. ``1``, ``"r1"``, or ``"R1"``
+            - ``variant`` (str, optional): variant descriptor, e.g. ``"base"``. Defaults to ``"base"``.
+            - ``extension`` (str, optional): file extension. Defaults to ``"yaml"``.
+            - ``fastsim_version`` (int, optional): major FASTSim version. Defaults to the installed major version.
+            - ``skip_init`` (bool, optional): skip vehicle initialization after loading. Defaults to ``False``.
+
+        Returns
+        -------
+        Vehicle
+            Loaded vehicle instance.
+
+        Raises
+        ------
+        ValueError
+            If ``schema`` is not 1 (fields mode only), if required fields are
+            missing, or if ``extension`` is specified both in ``path`` and as a
+            separate kwarg.
+        RuntimeError
+            If remote loading is requested but web feature is not enabled.
+
+        """
+        ...
     def clear(self) -> None: ...
     def reset(self) -> None: ...
     def reset_cumulative(self) -> None: ...
@@ -150,7 +245,11 @@ class SimDrive(SerdeAPI):
     def __new__(cls, veh: Vehicle, cyc: Cycle, sim_params: SimParams | None = None) -> SimDrive: ...
     def walk_once(self) -> bool: ...
     def walk(self) -> bool: ...
-    def to_dataframe(self, allow_partial: bool = False) -> pd.DataFrame: ...
+    def to_dataframe(
+        self,
+        backend: str = "pandas",
+        allow_partial: bool = False,
+    ) -> pd.DataFrame | pl.DataFrame: ...
     def to_fastsim2(self) -> Any: ...
     def clear(self) -> None: ...
     def reset(self) -> None: ...
