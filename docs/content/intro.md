@@ -1,41 +1,59 @@
-# FASTSim
+---
+site:
+  hide_title_block: true
+---
 
-:::{image} ../assets/fastsim-icon.svg
+<div style="height: 2rem;"></div>
+
+:::{image} ../assets/edit-fastsim-icon.png
 :alt: FASTSim logo
-:width: 220px
+:width: 300px
 :align: center
 :::
 
-The Future Automotive Systems Technology Simulator (FASTSim) provides a simple
-way to compare powertrains and estimate the impact of technology improvements
-on light-, medium-, and heavy-duty vehicle efficiency, performance, cost, and
-battery life.
+# FASTSim Documentation
 
-FASTSim is fast. Simulating a second-by-second standard drive cycle takes under
-a tenth of a second, estimating a vehicle's efficiency and related metrics takes
-less than ten seconds, and comparing powertrains on efficiency and cost
-completes in under five minutes.
+FASTSim (**Future Automotive Systems Technology Simulator**) is a vehicle simulation tool for evaluating the efficiency and performance of on-road vehicles.
+Developed by the National Laboratory of the Rockies (NLR), it provides fast, accurate estimates of powertrain performance and energy consumption.
+FASTSim models powertrain technologies from conventional fuel-burning vehicles to hybrids and battery electric vehicles, and has been used to simulate light-duty passenger cars, two-wheelers, and a wide variety of medium- and heavy-duty vocational vehicles.
 
-It can represent a wide range of powertrains, including conventional vehicles
-(spark ignition, Atkinson, diesel, and hybrid diesel), electric-drive vehicles
-(hybrid, plug-in hybrid, and all-electric), and hydrogen fuel cell vehicles.
-FASTSim ships with more than 20 vehicles and a set of standard U.S., European,
-and Japanese drive cycles, and you can add your own vehicles and drive cycles.
+FASTSim is designed for rapid analysis, making it practical to run many
+simulations and compare technology scenarios across vehicle classes and use
+cases. FASTSim outputs also feed other NLR tools, including:
+- [RouteE](https://www.nlr.gov/transportation/route-energy-prediction-model):
+  an energy prediction tool and energy-aware routing engine
+- [T3CO](https://www.nlr.gov/transportation/t3co):
+  a medium- and heavy-duty vehicle total cost of ownership assessment tool
+- [ADOPT](https://www.nlr.gov/transportation/adopt):
+  a technology-driven consumer choice and vehicle market adoption model
 
-:::{note}
-🚧 This page is a work in progress. Still to come: project context and related
-NLR tools and projects, and a short note on the project structure (a Rust core
-with a Python interface).
-:::
+FASTSim models conventional vehicles, hybrids, plug-in hybrids,
+and battery electric vehicles over a set of standard regulatory drive cycles.
+You can also define custom vehicles and custom drive cycles to simulate
+any on-road vehicle over realistic scenarios.
+
+For information on FASTSim's history and modeling philosophy, see the
+[Background](background/what-is-fastsim.md) section.
+
+For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](https://github.com/NatLabRockies/fastsim-vehicles).
 
 ## Get Started
 
-- [What is FASTSim?](what-is-fastsim.md): what the tool is and how it models vehicles
-- [Installation](installation.md): install with pip or build from source
-- [Getting Started](../demo_notebooks/getting_started/demo_getting_started.ipynb): load a vehicle, run a simulation, inspect results
+- [](installation.md): install FASTSim and dependencies
+- [](getting-started.ipynb): run your first simulation
+- [](user-guide/user-guide.md):
+    - [Modeling Vehicles](user-guide/vehicle-models/vehicle.md): define and configure vehicle models
+    - [Drive Cycles](user-guide/drive-cycles/drive-cycle.ipynb): work with built-in and custom cycles
+    - [Running Simulations](user-guide/running-simulations/simdrive.ipynb): execute simulations and inspect results
 
-## Learn More and Get in Touch
+## Learn More
 
-- Project page: [nlr.gov/transportation/fastsim](https://www.nlr.gov/transportation/fastsim)
-- Source code: [github.com/NatLabRockies/fastsim](https://github.com/NatLabRockies/fastsim)
-- Questions or feedback: email [fastsim@nlr.gov](mailto:fastsim@nlr.gov) or open an issue on GitHub
+- GitHub Repository: https://github.com/NatLabRockies/fastsim
+- FASTSim Vehicle Database: https://github.com/NatLabRockies/fastsim-vehicles
+- Documentation: https://natlabrockies.github.io/fastsim
+- Release Notes: https://github.com/NatLabRockies/fastsim/releases
+- NLR FASTSim Homepage: https://www.nlr.gov/transportation/fastsim
+
+## Contact
+- Open a GitHub issue at https://github.com/NatLabRockies/fastsim/issues.
+- Email [fastsim@nlr.gov](mailto:fastsim@nlr.gov) to reach the FASTSim team directly.

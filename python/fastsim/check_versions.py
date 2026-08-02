@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-"""
-This script reads the FASTSim project version from `pyproject.toml` and compares it
-to the versions declared in the Cargo.toml files for the workspace packages, ensuring
-that all versions are consistent.
-It also verifies that the `fastsim-proc-macros` dependency in
+"""Reads the FASTSim project version from `pyproject.toml` and compares it
+to the versions declared in the Cargo.toml files for the workspace packages,
+ensuring all versions are consistent.
+
+Also verifies that the `fastsim-proc-macros` dependency in
 `fastsim-core/Cargo.toml` has the correct path and version.
 """
 
@@ -21,16 +21,21 @@ except ModuleNotFoundError:
 
 
 def load_pyproject_version(pyproject_path: pathlib.Path) -> str:
+    """Load and return the project version string from pyproject.toml."""
     pyproject = load_toml(pyproject_path)
     return pyproject["project"]["version"]
 
 
 def load_toml(path: pathlib.Path) -> dict:
+    """Load and return a TOML file as a dict."""
     with path.open("rb") as handle:
         return tomllib.load(handle)
 
 
-def load_workspace_packages(repo_root: pathlib.Path) -> tuple[pathlib.Path, list[tuple[str, str, str]]]:
+def load_workspace_packages(
+    repo_root: pathlib.Path,
+) -> tuple[pathlib.Path, list[tuple[str, str, str]]]:
+    """Return the workspace root and a sorted list of (manifest_path, name, version) tuples."""
     result = subprocess.run(
         ["cargo", "metadata", "--no-deps", "--format-version", "1"],
         cwd=repo_root,
@@ -54,7 +59,11 @@ def load_workspace_packages(repo_root: pathlib.Path) -> tuple[pathlib.Path, list
     return workspace_root, sorted(package_versions)
 
 
-def check_fastsim_proc_macros_dependency(repo_root: pathlib.Path, expected_version: str) -> list[str]:
+def check_fastsim_proc_macros_dependency(
+    repo_root: pathlib.Path,
+    expected_version: str,
+) -> list[str]:
+    """Return a list of problems with the fastsim-proc-macros dependency declaration."""
     manifest_path = repo_root / "fastsim-core" / "Cargo.toml"
     manifest = load_toml(manifest_path)
     dependencies = manifest.get("dependencies", {})
@@ -62,7 +71,8 @@ def check_fastsim_proc_macros_dependency(repo_root: pathlib.Path, expected_versi
 
     if not isinstance(proc_macros_dependency, dict):
         return [
-            "fastsim-core/Cargo.toml: dependency 'fastsim-proc-macros' must be declared as an inline table"
+            "fastsim-core/Cargo.toml: dependency 'fastsim-proc-macros'"
+            " must be declared as an inline table",
         ]
 
     problems = []
@@ -71,19 +81,21 @@ def check_fastsim_proc_macros_dependency(repo_root: pathlib.Path, expected_versi
 
     if actual_path != "fastsim-proc-macros":
         problems.append(
-            "fastsim-core/Cargo.toml: dependency 'fastsim-proc-macros' must set path = \"fastsim-proc-macros\""
+            "fastsim-core/Cargo.toml: dependency 'fastsim-proc-macros'"
+            ' must set path = "fastsim-proc-macros"',
         )
 
     if actual_version != expected_version:
         problems.append(
             "fastsim-core/Cargo.toml: dependency 'fastsim-proc-macros' must set "
-            f"version = \"{expected_version}\""
+            f'version = "{expected_version}"',
         )
 
     return problems
 
 
 def main() -> int:
+    """Check version consistency across pyproject.toml and all Cargo.toml files."""
     repo_root = pathlib.Path(__file__).resolve().parents[2]
     pyproject_path = repo_root / "pyproject.toml"
     expected_version = load_pyproject_version(pyproject_path)
@@ -93,7 +105,8 @@ def main() -> int:
     for manifest_path, package_name, cargo_version in package_versions:
         if cargo_version != expected_version:
             problems.append(
-                f"{manifest_path}: package {package_name!r} has version {cargo_version}, expected {expected_version}"
+                f"{manifest_path}: package {package_name!r} has version"
+                f" {cargo_version}, expected {expected_version}",
             )
 
     problems.extend(check_fastsim_proc_macros_dependency(repo_root, expected_version))
