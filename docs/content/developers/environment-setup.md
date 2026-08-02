@@ -41,7 +41,7 @@ The `dev` environment installs all tools (Rust compiler, maturin, pytest, ruff, 
 
 ### Running Tests
 
-Use the `check` task to run the full local check suite (version consistency, `cargo fmt --check`, `cargo test --release`, a debug-profile maturin build, and pytest with nbmake):
+Use the `check` task to run the full local check suite (version consistency, `cargo fmt --check`, `cargo test`, a debug-profile maturin build, and pytest with nbmake using pytest-xdist):
 
 ```sh
 pixi run check
@@ -51,12 +51,12 @@ All tasks:
 
 | Task | What it does |
 |------|--------------|
-| `check` | Full developer check suite |
-| `cargo-test` | `cargo fmt --check` + `cargo test --release` |
-| `py-build` | `maturin develop --release` (explicit release build) |
-| `py-build-dev` | `maturin develop --profile dev` (fast debug build) |
-| `py-test` | `pytest -v` inside the `build` env, with notebook coverage |
-| `py-test-xdist` | `pytest -v -n auto` inside the `build` env for parallel tests, with notebook coverage |
+| `check` | Full developer check suite (runs `check-versions`, `rust-check`, `py-build`, and `py-test-xdist`) |
+| `rust-check` | `cargo fmt --check` + `cargo test` |
+| `py-build` | `maturin develop --uv --profile dev` (fast debug build) |
+| `py-build-release` | `maturin develop --uv --release` (explicit release build) |
+| `py-test` | `pytest -v` inside the `build` env (serial), with notebook coverage |
+| `py-test-xdist` | `pytest -v -n auto --dist=loadscope` inside the `build` env for parallel tests, with notebook coverage |
 | `docs` | Start a live-reloading Jupyter Book server |
 | `build-docs` | Full docs build (strict, HTML) |
 
