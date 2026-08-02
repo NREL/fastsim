@@ -11,8 +11,7 @@ use std::str::FromStr;
 
 /// A single entry in the vehicle index (i.e. `vehicles.jsonl`).
 ///
-/// Purely path-derived — no vehicle content (mass, fuel type, etc.) lives here.
-/// Every field except `path` and `date_added` is redundant with `id` and exists
+/// Every field except `path` is redundant with `id` and exists
 /// only so consumers can filter without re-parsing `id` themselves.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct IndexEntryV1 {
