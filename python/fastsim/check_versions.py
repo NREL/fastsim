@@ -8,7 +8,7 @@ the versions declared in Cargo manifests for:
 - fastsim-core
 - fastsim-proc-macros
 
-It also verifies that the `fastsim-proc-macros` dependency declared in
+Also verifies that the `fastsim-proc-macros` dependency in
 `fastsim-core/Cargo.toml` has the correct path and version.
 """
 
@@ -42,7 +42,7 @@ def load_toml(path: pathlib.Path) -> dict:
 def load_workspace_packages(
     repo_root: pathlib.Path,
 ) -> tuple[pathlib.Path, list[tuple[str, str, str]]]:
-    """Return selected workspace package versions from cargo metadata."""
+    """Return the workspace root and a sorted list of (manifest_path, name, version) tuples."""
     result = subprocess.run(
         ["cargo", "metadata", "--no-deps", "--format-version", "1"],
         cwd=repo_root,
@@ -75,7 +75,7 @@ def check_fastsim_proc_macros_dependency(
     repo_root: pathlib.Path,
     expected_version: str,
 ) -> list[str]:
-    """Validate fastsim-core's fastsim-proc-macros path and version."""
+    """Return a list of problems with the fastsim-proc-macros dependency declaration."""
     manifest_path = repo_root / "fastsim-core" / "Cargo.toml"
     manifest = load_toml(manifest_path)
     dependencies = manifest.get("dependencies", {})
@@ -83,8 +83,8 @@ def check_fastsim_proc_macros_dependency(
 
     if not isinstance(proc_macros_dependency, dict):
         return [
-            "fastsim-core/Cargo.toml: dependency 'fastsim-proc-macros' "
-            "must be declared as an inline table",
+            "fastsim-core/Cargo.toml: dependency 'fastsim-proc-macros'"
+            " must be declared as an inline table",
         ]
 
     problems = []
@@ -93,8 +93,8 @@ def check_fastsim_proc_macros_dependency(
 
     if actual_path != "fastsim-proc-macros":
         problems.append(
-            "fastsim-core/Cargo.toml: dependency 'fastsim-proc-macros' "
-            'must set path = "fastsim-proc-macros"',
+            "fastsim-core/Cargo.toml: dependency 'fastsim-proc-macros'"
+            ' must set path = "fastsim-proc-macros"',
         )
 
     if actual_version != expected_version:
@@ -117,8 +117,8 @@ def main() -> int:
     for manifest_path, package_name, cargo_version in package_versions:
         if cargo_version != expected_version:
             problems.append(
-                f"{manifest_path}: package {package_name!r} has version "
-                f"{cargo_version}, expected {expected_version}",
+                f"{manifest_path}: package {package_name!r} has version"
+                f" {cargo_version}, expected {expected_version}",
             )
 
     problems.extend(check_fastsim_proc_macros_dependency(repo_root, expected_version))
