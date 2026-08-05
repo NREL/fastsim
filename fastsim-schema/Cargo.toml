@@ -3,8 +3,7 @@ name = "fastsim-schema"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
-# TODO: figure out FASTSim licensing
-# license = 
+license = "Apache-2.0"
 description = "Vehicle database schema for the fastsim-vehicles repository"
 authors = ["NREL/BEST/CIMS/TETA Group <fastsim@nlr.gov>"]
 homepage = "https://www.nlr.gov/transportation/fastsim"
