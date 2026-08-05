@@ -35,7 +35,11 @@ pub struct Vehicle {
     #[serde(default = "crate::current_fastsim_version")]
     pub min_fastsim_version: Version,
     /// Where in the database this vehicle lives, if applicable
-    #[serde(skip_serializing_if = "Option::is_none")]
+    // #[serde(
+    //     default,
+    //     skip_serializing_if = "Option::is_none",
+    //     with = "vehicle_utils::serde_db_path"
+    // )]
     pub db_path: Option<database::VehicleSchema>,
     /// Documentation (e.g. how this file was generated, calibration details)
     pub doc: Option<String>,

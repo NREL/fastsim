@@ -18,6 +18,7 @@ pub mod powertrain;
 pub mod powertrain_type;
 pub mod traits;
 pub mod vehicle_model;
+mod vehicle_utils;
 pub use bev::BatteryElectricVehicle;
 pub use chassis::Chassis;
 pub use conv::ConventionalVehicle;
