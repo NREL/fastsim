@@ -57,9 +57,16 @@ rust-check:
     cargo fmt --check
     cargo test --workspace --all-features
 
-# Editable-install the package (triggers the Rust build via the maturin PEP 517 backend) with test deps
+# Editable-install the package (triggers the Rust build via the maturin PEP 517 backend) with test deps.
+# Falls back to `uv pip` when the active python has no pip module (e.g. pixi envs, which ship uv but not pip).
+[unix]
 py-build:
-    pip install --group test -e .
+    #!/usr/bin/env sh
+    python -m pip install --group test -e . || uv pip install --group test -e .
+
+[windows]
+py-build:
+    python -m pip install --group test -e .; if ($LASTEXITCODE -ne 0) { uv pip install --group test -e . }
 
 # Run the Python test suite (including notebooks via nbmake), serially
 py-test:
