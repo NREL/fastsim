@@ -28,5 +28,6 @@ activate.sh
 *.egg-info
 *.code-workspace
 .github/copilot-instructions.md
+.github/agents/
 
 _build
