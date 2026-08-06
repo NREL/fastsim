@@ -10,6 +10,9 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 # than through a specific environment manager (pixi, uv, conda, ...) — bring your own active
 # environment, same as build_and_test.sh did.
 
+# Note: recipes do not install dependencies (except `setup`). If bringing your own environment,
+# install dependency group `dev` first.
+
 # One-time setup after cloning: install the pixi-managed dev environment and approve .envrc (macOS/Linux)
 setup: _setup-direnv
     pixi install -e dev
@@ -46,7 +49,7 @@ _setup-direnv:
     @echo "Note: direnv is not available on Windows — skipping."
 
 # Full local dev-loop check: version consistency → rust fmt/test → python build+install → python tests
-check: check-versions rust-check py-build py-test
+check: check-versions rust-check py-build py-test-xdist
 
 # Check consistency of versions across the project (Cargo.toml, pyproject.toml, etc.)
 check-versions:
@@ -57,16 +60,15 @@ rust-check:
     cargo fmt --check
     cargo test --workspace --all-features
 
-# Editable-install the package (triggers the Rust build via the maturin PEP 517 backend) with test deps.
-# Falls back to `uv pip` when the active python has no pip module (e.g. pixi envs, which ship uv but not pip).
-[unix]
+# Editable-install the package using an explicit dev build profile.
+# Uses maturin's `--uv` path directly, so no pip fallback is needed.
 py-build:
-    #!/usr/bin/env sh
-    python -m pip install --group test -e . || uv pip install --group test -e .
+    maturin develop --uv --profile dev
 
-[windows]
-py-build:
-    python -m pip install --group test -e .; if ($LASTEXITCODE -ne 0) { uv pip install --group test -e . }
+# Editable-install the package using a release build profile.
+# Uses maturin's `--uv` path directly, so no pip fallback is needed.
+py-build-release:
+    maturin develop --uv --profile release
 
 # Run the Python test suite (including notebooks via nbmake), serially
 py-test:
