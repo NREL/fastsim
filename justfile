@@ -1,3 +1,9 @@
+# Requires `just` (https://github.com/casey/just): a command runner, install with:
+#   macOS:   brew install just
+#   Linux:   sudo apt install just   (or see https://just.systems/man/en/packages.html)
+#   Windows: winget install --id Casey.Just
+# Then run `just --list` from the repo root to see available recipes.
+
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 # These recipes (other than `setup`) call cargo/python/pip/pytest/jupyter-book directly rather
