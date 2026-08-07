@@ -2,7 +2,7 @@
 
 The Future Automotive Systems Technology Simulator (**FASTSim**) is an open-source vehicle powertrain simulation tool for evaluating the efficiency and performance of on-road vehicles.
 Developed by the National Laboratory of the Rockies (NLR), it provides fast, credible estimates of powertrain performance and energy consumption.
-FASTSim models powertrain technologies from conventional internal-combustion vehicles to hybrids, plug-in hybrids, battery electric vehicles, and fuel-cell electric vehicles, and has been used to simulate light-duty passenger vehicles, two-wheelers, and a wide variety of medium- and heavy-duty vehicles.
+FASTSim models powertrain technologies from conventional internal-combustion vehicles to hybrids, plug-in hybrids, and battery electric vehicles, and has been used to simulate light-duty passenger vehicles, two-wheelers, and a wide variety of medium- and heavy-duty vehicles.
 
 FASTSim is used to answer common technology-assessment questions quickly, with fewer required inputs than high-fidelity physics models. It occupies a practical middle ground between basic efficiency assumptions and detailed component/control models. This page provides relevant context through the history and philosophy of the modeling approach and level of fidelity to real-world performance it aims to achieve.
 
