@@ -412,6 +412,8 @@ pub enum SimulationDataForLabel {
         veh_year: u32,
         udds_mpgge: f64,
         hwy_mpgge: f64,
+        /// Fuel storage usable energy in kWh
+        fs_energy_capacity_kwh: f64,
     },
     Bev {
         veh_year: u32,
@@ -789,6 +791,7 @@ pub fn calculate_label_fuel_economy(
         SimulationDataForLabel::Phev { .. } => true,
         SimulationDataForLabel::Bev { .. } => false,
     };
+    let is_bev = matches!(sim_data, SimulationDataForLabel::Bev { .. });
     // find year-based adjustment parameters
     let adj_params = if veh_year < 2017 {
         &phev_utilization_params.adj_coef_map["2008"]
@@ -801,6 +804,7 @@ pub fn calculate_label_fuel_economy(
         SimulationDataForLabel::ConvOrHev {
             udds_mpgge,
             hwy_mpgge,
+            fs_energy_capacity_kwh: fuel_storage_capacity_kwh,
             ..
         } => {
             // compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labUddsMpgge
@@ -820,6 +824,8 @@ pub fn calculate_label_fuel_economy(
                 1. / (adj_params.hwy_intercept + adj_params.hwy_slope / hwy_mpgge);
             label_fe.adj_comb_mpgge =
                 1. / (0.55 / label_fe.adj_udds_mpgge + 0.45 / label_fe.adj_hwy_mpgge);
+            let fuel_energy_gge = fuel_storage_capacity_kwh / fuel_props.kwh_per_gge();
+            label_fe.net_range_miles = fuel_energy_gge * label_fe.adj_comb_mpgge;
         }
         SimulationDataForLabel::Phev {
             info, udds, hwy, ..
@@ -965,8 +971,8 @@ pub fn calculate_label_fuel_economy(
         }
     }
     if !is_phev {
-        // utility factor (percent driving in PHEV charge depletion mode)
-        label_fe.uf = 0.0;
+        // BEV drives 100% electrically; Conv/HEV have no plug-in electric fraction
+        label_fe.uf = if is_bev { 1.0 } else { 0.0 };
     }
 
     // process acceleration test data
@@ -1077,12 +1083,18 @@ pub fn run_label_simulations(
                 veh_year,
                 udds_mpgge: sd["udds"].veh.mpg(fuel_props.energy_density)?,
                 hwy_mpgge: sd["hwy"].veh.mpg(fuel_props.energy_density)?,
+                fs_energy_capacity_kwh: veh
+                    .pt_type
+                    .fs()
+                    .map(|fs| fs.energy_capacity.get::<si::kilowatt_hour>())
+                    .unwrap_or(0.0),
             },
             sd,
         ))
     } else if is_bev {
         if let PowertrainType::BatteryElectricVehicle(bev) = &veh.pt_type {
-            let res_energy_capacity_kwh = bev.res.energy_capacity.get::<si::kilowatt_hour>();
+            let res_energy_capacity_kwh =
+                bev.res.energy_capacity_usable().get::<si::kilowatt_hour>();
             Ok((
                 SimulationDataForLabel::Bev {
                     veh_year,
@@ -2319,6 +2331,7 @@ mod tests {
             veh_year: f2veh.veh_year,
             udds_mpgge: label_fe_f2.lab_udds_mpgge,
             hwy_mpgge: label_fe_f2.lab_hwy_mpgge,
+            fs_energy_capacity_kwh: f2veh.fs_kwh,
         };
         let max_epa_adj = 0.3;
         assert!(result.is_some());
