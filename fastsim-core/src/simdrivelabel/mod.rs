@@ -229,7 +229,7 @@ pub struct LabelFe {
     pub adj_hwy_ess_kwh_per_mi: f64,
     pub adj_comb_ess_kwh_per_mi: f64,
     pub net_range_miles: f64,
-    pub uf: f64,
+    pub uf: Option<f64>,
     pub net_accel: f64,
     pub res_found: String,
     pub phev_calcs: Option<LabelFePHEV>,
@@ -786,12 +786,6 @@ pub fn calculate_label_fuel_economy(
         | SimulationDataForLabel::Phev { veh_year, .. }
         | SimulationDataForLabel::Bev { veh_year, .. } => *veh_year,
     };
-    let is_phev = match sim_data {
-        SimulationDataForLabel::ConvOrHev { .. } => false,
-        SimulationDataForLabel::Phev { .. } => true,
-        SimulationDataForLabel::Bev { .. } => false,
-    };
-    let is_bev = matches!(sim_data, SimulationDataForLabel::Bev { .. });
     // find year-based adjustment parameters
     let adj_params = if veh_year < 2017 {
         &phev_utilization_params.adj_coef_map["2008"]
@@ -897,12 +891,14 @@ pub fn calculate_label_fuel_economy(
 
             // range for combined city/highway
             // utility factor (percent driving in charge depletion mode)
-            label_fe.uf = phev_utilization_params.uf_array[first_grtr(
-                &phev_utilization_params.rechg_freq_miles,
-                0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles,
-            )
-            .with_context(|| format_dbg!())?
-                - 1];
+            label_fe.uf = Some(
+                phev_utilization_params.uf_array[first_grtr(
+                    &phev_utilization_params.rechg_freq_miles,
+                    0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles,
+                )
+                .with_context(|| format_dbg!())?
+                    - 1],
+            );
 
             label_fe.net_phev_cd_miles =
                 Some(0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles);
@@ -969,10 +965,6 @@ pub fn calculate_label_fuel_economy(
             // Get energy capacity from the proper powertrain
             label_fe.net_range_miles = bev_energy_capacity_kwh / label_fe.adj_comb_ess_kwh_per_mi;
         }
-    }
-    if !is_phev {
-        // BEV drives 100% electrically; Conv/HEV have no plug-in electric fraction
-        label_fe.uf = if is_bev { 1.0 } else { 0.0 };
     }
 
     // process acceleration test data
