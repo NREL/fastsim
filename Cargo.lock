@@ -691,7 +691,7 @@ dependencies = [
  "fastsim-proc-macros 0.1.9",
  "include_dir",
  "isahc",
- "itertools 0.12.1",
+ "itertools",
  "lazy_static",
  "log",
  "ndarray 0.16.1",
@@ -727,7 +727,7 @@ dependencies = [
  "home",
  "include_dir",
  "isahc",
- "itertools 0.12.1",
+ "itertools",
  "lazy_static",
  "ninterp",
  "nohash-hasher",
@@ -1221,15 +1221,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1411,18 +1402,16 @@ dependencies = [
 
 [[package]]
 name = "ninterp"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6bc21a89efa78b475101b282abe49c6d12084d68052c0d4f58a33977c7065f0"
+version = "0.10.0"
+source = "git+https://github.com/NatLabRockies/ninterp?tag=v0.10.0#776e6927a51d30124e4a44404c2b6ac40e10939a"
 dependencies = [
  "dyn-clone",
- "itertools 0.13.0",
  "ndarray 0.17.2",
  "num-traits",
  "serde",
  "serde-ndim",
  "serde_unit_struct",
- "thiserror 1.0.69",
+ "thiserror 2.0.19",
 ]
 
 [[package]]

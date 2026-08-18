@@ -302,13 +302,13 @@ mod air_static_props {
             3841.10336915,
             5000.
         ];
-        pub static ref TEMP_FROM_ENTHALPY: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref TEMP_FROM_ENTHALPY: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
             ENTHALPY_VALUES.view(),
             TEMPERATURE_DEG_C_VALUES.view(),
             strategy::Linear,
             Extrapolate::Error,
         ).unwrap_or_else(|_| panic!("Failed to construct gas properties vec"));
-        pub static ref TEMP_FROM_ENERGY: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref TEMP_FROM_ENERGY: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
             ENERGY_VALUES.view(),
             TEMPERATURE_DEG_C_VALUES.view(),
             strategy::Linear,
@@ -343,7 +343,7 @@ mod air_static_props {
             0.20795,
             0.26081,
         ];
-        pub static ref THERMAL_CONDUCTIVITY_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref THERMAL_CONDUCTIVITY_INTERP: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
             TEMPERATURE_DEG_C_VALUES.view(),
             THERMAL_CONDUCTIVITY_VALUES.view(),
             strategy::Linear,
@@ -378,7 +378,7 @@ mod air_static_props {
             1324.5,
             1347.,
         ];
-        pub static ref C_P_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref C_P_INTERP: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
             TEMPERATURE_DEG_C_VALUES.view(),
             C_P_VALUES.view(),
             strategy::Linear,
@@ -412,7 +412,7 @@ mod air_static_props {
             5113600.,
             6662000.
         ];
-        pub static ref ENTHALPY_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref ENTHALPY_INTERP: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
             TEMPERATURE_DEG_C_VALUES.view(),
             ENTHALPY_VALUES.view(),
             strategy::Linear,
@@ -446,7 +446,7 @@ mod air_static_props {
             3932500.,
             5148300.,
         ];
-        pub static ref ENERGY_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref ENERGY_INTERP: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
             TEMPERATURE_DEG_C_VALUES.view(),
             ENERGY_VALUES.view(),
             strategy::Linear,
@@ -480,7 +480,7 @@ mod air_static_props {
             1.1423e-04,
             1.4006e-04
         ];
-        pub static ref DYN_VISC_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref DYN_VISC_INTERP: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
             TEMPERATURE_DEG_C_VALUES.view(),
             DYN_VISCOSITY_VALUES.view(),
             strategy::Linear,
@@ -492,7 +492,7 @@ mod air_static_props {
             .zip(THERMAL_CONDUCTIVITY_VALUES.iter())
             .map(|((mu, c_p), k)| mu * c_p / k)
             .collect();
-        pub static ref PRANDTL_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref PRANDTL_INTERP: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
             TEMPERATURE_DEG_C_VALUES.view(),
             PRANDTL_VALUES.view(),
             strategy::Linear,
@@ -567,7 +567,7 @@ mod octane_static_props {
             3.86110337e+03,
             5.02000000e+03
         ];
-        pub static ref TEMP_FROM_ENERGY: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref TEMP_FROM_ENERGY: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
            ENERGY_VALUES.view(),
            TEMPERATURE_DEG_C_VALUES.view(),
            strategy::Linear,
@@ -601,7 +601,7 @@ mod octane_static_props {
             1.6654e+07,
             2.2399e+07,
         ];
-        pub static ref ENERGY_INTERP: Interp1DViewed<&'static f64, strategy::Linear> = Interp1D::new(
+        pub static ref ENERGY_INTERP: Interp1DView<&'static f64, strategy::Linear> = Interp1DView::new(
            TEMPERATURE_DEG_C_VALUES.view(),
            ENERGY_VALUES.view(),
            strategy::Linear,
