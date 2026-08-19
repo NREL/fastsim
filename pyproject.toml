@@ -104,6 +104,7 @@ openssl = "*"
 libcurl = "*"
 pkg-config = "*"
 uv = "*"
+just = "*"
 
 [tool.pixi.feature.wasm.dependencies]
 rust-std-wasm32-unknown-unknown = "*"
@@ -148,23 +149,23 @@ dev = { features = [
 ], solve-group = "default" }
 
 [tool.pixi.tasks]
-# Full local dev-loop check: replaces build_and_test.sh.
-check = { cmd = "pixi run check-versions && pixi run rust-check && pixi run py-build && pixi run py-test-xdist", default-environment = "build" }
-rust-check = "cargo fmt --check && cargo test --workspace --all-features"
+# Full local dev-loop check. Source of truth lives in justfile.
+check = { cmd = "just check", default-environment = "build" }
+rust-check = { cmd = "just rust-check", default-environment = "build" }
 
 # Check consistency of versions across project
-check-versions = "python python/fastsim/check_versions.py"
-# Debug build: flag is explicit because [tool.maturin] profile is read by maturin develop directly.
-py-build = "maturin develop --uv --profile dev"
-# Release build: use for local performance checks.
-py-build-release = "maturin develop --uv --release"
+check-versions = { cmd = "just check-versions", default-environment = "build" }
+# Debug build/install flow is defined in justfile.
+py-build = { cmd = "just py-build", default-environment = "build" }
+# Release build/install flow is defined in justfile.
+py-build-release = { cmd = "just py-build-release", default-environment = "build" }
 # Python tests (including nbmake notebook testing), runs serially
-py-test = { cmd = "pixi run -e build pytest -v" }
+py-test = { cmd = "just py-test", default-environment = "build" }
 # Python tests (including nbmake notebook testing), runs in parallel using pytest-xdist
-py-test-xdist = { cmd = "pixi run -e build pytest -v -n auto --dist=loadscope" }
+py-test-xdist = { cmd = "just py-test-xdist", default-environment = "build" }
 
-docs = { cmd = "jupyter book start --execute", cwd = "docs", default-environment = "dev" }
-build-docs = { cmd = "jupyter book build --strict --html --execute", cwd = "docs", default-environment = "dev" }
+docs = { cmd = "just docs", default-environment = "dev" }
+build-docs = { cmd = "just build-docs", default-environment = "dev" }
 
 # One-time (or version-bump-triggered) setup: installs wasm-pack + a
 # version-matched wasm-bindgen-cli. Not conda-installable as far as could be
