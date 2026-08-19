@@ -63,9 +63,9 @@ fn main() -> anyhow::Result<()> {
 
     let schema_prefix = std::path::PathBuf::from(format!("v{}", schema_version));
     let mut entries = Vec::new();
-    for entry in walkdir::WalkDir::new(&schema_dir) {
+    for entry in ignore::Walk::new(&schema_dir) {
         let entry = entry?;
-        if !entry.file_type().is_file() {
+        if !entry.file_type().is_some_and(|ft| ft.is_file()) {
             continue;
         }
         let relative_path = entry.path().strip_prefix(&schema_dir).unwrap();
@@ -74,8 +74,11 @@ fn main() -> anyhow::Result<()> {
             println!("Skipping non-UTF8 path: {:?}", schema_file_path);
             continue;
         };
-        if !schema_file_path_str.ends_with(".yaml") {
-            println!("Skipping non-YAML file: {:?}", schema_file_path_str);
+        if !(schema_file_path_str.ends_with(".yaml") || schema_file_path_str.ends_with(".csv")) {
+            println!(
+                "Skipping non-YAML, non-CSV file: {:?}",
+                schema_file_path_str
+            );
             continue;
         }
         match schema_file_path_str.parse::<fastsim_schema::IndexEntryV1>() {
