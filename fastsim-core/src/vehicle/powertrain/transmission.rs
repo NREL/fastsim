@@ -11,7 +11,8 @@ pub struct Transmission {
 
     /// interpolator for calculating [Self] efficiency as a function of the following variants:  
     /// - 0d -- constant
-    pub eff_interp: InterpolatorEnumOwned<f64>,
+    #[serde(serialize_with = "serialize_nested")]
+    pub eff_interp: InterpolatorEnum<f64>,
     /// struct for tracking current state
     #[serde(default)]
     pub state: TransmissionState,
@@ -26,7 +27,7 @@ impl Transmission {
     /// Constructor for Transmission
     pub fn new(
         mass: Option<si::Mass>,
-        eff_interp: InterpolatorEnumOwned<f64>,
+        eff_interp: InterpolatorEnum<f64>,
         save_interval: Option<usize>,
     ) -> anyhow::Result<Self> {
         let mut transmission = Self {

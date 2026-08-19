@@ -17,12 +17,14 @@ pub struct ElectricMachine {
     /// Efficiency interpolator corresponding to achieved output power
     ///
     /// Note that the Extrapolate field of this variable is changed in [Self::get_pwr_in_req]
-    pub eff_interp_achieved: InterpolatorEnumOwned<f64>,
+    #[serde(serialize_with = "serialize_nested")]
+    pub eff_interp_achieved: InterpolatorEnum<f64>,
     /// Efficiency interpolator corresponding to max input power
     /// If `None`, will be set during [Self::init].
     ///
     /// Note that the Extrapolate field of this variable is changed in [Self::set_curr_pwr_prop_out_max]
-    pub eff_interp_at_max_input: Option<InterpolatorEnumOwned<f64>>,
+    #[serde(serialize_with = "serialize_nested")]
+    pub eff_interp_at_max_input: Option<InterpolatorEnum<f64>>,
     /// Electrical input power fraction array at which efficiencies are evaluated.
     /// Calculated during runtime if not provided.
     // /// this will disappear and instead be in eff_interp_bwd
@@ -99,8 +101,8 @@ impl ElectricMachine {
 
 impl ElectricMachine {
     pub fn new(
-        eff_interp_achieved: InterpolatorEnumOwned<f64>,
-        eff_interp_at_max_input: Option<InterpolatorEnumOwned<f64>>,
+        eff_interp_achieved: InterpolatorEnum<f64>,
+        eff_interp_at_max_input: Option<InterpolatorEnum<f64>>,
         pwr_out_max: si::Power,
         specific_pwr: Option<si::SpecificPower>,
         mass: Option<si::Mass>,
@@ -832,7 +834,8 @@ pub struct EMBuilder {
     /// Efficiency interpolator corresponding to achieved output power
     ///
     /// Note that the Extrapolate field of this variable is changed in [Self::get_pwr_in_req]
-    pub eff_interp_achieved: InterpolatorEnumOwned<f64>,
+    #[serde(serialize_with = "serialize_nested")]
+    pub eff_interp_achieved: InterpolatorEnum<f64>,
     /// Electrical input power fraction array at which efficiencies are evaluated.
     /// Calculated during runtime if not provided.
     // /// this will disappear and instead be in eff_interp_bwd

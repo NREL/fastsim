@@ -31,7 +31,8 @@ pub struct FuelConverter {
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
     /// interpolator for calculating [Self] efficiency as a function of output power
-    pub eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
+    #[serde(serialize_with = "serialize_nested")]
+    pub eff_interp_from_pwr_out: InterpolatorEnum<f64>,
     /// power at which peak efficiency occurs
     #[serde(skip)]
     pub(crate) pwr_for_peak_eff: si::Power,
@@ -107,7 +108,7 @@ impl FuelConverter {
         pwr_out_max: si::Power,
         pwr_out_max_init: si::Power,
         pwr_ramp_lag: si::Time,
-        eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
+        eff_interp_from_pwr_out: InterpolatorEnum<f64>,
         pwr_for_peak_eff: si::Power,
         pwr_idle_fuel: si::Power,
         save_interval: Option<usize>,
@@ -533,7 +534,8 @@ pub struct FCBuilder {
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
     /// interpolator for calculating [Self] efficiency as a function of output power
-    pub eff_interp_from_pwr_out: InterpolatorEnumOwned<f64>,
+    #[serde(serialize_with = "serialize_nested")]
+    pub eff_interp_from_pwr_out: InterpolatorEnum<f64>,
     /// power at which peak efficiency occurs
     #[serde(skip)]
     pub(crate) pwr_for_peak_eff: si::Power,
@@ -780,8 +782,8 @@ pub struct FuelConverterThermal {
     pub tstat_te_sto: Option<si::Temperature>,
     /// temperature delta over which thermostat is partially open
     pub tstat_te_delta: Option<si::TemperatureInterval>,
-    #[serde(default = "tstat_interp_default")]
-    pub tstat_interp: Interp1DOwned<f64, strategy::Linear>,
+    #[serde(default = "tstat_interp_default", serialize_with = "serialize_nested")]
+    pub tstat_interp: Interp1D<f64, strategy::Linear>,
     /// Radiator effectiveness -- ratio of active heat rejection from
     /// radiator to passive heat rejection, always greater than 1
     pub radiator_effectiveness: si::Ratio,
@@ -817,7 +819,7 @@ impl FuelConverterThermal {
         max_frac_from_comb: si::Ratio,
         tstat_te_sto: Option<si::Temperature>,
         tstat_te_delta: Option<si::TemperatureInterval>,
-        tstat_interp: Interp1DOwned<f64, strategy::Linear>,
+        tstat_interp: Interp1D<f64, strategy::Linear>,
         radiator_effectiveness: si::Ratio,
         fc_eff_model: FCTempEffModel,
         save_interval: Option<usize>,
@@ -856,7 +858,7 @@ impl HistoryMethods for FuelConverterThermal {
 }
 
 /// Dummy interpolator that will be overridden in [FuelConverterThermal::init]
-fn tstat_interp_default() -> Interp1DOwned<f64, strategy::Linear> {
+fn tstat_interp_default() -> Interp1D<f64, strategy::Linear> {
     Interp1D::new(
         array![85.0, 90.0],
         array![0.0, 1.0],

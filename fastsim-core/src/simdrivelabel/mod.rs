@@ -34,7 +34,7 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Resul
 
     if accel_data.speed_mph.iter().any(|&x| x >= 60.0) {
         // Create interpolator from speed to time
-        let interp = Interp1D::new(
+        let interp = Interp1DView::new(
             ArrayView::from(&accel_data.speed_mph[..first_ind_after_60_mph + 1]),
             ArrayView::from(&accel_data.time_s[..first_ind_after_60_mph + 1]),
             strategy::Linear,
