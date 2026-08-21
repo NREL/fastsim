@@ -18,14 +18,36 @@ pub struct QueryV1 {
     pub variant: Option<String>,
 }
 
-/// Filter `entries` against `query`, returning references to matches in their
-/// original order.
+/// Filter `entries` against `query`, returning references to matches sorted
+/// by the index's table-column order — make, model, year, powertrain,
+/// variant, revision — with string columns ascending and numeric columns
+/// (year, revision) descending, so newer years/revisions sort first.
 ///
-/// This is intentionally I/O-free and allocation-light (no cloning of entries)
-/// so it can back both `fastsim-core`'s `Vehicle::from_db` and the wasm-bound
-/// browser search widget from the same implementation.
+/// This is intentionally I/O-free (no cloning of entries) so it can back both
+/// `fastsim-core`'s `Vehicle::from_db` and the wasm-bound browser search
+/// widget from the same implementation.
 pub fn search_v1<'a>(entries: &'a [IndexEntryV1], query: &QueryV1) -> Vec<&'a IndexEntryV1> {
-    entries.iter().filter(|e| matches(e, query)).collect()
+    let mut results: Vec<&IndexEntryV1> = entries.iter().filter(|e| matches(e, query)).collect();
+    results.sort_by(|a, b| {
+        a.make
+            .cmp(&b.make)
+            .then_with(|| a.model.cmp(&b.model))
+            .then_with(|| compare_year(&b.year, &a.year))
+            .then_with(|| a.powertrain.cmp(&b.powertrain))
+            .then_with(|| a.variant.cmp(&b.variant))
+            .then_with(|| b.revision.cmp(&a.revision))
+    });
+    results
+}
+
+/// Compares `year` strings numerically when both parse as plain integers
+/// (the common case), falling back to a string compare otherwise (e.g. for
+/// a year range like `"2015-2020"`).
+fn compare_year(a: &str, b: &str) -> std::cmp::Ordering {
+    match (a.parse::<u32>(), b.parse::<u32>()) {
+        (Ok(a), Ok(b)) => a.cmp(&b),
+        _ => a.cmp(b),
+    }
 }
 
 /// Case-insensitive substring match.
@@ -163,6 +185,48 @@ mod tests {
             ..Default::default()
         };
         assert!(search_v1(&entries, &query).is_empty());
+    }
+
+    #[test]
+    fn results_are_sorted_by_make_model_variant_asc_then_revision_desc() {
+        let entries = vec![
+            entry("v1/fastsim-3/conv/ford/fusion/2012/base/r1"),
+            entry("v1/fastsim-3/conv/ford/f-150/2018/base/r2"),
+            entry("v1/fastsim-3/conv/ford/f-150/2018/base/r1"),
+            entry("v1/fastsim-3/bev/tesla/model-3/2020/base/r1"),
+            entry("v1/fastsim-3/bev/ford/f-150-lightning/2024/base/r1"),
+        ];
+        let results = search_v1(&entries, &QueryV1::default());
+        let ids: Vec<&str> = results.iter().map(|e| e.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "v1/fastsim-3/conv/ford/f-150/2018/base/r2",
+                "v1/fastsim-3/conv/ford/f-150/2018/base/r1",
+                "v1/fastsim-3/bev/ford/f-150-lightning/2024/base/r1",
+                "v1/fastsim-3/conv/ford/fusion/2012/base/r1",
+                "v1/fastsim-3/bev/tesla/model-3/2020/base/r1",
+            ]
+        );
+    }
+
+    #[test]
+    fn results_break_model_ties_by_year_desc_then_powertrain_asc() {
+        let entries = vec![
+            entry("v1/fastsim-3/conv/ford/ranger/2020/base/r1"),
+            entry("v1/fastsim-3/bev/ford/ranger/2020/base/r1"),
+            entry("v1/fastsim-3/conv/ford/ranger/2018/base/r1"),
+        ];
+        let results = search_v1(&entries, &QueryV1::default());
+        let ids: Vec<&str> = results.iter().map(|e| e.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "v1/fastsim-3/bev/ford/ranger/2020/base/r1",
+                "v1/fastsim-3/conv/ford/ranger/2020/base/r1",
+                "v1/fastsim-3/conv/ford/ranger/2018/base/r1",
+            ]
+        );
     }
 
     #[test]
