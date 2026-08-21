@@ -1441,9 +1441,9 @@ dependencies = [
 
 [[package]]
 name = "ninterp"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d5ab11f8b94c6b0635c3eb4a91f17c088610ad98871213318b43e0e8808080a"
+checksum = "2b609e21185bd461cf36c4e2dbbfc120cd29240389caddd8f48bdd70a2ee5d60"
 dependencies = [
  "dyn-clone",
  "ndarray 0.17.2",
