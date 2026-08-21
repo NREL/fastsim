@@ -37,7 +37,7 @@ For information on FASTSim's history and modeling philosophy, see the
 
 For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](https://github.com/NatLabRockies/fastsim-vehicles).
 
-## Get Started
+## Getting Started
 
 - [](installation.md): install FASTSim and dependencies
 - [](getting-started.ipynb): run your first simulation
