@@ -58,4 +58,4 @@ site:
     style: assets/site.css
   parts:
     primary_sidebar_footer: |
-      [fastsim on GitHub](https://github.com/NatLabRockies/fastsim)
+      [`fastsim` on GitHub](https://github.com/NatLabRockies/fastsim)
