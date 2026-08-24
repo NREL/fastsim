@@ -32,7 +32,7 @@ pub struct HybridElectricVehicle {
     /// vector of SOC balance iterations
     #[serde(default)]
     pub soc_bal_iter_history: Vec<Self>,
-    /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
+    /// Number of `run` iterations required to achieve SOC balance (i.e. SOC
     /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
     #[serde(default)]
     pub soc_bal_iters: TrackedState<u32>,

@@ -306,7 +306,7 @@ def get_soc_exp_mod_cal_no_thrml() -> tuple[list[float], list[float]]:
 
         sd_cal_no_thrml = fsim.SimDrive.from_pydict(sd_cal_no_thrml, skip_init=False)
         try:
-            sd_cal_no_thrml.walk_once()
+            sd_cal_no_thrml.run_once()
         except Exception:
             pass
         sd_cal_no_thrml = sd_cal_no_thrml.to_pydict()
@@ -347,7 +347,7 @@ def get_soc_exp_mod_val_no_thrml() -> tuple[list[float], list[float]]:
 
         sd_val_no_thrml = fsim.SimDrive.from_pydict(sd_val_no_thrml, skip_init=False)
         try:
-            sd_val_no_thrml.walk_once()
+            sd_val_no_thrml.run_once()
         except Exception:
             pass
         sd_val_no_thrml = sd_val_no_thrml.to_pydict()

@@ -284,11 +284,11 @@ impl Maneuver {
         self.impose_coast = vec![false; cyc_len];
         self.idm_target_speed_m_per_s = vec![0.0; cyc_len];
         self.cyc0_cache = self.cyc0.build_cache();
-        self.walk(cyc_len);
+        self.run(cyc_len);
     }
 
     /// Walk from step to step for the maneuver simulation.
-    fn walk(&mut self, cyc_len: usize) {
+    fn run(&mut self, cyc_len: usize) {
         while self.i < cyc_len {
             self.step();
         }
@@ -1400,7 +1400,7 @@ mod tests {
         man.apply();
         let udds_mod = man.cyc;
         let mut sd = SimDrive::new(veh, udds_mod, None);
-        sd.walk().unwrap();
+        sd.run().unwrap();
     }
 
     #[test]
@@ -1420,7 +1420,7 @@ mod tests {
         man.apply();
         let udds_mod = man.cyc;
         let mut sd = SimDrive::new(veh, udds_mod, None);
-        sd.walk().unwrap();
+        sd.run().unwrap();
     }
 
     #[test]
@@ -1453,6 +1453,6 @@ mod tests {
         }
         assert!(found_coast);
         let mut sd = SimDrive::new(veh, udds_mod, None);
-        sd.walk().unwrap();
+        sd.run().unwrap();
     }
 }

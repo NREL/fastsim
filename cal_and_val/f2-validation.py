@@ -45,7 +45,7 @@ for sd in f3_all_sds:
     # sd = fastsim.SimDrive.from_pydict(sd_dict)
 
     try:
-        sd.walk()
+        sd.run()
     except Exception as e:
         print("FAILURE:", sd.veh.name, e)
 

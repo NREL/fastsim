@@ -16,7 +16,7 @@ def get_solved_sd():
     sd = fsim.SimDrive(veh, cyc)
 
     # run simulation
-    sd.walk()
+    sd.run()
 
     return sd
 
