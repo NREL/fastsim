@@ -15,9 +15,21 @@ class SerdeAPI:
     def from_resource(cls, resource_path: str | Path, skip_init: bool = False) -> Self: ...
     @classmethod
     def from_url(cls, url: str, skip_init: bool = False) -> Self: ...
-    def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict: ...
+    def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict:
+        """Use `to_dict` instead; deprecated."""
+        ...
     @classmethod
     def from_pydict(
+        cls,
+        pydict: dict,
+        data_fmt: str = "msg_pack",
+        skip_init: bool = False,
+    ) -> Self:
+        """Use `from_dict` instead; deprecated."""
+        ...
+    def to_dict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict: ...
+    @classmethod
+    def from_dict(
         cls,
         pydict: dict,
         data_fmt: str = "msg_pack",

@@ -163,7 +163,7 @@ class ModelObjectives:
 
         for key, pydict in self.models.items():
             try:
-                sim_drives[key] = fsim.SimDrive.from_pydict(pydict, skip_init=False)
+                sim_drives[key] = fsim.SimDrive.from_dict(pydict, skip_init=False)
             except Exception as err:
                 sim_drives[key] = err
         t1 = time.perf_counter()
@@ -207,17 +207,17 @@ class ModelObjectives:
             #     continue
 
             if return_mods:
-                unsolved_mods[key] = sd.to_pydict()
+                unsolved_mods[key] = sd.to_dict()
 
             try:
                 t0 = time.perf_counter()
                 sd.run_once()  # type: ignore
                 t1 = time.perf_counter()
-                sd_dict = sd.to_pydict()
+                sd_dict = sd.to_dict()
                 run_success = True
             except RuntimeError as err:
                 t1 = time.perf_counter()
-                sd_dict = sd.to_pydict()
+                sd_dict = sd.to_dict()
                 run_success = True
                 print(err)
                 if len(sd_dict["veh"]["history"]["time_seconds"]) < np.floor(len(df_exp) / 2):

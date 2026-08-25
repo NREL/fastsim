@@ -242,20 +242,20 @@ for ((key, df_cal), (sd_key, sd_cal)) in zip(cal_mod_obj.dfs.items(), sds_cal.it
     sd_cal_no_thrml['veh']['cabin'] = 'None'
     sd_cal_no_thrml['veh']['pt_type']['HybridElectricVehicle']['fc']['thrml'] = 'None'
     sd_cal_no_thrml['veh']['pt_type']['HybridElectricVehicle']['res']['thrml'] = 'None'
-    res = fsim.ReversibleEnergyStorage.from_pydict(
+    res = fsim.ReversibleEnergyStorage.from_dict(
         sd_cal_no_thrml['veh']['pt_type']['HybridElectricVehicle']['res'], skip_init=False)
     res.set_default_pwr_interp()
-    sd_cal_no_thrml['veh']['pt_type']['HybridElectricVehicle']['res'] = res.to_pydict()
+    sd_cal_no_thrml['veh']['pt_type']['HybridElectricVehicle']['res'] = res.to_dict()
     sd_cal_no_thrml['veh']['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['temp_fc_allowed_off_kelvin'] = None
     sd_cal_no_thrml['veh']['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['temp_fc_forced_on_kelvin'] = None
 
-    sd_cal_no_thrml = fsim.SimDrive.from_pydict(
+    sd_cal_no_thrml = fsim.SimDrive.from_dict(
         sd_cal_no_thrml, skip_init=False)
     try:
         sd_cal_no_thrml.run_once()
     except Exception:
         pass
-    sd_cal_no_thrml = sd_cal_no_thrml.to_pydict()
+    sd_cal_no_thrml = sd_cal_no_thrml.to_dict()
 
     df_cal = df_cal[:len(sd_cal_no_thrml['veh']['history']['time_seconds'])]
 
@@ -284,19 +284,19 @@ for ((key, df_val), (sd_key, sd_val)) in zip(val_mod_obj.dfs.items(), sds_val.it
     sd_val_no_thrml['veh']['cabin'] = 'None'
     sd_val_no_thrml['veh']['pt_type']['HybridElectricVehicle']['fc']['thrml'] = 'None'
     sd_val_no_thrml['veh']['pt_type']['HybridElectricVehicle']['res']['thrml'] = 'None'
-    res = fsim.ReversibleEnergyStorage.from_pydict(
+    res = fsim.ReversibleEnergyStorage.from_dict(
         sd_val_no_thrml['veh']['pt_type']['HybridElectricVehicle']['res'], skip_init=False)
     res.set_default_pwr_interp()
-    sd_val_no_thrml['veh']['pt_type']['HybridElectricVehicle']['res'] = res.to_pydict()
+    sd_val_no_thrml['veh']['pt_type']['HybridElectricVehicle']['res'] = res.to_dict()
     sd_val_no_thrml['veh']['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['temp_fc_allowed_off_kelvin'] = None
     sd_val_no_thrml['veh']['pt_type']['HybridElectricVehicle']['pt_cntrl']['RGWDB']['temp_fc_forced_on_kelvin'] = None
-    sd_val_no_thrml = fsim.SimDrive.from_pydict(
+    sd_val_no_thrml = fsim.SimDrive.from_dict(
         sd_val_no_thrml, skip_init=False)
     try:
         sd_val_no_thrml.run_once()
     except Exception:
         pass
-    sd_val_no_thrml = sd_val_no_thrml.to_pydict()
+    sd_val_no_thrml = sd_val_no_thrml.to_dict()
 
     df_val = df_val[:len(sd_val_no_thrml['veh']['history']['time_seconds'])]
 

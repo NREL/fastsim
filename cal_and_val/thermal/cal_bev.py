@@ -19,11 +19,11 @@ mps_per_mph = 0.447
 celsius_to_kelvin_offset = 273.15
 
 veh = fsim.Vehicle.from_file(Path(__file__).parent / "f3-vehicles/2020 Chevrolet Bolt EV.yaml")
-veh_dict = veh.to_pydict()
+veh_dict = veh.to_dict()
 
-sim_params_dict = fsim.SimParams.default().to_pydict()
+sim_params_dict = fsim.SimParams.default().to_dict()
 sim_params_dict["trace_miss_opts"] = "AllowChecked"
-sim_params = fsim.SimParams.from_pydict(sim_params_dict, skip_init=False)
+sim_params = fsim.SimParams.from_dict(sim_params_dict, skip_init=False)
 
 
 # Obtain the data from
@@ -128,7 +128,7 @@ def df_to_cyc(df: pd.DataFrame) -> fsim.Cycle:
         # TODO: pipe solar load from `Cycle` into cabin thermal model
         # "pwr_solar_load_watts": df[],
     }
-    return fsim.Cycle.from_pydict(cyc_dict, skip_init=False)
+    return fsim.Cycle.from_dict(cyc_dict, skip_init=False)
 
 
 pt_type_var = "BatteryElectricVehicle"
@@ -173,7 +173,7 @@ def veh_init(cyc_file_stem: str, dfs: dict[str, pd.DataFrame]) -> fsim.Vehicle:
         te_set + celsius_to_kelvin_offset if te_set is not None else None
     )
 
-    return fsim.Vehicle.from_pydict(vd, skip_init=False)
+    return fsim.Vehicle.from_dict(vd, skip_init=False)
 
 
 def resample_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -213,7 +213,7 @@ for cyc_file_stem, cyc in cycs_for_cal.items():
     cyc: fsim.Cycle
     # NOTE: maybe change `save_interval` to 5
     veh = veh_init(cyc_file_stem, dfs_for_cal)
-    sds_for_cal[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_pydict()
+    sds_for_cal[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_dict()
 
 cyc_files_for_val: list[Path] = list(set(cyc_files) - set(cyc_files_for_cal))
 assert len(cyc_files_for_val) > 0
@@ -242,7 +242,7 @@ for cyc_file_stem, cyc in cycs_for_val.items():
     cyc_file_stem: str
     cyc: fsim.Cycle
     veh = veh_init(cyc_file_stem, dfs_for_val)
-    sds_for_val[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_pydict()
+    sds_for_val[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_dict()
 
 
 # Setup model objectives
@@ -252,9 +252,9 @@ def new_em_eff_max(sd_dict: dict, new_eff_max: float) -> dict:
     """
     Set `new_eff_max` in `ElectricMachine`
     """
-    em = fsim.ElectricMachine.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
+    em = fsim.ElectricMachine.from_dict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
     em.__eff_fwd_max = new_eff_max
-    sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_pydict()
+    sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_dict()
     return sd_dict
 
 
@@ -262,9 +262,9 @@ def new_em_eff_range(sd_dict, new_eff_range) -> dict:
     """
     Set `new_eff_range` in `ElectricMachine`
     """
-    em = fsim.ElectricMachine.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
+    em = fsim.ElectricMachine.from_dict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
     em.__eff_fwd_range = new_eff_range
-    sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_pydict()
+    sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_dict()
     return sd_dict
 
 
@@ -477,7 +477,7 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
     # - `pos_perturb_doc`: perturbation percentage added to all params.  Can be overridden invididually
     # - `neg_perturb_doc`: perturbation percentage subtracted from all params.  Can be overridden invididually
     """
-    em = fsim.ElectricMachine.from_pydict(veh_dict["pt_type"][pt_type_var]["em"], skip_init=False)
+    em = fsim.ElectricMachine.from_dict(veh_dict["pt_type"][pt_type_var]["em"], skip_init=False)
     baseline_params_and_bounds = [
         (em.eff_fwd_max, None),
         (em.eff_fwd_range, None),
