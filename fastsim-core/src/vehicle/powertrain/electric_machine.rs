@@ -472,24 +472,22 @@ impl Init for ElectricMachine {
         self.state
             .init()
             .map_err(|err| Error::InitError(format_dbg!(err)))?;
-        // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
-        // TODO: what should the default strategy be for eff_interp_bwd?
+        // sets eff_interp_at_max_input to eff_interp_achieved, remapped from output-
+        // to input-power ratio (x_in = x_out / eff). Interpolating 1/eff linearly
+        // against x_in, rather than eff itself, makes this an exact inverse of
+        // eff_interp_achieved between nodes (not just at them), since eff linear in
+        // x_out implies 1/eff linear in x_in.
         let eff_interp_at_max_input = match &self.eff_interp_achieved {
-            InterpolatorEnum::Interp1D(interp) => {
-                InterpolatorEnum::new_1d(
-                    interp.data.grid[0]
-                        .iter()
-                        .zip(&interp.data.values)
-                        .map(|(x, y)| x / y)
-                        .collect(),
-                    interp.data.values.clone(),
-                    // TODO: should these be set to be the same as eff_interp_fwd,
-                    // as currently is done, or should they be set to be specific
-                    // Extrapolate and Strategy types?
-                    interp.strategy.clone(),
-                    interp.extrapolate,
-                )
-            }
+            InterpolatorEnum::Interp1D(interp) => InterpolatorEnum::new_1d(
+                interp.data.grid[0]
+                    .iter()
+                    .zip(&interp.data.values)
+                    .map(|(x, y)| x / y)
+                    .collect(),
+                interp.data.values.clone(),
+                strategy::ValuesTransform::reciprocal(Box::new(interp.strategy.clone())),
+                interp.extrapolate,
+            ),
             _ => unimplemented!(),
         }
         .map_err(|e| Error::NinterpError(e.to_string()))?;
