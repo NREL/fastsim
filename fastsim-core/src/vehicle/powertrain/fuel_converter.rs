@@ -39,6 +39,7 @@ pub struct FuelConverter {
     pub pwr_idle_fuel: si::Power,
     /// struct for tracking current state
     #[serde(default)]
+    #[is_state]
     pub state: FuelConverterState,
     /// Custom vector of [Self::state]
     #[serde(
@@ -559,6 +560,7 @@ pub struct FCBuilder {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
+#[is_state]
 pub struct FuelConverterState {
     /// time step index
     pub i: TrackedState<usize>,
@@ -789,6 +791,7 @@ pub struct FuelConverterThermal {
     pub fc_eff_model: FCTempEffModel,
     /// struct for tracking current state
     #[serde(default)]
+    #[is_state]
     pub state: FuelConverterThermalState,
     /// Custom vector of [Self::state]
     #[serde(
@@ -1135,6 +1138,7 @@ impl Default for FuelConverterThermal {
 #[serde(default)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
 #[serde(deny_unknown_fields)]
+#[is_state]
 pub struct FuelConverterThermalState {
     /// time step index
     pub i: TrackedState<usize>,

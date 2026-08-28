@@ -14,6 +14,7 @@ pub struct Transmission {
     pub eff_interp: InterpolatorEnumOwned<f64>,
     /// struct for tracking current state
     #[serde(default)]
+    #[is_state]
     pub state: TransmissionState,
     /// Custom vector of [Self::state]
     #[serde(default, skip_serializing_if = "TransmissionStateHistoryVec::is_empty")]
@@ -214,6 +215,7 @@ impl Mass for Transmission {
 #[non_exhaustive]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
+#[is_state]
 pub struct TransmissionState {
     /// time step index
     pub i: TrackedState<usize>,
