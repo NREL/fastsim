@@ -6,13 +6,64 @@ use super::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3::*;
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, IsVariant, TryInto)]
+#[derive(Clone, Debug, Serialize, PartialEq, IsVariant, TryInto)]
 /// Determines what [ElectricMachine] state variables to use in calculating efficiency
 pub enum EMEfficiency {
     /// Efficiency is constant
     Constant(#[serde(serialize_with = "serialize_nested")] Interp0D<f64>),
     /// Efficiency = f(output power / max output power)
     PwrOutFrac(#[serde(serialize_with = "serialize_nested")] Interp1D<f64, strategy::Linear>),
+}
+
+impl<'de> Deserialize<'de> for EMEfficiency {
+    /// Accepts the current, externally-tagged shape (`{Constant: ...}` /
+    /// `{PwrOutFrac: {...}}`) as well as the shape used by the old, now-removed
+    /// `eff_interp_achieved` field: a bare, untagged [`InterpolatorEnum`], with the
+    /// variant inferred from its own shape (see [`ElectricMachine::eff_interp`]).
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        enum Tagged {
+            Constant(Interp0D<f64>),
+            PwrOutFrac(Interp1D<f64, strategy::Linear>),
+        }
+
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Repr {
+            Tagged(Tagged),
+            Legacy(InterpolatorEnum<f64>),
+        }
+
+        Ok(match Repr::deserialize(deserializer)? {
+            Repr::Tagged(Tagged::Constant(interp)) => Self::Constant(interp),
+            Repr::Tagged(Tagged::PwrOutFrac(interp)) => Self::PwrOutFrac(interp),
+            Repr::Legacy(InterpolatorEnumBase::Interp0D(interp)) => Self::Constant(interp),
+            Repr::Legacy(InterpolatorEnumBase::Interp1D(interp)) => {
+                let strategy::enums::Strategy1DEnum::Linear(strategy) = interp.strategy else {
+                    return Err(serde::de::Error::custom(
+                        "legacy `EMEfficiency` data only supports the `Linear` strategy",
+                    ));
+                };
+                Self::PwrOutFrac(
+                    Interp1D::new(
+                        interp.data.grid[0].clone(),
+                        interp.data.values.clone(),
+                        strategy,
+                        interp.extrapolate,
+                    )
+                    .map_err(serde::de::Error::custom)?,
+                )
+            }
+            Repr::Legacy(_) => {
+                return Err(serde::de::Error::custom(
+                    "`EMEfficiency` only supports 0-D (`Constant`) or 1-D (`PwrOutFrac`) interpolator data",
+                ))
+            }
+        })
+    }
 }
 
 impl_efficiency_enum!(EMEfficiency {
@@ -29,7 +80,17 @@ impl_efficiency_enum!(EMEfficiency {
 /// electronics.
 pub struct ElectricMachine {
     /// Efficiency map
+    #[serde(alias = "eff_interp_achieved")]
     pub eff_interp: EMEfficiency,
+    /// Legacy field from before `eff_interp_achieved`/`eff_interp_at_max_input` were
+    /// merged into `eff_interp`. `eff_interp_at_max_input` was always fully derived
+    /// from `eff_interp_achieved` and is now recomputed on the fly in
+    /// [`Self::set_curr_pwr_prop_out_max`], so it is safe to discard; this field
+    /// exists only so old files containing it still deserialize under
+    /// `deny_unknown_fields`.
+    #[serde(rename = "eff_interp_at_max_input", default, skip_serializing)]
+    #[allow(dead_code)]
+    pub(crate) _eff_interp_at_max_input_legacy: Option<serde::de::IgnoredAny>,
     /// Electrical input power fraction array at which efficiencies are evaluated.
     /// Calculated during runtime if not provided.
     // /// this will disappear and instead be in eff_interp_bwd
@@ -114,6 +175,7 @@ impl ElectricMachine {
     ) -> anyhow::Result<Self> {
         let mut em = ElectricMachine {
             eff_interp,
+            _eff_interp_at_max_input_legacy: None,
             pwr_out_max,
             specific_pwr,
             mass,
@@ -535,6 +597,7 @@ impl TryFrom<EMBuilder> for ElectricMachine {
     fn try_from(em_builder: EMBuilder) -> anyhow::Result<ElectricMachine> {
         let mut em = ElectricMachine {
             eff_interp: em_builder.eff_interp.clone(),
+            _eff_interp_at_max_input_legacy: None,
             pwr_out_max: em_builder.pwr_out_max,
             specific_pwr: None,
             mass: None,

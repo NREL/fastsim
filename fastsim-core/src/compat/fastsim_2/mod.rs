@@ -559,6 +559,7 @@ impl TryFrom<&fastsim_core::vehicle::RustVehicle> for BatteryElectricVehicle {
                     strategy::Linear,
                     Extrapolate::Error,
                 )?),
+                _eff_interp_at_max_input_legacy: None,
                 pwr_out_max: f2veh.mc_max_kw * uc::KW,
                 specific_pwr: None,
                 mass: None,
