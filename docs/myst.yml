@@ -47,7 +47,7 @@ project:
       title: Migration Guide
     - url: https://github.com/NatLabRockies/fastsim
       title: GitHub Repository
-    - url: https://github.com/NatLabRockies/fastsim-vehicles
+    - url: https://natlabrockies.github.io/fastsim-vehicles/
       title: FASTSim Vehicle Database
     - url: https://docs.rs/fastsim-core/latest/fastsim_core/
       title: Rust API Documentation
