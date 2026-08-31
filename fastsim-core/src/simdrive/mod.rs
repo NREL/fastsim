@@ -32,17 +32,31 @@ impl SimDrive {
     }
 
     /// Run vehicle simulation once
-    #[pyo3(name = "walk_once")]
-    fn walk_once_py(&mut self) -> anyhow::Result<()> {
-        self.walk_once()
+    #[pyo3(name = "run_once")]
+    fn run_once_py(&mut self) -> anyhow::Result<()> {
+        self.run_once()
     }
 
     /// Run vehicle simulation, and, if applicable, apply powertrain-specific
-    /// corrections (e.g. iterate `walk` until SOC balance is achieved -- i.e. initial
+    /// corrections (e.g. iterate `run` until SOC balance is achieved -- i.e. initial
     /// and final SOC are nearly identical)
+    #[pyo3(name = "run")]
+    fn run_py(&mut self) -> anyhow::Result<()> {
+        self.run()
+    }
+
+    /// Deprecated alias for [Self::run_once]
+    #[pyo3(name = "walk_once")]
+    fn walk_once_py(&mut self, py: Python<'_>) -> anyhow::Result<()> {
+        Self::warn_deprecated_walk(py, "walk_once", "run_once");
+        self.run_once()
+    }
+
+    /// Deprecated alias for [Self::run]
     #[pyo3(name = "walk")]
-    fn walk_py(&mut self) -> anyhow::Result<()> {
-        self.walk()
+    fn walk_py(&mut self, py: Python<'_>) -> anyhow::Result<()> {
+        Self::warn_deprecated_walk(py, "walk", "run");
+        self.run()
     }
 
     #[pyo3(name = "reset")]
@@ -95,6 +109,19 @@ impl SimDrive {
         }
     }
 
+    /// Emit a Python `DeprecationWarning` pointing users from `old_name` to `new_name`
+    #[cfg(feature = "pyo3")]
+    fn warn_deprecated_walk(py: Python<'_>, old_name: &str, new_name: &str) {
+        if let Ok(warnings) = py.import("warnings") {
+            let msg =
+                format!("SimDrive.{old_name} is deprecated; use SimDrive.{new_name} instead.",);
+            let kwargs = PyDict::new(py);
+            let _ = kwargs.set_item("stacklevel", 2);
+            let _ = kwargs.set_item("category", py.get_type::<PyDeprecationWarning>());
+            let _ = warnings.call_method("warn", (msg,), Some(&kwargs));
+        }
+    }
+
     // # TODO:
     // ## Features
     // - [ ] regen limiting curve during speeds approaching zero per f2 -- less urgent
@@ -107,7 +134,7 @@ impl SimDrive {
     /// Run vehicle simulation, and, if applicable, apply powertrain-specific
     /// corrections:
     /// - for HEV, set initial SOC to mean of min and max SOC, and then iterate
-    ///   `walk` until SOC balance is achieved -- i.e. initial and final SOC are
+    ///   `run_once` until SOC balance is achieved -- i.e. initial and final SOC are
     ///   nearly identical
     /// - for PHEV, set initial SOC to max SOC, and then simulate once
     /// - for BEV, set initial SOC to max SOC, and then simulate once
@@ -116,8 +143,8 @@ impl SimDrive {
     /// # Important Considerations
     /// If you need to run a [ReversibleEnergyStorage]-equipped vehicle for
     /// only one iteration without modifying the initial SOC, then run the
-    /// [Self::walk_once] method directly
-    pub fn walk(&mut self) -> anyhow::Result<()> {
+    /// [Self::run_once] method directly
+    pub fn run(&mut self) -> anyhow::Result<()> {
         match self.veh.pt_type {
             PowertrainType::HybridElectricVehicle(_) => {
                 // Net battery energy used per amount of fuel used
@@ -140,9 +167,9 @@ impl SimDrive {
                         .with_context(|| format_dbg!())?
                         .soc_bal_iters
                         .increment(1, || format_dbg!())?;
-                    self.walk_once().map_err(|err| {
+                    self.run_once().map_err(|err| {
                         anyhow::anyhow!(format!(
-                            "HEV walk_once failed at line {}\ntime step: {}\n with originating error: [{}]",
+                            "HEV run_once failed at line {}\ntime step: {}\n with originating error: [{}]",
                             format_dbg!(),
                             self.veh.state.i,
                             err
@@ -229,7 +256,7 @@ impl SimDrive {
                     .state
                     .soc
                     .update(res_mut.max_soc, || format_dbg!())?;
-                self.walk_once()?
+                self.run_once()?
             }
             PowertrainType::BatteryElectricVehicle(_) => {
                 let res_mut = self.veh.res_mut().with_context(|| format_dbg!())?;
@@ -238,15 +265,20 @@ impl SimDrive {
                     .state
                     .soc
                     .update(res_mut.max_soc, || format_dbg!())?;
-                self.walk_once()?
+                self.run_once()?
             }
-            PowertrainType::ConventionalVehicle(_) => self.walk_once()?,
+            PowertrainType::ConventionalVehicle(_) => self.run_once()?,
         }
         Ok(())
     }
 
+    #[deprecated(since = "3.1.0", note = "Use SimDrive::run instead")]
+    pub fn walk(&mut self) -> anyhow::Result<()> {
+        self.run()
+    }
+
     /// Run vehicle simulation once
-    pub fn walk_once(&mut self) -> anyhow::Result<()> {
+    pub fn run_once(&mut self) -> anyhow::Result<()> {
         let len = &self.cyc.len_checked().with_context(|| format_dbg!())?;
         ensure!(len >= &2, format_dbg!(len < &2));
         self.save_state(|| format_dbg!())?;
@@ -307,6 +339,11 @@ impl SimDrive {
         }
 
         Ok(())
+    }
+
+    #[deprecated(since = "3.1.0", note = "Use SimDrive::run_once instead")]
+    pub fn walk_once(&mut self) -> anyhow::Result<()> {
+        self.run_once()
     }
 
     /// Calculates the derivative dv/dd (change in speed by change in distance)
@@ -897,7 +934,7 @@ mod tests {
         let _veh = Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
-        sd.walk().unwrap();
+        sd.run().unwrap();
         assert!(
             *sd.veh.state.i.get_fresh(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
         );
@@ -920,7 +957,7 @@ mod tests {
         let _veh = Vehicle::from_resource("2016_TOYOTA_Prius_Two.yaml", false).unwrap();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive::new(_veh, _cyc, Default::default());
-        sd.walk().unwrap();
+        sd.run().unwrap();
         assert!(
             *sd.veh.state.i.get_fresh(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
         );
@@ -1033,7 +1070,7 @@ mod tests {
             let mut cyc = _cyc.clone();
             cyc.temp_amb_air = vec![*te_amb; cyc.len_checked().unwrap()];
             let mut sd = SimDrive::new(veh, cyc, Default::default());
-            sd.walk()
+            sd.run()
                 .with_context(|| {
                     format!(
                         "ambient temperature: {}*C\ninit temperature: {}",
@@ -1168,7 +1205,7 @@ mod tests {
             dbg!("Running `sd_prep`");
             let mut sd_prep = SimDrive::new(veh, prep_cyc, None);
             sd_prep
-                .walk()
+                .run()
                 .with_context(|| {
                     format!(
                         "\nprep cycle:\nambient temperature: {}*C\ninit temperature: {}",
@@ -1196,7 +1233,7 @@ mod tests {
                 }),
             );
             sd_soak
-                .walk()
+                .run()
                 .with_context(|| {
                     format!(
                         "\nsoak cycle:\nambient temperature: {}*C\ninit temperature: {}",
@@ -1217,7 +1254,7 @@ mod tests {
             dbg!("Running `sd_test`");
             let mut sd_test = SimDrive::new(sd_soak.veh.clone(), test_cyc, None);
             sd_test
-                .walk()
+                .run()
                 .with_context(|| {
                     format!(
                         "\ntest cycle:\nambient temperature: {}*C\ninit temperature: {}",
@@ -1317,7 +1354,7 @@ mod tests {
             dbg!("Running `sd_prep`");
             let mut sd_prep = SimDrive::new(veh, prep_cyc, None);
             sd_prep
-                .walk()
+                .run()
                 .with_context(|| {
                     format!(
                         "\nprep cycle:\nambient temperature: {}*C\ninit temperature: {}",
@@ -1345,7 +1382,7 @@ mod tests {
                 }),
             );
             sd_soak
-                .walk()
+                .run()
                 .with_context(|| {
                     format!(
                         "\nsoak cycle:\nambient temperature: {}*C\ninit temperature: {}",
@@ -1366,7 +1403,7 @@ mod tests {
             dbg!("Running `sd_test`");
             let mut sd_test = SimDrive::new(sd_soak.veh.clone(), test_cyc, None);
             sd_test
-                .walk()
+                .run()
                 .with_context(|| {
                     format!(
                         "\ntest cycle:\nambient temperature: {}*C\ninit temperature: {}",
@@ -1395,7 +1432,7 @@ mod tests {
             cyc: _cyc,
             sim_params: Default::default(),
         };
-        sd.walk().unwrap();
+        sd.run().unwrap();
         assert!(
             *sd.veh.state.i.get_fresh(String::new).unwrap() == sd.cyc.len_checked().unwrap() - 1
         );
@@ -1489,7 +1526,7 @@ mod tests {
             } else {
                 panic!();
             };
-            sd.walk()
+            sd.run()
                 .with_context(|| {
                     format!(
                         "ambient temperature: {}*C\ninit temperature: {}",
@@ -1521,7 +1558,7 @@ mod tests {
                 .update(si::Time::ZERO, || format_dbg!())
                 .unwrap();
             assert!(*sd.veh.state.i.get_fresh(|| format_dbg!()).unwrap() == 0);
-            sd.walk()
+            sd.run()
                 .with_context(|| {
                     format!(
                         "ambient temperature: {}*C\ninit temperature: {}",

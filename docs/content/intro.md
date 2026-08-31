@@ -35,7 +35,7 @@ any on-road vehicle over realistic scenarios.
 For information on FASTSim's history and modeling philosophy, see the
 [Background](background/what-is-fastsim.md) section.
 
-For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](https://github.com/NatLabRockies/fastsim-vehicles).
+For a searchable collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](https://natlabrockies.github.io/fastsim-vehicles/).
 
 ## Getting Started
 
@@ -49,7 +49,7 @@ For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](
 ## Learn More
 
 - GitHub Repository: https://github.com/NatLabRockies/fastsim
-- FASTSim Vehicle Database: https://github.com/NatLabRockies/fastsim-vehicles
+- FASTSim Vehicle Database: https://natlabrockies.github.io/fastsim-vehicles/
 - Documentation: https://natlabrockies.github.io/fastsim
 - Release Notes: https://github.com/NatLabRockies/fastsim/releases
 - NLR FASTSim Homepage: https://www.nlr.gov/transportation/fastsim

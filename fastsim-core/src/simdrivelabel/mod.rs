@@ -73,9 +73,9 @@ pub fn run_accel(
         sim_params.get("accel").cloned(),
     );
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
-    sd_accel.walk_once().map_err(|e| {
+    sd_accel.run_once().map_err(|e| {
         anyhow!(
-            "Acceleration simdrive walk_once failed at line {} with originating error [{}]",
+            "Acceleration simdrive run_once failed at line {} with originating error [{}]",
             format_dbg!(),
             e
         )
@@ -98,9 +98,9 @@ pub fn run_accel(
 /// Returns time [s] for 0-60 mph acceleration at max power
 pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
-    sd_accel.walk_once().map_err(|e| {
+    sd_accel.run_once().map_err(|e| {
         anyhow!(
-            "Acceleration simdrive walk_once failed at line {} with originating error [{}]",
+            "Acceleration simdrive run_once failed at line {} with originating error [{}]",
             format_dbg!(),
             e
         )
@@ -1003,7 +1003,7 @@ fn run_simdrive_with_init_soc(
     sd.reset_cumulative(|| format_dbg!())?;
     sd.reset_step(|| format_dbg!())?;
     sd.clear();
-    sd.walk_once().map_err(|e| {
+    sd.run_once().map_err(|e| {
         anyhow!(
             "run_simdrive_with_init_soc failed at line {} with originating error [{}]",
             format_dbg!(),
@@ -1063,7 +1063,7 @@ pub fn run_label_simulations(
     );
 
     for (k, val) in sd.iter_mut() {
-        val.walk().map_err(|e| {
+        val.run().map_err(|e| {
             anyhow!(
                 "run_label_simulations failed for key {} at line {} with originating error [{}]",
                 k,
@@ -1491,7 +1491,7 @@ pub fn get_label_fe_phev(
         // This runs 1 cycle starting at max SOC then runs 1 cycle starting at min SOC.
         // By assuming that the battery SOC depletion per mile is constant across cycles,
         // the first cycle can be extrapolated until charge sustaining kicks in.
-        sd.walk()?;
+        sd.run()?;
         let mut phev_calc = PHEVCycleCalc::default();
 
         // charge depletion cycle has already been simulated
@@ -1575,9 +1575,9 @@ pub fn get_label_fe_phev(
         sd.reset_cumulative(|| format_dbg!())?;
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
-        sd.walk_once().map_err(|err| {
+        sd.run_once().map_err(|err| {
             anyhow!(
-                "walk_once failed at line {} with originating error {}",
+                "run_once failed at line {} with originating error {}",
                 format_dbg!(),
                 err
             )
@@ -1597,9 +1597,9 @@ pub fn get_label_fe_phev(
         sd.reset_cumulative(|| format_dbg!())?;
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
-        sd.walk_once().map_err(|err| {
+        sd.run_once().map_err(|err| {
             anyhow!(
-                "walk_once failed at line {} with originating error {}",
+                "run_once failed at line {} with originating error {}",
                 format_dbg!(),
                 err
             )

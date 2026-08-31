@@ -27,7 +27,7 @@ mod tests {
                         .unwrap();
                 let f3_veh = Vehicle::try_from(f2_veh).unwrap();
                 let mut f3_sd = SimDrive::new(f3_veh, cyc.clone(), None);
-                assert!(f3_sd.walk().is_ok());
+                assert!(f3_sd.run().is_ok());
                 let mut f2_sd = f3_sd.to_fastsim2().unwrap();
                 assert!(f2_sd.sim_drive(None, None).is_ok());
             });

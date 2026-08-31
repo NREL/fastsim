@@ -93,7 +93,7 @@ data_formats = [
 ]
 
 
-def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict:
+def to_dict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict:
     """
     Return self converted to pure python dictionary with no nested Rust objects
 
@@ -188,7 +188,7 @@ def get_flattened(obj: dict | list, hist_len: int | None, prepend_str: str = "")
 
 
 @classmethod  # type: ignore[misc]
-def from_pydict(cls, pydict: dict, data_fmt: str = "msg_pack", skip_init: bool = False) -> Self:  # type: ignore[misc]
+def from_dict(cls, pydict: dict, data_fmt: str = "msg_pack", skip_init: bool = False) -> Self:  # type: ignore[misc]
     """
     Instantiate Self from pure python dictionary
 
@@ -215,6 +215,27 @@ def from_pydict(cls, pydict: dict, data_fmt: str = "msg_pack", skip_init: bool =
             obj = cls.from_json(dumps(pydict), skip_init=skip_init)
 
     return obj
+
+
+def to_pydict(self, data_fmt: str = "msg_pack", flatten: bool = False) -> dict:
+    """Use `to_dict` instead; deprecated."""
+    warnings.warn(
+        "`to_pydict` is deprecated; use `to_dict` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return self.to_dict(data_fmt=data_fmt, flatten=flatten)
+
+
+@classmethod  # type: ignore[misc]
+def from_pydict(cls, pydict: dict, data_fmt: str = "msg_pack", skip_init: bool = False) -> Self:  # type: ignore[misc]
+    """Use `from_dict` instead; deprecated."""
+    warnings.warn(
+        "`from_pydict` is deprecated; use `from_dict` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return cls.from_dict(pydict, data_fmt=data_fmt, skip_init=skip_init)
 
 
 def to_dataframe(
@@ -253,7 +274,7 @@ def to_dataframe(
 
     use_pandas = backend == "pandas"
 
-    obj_dict = self.to_pydict(flatten=True)
+    obj_dict = self.to_dict(flatten=True)
     history_keys = ["history.", "cyc."]
     hist_len = get_hist_len(obj_dict)
 
@@ -301,7 +322,7 @@ def to_dataframe(
 def _plot_cycle(
     self: Cycle, x="time_seconds", y="speed_meters_per_second", show=True
 ) -> go._figure.Figure:
-    cyc_dict = self.to_pydict()
+    cyc_dict = self.to_dict()
     if x not in cyc_dict:
         raise ValueError(f"Column '{x}' not found in the drive cycle data")
     if y not in cyc_dict:
@@ -401,6 +422,8 @@ def _vehicle_from_db(
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
 for item in ACCEPTED_RUST_STRUCTS:
+    setattr(getattr(fastsim, item), "to_dict", to_dict)
+    setattr(getattr(fastsim, item), "from_dict", from_dict)
     setattr(getattr(fastsim, item), "to_pydict", to_pydict)
     setattr(getattr(fastsim, item), "from_pydict", from_pydict)
     setattr(getattr(fastsim, item), "to_dataframe", to_dataframe)

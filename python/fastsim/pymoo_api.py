@@ -163,7 +163,7 @@ class ModelObjectives:
 
         for key, pydict in self.models.items():
             try:
-                sim_drives[key] = fsim.SimDrive.from_pydict(pydict, skip_init=False)
+                sim_drives[key] = fsim.SimDrive.from_dict(pydict, skip_init=False)
             except Exception as err:
                 sim_drives[key] = err
         t1 = time.perf_counter()
@@ -207,21 +207,21 @@ class ModelObjectives:
             #     continue
 
             if return_mods:
-                unsolved_mods[key] = sd.to_pydict()
+                unsolved_mods[key] = sd.to_dict()
 
             try:
                 t0 = time.perf_counter()
-                sd.walk_once()  # type: ignore
+                sd.run_once()  # type: ignore
                 t1 = time.perf_counter()
-                sd_dict = sd.to_pydict()
-                walk_success = True
+                sd_dict = sd.to_dict()
+                run_success = True
             except RuntimeError as err:
                 t1 = time.perf_counter()
-                sd_dict = sd.to_pydict()
-                walk_success = True
+                sd_dict = sd.to_dict()
+                run_success = True
                 print(err)
                 if len(sd_dict["veh"]["history"]["time_seconds"]) < np.floor(len(df_exp) / 2):
-                    walk_success = False
+                    run_success = False
 
             if self.verbose:
                 print(f"Time to simulate {key}: {t1 - t0:.3g}")
@@ -253,7 +253,7 @@ class ModelObjectives:
                     time_s = sd_dict["veh"]["history"]["time_seconds"]
                     # TODO: provision for incomplete simulation in here somewhere
 
-                    if not walk_success:
+                    if not run_success:
                         objectives[key].append(1.02e12)
                     else:
                         try:

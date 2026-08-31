@@ -40,12 +40,12 @@ f2_all_sds = f2_conv_sds + f2_bev_sds # + f2_hev_sds
 # %%
 # Simulate FASTSim 3
 for sd in f3_all_sds:
-    # sd_dict = sd.to_pydict(flatten=False)
+    # sd_dict = sd.to_dict(flatten=False)
     # sd_dict["sim_params"]["trace_miss_opts"] = "Allow"
-    # sd = fastsim.SimDrive.from_pydict(sd_dict)
+    # sd = fastsim.SimDrive.from_dict(sd_dict)
 
     try:
-        sd.walk()
+        sd.run()
     except Exception as e:
         print("FAILURE:", sd.veh.name, e)
 

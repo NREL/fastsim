@@ -226,7 +226,7 @@ mod tests {
         };
         let cyc = crate::drive_cycle::CYC_ACCEL.clone();
         let mut sim = SimDrive::new(veh, cyc, Some(params));
-        assert!(sim.walk().is_ok());
+        assert!(sim.run().is_ok());
     }
 
     #[test]
@@ -243,7 +243,7 @@ mod tests {
             ..Default::default()
         };
         let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        assert!(sim.walk().is_err());
+        assert!(sim.run().is_err());
         // meets modified tolerances
         let params = SimParams {
             trace_miss_opts: TraceMissOptions::AllowChecked,
@@ -256,7 +256,7 @@ mod tests {
             ..Default::default()
         };
         let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        sim.walk().unwrap();
+        sim.run().unwrap();
         // misses mixed tolerances
         let params = SimParams {
             trace_miss_opts: TraceMissOptions::AllowChecked,
@@ -269,7 +269,7 @@ mod tests {
             ..Default::default()
         };
         let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        assert!(sim.walk().is_err());
+        assert!(sim.run().is_err());
         // misses mixed tolerances
         let params = SimParams {
             trace_miss_opts: TraceMissOptions::AllowChecked,
@@ -282,7 +282,7 @@ mod tests {
             ..Default::default()
         };
         let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        assert!(sim.walk().is_err());
+        assert!(sim.run().is_err());
         // misses mixed tolerances
         let params = SimParams {
             trace_miss_opts: TraceMissOptions::AllowChecked,
@@ -295,7 +295,7 @@ mod tests {
             ..Default::default()
         };
         let mut sim = SimDrive::new(veh.clone(), cyc.clone(), Some(params));
-        assert!(sim.walk().is_err());
+        assert!(sim.run().is_err());
     }
 
     // TODO: implement when TraceMissOptions::Warn is implemented
@@ -327,7 +327,7 @@ mod tests {
         };
         let cyc = crate::drive_cycle::CYC_ACCEL.clone();
         let mut sim = SimDrive::new(veh, cyc, Some(params));
-        assert!(sim.walk().is_err());
+        assert!(sim.run().is_err());
     }
 
     // TODO: why does sim.cyc.speed have spikes? sim.veh.history.speed_ach seems reasonable
@@ -344,6 +344,6 @@ mod tests {
         };
         let cyc = crate::drive_cycle::CYC_ACCEL.clone();
         let mut sim = SimDrive::new(veh, cyc, Some(params));
-        sim.walk().unwrap();
+        sim.run().unwrap();
     }
 }
