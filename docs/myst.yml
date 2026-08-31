@@ -57,3 +57,6 @@ site:
     logo: assets/edit-nlr-logo-color-horizontal-png-v2.png
     favicon: assets/nlr.ico
     style: assets/site.css
+  parts:
+    primary_sidebar_footer: |
+      [`fastsim` on GitHub](https://github.com/NatLabRockies/fastsim)

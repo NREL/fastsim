@@ -1,4 +1,21 @@
+//! Database organizational schema version 1 for the `fastsim-vehicles` repository.
+//!
+//! Provides parsing, validation, and serialization of vehicle identification paths
+//! (e.g., `v1/fastsim-3/conv/ford/fusion/2012/base/r1`) along with error handling
+//! and index entry structures for vehicle discovery.
+
 use super::*;
+
+mod error;
+mod index;
+mod search;
+
+#[cfg(feature = "wasm")]
+mod wasm;
+
+pub use error::VehicleSchemaV1Error;
+pub use index::{read_jsonl_v1, write_jsonl_v1, IndexEntryV1};
+pub use search::{search_v1, QueryV1};
 
 /// Database organizational schema version 1 for the `fastsim-vehicles` repository.
 ///
@@ -15,7 +32,7 @@ use super::*;
 /// 8. `r{N}` — model revision/version for corrections
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(into = "String", try_from = "String")]
-pub struct DatabaseSchemaV1 {
+pub struct VehicleSchemaV1 {
     /// FASTSim version
     pub fastsim_version: u32,
     /// Powertrain type (e.g., "conv", "hev", "phev", "bev")
@@ -32,7 +49,7 @@ pub struct DatabaseSchemaV1 {
     pub revision: u32,
 }
 
-impl std::fmt::Display for DatabaseSchemaV1 {
+impl std::fmt::Display for VehicleSchemaV1 {
     /// Display the schema as its path-segment string representation.
     ///
     /// Formats as: `v1/fastsim-{N}/{powertrain}/{make}/{model}/{year}/{variant}/r{N}`
@@ -41,14 +58,14 @@ impl std::fmt::Display for DatabaseSchemaV1 {
     }
 }
 
-impl From<DatabaseSchemaV1> for String {
-    fn from(s: DatabaseSchemaV1) -> Self {
+impl From<VehicleSchemaV1> for String {
+    fn from(s: VehicleSchemaV1) -> Self {
         s.to_string()
     }
 }
 
-impl std::str::FromStr for DatabaseSchemaV1 {
-    type Err = anyhow::Error;
+impl std::str::FromStr for VehicleSchemaV1 {
+    type Err = VehicleSchemaV1Error;
     /// Parse a schema from its path-segment string representation.
     ///
     /// Expected format (8 segments):
@@ -60,7 +77,7 @@ impl std::str::FromStr for DatabaseSchemaV1 {
     ///   prefixes, or non-numeric version fields.
     /// - Canonical identifier validation (`new`): any of `powertrain`, `make`, `model`,
     ///   `year`, or `variant` is not already a canonical identifier.
-    fn from_str(s: &str) -> anyhow::Result<Self> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let raw = Self::parse_structural(s)?;
         Self::new(
             raw.fastsim_version,
@@ -74,14 +91,14 @@ impl std::str::FromStr for DatabaseSchemaV1 {
     }
 }
 
-impl TryFrom<String> for DatabaseSchemaV1 {
-    type Error = anyhow::Error;
-    fn try_from(s: String) -> anyhow::Result<Self> {
+impl TryFrom<String> for VehicleSchemaV1 {
+    type Error = VehicleSchemaV1Error;
+    fn try_from(s: String) -> Result<Self, Self::Error> {
         s.parse()
     }
 }
 
-impl DatabaseSchemaV1 {
+impl VehicleSchemaV1 {
     /// Parse a v1 schema path structurally, without canonical identifier validation.
     ///
     /// This only validates path shape and numeric fields:
@@ -92,28 +109,39 @@ impl DatabaseSchemaV1 {
     /// It intentionally does not enforce canonical formatting for `powertrain`,
     /// `make`, `model`, `year`, or `variant`. Call `new` (or `from_str`) for full
     /// canonical validation.
-    pub(crate) fn parse_structural(s: &str) -> anyhow::Result<Self> {
+    pub(crate) fn parse_structural(s: &str) -> Result<Self, VehicleSchemaV1Error> {
         let parts: Vec<&str> = s.split('/').collect();
-        ensure!(
-            parts.len() == 8,
-            "expected 8 path segments, got {}: {s:?}",
-            parts.len()
-        );
-        ensure!(
-            parts[0] == "v1",
-            "expected schema prefix 'v1', got {:?}",
-            parts[0]
-        );
+        if parts.len() != 8 {
+            return Err(VehicleSchemaV1Error::SegmentCount {
+                input: s.to_string(),
+                actual: parts.len(),
+            });
+        }
+        if parts[0] != "v1" {
+            return Err(VehicleSchemaV1Error::WrongSchemaPrefix {
+                found: parts[0].to_string(),
+            });
+        }
         let fastsim_version = parts[1]
             .strip_prefix("fastsim-")
-            .ok_or_else(|| anyhow!("expected 'fastsim-N' segment, got {:?}", parts[1]))?
+            .ok_or_else(|| VehicleSchemaV1Error::MissingFastsimVersionPrefix {
+                segment: parts[1].to_string(),
+            })?
             .parse::<u32>()
-            .with_context(|| format!("invalid FASTSim version in {:?}", parts[1]))?;
+            .map_err(|source| VehicleSchemaV1Error::InvalidFastsimVersion {
+                segment: parts[1].to_string(),
+                source,
+            })?;
         let revision = parts[7]
             .strip_prefix('r')
-            .ok_or_else(|| anyhow!("expected 'rN' revision segment, got {:?}", parts[7]))?
+            .ok_or_else(|| VehicleSchemaV1Error::MissingRevisionPrefix {
+                segment: parts[7].to_string(),
+            })?
             .parse::<u32>()
-            .with_context(|| format!("invalid revision in {:?}", parts[7]))?;
+            .map_err(|source| VehicleSchemaV1Error::InvalidRevision {
+                segment: parts[7].to_string(),
+                source,
+            })?;
 
         Ok(Self {
             fastsim_version,
@@ -139,7 +167,7 @@ impl DatabaseSchemaV1 {
         year: String,
         variant: String,
         revision: u32,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self, VehicleSchemaV1Error> {
         for (field, segment) in [
             ("powertrain", &powertrain),
             ("make", &make),
@@ -147,11 +175,13 @@ impl DatabaseSchemaV1 {
             ("year", &year),
             ("variant", &variant),
         ] {
-            ensure!(
-                Self::validate_identifier(segment),
-                "{field} contains invalid identifier {segment:?}, proper identifier would be {:?}",
-                Self::normalize_identifier(segment),
-            );
+            if !Self::validate_identifier(segment) {
+                return Err(VehicleSchemaV1Error::InvalidIdentifier {
+                    field,
+                    value: segment.to_string(),
+                    suggestion: Self::normalize_identifier(segment),
+                });
+            }
         }
         Ok(Self {
             fastsim_version,
@@ -216,6 +246,31 @@ impl DatabaseSchemaV1 {
         !s.is_empty() && Self::normalize_identifier(s) == s
     }
 
+    /// Suggests a normalized path when `raw` is structurally valid but not canonical.
+    ///
+    /// Returns `(current, suggested)` when a suggestion differs from the current path.
+    pub fn suggest_normalized_path(raw: &str) -> Option<(String, String)> {
+        let current = Self::parse_structural(raw).ok()?;
+
+        let suggested = Self {
+            fastsim_version: current.fastsim_version,
+            powertrain: Self::normalize_identifier(&current.powertrain),
+            make: Self::normalize_identifier(&current.make),
+            model: Self::normalize_identifier(&current.model),
+            year: Self::normalize_identifier(&current.year),
+            variant: Self::normalize_identifier(&current.variant),
+            revision: current.revision,
+        };
+
+        let current_path = current.to_string();
+        let suggested_path = suggested.to_string();
+        if current_path != suggested_path {
+            Some((current_path, suggested_path))
+        } else {
+            None
+        }
+    }
+
     /// Build the ordered path segments as an 8-element array (without file extension).
     ///
     /// Returns in order:
@@ -243,139 +298,27 @@ impl DatabaseSchemaV1 {
     /// Build a local file path by joining the schema's path-segment string with a base directory and extension.
     ///
     /// Example: `base_dir/v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml`
-    pub fn build_filepath<P: AsRef<Path>>(
+    pub fn build_filepath<P: AsRef<std::path::Path>>(
         &self,
         base_dir: P,
         extension: &str,
-    ) -> anyhow::Result<std::path::PathBuf> {
-        Ok(base_dir.as_ref().join(format!("{}.{}", self, extension)))
+    ) -> std::path::PathBuf {
+        base_dir.as_ref().join(format!("{}.{}", self, extension))
     }
 
     /// Build a remote URL by joining the schema's path-segment string with a base URL and extension.
     ///
     /// If `base_url` is None, uses the default GitHub raw content URL.
     /// Example: `https://raw.githubusercontent.com/.../v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml`
-    pub fn build_url(&self, base_url: Option<&str>, extension: &str) -> anyhow::Result<String> {
-        Ok(format!(
+    pub fn build_url(&self, base_url: Option<&str>, extension: &str) -> String {
+        format!(
             "{}/{}.{}",
             base_url
                 .map(|s| s.trim_end_matches('/'))
                 .unwrap_or(DEFAULT_DB_URL),
             self,
             extension
-        ))
-    }
-}
-
-impl Vehicle {
-    /// Load a vehicle from a database schema (v1).
-    ///
-    /// This is the unified core loading function that handles both local and remote databases.
-    /// Local/remote detection is automatic based on the `db_path_or_url` parameter:
-    /// - `None` or URLs starting with `http://`/`https://` → remote loading
-    /// - File paths or other strings → local file loading
-    ///
-    /// The schema determines which vehicle file to load:
-    /// - Schema path: `v1/fastsim-{ver}/{powertrain}/{make}/{model}/{year}/{variant}/r{rev}`
-    /// - Local file: `{db_path_or_url}/v1/fastsim-.../r{rev}.{extension}`
-    /// - Remote URL: `{db_path_or_url}/v1/fastsim-.../r{rev}.{extension}`
-    ///
-    /// # Parameters
-    /// - `db_path_or_url`: Database root path (local) or base URL (remote), or `None` for default remote
-    /// - `schema`: Parsed or constructed `DatabaseSchemaV1` object
-    /// - `extension`: File extension (typically "yaml" or "json")
-    /// - `skip_init`: If false, runs vehicle initialization after loading
-    pub fn from_db_schema_v1(
-        db_path_or_url: Option<&str>,
-        schema: DatabaseSchemaV1,
-        extension: &str,
-        skip_init: bool,
-    ) -> anyhow::Result<Self> {
-        let is_remote = db_path_or_url
-            .map(|u| u.starts_with("http://") || u.starts_with("https://"))
-            .unwrap_or(true);
-
-        if is_remote {
-            #[cfg(feature = "web")]
-            {
-                let resolved_url = schema.build_url(db_path_or_url, extension)?;
-                Ok(Self::from_url(resolved_url, skip_init)?)
-            }
-            #[cfg(not(feature = "web"))]
-            {
-                anyhow::bail!("Remote DB loading requires FASTSim built with the `web` feature")
-            }
-        } else {
-            let path = schema.build_filepath(db_path_or_url.unwrap(), extension)?;
-            Ok(Self::from_file(path, skip_init)?)
-        }
-    }
-
-    /// Load a vehicle using a pre-serialized schema path string.
-    ///
-    /// Convenience wrapper that parses the path string into a `DatabaseSchemaV1` schema object
-    /// and delegates to `from_db_schema_v1` for loading.
-    ///
-    /// # Parameters
-    /// - `db_path_or_url`: Database root (local path or remote base URL)
-    /// - `path`: Full schema path string: `v1/fastsim-{ver}/{powertrain}/{make}/{model}/{year}/{variant}/r{rev}`
-    /// - `extension`: File extension (typically "yaml")
-    /// - `skip_init`: If false, runs vehicle initialization
-    ///
-    /// # Errors
-    /// Returns an error if the path string cannot be parsed as a valid schema.
-    pub fn from_db_path_v1(
-        db_path_or_url: Option<&str>,
-        path: &str,
-        extension: &str,
-        skip_init: bool,
-    ) -> anyhow::Result<Self> {
-        let schema = DatabaseSchemaV1::from_str(path)?;
-        Self::from_db_schema_v1(db_path_or_url, schema, extension, skip_init)
-    }
-
-    /// Load a vehicle using individual schema fields.
-    ///
-    /// Convenience wrapper that constructs a `DatabaseSchemaV1` schema object from individual
-    /// fields and delegates to `from_db_schema_v1` for loading.
-    ///
-    /// # Parameters
-    /// - `db_path_or_url`: Database root (local path or remote base URL)
-    /// - `fastsim_version`: FASTSim version (e.g., 3)
-    /// - `powertrain`: Powertrain type (e.g., "conv", "hev", "phev", "bev")
-    /// - `make`: Vehicle make (e.g., "ford", "tesla")
-    /// - `model`: Vehicle model (e.g., "fusion", "model-3")
-    /// - `year`: Model year or range (e.g., "2012", "2020-2023")
-    /// - `variant`: Variant descriptor (e.g., "base")
-    /// - `revision`: Model revision number
-    /// - `extension`: File extension (typically "yaml")
-    /// - `skip_init`: If false, runs vehicle initialization
-    ///
-    /// # Errors
-    /// Returns an error if any field fails `DatabaseSchemaV1::new` canonical
-    /// identifier validation, or if file/URL loading fails.
-    pub fn from_db_fields_v1(
-        db_path_or_url: Option<&str>,
-        fastsim_version: u32,
-        powertrain: &str,
-        make: &str,
-        model: &str,
-        year: &str,
-        variant: &str,
-        revision: u32,
-        extension: &str,
-        skip_init: bool,
-    ) -> anyhow::Result<Self> {
-        let schema = DatabaseSchemaV1::new(
-            fastsim_version,
-            powertrain.to_string(),
-            make.to_string(),
-            model.to_string(),
-            year.to_string(),
-            variant.to_string(),
-            revision,
-        )?;
-        Self::from_db_schema_v1(db_path_or_url, schema, extension, skip_init)
+        )
     }
 }
 
@@ -383,8 +326,8 @@ impl Vehicle {
 mod tests {
     use super::*;
 
-    fn sample_schema() -> DatabaseSchemaV1 {
-        DatabaseSchemaV1::new(
+    fn sample_schema() -> VehicleSchemaV1 {
+        VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "ford".to_string(),
@@ -401,7 +344,7 @@ mod tests {
         let schema = sample_schema();
         let serialized = serde_json::to_string(&schema).unwrap();
         assert_eq!(serialized, "\"v1/fastsim-3/conv/ford/fusion/2012/base/r1\"");
-        let deserialized: DatabaseSchemaV1 = serde_json::from_str(&serialized).unwrap();
+        let deserialized: VehicleSchemaV1 = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, schema);
     }
 
@@ -417,21 +360,21 @@ mod tests {
     #[test]
     fn test_from_str() {
         let s = "v1/fastsim-3/conv/ford/fusion/2012/base/r1";
-        let schema = DatabaseSchemaV1::from_str(s).unwrap();
+        let schema = VehicleSchemaV1::from_str(s).unwrap();
         assert_eq!(schema, sample_schema());
     }
 
     #[test]
     fn test_from_str_errors() {
-        assert!(DatabaseSchemaV1::from_str("v2/fastsim-3/conv/ford/fusion/2012/base/r1").is_err());
-        assert!(DatabaseSchemaV1::from_str("v1/fastsim-3/conv/ford/fusion/2012/base").is_err());
-        assert!(DatabaseSchemaV1::from_str("v1/bad-3/conv/ford/fusion/2012/base/r1").is_err());
-        assert!(DatabaseSchemaV1::from_str("v1/fastsim-3/conv/ford/fusion/2012/base/v1").is_err());
+        assert!(VehicleSchemaV1::from_str("v2/fastsim-3/conv/ford/fusion/2012/base/r1").is_err());
+        assert!(VehicleSchemaV1::from_str("v1/fastsim-3/conv/ford/fusion/2012/base").is_err());
+        assert!(VehicleSchemaV1::from_str("v1/bad-3/conv/ford/fusion/2012/base/r1").is_err());
+        assert!(VehicleSchemaV1::from_str("v1/fastsim-3/conv/ford/fusion/2012/base/v1").is_err());
     }
 
     #[test]
     fn test_new_rejects_slash_in_fields() {
-        assert!(DatabaseSchemaV1::new(
+        assert!(VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "ford".to_string(),
@@ -441,7 +384,7 @@ mod tests {
             1,
         )
         .is_err());
-        assert!(DatabaseSchemaV1::new(
+        assert!(VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "ford".to_string(),
@@ -455,7 +398,7 @@ mod tests {
 
     #[test]
     fn test_new_allows_expected_characters() {
-        assert!(DatabaseSchemaV1::new(
+        assert!(VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "a-b-c-d-e-f0".to_string(),
@@ -469,7 +412,7 @@ mod tests {
 
     #[test]
     fn test_new_rejects_disallowed_characters() {
-        assert!(DatabaseSchemaV1::new(
+        assert!(VehicleSchemaV1::new(
             3,
             "conv".to_string(),
             "ford".to_string(),
@@ -484,73 +427,70 @@ mod tests {
     #[test]
     fn test_normalize_identifier_simple_cases() {
         assert_eq!(
-            DatabaseSchemaV1::normalize_identifier("Outback XT"),
+            VehicleSchemaV1::normalize_identifier("Outback XT"),
             "outback-xt"
         );
         assert_eq!(
-            DatabaseSchemaV1::normalize_identifier("Model__3   Performance"),
+            VehicleSchemaV1::normalize_identifier("Model__3   Performance"),
             "model-3-performance"
         );
         assert_eq!(
-            DatabaseSchemaV1::normalize_identifier("f-150/raptor"),
+            VehicleSchemaV1::normalize_identifier("f-150/raptor"),
             "f-150-raptor"
         );
-        assert_eq!(DatabaseSchemaV1::normalize_identifier("foo@bar"), "foo-bar");
+        assert_eq!(VehicleSchemaV1::normalize_identifier("foo@bar"), "foo-bar");
+        assert_eq!(VehicleSchemaV1::normalize_identifier("foo..bar"), "foo.bar");
         assert_eq!(
-            DatabaseSchemaV1::normalize_identifier("foo..bar"),
-            "foo.bar"
-        );
-        assert_eq!(
-            DatabaseSchemaV1::normalize_identifier("foo.-..bar"),
+            VehicleSchemaV1::normalize_identifier("foo.-..bar"),
             "foo.-.bar"
         );
-        assert_eq!(DatabaseSchemaV1::normalize_identifier("foo/bar"), "foo-bar");
-        assert_eq!(DatabaseSchemaV1::normalize_identifier("---"), "");
+        assert_eq!(VehicleSchemaV1::normalize_identifier("foo/bar"), "foo-bar");
+        assert_eq!(VehicleSchemaV1::normalize_identifier("---"), "");
     }
 
     #[test]
     fn test_normalize_engine_displacement() {
         assert_eq!(
-            DatabaseSchemaV1::normalize_identifier("Golf 1.5 TSI"),
+            VehicleSchemaV1::normalize_identifier("Golf 1.5 TSI"),
             "golf-1.5-tsi"
         );
         assert_eq!(
-            DatabaseSchemaV1::normalize_identifier("F-150 3.5 EcoBoost"),
+            VehicleSchemaV1::normalize_identifier("F-150 3.5 EcoBoost"),
             "f-150-3.5-ecoboost"
         );
     }
 
     #[test]
     fn test_vehicle_model_identifiers_with_engine_displacement() {
-        assert!(DatabaseSchemaV1::validate_identifier("golf-1.5tsi"));
-        assert!(DatabaseSchemaV1::validate_identifier("f-150-3.5-ecoboost"));
+        assert!(VehicleSchemaV1::validate_identifier("golf-1.5tsi"));
+        assert!(VehicleSchemaV1::validate_identifier("f-150-3.5-ecoboost"));
     }
 
     #[test]
     fn test_validate_identifier_passes_for_slug_strings() {
-        assert!(DatabaseSchemaV1::validate_identifier("ford"));
-        assert!(DatabaseSchemaV1::validate_identifier("model-3"));
-        assert!(DatabaseSchemaV1::validate_identifier("golf-1.5tsi"));
-        assert!(DatabaseSchemaV1::validate_identifier("2020"));
-        assert!(DatabaseSchemaV1::validate_identifier("a1-b2-c3"));
+        assert!(VehicleSchemaV1::validate_identifier("ford"));
+        assert!(VehicleSchemaV1::validate_identifier("model-3"));
+        assert!(VehicleSchemaV1::validate_identifier("golf-1.5tsi"));
+        assert!(VehicleSchemaV1::validate_identifier("2020"));
+        assert!(VehicleSchemaV1::validate_identifier("a1-b2-c3"));
     }
 
     #[test]
     fn test_validate_identifier_fails_for_non_slug_strings() {
-        assert!(!DatabaseSchemaV1::validate_identifier("Outback XT"));
-        assert!(!DatabaseSchemaV1::validate_identifier("model_3"));
-        assert!(!DatabaseSchemaV1::validate_identifier("model+3"));
-        assert!(!DatabaseSchemaV1::validate_identifier("model--3"));
-        assert!(!DatabaseSchemaV1::validate_identifier("/model3"));
-        assert!(!DatabaseSchemaV1::validate_identifier(""));
-        assert!(!DatabaseSchemaV1::validate_identifier("-model"));
+        assert!(!VehicleSchemaV1::validate_identifier("Outback XT"));
+        assert!(!VehicleSchemaV1::validate_identifier("model_3"));
+        assert!(!VehicleSchemaV1::validate_identifier("model+3"));
+        assert!(!VehicleSchemaV1::validate_identifier("model--3"));
+        assert!(!VehicleSchemaV1::validate_identifier("/model3"));
+        assert!(!VehicleSchemaV1::validate_identifier(""));
+        assert!(!VehicleSchemaV1::validate_identifier("-model"));
     }
 
     #[test]
     fn test_build_filepath_output() {
         let base = std::path::Path::new("/tmp/vehicles-db");
         let schema = sample_schema();
-        let actual = schema.build_filepath(base, "yaml").unwrap();
+        let actual = schema.build_filepath(base, "yaml");
         let expected = base.join("v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml");
         assert_eq!(actual, expected);
     }
@@ -558,34 +498,10 @@ mod tests {
     #[test]
     fn test_build_url_output() {
         let schema = sample_schema();
-        let actual = schema.build_url(None, "yaml").unwrap();
+        let actual = schema.build_url(None, "yaml");
         let expected =
             "https://raw.githubusercontent.com/NatLabRockies/fastsim-vehicles/main/v1/fastsim-3/conv/ford/fusion/2012/base/r1.yaml"
                 .to_string();
         assert_eq!(actual, expected);
-    }
-
-    #[test]
-    #[cfg(feature = "web")]
-    fn test_from_db_remote_v1() {
-        // Network-dependent integration check; opt-in to avoid flaky CI/local runs.
-        if std::env::var("FASTSIM_RUN_NETWORK_TESTS").ok().as_deref() != Some("1") {
-            return;
-        }
-
-        let schema = sample_schema();
-        assert!(Vehicle::from_db_fields_v1(
-            None,
-            schema.fastsim_version,
-            &schema.powertrain,
-            &schema.make,
-            &schema.model,
-            &schema.year,
-            &schema.variant,
-            schema.revision,
-            "yaml",
-            false,
-        )
-        .is_ok());
     }
 }

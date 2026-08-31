@@ -12,46 +12,48 @@ In an active Python environment, run:
 pip install fastsim
 ```
 
-This will install the latest version of FASTSim as a Python package.
+This will install the latest release of FASTSim as a Python package.
 
 See [](#next-steps) for further resources.
 
-## Install from Source (developers)
+## Install from Source (advanced)
 
-FASTSim's backend is written entirely in Rust, so a Rust toolchain is required to build from source.
-
-**Option A: Pixi (recommended)**
-
-[Pixi](https://pixi.prefix.dev/latest/) manages the Rust toolchain and Python dependencies for you. After [installing pixi](https://pixi.prefix.dev/latest/installation/), clone the repository and run:
+First, clone the repository:
 
 ```bash
 git clone https://github.com/NatLabRockies/fastsim.git
 cd fastsim
-pixi install
 ```
 
-This uses the `default` pixi environment, which compiles FASTSim with a release-profile build. See [](developers/environment-setup.md) for the full list of environments and developer tooling.
+Then, install Rust and build FASTSim. FASTSim's backend is written entirely in Rust, so it is required to build from source.
 
-**Option B: Manual**
+- **Option A: Pixi (recommended)**
 
-Install Python and the [Rust toolchain](https://www.rust-lang.org/tools/install) first, then:
-
-1. Clone the repository:
+   [Pixi](https://pixi.prefix.dev/latest/) manages the Rust toolchain and Python dependencies for you. After [installing pixi](https://pixi.prefix.dev/latest/installation/), compile FASTSim with a release profile build and an editable Python package:
 
    ```bash
-   git clone https://github.com/NatLabRockies/fastsim.git
-   cd fastsim
+   pixi install
    ```
 
-1. Install from the repository root:
+   Run `pixi install -e dev` instead to use the developer environment, which compiles faster using the debug profile, at the cost of runtime performance.
+
+- **Option B: Manual**
+
+   Install Python using your environment manager of choice, then install the [Rust toolchain](https://www.rust-lang.org/tools/install), e.g. using rustup:
 
    ```bash
-   pip install .
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    ```
 
-   Add `-e` for an editable install, or `--group dev` for developer dependencies.
+   Then, compile FASTSim with maturin via pip.
 
-For more detail on developer builds, see [](developers/compiling-from-source.md).
+   ```bash
+   pip install -e .
+   ```
+
+   Run `pip install -e . --group dev` instead to install with developer dependencies.
+
+For more detail on developer builds or alternate pixi environments, see [](developers/environment-setup.md).
 
 (next-steps)=
 ## Next Steps
@@ -73,19 +75,16 @@ A high-level overview showing how to load pre-defined vehicles, run simulations,
 
 :::{grid-item-card} [Vehicle Models](user-guide/vehicle-models/vehicle.md)
 :link: user-guide/vehicle-models/vehicle.md
-:link-type: doc
 Define and configure vehicle models
 :::
 
 :::{grid-item-card} [Drive Cycles](user-guide/drive-cycles/drive-cycle.ipynb)
 :link: user-guide/drive-cycles/drive-cycle.ipynb
-:link-type: doc
 Work with built-in and custom cycles
 :::
 
 :::{grid-item-card} [Running Simulations](user-guide/running-simulations/simdrive.ipynb)
 :link: user-guide/running-simulations/simdrive.ipynb
-:link-type: doc
 Execute simulations and inspect results
 :::
 

@@ -2,13 +2,14 @@
 
 <div style="height: 2rem;"></div>
 
-FASTSim (**Future Automotive Systems Technology Simulator**) is a vehicle simulation tool for evaluating the efficiency and performance of on-road vehicles.
-Developed by the National Laboratory of the Rockies (NLR), it provides fast, accurate estimates of powertrain performance and energy consumption.
-FASTSim models powertrain technologies from conventional fuel-burning vehicles to hybrids and battery electric vehicles, and has been used to simulate light-duty passenger cars, two-wheelers, and a wide variety of medium- and heavy-duty vocational vehicles.
+The Future Automotive Systems Technology Simulator (**FASTSim**) is an open-source vehicle powertrain simulation tool for evaluating the efficiency and performance of on-road vehicles.
+Developed by the National Laboratory of the Rockies (NLR), it provides fast, credible estimates of powertrain performance and energy consumption.
+FASTSim models powertrain technologies from conventional internal-combustion vehicles to hybrids, plug-in hybrids, and battery electric vehicles, and has been used to simulate light-duty passenger vehicles, two-wheelers, and a wide variety of medium- and heavy-duty vehicles.
 
 FASTSim is designed for rapid analysis, making it practical to run many
 simulations and compare technology scenarios across vehicle classes and use
-cases. FASTSim outputs also feed other NLR tools, including:
+cases. It occupies a practical middle ground between basic efficiency assumptions and detailed component/control models, balancing accuracy, runtime speed,
+and input burden for large scenario sweeps. FASTSim outputs are a core layer in other NLR tools, including:
 - [RouteE](https://www.nlr.gov/transportation/route-energy-prediction-model):
   an energy prediction tool and energy-aware routing engine
 - [T3CO](https://www.nlr.gov/transportation/t3co):
@@ -17,9 +18,8 @@ cases. FASTSim outputs also feed other NLR tools, including:
   a technology-driven consumer choice and vehicle market adoption model
 
 FASTSim models conventional vehicles, hybrids, plug-in hybrids,
-and battery electric vehicles over a set of standard regulatory drive cycles.
-You can also define custom vehicles and custom drive cycles to simulate
-any on-road vehicle over realistic scenarios.
+battery electric vehicles, and fuel-cell electric vehicles over a set of
+standard regulatory drive cycles. You can also define custom vehicles and custom drive cycles to simulate any on-road vehicle over realistic scenarios.
 
 For detailed documentation on FASTSim, including usage, background, and modeling philosophy, see https://natlabrockies.github.io/fastsim.
 
@@ -45,7 +45,7 @@ page of
 
 ## Usage
 
-For instruction on using FASTSim to simulate on-road vehicle performance, see the
-[User Guide](https://natlabrockies.github.io/user-guide)
+For instructions on using FASTSim to simulate on-road vehicle performance, see the
+[User Guide](https://natlabrockies.github.io/fastsim/user-guide)
 section of
 [FASTSim's documentation](https://natlabrockies.github.io/fastsim).
