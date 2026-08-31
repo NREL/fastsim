@@ -117,9 +117,7 @@ impl SimDrive {
                 format!("SimDrive.{old_name} is deprecated; use SimDrive.{new_name} instead.",);
             let kwargs = PyDict::new(py);
             let _ = kwargs.set_item("stacklevel", 2);
-            if let Ok(dep_warn) = warnings.getattr("DeprecationWarning") {
-                let _ = kwargs.set_item("category", dep_warn);
-            }
+            let _ = kwargs.set_item("category", py.get_type::<PyDeprecationWarning>());
             let _ = warnings.call_method("warn", (msg,), Some(&kwargs));
         }
     }
