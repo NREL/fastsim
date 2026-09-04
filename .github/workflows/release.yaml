@@ -140,10 +140,11 @@ jobs:
         run: python -m twine check ./artifact/*
 
       - name: Dry-run Rust crate publish
+        # fastsim-core is skipped here: cargo can't resolve its pinned
+        # fastsim-proc-macros version until that crate is actually published.
         run: |
           cargo publish --manifest-path fastsim-core/fastsim-proc-macros/Cargo.toml --locked --dry-run
-          cargo publish --manifest-path fastsim-core/Cargo.toml --locked --dry-run
-        # cargo publish --manifest-path fastsim-cli/Cargo.toml --locked --dry-run
+        # cargo publish --manifest-path fastsim-core/Cargo.toml --locked --dry-run
 
       - name: Publish distribution to Test PyPI
         run: python -m twine upload -r testpypi ./artifact/*
@@ -155,7 +156,6 @@ jobs:
         run: |
           cargo publish --manifest-path fastsim-core/fastsim-proc-macros/Cargo.toml --locked
           cargo publish --manifest-path fastsim-core/Cargo.toml --locked
-        # cargo publish --manifest-path fastsim-cli/Cargo.toml --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
