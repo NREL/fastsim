@@ -116,8 +116,6 @@ jobs:
     needs: [build-wheels, feature-powerset]
     name: Publish release artifacts
     runs-on: ubuntu-latest
-    # Protection: only publish on an explicit GitHub release, not workflow_dispatch re-runs.
-    if: github.event_name == 'release' && github.event.action == 'published'
     steps:
       - uses: actions/checkout@v4
 
