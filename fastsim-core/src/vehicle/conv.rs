@@ -226,24 +226,32 @@ impl Init for ConventionalVehicle {
     fn init(&mut self) -> Result<(), Error> {
         let alt_eff = self.alt_eff.get::<si::ratio>();
         if alt_eff != 1.0 {
-            // when supplied an alt_eff that would have an effect on simulation:
-            // - emit warning about deprecated field
-            eprintln!(
-                "Warning: deprecated field `alt_eff` = `{}` is not equal to 1.0, which is the default value. This field will be removed in a future release.",
-                alt_eff
-            );
-            match &self.fc.aux_supply_eff {
-                AuxSupplyEfficiency::Constant(interp) => {
-                    if interp.0 != alt_eff {
-                        // if provided both alt_eff != 1.0 and aux_eff that is not equivalent
-                        // emit warning that aux_eff overrides alt_eff
-                        eprintln!(
-                            "Warning: provided deprecated field `alt_eff` = `{}` is being overridden by `fc.aux_supply_eff`. The `alt_eff` field will be removed in a future release.",
-                            alt_eff
-                        );
-                    }
-                }
-            };
+            let AuxSupplyEfficiency::Constant(interp) = &self.fc.aux_supply_eff;
+            if interp.0 == 1.0 {
+                // `fc.aux_supply_eff` was left at its default, so fall back to
+                // the deprecated `alt_eff` to preserve legacy simulation behavior
+                //
+                // Also fires for `fc.aux_supply_eff` explicitly set to 1.0
+                eprintln!(
+                    "Warning: deprecated field `alt_eff` = `{}` is set. Assigning it to `fc.aux_supply_eff` for backward compatibility. This field will be removed in a future release; set `fc.aux_supply_eff` directly instead.",
+                    alt_eff
+                );
+                self.fc.aux_supply_eff = AuxSupplyEfficiency::from(alt_eff);
+            } else if interp.0 != alt_eff {
+                // provided both alt_eff != 1.0 and aux_supply_eff that is not equivalent;
+                // emit warning that aux_supply_eff overrides alt_eff
+                eprintln!(
+                    "Warning: provided deprecated field `alt_eff` = `{}` is being overridden by `fc.aux_supply_eff`. The `alt_eff` field will be removed in a future release.",
+                    alt_eff
+                );
+            } else {
+                // alt_eff != 1.0 but happens to match fc.aux_supply_eff; still flag
+                // the deprecated field since it has no effect but is present
+                eprintln!(
+                    "Warning: deprecated field `alt_eff` = `{}` is set but has no effect, since it matches `fc.aux_supply_eff`. This field will be removed in a future release; remove it from your vehicle file.",
+                    alt_eff
+                );
+            }
         }
         self.fc
             .init()
