@@ -147,7 +147,7 @@ jobs:
         # cargo publish --manifest-path fastsim-core/Cargo.toml --locked --dry-run
 
       - name: Publish distribution to Test PyPI
-        run: python -m twine upload -r testpypi ./artifact/*
+        run: python -m twine upload -r testpypi --skip-existing ./artifact/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.FASTSIM_TEST_PYPI_TOKEN }}
