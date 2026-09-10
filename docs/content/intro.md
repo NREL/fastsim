@@ -13,9 +13,9 @@ site:
 
 # FASTSim Documentation
 
-FASTSim (**Future Automotive Systems Technology Simulator**) is a vehicle simulation tool for evaluating the efficiency and performance of on-road vehicles.
-Developed by the National Laboratory of the Rockies (NLR), it provides fast, accurate estimates of powertrain performance and energy consumption.
-FASTSim models powertrain technologies from conventional fuel-burning vehicles to hybrids and battery electric vehicles, and has been used to simulate light-duty passenger cars, two-wheelers, and a wide variety of medium- and heavy-duty vocational vehicles.
+The Future Automotive Systems Technology Simulator (**FASTSim**) is an open-source vehicle powertrain simulation tool for evaluating the efficiency and performance of on-road vehicles.
+Developed by the National Laboratory of the Rockies (NLR), it provides fast, credible estimates of powertrain performance and energy consumption.
+FASTSim models powertrain technologies from conventional internal-combustion vehicles to hybrids, plug-in hybrids, and battery electric vehicles, and has been used to simulate light-duty passenger vehicles, two-wheelers, and a wide variety of medium- and heavy-duty vehicles.
 
 FASTSim is designed for rapid analysis, making it practical to run many
 simulations and compare technology scenarios across vehicle classes and use
@@ -35,9 +35,9 @@ any on-road vehicle over realistic scenarios.
 For information on FASTSim's history and modeling philosophy, see the
 [Background](background/what-is-fastsim.md) section.
 
-For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](https://github.com/NatLabRockies/fastsim-vehicles).
+For a searchable collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](https://natlabrockies.github.io/fastsim-vehicles/).
 
-## Get Started
+## Getting Started
 
 - [](installation.md): install FASTSim and dependencies
 - [](getting-started.ipynb): run your first simulation
@@ -49,7 +49,7 @@ For a collection of prebuilt vehicle models, see the [FASTSim Vehicle Database](
 ## Learn More
 
 - GitHub Repository: https://github.com/NatLabRockies/fastsim
-- FASTSim Vehicle Database: https://github.com/NatLabRockies/fastsim-vehicles
+- FASTSim Vehicle Database: https://natlabrockies.github.io/fastsim-vehicles/
 - Documentation: https://natlabrockies.github.io/fastsim
 - Release Notes: https://github.com/NatLabRockies/fastsim/releases
 - NLR FASTSim Homepage: https://www.nlr.gov/transportation/fastsim

@@ -8,7 +8,7 @@ def build_and_run_sim_drive():
     veh.set_save_interval(1)
     cyc = fsim.Cycle.from_resource("udds.csv")
     sd = fsim.SimDrive(veh, cyc)
-    sd.walk()
+    sd.run()
 
 if __name__ == "__main__":
     build_and_run_sim_drive()
@@ -26,4 +26,4 @@ if __name__ == "__main__":
     # 11   62.125 MiB    0.000 MiB           1       veh.save_interval = 1
     # 12   62.312 MiB    0.188 MiB           1       cyc = fsim.Cycle.from_resource("udds.csv")
     # 13   62.406 MiB    0.094 MiB           1       sd = fsim.SimDrive(veh, cyc)
-    # 14   62.953 MiB    0.547 MiB           1       sd.walk()
+    # 14   62.953 MiB    0.547 MiB           1       sd.run()

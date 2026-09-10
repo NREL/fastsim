@@ -73,7 +73,10 @@ jobs:
           CIBW_ARCHS_MACOS: "${{ matrix.os.arch }}"
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
-          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
+          # manylinux_2_28 (AlmaLinux 8) ships OpenSSL 1.1.1 via yum, which is
+          # too old for curl-sys's vendored curl (requires OpenSSL 3.0+). Use
+          # manylinux_2_34 (AlmaLinux 9), which ships OpenSSL 3.0+ by default.
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_34"
           CIBW_BEFORE_BUILD: rustup show
           # Linux builds run in an isolated container with no Rust preinstalled,
           # so it needs its own toolchain install.
@@ -113,8 +116,6 @@ jobs:
     needs: [build-wheels, feature-powerset]
     name: Publish release artifacts
     runs-on: ubuntu-latest
-    # Protection: only publish on an explicit GitHub release, not workflow_dispatch re-runs.
-    if: github.event_name == 'release' && github.event.action == 'published'
     steps:
       - uses: actions/checkout@v4
 
@@ -139,13 +140,14 @@ jobs:
         run: python -m twine check ./artifact/*
 
       - name: Dry-run Rust crate publish
+        # fastsim-core is skipped here: cargo can't resolve its pinned
+        # fastsim-proc-macros version until that crate is actually published.
         run: |
           cargo publish --manifest-path fastsim-core/fastsim-proc-macros/Cargo.toml --locked --dry-run
-          cargo publish --manifest-path fastsim-core/Cargo.toml --locked --dry-run
-        # cargo publish --manifest-path fastsim-cli/Cargo.toml --locked --dry-run
+        # cargo publish --manifest-path fastsim-core/Cargo.toml --locked --dry-run
 
       - name: Publish distribution to Test PyPI
-        run: python -m twine upload -r testpypi ./artifact/*
+        run: python -m twine upload -r testpypi --skip-existing ./artifact/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.FASTSIM_TEST_PYPI_TOKEN }}
@@ -154,7 +156,6 @@ jobs:
         run: |
           cargo publish --manifest-path fastsim-core/fastsim-proc-macros/Cargo.toml --locked
           cargo publish --manifest-path fastsim-core/Cargo.toml --locked
-        # cargo publish --manifest-path fastsim-cli/Cargo.toml --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 

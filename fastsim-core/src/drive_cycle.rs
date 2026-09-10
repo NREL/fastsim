@@ -48,11 +48,19 @@ pub struct Cycle {
     pub pwr_solar_load: Vec<si::Power>,
     // TODO: add provision for optional time-varying aux load
     /// grade interpolator
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub grade_interp: Option<InterpolatorEnumOwned<f64>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_nested"
+    )]
+    pub grade_interp: Option<InterpolatorEnum<f64>>,
     /// elevation interpolator
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub elev_interp: Option<InterpolatorEnumOwned<f64>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_nested"
+    )]
+    pub elev_interp: Option<InterpolatorEnum<f64>>,
 }
 
 #[pyo3_api]
@@ -1112,14 +1120,25 @@ impl Cycle {
                             }
                             result
                         };
-                        let interp: InterpolatorEnum<ndarray::OwnedRepr<f64>> =
-                            InterpolatorEnum::new_1d(
-                                trapz_distances_m.clone().into(),
-                                trapz_elevations_m.clone().into(),
-                                strategy::Linear,
-                                Extrapolate::Clamp,
-                            )
-                            .unwrap();
+                        // dedup adjacent equal distances (e.g. while stopped), which
+                        // ninterp's grid coordinates must not contain
+                        let (interp_ds, interp_elevs): (Vec<f64>, Vec<f64>) = trapz_distances_m
+                            .iter()
+                            .zip(&trapz_elevations_m)
+                            .fold((Vec::new(), Vec::new()), |(mut ds, mut es), (&d, &e)| {
+                                if ds.is_empty() || d > *ds.last().unwrap() {
+                                    ds.push(d);
+                                    es.push(e);
+                                }
+                                (ds, es)
+                            });
+                        let interp: InterpolatorEnum<f64> = InterpolatorEnum::new_1d(
+                            interp_ds.into(),
+                            interp_elevs.into(),
+                            strategy::Linear,
+                            Extrapolate::Clamp,
+                        )
+                        .unwrap();
                         let e0_m = interp.interpolate(&[dist0_m]).unwrap();
                         let e1_m = interp.interpolate(&[dist1_m]).unwrap();
                         ((e1_m - e0_m) / dd_m).asin().tan() * uc::R
@@ -1384,7 +1403,7 @@ impl Cycle {
             return self.clone();
         }
         let mut t = si::Time::ZERO;
-        let speed_interp: InterpolatorEnum<OwnedRepr<f64>> = InterpolatorEnum::new_1d(
+        let speed_interp: InterpolatorEnum<f64> = InterpolatorEnum::new_1d(
             self.time.iter().map(|x| x.get::<si::second>()).collect(),
             self.speed
                 .iter()
@@ -1394,14 +1413,14 @@ impl Cycle {
             Extrapolate::Clamp,
         )
         .unwrap();
-        let grade_interp: InterpolatorEnum<OwnedRepr<f64>> = InterpolatorEnum::new_1d(
+        let grade_interp: InterpolatorEnum<f64> = InterpolatorEnum::new_1d(
             self.time.iter().map(|x| x.get::<si::second>()).collect(),
             self.grade.iter().map(|y| y.get::<si::ratio>()).collect(),
-            strategy::RightNearest,
+            strategy::Step::upper(),
             Extrapolate::Clamp,
         )
         .unwrap();
-        let temp_interp: Option<InterpolatorEnum<OwnedRepr<f64>>> =
+        let temp_interp: Option<InterpolatorEnum<f64>> =
             if self.temp_amb_air.len() == self.time.len() {
                 Some(
                     InterpolatorEnum::new_1d(
@@ -1418,7 +1437,7 @@ impl Cycle {
             } else {
                 None
             };
-        let solar_interp: Option<InterpolatorEnum<OwnedRepr<f64>>> =
+        let solar_interp: Option<InterpolatorEnum<f64>> =
             if self.pwr_solar_load.len() == self.time.len() {
                 Some(
                     InterpolatorEnum::new_1d(
@@ -1435,7 +1454,7 @@ impl Cycle {
             } else {
                 None
             };
-        let chg_pwr_interp: Option<InterpolatorEnum<OwnedRepr<f64>>> =
+        let chg_pwr_interp: Option<InterpolatorEnum<f64>> =
             if self.pwr_max_chrg.len() == self.time.len() {
                 Some(
                     InterpolatorEnum::new_1d(

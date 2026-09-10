@@ -21,3 +21,5 @@ Execute simulations and inspect results
 :::
 
 ::::
+
+If you are coming from FASTSim-2, check out our [](../migration-guide.ipynb).

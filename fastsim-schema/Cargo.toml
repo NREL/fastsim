@@ -1,6 +1,6 @@
 [package]
 name = "fastsim-schema"
-version = "0.1.0"
+version = "0.1.1"
 edition.workspace = true
 rust-version.workspace = true
 license = "Apache-2.0"
@@ -25,14 +25,14 @@ wasm-bindgen = { version = "0.2", optional = true }
 serde-wasm-bindgen = { version = "0.6", optional = true }
 clap = { version = "4.6.5", features = ["derive"], optional = true }
 anyhow = { version = "1", optional = true }
-walkdir = { version = "2", optional = true }
+ignore = { version = "0.4", optional = true }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
 
 [features]
 wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen"]
-cli = ["dep:clap", "dep:anyhow", "dep:walkdir"]
+cli = ["dep:clap", "dep:anyhow", "dep:ignore"]
 
 [[bin]]
 name = "build-index"

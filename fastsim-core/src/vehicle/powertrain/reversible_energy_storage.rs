@@ -1310,15 +1310,27 @@ impl Default for RESLumpedThermalState {
 /// Determines what [ReversibleEnergyStorage] state variables to use in calculating efficiency
 pub enum RESEfficiency {
     /// Efficiency is constant
-    Constant(Interp0D<f64>),
+    Constant(#[serde(serialize_with = "serialize_nested")] Interp0D<f64>),
     /// Efficiency = f(C-rate)
-    CRate(Interp1DOwned<f64, strategy::enums::Strategy1DEnum>),
+    CRate(
+        #[serde(serialize_with = "serialize_nested")]
+        Interp1D<f64, strategy::enums::Strategy1DEnum<f64>>,
+    ),
     /// Efficiency = f(C-rate, soc, temperature)
-    CRateSOCTemperature(Interp3DOwned<f64, strategy::enums::Strategy3DEnum>),
+    CRateSOCTemperature(
+        #[serde(serialize_with = "serialize_nested")]
+        Interp3D<f64, strategy::enums::Strategy3DEnum<f64>>,
+    ),
     /// Efficiency = f(C-rate, temperature)
-    CRateTemperature(Interp2DOwned<f64, strategy::enums::Strategy2DEnum>),
+    CRateTemperature(
+        #[serde(serialize_with = "serialize_nested")]
+        Interp2D<f64, strategy::enums::Strategy2DEnum<f64>>,
+    ),
     /// Efficiency = f(C-rate, soc)
-    CRateSOC(Interp2DOwned<f64, strategy::enums::Strategy2DEnum>),
+    CRateSOC(
+        #[serde(serialize_with = "serialize_nested")]
+        Interp2D<f64, strategy::enums::Strategy2DEnum<f64>>,
+    ),
     // TODO: finish adding possible variants
 }
 
