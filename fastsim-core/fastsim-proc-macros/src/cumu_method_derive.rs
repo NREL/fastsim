@@ -25,9 +25,10 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
     let fields_with_state_vec: Vec<bool> = fields
         .iter()
         .map(|field| {
-            field.attrs.iter().any(|attr| {
-                attr.path().is_ident("has_state") || attr.path().is_ident("is_state")
-            })
+            field
+                .attrs
+                .iter()
+                .any(|attr| attr.path().is_ident("has_state") || attr.path().is_ident("is_state"))
         })
         .collect();
 

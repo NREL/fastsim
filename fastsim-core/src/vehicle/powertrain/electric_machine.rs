@@ -874,7 +874,6 @@ impl EMBuilder {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "pyo3", pyclass(module = "fastsim", subclass, eq))]
-
 #[is_state]
 pub struct ElectricMachineState {
     /// time step index
