@@ -2,7 +2,7 @@ use fastsim_core::traits::SerdeAPI as _;
 
 use super::*;
 
-pub use ::fastsim_2 as fastsim_core;
+pub extern crate fastsim_2 as fastsim_core;
 
 use include_dir::{include_dir, Dir};
 pub const ASSETS_DIR: &'static Dir<'_> =
@@ -27,7 +27,7 @@ mod tests {
                         .unwrap();
                 let f3_veh = Vehicle::try_from(f2_veh).unwrap();
                 let mut f3_sd = SimDrive::new(f3_veh, cyc.clone(), None);
-                assert!(f3_sd.walk().is_ok());
+                assert!(f3_sd.run().is_ok());
                 let mut f2_sd = f3_sd.to_fastsim2().unwrap();
                 assert!(f2_sd.sim_drive(None, None).is_ok());
             });
@@ -124,13 +124,13 @@ impl Vehicle {
             fc_eff_map: self
                 .fc()
                 .map(|fc| match &fc.eff_interp_from_pwr_out {
-                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.values.clone()),
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.values.to_vec().into()),
                     _ => bail!(format_dbg!(
                         "Only 1-D interpolators can be converted to FASTSim 2"
                     )),
                 })
                 .transpose()?
-                .unwrap_or_else(|| array![0., 0.]),
+                .unwrap_or_else(|| vec![0., 0.].into()),
             fc_eff_map_doc: None,
             fc_eff_type: match &self.pt_type {
                 PowertrainType::ConventionalVehicle(_) => "SI".into(),
@@ -156,13 +156,13 @@ impl Vehicle {
             fc_pwr_out_perc: self
                 .fc()
                 .map(|fc| match &fc.eff_interp_from_pwr_out {
-                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.grid[0].clone()),
+                    InterpolatorEnum::Interp1D(interp) => Ok(interp.data.grid[0].to_vec().into()),
                     _ => bail!(format_dbg!(
                         "Only 1-D interpolators can be converted to FASTSim 2"
                     )),
                 })
                 .transpose()?
-                .unwrap_or_else(|| array![0., 1.]),
+                .unwrap_or_else(|| vec![0., 1.].into()),
             fc_pwr_out_perc_doc: None,
             fc_sec_to_peak_pwr: self
                 .fc()
@@ -456,8 +456,6 @@ impl TryFrom<&fastsim_core::vehicle::RustVehicle> for PowertrainType {
     /// # Arguments
     /// * `f2veh` - fastsim-2 vehicle
     fn try_from(f2veh: &fastsim_core::vehicle::RustVehicle) -> anyhow::Result<PowertrainType> {
-        // TODO: implement the `_doc` fields in fastsim-3 and make sure they get carried over from fastsim-2
-        // see https://github.com/NREL/fastsim/blob/fastsim-2/rust/fastsim-core/fastsim-proc-macros/src/doc_field.rs and do something similar
         match f2veh.veh_pt_type.as_str() {
             fastsim_core::vehicle::CONV => {
                 let conv = ConventionalVehicle::try_from(f2veh)?;
@@ -559,8 +557,8 @@ impl TryFrom<&fastsim_core::vehicle::RustVehicle> for BatteryElectricVehicle {
             em: ElectricMachine {
                 state: Default::default(),
                 eff_interp_achieved: InterpolatorEnum::new_1d(
-                    f2veh.mc_pwr_out_perc.clone(),
-                    f2veh.mc_eff_array.clone(),
+                    f2veh.mc_pwr_out_perc.to_vec().into(),
+                    f2veh.mc_eff_array.to_vec().into(),
                     strategy::Linear,
                     Extrapolate::Error,
                 )?,
@@ -573,7 +571,7 @@ impl TryFrom<&fastsim_core::vehicle::RustVehicle> for BatteryElectricVehicle {
                         .zip(f2veh.mc_eff_array.iter())
                         .map(|(x, y)| x / y)
                         .collect(),
-                    f2veh.mc_eff_array.clone(),
+                    f2veh.mc_eff_array.to_vec().into(),
                     strategy::Linear,
                     Extrapolate::Error,
                 )?),
@@ -734,7 +732,7 @@ impl TryFrom<fastsim_core::vehicle::RustVehicle> for FuelConverter {
                     0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
                 ]
                 .into(),
-                f2veh.fc_eff_map.clone().into(),
+                f2veh.fc_eff_map.to_vec().into(),
                 strategy::Linear,
                 Extrapolate::Error,
             )

@@ -298,18 +298,18 @@ def get_soc_exp_mod_cal_no_thrml() -> tuple[list[float], list[float]]:
         sd_cal_no_thrml["veh"]["hvac"] = "None"
         sd_cal_no_thrml["veh"]["cabin"] = "None"
         sd_cal_no_thrml["veh"]["pt_type"][pt_type_var]["res"]["thrml"] = "None"
-        res = fsim.ReversibleEnergyStorage.from_pydict(
+        res = fsim.ReversibleEnergyStorage.from_dict(
             sd_cal_no_thrml["veh"]["pt_type"][pt_type_var]["res"], skip_init=False
         )
         res.set_default_pwr_interp()
-        sd_cal_no_thrml["veh"]["pt_type"][pt_type_var]["res"] = res.to_pydict()
+        sd_cal_no_thrml["veh"]["pt_type"][pt_type_var]["res"] = res.to_dict()
 
-        sd_cal_no_thrml = fsim.SimDrive.from_pydict(sd_cal_no_thrml, skip_init=False)
+        sd_cal_no_thrml = fsim.SimDrive.from_dict(sd_cal_no_thrml, skip_init=False)
         try:
-            sd_cal_no_thrml.walk_once()
+            sd_cal_no_thrml.run_once()
         except Exception:
             pass
-        sd_cal_no_thrml = sd_cal_no_thrml.to_pydict()
+        sd_cal_no_thrml = sd_cal_no_thrml.to_dict()
 
         df_cal = df_cal[: len(sd_cal_no_thrml["veh"]["history"]["time_seconds"])]
 
@@ -339,18 +339,18 @@ def get_soc_exp_mod_val_no_thrml() -> tuple[list[float], list[float]]:
         sd_val_no_thrml["veh"]["hvac"] = "None"
         sd_val_no_thrml["veh"]["cabin"] = "None"
         sd_val_no_thrml["veh"]["pt_type"][pt_type_var]["res"]["thrml"] = "None"
-        res = fsim.ReversibleEnergyStorage.from_pydict(
+        res = fsim.ReversibleEnergyStorage.from_dict(
             sd_val_no_thrml["veh"]["pt_type"][pt_type_var]["res"], skip_init=False
         )
         res.set_default_pwr_interp()
-        sd_val_no_thrml["veh"]["pt_type"][pt_type_var]["res"] = res.to_pydict()
+        sd_val_no_thrml["veh"]["pt_type"][pt_type_var]["res"] = res.to_dict()
 
-        sd_val_no_thrml = fsim.SimDrive.from_pydict(sd_val_no_thrml, skip_init=False)
+        sd_val_no_thrml = fsim.SimDrive.from_dict(sd_val_no_thrml, skip_init=False)
         try:
-            sd_val_no_thrml.walk_once()
+            sd_val_no_thrml.run_once()
         except Exception:
             pass
-        sd_val_no_thrml = sd_val_no_thrml.to_pydict()
+        sd_val_no_thrml = sd_val_no_thrml.to_dict()
 
         df_val = df_val[: len(sd_val_no_thrml["veh"]["history"]["time_seconds"])]
 
@@ -388,7 +388,7 @@ plt.savefig(plot_save_path / "scatter without thrml effects.svg")
 veh_dict_new = deepcopy(sd_cal["veh"])
 veh_dict_new["hvac"]["LumpedCabinAndRES"]["te_set_cab_kelvin"] = 22 + celsius_to_kelvin_offset
 veh_dict_new["hvac"]["LumpedCabinAndRES"]["te_set_res_kelvin"] = 22 + celsius_to_kelvin_offset
-veh_new = fsim.Vehicle.from_pydict(veh_dict_new)
+veh_new = fsim.Vehicle.from_dict(veh_dict_new)
 veh_new.clear()
 if OVERWRITE_VEH:
     veh_new.to_file("./f3-vehicles/2020 Chevrolet Bolt EV thrml.yaml")

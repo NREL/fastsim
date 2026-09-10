@@ -3,7 +3,7 @@ use crate::imports::*;
 pub mod serde_api;
 pub use serde_api::*;
 
-use ninterp::num_traits::{Num, Zero};
+use ninterp::num_traits::{Float, Num, Zero};
 
 pub trait Linspace {
     /// Generate linearly spaced vec
@@ -61,7 +61,7 @@ where
         Ok(&self.0)
     }
 }
-impl<D, S> Min<D::Elem> for Interp1D<D, S>
+impl<D, S> Min<D::Elem> for Interp1DBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + std::fmt::Debug,
@@ -71,7 +71,7 @@ where
         self.data.values.min()
     }
 }
-impl<D, S> Min<D::Elem> for Interp2D<D, S>
+impl<D, S> Min<D::Elem> for Interp2DBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + std::fmt::Debug,
@@ -81,7 +81,7 @@ where
         self.data.values.min()
     }
 }
-impl<D, S> Min<D::Elem> for Interp3D<D, S>
+impl<D, S> Min<D::Elem> for Interp3DBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + std::fmt::Debug,
@@ -91,7 +91,7 @@ where
         self.data.values.min()
     }
 }
-impl<D, S> Min<D::Elem> for InterpND<D, S>
+impl<D, S> Min<D::Elem> for InterpNDBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + std::fmt::Debug,
@@ -101,10 +101,10 @@ where
         self.data.values.min()
     }
 }
-impl<S> Min<S::Elem> for InterpolatorEnum<S>
+impl<S> Min<S::Elem> for InterpolatorEnumBase<S>
 where
     S: ndarray::Data + ndarray::RawDataClone + Clone,
-    S::Elem: Num + PartialOrd + Copy + std::fmt::Debug,
+    S::Elem: Num + Float + PartialOrd + Copy + std::fmt::Debug,
 {
     fn min(&self) -> anyhow::Result<&S::Elem> {
         match self {
@@ -152,7 +152,7 @@ where
         Ok(&self.0)
     }
 }
-impl<D, S> Max<D::Elem> for Interp1D<D, S>
+impl<D, S> Max<D::Elem> for Interp1DBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + std::fmt::Debug,
@@ -162,7 +162,7 @@ where
         self.data.values.max()
     }
 }
-impl<D, S> Max<D::Elem> for Interp2D<D, S>
+impl<D, S> Max<D::Elem> for Interp2DBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + std::fmt::Debug,
@@ -172,7 +172,7 @@ where
         self.data.values.max()
     }
 }
-impl<D, S> Max<D::Elem> for Interp3D<D, S>
+impl<D, S> Max<D::Elem> for Interp3DBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + std::fmt::Debug,
@@ -182,7 +182,7 @@ where
         self.data.values.max()
     }
 }
-impl<D, S> Max<D::Elem> for InterpND<D, S>
+impl<D, S> Max<D::Elem> for InterpNDBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + std::fmt::Debug,
@@ -192,10 +192,10 @@ where
         self.data.values.max()
     }
 }
-impl<S> Max<S::Elem> for InterpolatorEnum<S>
+impl<S> Max<S::Elem> for InterpolatorEnumBase<S>
 where
     S: ndarray::Data + ndarray::RawDataClone + Clone,
-    S::Elem: Num + PartialOrd + Copy + std::fmt::Debug,
+    S::Elem: Num + Float + PartialOrd + Copy + std::fmt::Debug,
 {
     fn max(&self) -> anyhow::Result<&S::Elem> {
         match self {
@@ -248,7 +248,7 @@ where
         Ok(T::zero())
     }
 }
-impl<D, S> Range<D::Elem> for Interp1D<D, S>
+impl<D, S> Range<D::Elem> for Interp1DBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
@@ -258,7 +258,7 @@ where
         self.data.values.range()
     }
 }
-impl<D, S> Range<D::Elem> for Interp2D<D, S>
+impl<D, S> Range<D::Elem> for Interp2DBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
@@ -268,7 +268,7 @@ where
         self.data.values.range()
     }
 }
-impl<D, S> Range<D::Elem> for Interp3D<D, S>
+impl<D, S> Range<D::Elem> for Interp3DBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
@@ -278,7 +278,7 @@ where
         self.data.values.range()
     }
 }
-impl<D, S> Range<D::Elem> for InterpND<D, S>
+impl<D, S> Range<D::Elem> for InterpNDBase<D, S>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
     D::Elem: PartialOrd + Sub<Output = D::Elem> + Copy + std::fmt::Debug,
@@ -288,10 +288,10 @@ where
         self.data.values.range()
     }
 }
-impl<S> Range<S::Elem> for InterpolatorEnum<S>
+impl<S> Range<S::Elem> for InterpolatorEnumBase<S>
 where
     S: ndarray::Data + ndarray::RawDataClone + Clone,
-    S::Elem: Num + PartialOrd + Copy + std::fmt::Debug,
+    S::Elem: Num + Float + PartialOrd + Copy + std::fmt::Debug,
     ArrayBase<S, Ix1>: Range<S::Elem>,
 {
     fn range(&self) -> anyhow::Result<S::Elem> {

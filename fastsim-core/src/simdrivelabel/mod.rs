@@ -5,7 +5,7 @@ use std::collections::HashMap;
 // crate local
 use crate::drive_cycle::{Cycle, CYC_ACCEL};
 use crate::imports::*;
-use crate::simdrive::SimDrive;
+use crate::simdrive::{params::SimParams, SimDrive};
 use crate::vehicle::{PowertrainType, Vehicle};
 
 /// Return first index of `arr` greater than `cut`
@@ -34,7 +34,7 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Resul
 
     if accel_data.speed_mph.iter().any(|&x| x >= 60.0) {
         // Create interpolator from speed to time
-        let interp = Interp1D::new(
+        let interp = Interp1DView::new(
             ArrayView::from(&accel_data.speed_mph[..first_ind_after_60_mph + 1]),
             ArrayView::from(&accel_data.time_s[..first_ind_after_60_mph + 1]),
             strategy::Linear,
@@ -63,12 +63,19 @@ pub fn get_0_to_60_time_from_accel_data(accel_data: &AccelData) -> anyhow::Resul
 }
 
 /// Run the acceleration test and return the time/speed trace.
-pub fn run_accel(veh: &Vehicle) -> anyhow::Result<AccelData> {
-    let mut sd_accel = SimDrive::new(veh.clone(), CYC_ACCEL.clone(), None);
+pub fn run_accel(
+    veh: &Vehicle,
+    sim_params: &HashMap<&'static str, SimParams>,
+) -> anyhow::Result<AccelData> {
+    let mut sd_accel = SimDrive::new(
+        veh.clone(),
+        CYC_ACCEL.clone(),
+        sim_params.get("accel").cloned(),
+    );
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
-    sd_accel.walk_once().map_err(|e| {
+    sd_accel.run_once().map_err(|e| {
         anyhow!(
-            "Acceleration simdrive walk_once failed at line {} with originating error [{}]",
+            "Acceleration simdrive run_once failed at line {} with originating error [{}]",
             format_dbg!(),
             e
         )
@@ -91,9 +98,9 @@ pub fn run_accel(veh: &Vehicle) -> anyhow::Result<AccelData> {
 /// Returns time [s] for 0-60 mph acceleration at max power
 pub fn get_0_to_60_time(sd_accel: &mut SimDrive) -> anyhow::Result<f64> {
     sd_accel.sim_params.trace_miss_opts = TraceMissOptions::Allow;
-    sd_accel.walk_once().map_err(|e| {
+    sd_accel.run_once().map_err(|e| {
         anyhow!(
-            "Acceleration simdrive walk_once failed at line {} with originating error [{}]",
+            "Acceleration simdrive run_once failed at line {} with originating error [{}]",
             format_dbg!(),
             e
         )
@@ -229,7 +236,7 @@ pub struct LabelFe {
     pub adj_hwy_ess_kwh_per_mi: f64,
     pub adj_comb_ess_kwh_per_mi: f64,
     pub net_range_miles: f64,
-    pub uf: f64,
+    pub uf: Option<f64>,
     pub net_accel: f64,
     pub res_found: String,
     pub phev_calcs: Option<LabelFePHEV>,
@@ -412,6 +419,8 @@ pub enum SimulationDataForLabel {
         veh_year: u32,
         udds_mpgge: f64,
         hwy_mpgge: f64,
+        /// Fuel storage usable energy in kWh
+        fs_energy_capacity_kwh: f64,
     },
     Bev {
         veh_year: u32,
@@ -784,11 +793,6 @@ pub fn calculate_label_fuel_economy(
         | SimulationDataForLabel::Phev { veh_year, .. }
         | SimulationDataForLabel::Bev { veh_year, .. } => *veh_year,
     };
-    let is_phev = match sim_data {
-        SimulationDataForLabel::ConvOrHev { .. } => false,
-        SimulationDataForLabel::Phev { .. } => true,
-        SimulationDataForLabel::Bev { .. } => false,
-    };
     // find year-based adjustment parameters
     let adj_params = if veh_year < 2017 {
         &phev_utilization_params.adj_coef_map["2008"]
@@ -801,6 +805,7 @@ pub fn calculate_label_fuel_economy(
         SimulationDataForLabel::ConvOrHev {
             udds_mpgge,
             hwy_mpgge,
+            fs_energy_capacity_kwh: fuel_storage_capacity_kwh,
             ..
         } => {
             // compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labUddsMpgge
@@ -820,6 +825,8 @@ pub fn calculate_label_fuel_economy(
                 1. / (adj_params.hwy_intercept + adj_params.hwy_slope / hwy_mpgge);
             label_fe.adj_comb_mpgge =
                 1. / (0.55 / label_fe.adj_udds_mpgge + 0.45 / label_fe.adj_hwy_mpgge);
+            let fuel_energy_gge = fuel_storage_capacity_kwh / fuel_props.kwh_per_gge();
+            label_fe.net_range_miles = fuel_energy_gge * label_fe.adj_comb_mpgge;
         }
         SimulationDataForLabel::Phev {
             info, udds, hwy, ..
@@ -891,12 +898,14 @@ pub fn calculate_label_fuel_economy(
 
             // range for combined city/highway
             // utility factor (percent driving in charge depletion mode)
-            label_fe.uf = phev_utilization_params.uf_array[first_grtr(
-                &phev_utilization_params.rechg_freq_miles,
-                0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles,
-            )
-            .with_context(|| format_dbg!())?
-                - 1];
+            label_fe.uf = Some(
+                phev_utilization_params.uf_array[first_grtr(
+                    &phev_utilization_params.rechg_freq_miles,
+                    0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles,
+                )
+                .with_context(|| format_dbg!())?
+                    - 1],
+            );
 
             label_fe.net_phev_cd_miles =
                 Some(0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles);
@@ -964,10 +973,6 @@ pub fn calculate_label_fuel_economy(
             label_fe.net_range_miles = bev_energy_capacity_kwh / label_fe.adj_comb_ess_kwh_per_mi;
         }
     }
-    if !is_phev {
-        // utility factor (percent driving in PHEV charge depletion mode)
-        label_fe.uf = 0.0;
-    }
 
     // process acceleration test data
     label_fe.net_accel = get_0_to_60_time_from_accel_data(accel_data).map_err(|e| {
@@ -996,7 +1001,7 @@ fn run_simdrive_with_init_soc(
     sd.reset_cumulative(|| format_dbg!())?;
     sd.reset_step(|| format_dbg!())?;
     sd.clear();
-    sd.walk_once().map_err(|e| {
+    sd.run_once().map_err(|e| {
         anyhow!(
             "run_simdrive_with_init_soc failed at line {} with originating error [{}]",
             format_dbg!(),
@@ -1014,7 +1019,8 @@ pub fn run_label_simulations(
     // max_epa_adj: Option<f64>,
     fuel_props: Option<FuelProperties>,
     phev_utilization_params: Option<PhevUtilizationParams>,
-) -> anyhow::Result<(SimulationDataForLabel, HashMap<&str, SimDrive>)> {
+    sim_params: &HashMap<&'static str, SimParams>,
+) -> anyhow::Result<(SimulationDataForLabel, HashMap<&'static str, SimDrive>)> {
     // let max_epa_adj = max_epa_adj.unwrap_or(0.3);
     let phev_utilization_params = &phev_utilization_params.unwrap_or_default();
     let fuel_props = fuel_props.unwrap_or_default();
@@ -1039,12 +1045,23 @@ pub fn run_label_simulations(
     // run simdrive for non-phev powertrains
     sd.insert(
         "udds",
-        SimDrive::new(veh.clone(), cyc["udds"].clone(), None),
+        SimDrive::new(
+            veh.clone(),
+            cyc["udds"].clone(),
+            sim_params.get("udds").cloned(),
+        ),
     );
-    sd.insert("hwy", SimDrive::new(veh.clone(), cyc["hwy"].clone(), None));
+    sd.insert(
+        "hwy",
+        SimDrive::new(
+            veh.clone(),
+            cyc["hwy"].clone(),
+            sim_params.get("hwy").cloned(),
+        ),
+    );
 
     for (k, val) in sd.iter_mut() {
-        val.walk().map_err(|e| {
+        val.run().map_err(|e| {
             anyhow!(
                 "run_label_simulations failed for key {} at line {} with originating error [{}]",
                 k,
@@ -1077,12 +1094,18 @@ pub fn run_label_simulations(
                 veh_year,
                 udds_mpgge: sd["udds"].veh.mpg(fuel_props.energy_density)?,
                 hwy_mpgge: sd["hwy"].veh.mpg(fuel_props.energy_density)?,
+                fs_energy_capacity_kwh: veh
+                    .pt_type
+                    .fs()
+                    .map(|fs| fs.energy_capacity.get::<si::kilowatt_hour>())
+                    .unwrap_or(0.0),
             },
             sd,
         ))
     } else if is_bev {
         if let PowertrainType::BatteryElectricVehicle(bev) = &veh.pt_type {
-            let res_energy_capacity_kwh = bev.res.energy_capacity.get::<si::kilowatt_hour>();
+            let res_energy_capacity_kwh =
+                bev.res.energy_capacity_usable().get::<si::kilowatt_hour>();
             Ok((
                 SimulationDataForLabel::Bev {
                     veh_year,
@@ -1322,19 +1345,23 @@ pub fn get_label_fe(
     full_detail: bool,
     fuel_props: Option<FuelProperties>,
     phev_utilization_params: Option<PhevUtilizationParams>,
+    sim_params: Option<HashMap<&'static str, SimParams>>,
     verbose: bool,
-) -> anyhow::Result<(LabelFe, Option<HashMap<&str, SimDrive>>)> {
+) -> anyhow::Result<(LabelFe, Option<HashMap<&'static str, SimDrive>>)> {
     let max_epa_adj = max_epa_adj.unwrap_or(0.3);
     let phev_utilization_params = &phev_utilization_params.unwrap_or_default();
     let fuel_props = fuel_props.unwrap_or_default();
     let veh_copy = veh.clone();
 
+    let sim_params = sim_params.unwrap_or_default();
+
     let (sim_data, sd) = run_label_simulations(
         veh,
         Some(fuel_props.clone()),
         Some(phev_utilization_params.clone()),
+        &sim_params,
     )?;
-    let accel_data = run_accel(&veh_copy)?;
+    let accel_data = run_accel(&veh_copy, &sim_params)?;
     let mut label_fe = calculate_label_fuel_economy(
         &fuel_props,
         phev_utilization_params,
@@ -1362,7 +1389,7 @@ pub fn get_label_fe(
 #[cfg_attr(
     feature = "pyo3",
     pyo3(signature = (
-        veh, max_epa_adj=None, full_detail=None, fuel_props=None, phev_utilization_params=None, verbose=None))
+        veh, max_epa_adj=None, full_detail=None, fuel_props=None, phev_utilization_params=None, sim_params=None, verbose=None))
 )]
 /// pyo3 version of [get_label_fe]
 pub fn get_label_fe_py(
@@ -1371,6 +1398,7 @@ pub fn get_label_fe_py(
     full_detail: Option<bool>,
     fuel_props: Option<FuelProperties>,
     phev_utilization_params: Option<PhevUtilizationParams>,
+    sim_params: Option<HashMap<String, SimParams>>,
     verbose: Option<bool>,
 ) -> anyhow::Result<LabelFe> {
     let (label_fe, _) = get_label_fe(
@@ -1379,6 +1407,21 @@ pub fn get_label_fe_py(
         full_detail.unwrap_or_default(),
         fuel_props,
         phev_utilization_params,
+        sim_params
+            .map(|m| {
+                m.into_iter()
+                    .map(|(k, v)| -> anyhow::Result<(&'static str, SimParams)> {
+                        let key = match k.as_str() {
+                            "udds" => "udds",
+                            "hwy" => "hwy",
+                            "accel" => "accel",
+                            other => bail!("Unknown sim_params key: {other:?}"),
+                        };
+                        Ok((key, v))
+                    })
+                    .collect()
+            })
+            .transpose()?,
         verbose.unwrap_or_default(),
     )?;
     Ok(label_fe)
@@ -1452,7 +1495,7 @@ pub fn get_label_fe_phev(
         // This runs 1 cycle starting at max SOC then runs 1 cycle starting at min SOC.
         // By assuming that the battery SOC depletion per mile is constant across cycles,
         // the first cycle can be extrapolated until charge sustaining kicks in.
-        sd.walk()?;
+        sd.run()?;
         let mut phev_calc = PHEVCycleCalc::default();
 
         // charge depletion cycle has already been simulated
@@ -1536,9 +1579,9 @@ pub fn get_label_fe_phev(
         sd.reset_cumulative(|| format_dbg!())?;
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
-        sd.walk_once().map_err(|err| {
+        sd.run_once().map_err(|err| {
             anyhow!(
-                "walk_once failed at line {} with originating error {}",
+                "run_once failed at line {} with originating error {}",
                 format_dbg!(),
                 err
             )
@@ -1558,9 +1601,9 @@ pub fn get_label_fe_phev(
         sd.reset_cumulative(|| format_dbg!())?;
         sd.reset_step(|| format_dbg!())?;
         sd.clear();
-        sd.walk_once().map_err(|err| {
+        sd.run_once().map_err(|err| {
             anyhow!(
-                "walk_once failed at line {} with originating error {}",
+                "run_once failed at line {} with originating error {}",
                 format_dbg!(),
                 err
             )
@@ -2049,7 +2092,7 @@ mod tests {
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
+        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2095,7 +2138,7 @@ mod tests {
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
+        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2140,7 +2183,7 @@ mod tests {
         let mut veh = Vehicle::try_from(f2veh.clone()).unwrap();
 
         // Get FASTSim-3 label FE results
-        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, false)
+        let (label_fe_f3, _) = get_label_fe(&mut veh, None, false, None, None, None, false)
             .with_context(|| format_dbg!())
             .unwrap();
 
@@ -2189,7 +2232,7 @@ mod tests {
         );
 
         // Get FASTSim-3 label FE results (if PHEV functionality is implemented)
-        let label_fe_f3 = get_label_fe(&mut veh, None, false, None, None, false)
+        let label_fe_f3 = get_label_fe(&mut veh, None, false, None, None, None, false)
             .unwrap()
             .0;
 
@@ -2319,6 +2362,7 @@ mod tests {
             veh_year: f2veh.veh_year,
             udds_mpgge: label_fe_f2.lab_udds_mpgge,
             hwy_mpgge: label_fe_f2.lab_hwy_mpgge,
+            fs_energy_capacity_kwh: f2veh.fs_kwh,
         };
         let max_epa_adj = 0.3;
         assert!(result.is_some());
@@ -2470,12 +2514,18 @@ mod tests {
         eprintln!(
             "udds start soc: {:?}; min soc: {:?}",
             udds_result.soc[0],
-            udds_result.soc.min()
+            udds_result
+                .soc
+                .iter()
+                .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         );
         eprintln!(
             "hwy start soc: {:?}; min soc: {:?}",
             hwy_result.soc[0],
-            hwy_result.soc.min()
+            hwy_result
+                .soc
+                .iter()
+                .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         );
         let fuel_props = FuelProperties::default();
         let sim_data = SimulationDataForLabel::Phev {

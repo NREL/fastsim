@@ -10,32 +10,32 @@ impl InterpolatorScanValues for Interp0D<f64> {
     }
 }
 
-impl InterpolatorScanValues for Interp1DOwned<f64, strategy::enums::Strategy1DEnum> {
+impl InterpolatorScanValues for Interp1D<f64, strategy::enums::Strategy1DEnum<f64>> {
     fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
         self.data.values.iter().copied().try_for_each(&mut f)
     }
 }
 
-impl InterpolatorScanValues for Interp2DOwned<f64, strategy::enums::Strategy2DEnum> {
+impl InterpolatorScanValues for Interp2D<f64, strategy::enums::Strategy2DEnum<f64>> {
     fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
         self.data.values.iter().copied().try_for_each(&mut f)
     }
 }
 
-impl InterpolatorScanValues for Interp3DOwned<f64, strategy::enums::Strategy3DEnum> {
+impl InterpolatorScanValues for Interp3D<f64, strategy::enums::Strategy3DEnum<f64>> {
     fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
         self.data.values.iter().copied().try_for_each(&mut f)
     }
 }
 
-impl InterpolatorScanValues for InterpNDOwned<f64, strategy::enums::StrategyNDEnum> {
+impl InterpolatorScanValues for InterpND<f64, strategy::enums::StrategyNDEnum<f64>> {
     fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
         self.data.values.iter().copied().try_for_each(&mut f)
     }
 }
 
-impl InterpolatorScanValues for InterpolatorEnumOwned<f64> {
-    fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, mut f: F) -> Result<(), E> {
+impl InterpolatorScanValues for InterpolatorEnum<f64> {
+    fn try_for_each_value<E, F: FnMut(f64) -> Result<(), E>>(&self, f: F) -> Result<(), E> {
         match self {
             Self::Interp0D(interp) => interp.try_for_each_value(f),
             Self::Interp1D(interp) => interp.try_for_each_value(f),
@@ -70,7 +70,7 @@ impl InterpolatorMutMethods for Interp0D<f64> {
     }
 }
 
-impl<S> InterpolatorMutMethods for Interp1DOwned<f64, S>
+impl<S> InterpolatorMutMethods for Interp1D<f64, S>
 where
     S: ninterp::strategy::traits::Strategy1D<ndarray::OwnedRepr<f64>> + Clone,
 {
@@ -134,7 +134,7 @@ where
     }
 }
 
-impl<S> InterpolatorMutMethods for Interp2DOwned<f64, S>
+impl<S> InterpolatorMutMethods for Interp2D<f64, S>
 where
     S: ninterp::strategy::traits::Strategy2D<ndarray::OwnedRepr<f64>> + Clone,
 {
@@ -198,7 +198,7 @@ where
     }
 }
 
-impl<S> InterpolatorMutMethods for Interp3DOwned<f64, S>
+impl<S> InterpolatorMutMethods for Interp3D<f64, S>
 where
     S: ninterp::strategy::traits::Strategy3D<ndarray::OwnedRepr<f64>> + Clone,
 {
@@ -262,7 +262,7 @@ where
     }
 }
 
-impl<S> InterpolatorMutMethods for InterpNDOwned<f64, S>
+impl<S> InterpolatorMutMethods for InterpND<f64, S>
 where
     S: ninterp::strategy::traits::StrategyND<ndarray::OwnedRepr<f64>> + Clone,
 {
@@ -329,7 +329,7 @@ where
 // This can be made more generic by using a `ninterp::num_traits` bound instead of f64
 // If there are future methods that *do not* mutate the interpolator,
 // we should define a new trait and impl it for `InterpolatorEnum<D> where D: ndarray::Data`
-impl InterpolatorMutMethods for InterpolatorEnumOwned<f64> {
+impl InterpolatorMutMethods for InterpolatorEnum<f64> {
     // scale all values so that the min is the new min
     // (Note: this may change the max, depending on what scaling method is chosen)
     fn set_min(&mut self, min: f64, scaling: Option<ScalingMethods>) -> anyhow::Result<()> {
@@ -365,27 +365,21 @@ impl InterpolatorMutMethods for InterpolatorEnumOwned<f64> {
     }
 }
 
-impl<D> Init for InterpolatorEnum<D>
+impl<D> Init for InterpolatorEnumBase<D>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone,
-    D::Elem: ninterp::num_traits::Num
-        + ninterp::num_traits::Euclid
-        + PartialOrd
-        + Copy
-        + std::fmt::Debug,
+    D::Elem: ninterp::num_traits::Float + ninterp::num_traits::Euclid + std::fmt::Debug,
 {
     fn init(&mut self) -> Result<(), Error> {
         self.validate()
             .map_err(|e| Error::NinterpError(e.to_string()))
     }
 }
-impl<D> SerdeAPI for InterpolatorEnum<D>
+impl<D> SerdeAPI for InterpolatorEnumBase<D>
 where
     D: ndarray::Data + ndarray::RawDataClone + Clone + ndarray::DataOwned,
-    D::Elem: ninterp::num_traits::Num
+    D::Elem: ninterp::num_traits::Float
         + ninterp::num_traits::Euclid
-        + PartialOrd
-        + Copy
         + std::fmt::Debug
         + Serialize
         + serde::de::DeserializeOwned,
@@ -556,7 +550,7 @@ mod tests {
         assert!(almost_eq(interp_3d.range().unwrap(), 5., Some(1e-3)));
     }
 
-    type StructWithResources = InterpolatorEnumOwned<f64>;
+    type StructWithResources = InterpolatorEnum<f64>;
 
     #[test]
     fn test_resources() {

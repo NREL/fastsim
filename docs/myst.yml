@@ -43,16 +43,20 @@ project:
         - file: content/developers/vehicle-databases.md
         - file: content/developers/making-releases.md
         - file: content/developers/updating-docs.md
+    - file: content/migration-guide.ipynb
+      title: Migration Guide
     - url: https://github.com/NatLabRockies/fastsim
       title: GitHub Repository
-    - url: https://github.com/NatLabRockies/fastsim-vehicles
+    - url: https://natlabrockies.github.io/fastsim-vehicles/
       title: FASTSim Vehicle Database
     - url: https://docs.rs/fastsim-core/latest/fastsim_core/
       title: Rust API Documentation
-    # - file: content/migration-guide.md
 site:
   template: book-theme
   options:
     logo: assets/edit-nlr-logo-color-horizontal-png-v2.png
     favicon: assets/nlr.ico
     style: assets/site.css
+  parts:
+    primary_sidebar_footer: |
+      [`fastsim` on GitHub](https://github.com/NatLabRockies/fastsim)

@@ -3,7 +3,8 @@
 ## Structure
 
 FASTSim vehicle databases,
-such as the public database available at https://github.com/NatLabRockies/fastsim-vehicles,
+such as the public database available at https://github.com/NatLabRockies/fastsim-vehicles
+(browsable at https://natlabrockies.github.io/fastsim-vehicles/),
 enforce a strict organizational structure.
 
 ### Database Organizational Schema (v1)

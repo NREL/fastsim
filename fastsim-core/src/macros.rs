@@ -79,7 +79,7 @@ macro_rules! impl_efficiency_enum {
             }
 
             /// Validate efficiency map, ensuring all values are within the range \[0, 1\] and that the underlying interpolator is valid.
-            fn validate(&mut self) -> Result<(), ninterp::error::ValidateError> {
+            fn validate(&self) -> Result<(), ninterp::error::ValidateError> {
                 ::paste::paste! {
                     match self {
                         $(Self::$variant([<$variant:snake _interp>]) => [<$variant:snake _interp>].validate(),)+
@@ -108,7 +108,7 @@ macro_rules! impl_efficiency_enum {
             fn interpolate(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError> {
                 let efficiency = ::paste::paste! {
                     match self {
-                        $(Self::$variant([<$variant:snake _interp>]) => [<$variant:snake _interp>].interpolate(point),)+
+                        $(Self::$variant([<$variant:snake _interp>]) => ninterp::prelude::Interpolator::interpolate([<$variant:snake _interp>], point),)+
                     }
                 }?;
 

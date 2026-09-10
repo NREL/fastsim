@@ -484,9 +484,11 @@ pub struct CycleCache {
     /// grades where g[i] applies from distance [i, i+1)
     grades: Vec<f64>,
     /// interpolator for index by distance
-    interp_index_by_dist: InterpolatorEnumOwned<f64>,
+    #[serde(serialize_with = "serialize_nested")]
+    interp_index_by_dist: InterpolatorEnum<f64>,
     /// interpolator for elevation by distance
-    interp_elev_by_dist: InterpolatorEnumOwned<f64>,
+    #[serde(serialize_with = "serialize_nested")]
+    interp_elev_by_dist: InterpolatorEnum<f64>,
 }
 
 impl Default for CycleCache {
@@ -577,7 +579,7 @@ impl CycleCache {
         let interp_index_by_dist = InterpolatorEnum::new_1d(
             interp_ds.clone().into(),
             interp_is.clone().into(),
-            strategy::RightNearest,
+            strategy::Step::upper(),
             Extrapolate::Clamp,
         )
         .unwrap();

@@ -24,11 +24,11 @@ lhv_joules_per_gram = 43_205.450
 veh = fsim.Vehicle.from_file(
     Path(__file__).parent / "f3-vehicles/2021_Hyundai_Sonata_Hybrid_Blue.yaml"
 )
-veh_dict = veh.to_pydict()
+veh_dict = veh.to_dict()
 
-sim_params_dict = fsim.SimParams.default().to_pydict()
+sim_params_dict = fsim.SimParams.default().to_dict()
 sim_params_dict["trace_miss_opts"] = "AllowChecked"
-sim_params = fsim.SimParams.from_pydict(sim_params_dict, skip_init=False)
+sim_params = fsim.SimParams.from_dict(sim_params_dict, skip_init=False)
 
 # Obtain the data from
 # https://www.anl.gov/taps/d3-2021-hyundai-sonata-hybrid
@@ -130,7 +130,7 @@ def df_to_cyc(df: pd.DataFrame) -> fsim.Cycle:
         # TODO: pipe solar load from `Cycle` into cabin thermal model
         # "pwr_solar_load_watts": df[],
     }
-    return fsim.Cycle.from_pydict(cyc_dict, skip_init=False)
+    return fsim.Cycle.from_dict(cyc_dict, skip_init=False)
 
 
 pt_type_var = "HybridElectricVehicle"
@@ -177,7 +177,7 @@ def veh_init(cyc_file_stem: str, dfs: Dict[str, pd.DataFrame]) -> fsim.Vehicle:
         te_set + celsius_to_kelvin_offset if te_set is not None else None
     )
 
-    return fsim.Vehicle.from_pydict(vd, skip_init=False)
+    return fsim.Vehicle.from_dict(vd, skip_init=False)
 
 
 def resample_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -220,7 +220,7 @@ for cyc_file_stem, cyc in cycs_for_cal.items():
     cyc: fsim.Cycle
     # NOTE: maybe change `save_interval` to 5
     veh = veh_init(cyc_file_stem, dfs_for_cal)
-    sds_for_cal[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_pydict()
+    sds_for_cal[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_dict()
 
 cyc_files_for_val: List[Path] = list(set(cyc_files) - set(cyc_files_for_cal))
 assert len(cyc_files_for_val) > 0
@@ -245,7 +245,7 @@ for cyc_file_stem, cyc in cycs_for_val.items():
     cyc_file_stem: str
     cyc: fsim.Cycle
     veh = veh_init(cyc_file_stem, dfs_for_val)
-    sds_for_val[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_pydict()
+    sds_for_val[cyc_file_stem] = fsim.SimDrive(veh, cyc, sim_params).to_dict()
 
 
 # Setup model parameters and objectives
@@ -254,9 +254,9 @@ def new_em_eff_max(sd_dict, new_eff_max) -> Dict:
     """
     Set `new_eff_max` in `ElectricMachine`
     """
-    em = fsim.ElectricMachine.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
+    em = fsim.ElectricMachine.from_dict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
     em.__eff_fwd_max = new_eff_max
-    sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_pydict()
+    sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_dict()
     return sd_dict
 
 
@@ -264,9 +264,9 @@ def new_em_eff_range(sd_dict, new_eff_range) -> Dict:
     """
     Set `new_eff_range` in `ElectricMachine`
     """
-    em = fsim.ElectricMachine.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
+    em = fsim.ElectricMachine.from_dict(sd_dict["veh"]["pt_type"][pt_type_var]["em"])
     em.__eff_fwd_range = new_eff_range
-    sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_pydict()
+    sd_dict["veh"]["pt_type"][pt_type_var]["em"] = em.to_dict()
     return sd_dict
 
 
@@ -274,9 +274,9 @@ def new_fc_eff_max(sd_dict, new_eff_max) -> Dict:
     """
     Set `new_eff_max` in `FuelConverter`
     """
-    fc = fsim.FuelConverter.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["fc"])
+    fc = fsim.FuelConverter.from_dict(sd_dict["veh"]["pt_type"][pt_type_var]["fc"])
     fc.__eff_max = new_eff_max
-    sd_dict["veh"]["pt_type"][pt_type_var]["fc"] = fc.to_pydict()
+    sd_dict["veh"]["pt_type"][pt_type_var]["fc"] = fc.to_dict()
     return sd_dict
 
 
@@ -284,11 +284,11 @@ def new_fc_eff_range(sd_dict, new_eff_range) -> Dict:
     """
     Set `new_eff_range` in `FuelConverter`
     """
-    fc = fsim.FuelConverter.from_pydict(sd_dict["veh"]["pt_type"][pt_type_var]["fc"])
+    fc = fsim.FuelConverter.from_dict(sd_dict["veh"]["pt_type"][pt_type_var]["fc"])
     fc_eff_max = fc.eff_max
     # TODO: this is a quick and dirty apprach, change to using constraints in PyMOO
     fc.__eff_range = min(new_eff_range, fc_eff_max * 0.95)
-    sd_dict["veh"]["pt_type"][pt_type_var]["fc"] = fc.to_pydict()
+    sd_dict["veh"]["pt_type"][pt_type_var]["fc"] = fc.to_dict()
     return sd_dict
 
 
@@ -654,8 +654,8 @@ def perturb_params(pos_perturb_dec: float = 0.05, neg_perturb_dec: float = 0.1):
     # - `pos_perturb_doc`: perturbation percentage added to all params.  Can be overridden invididually
     # - `neg_perturb_doc`: perturbation percentage subtracted from all params.  Can be overridden invididually
     """
-    em = fsim.ElectricMachine.from_pydict(veh_dict["pt_type"][pt_type_var]["em"], skip_init=False)
-    fc = fsim.FuelConverter.from_pydict(veh_dict["pt_type"][pt_type_var]["fc"], skip_init=False)
+    em = fsim.ElectricMachine.from_dict(veh_dict["pt_type"][pt_type_var]["em"], skip_init=False)
+    fc = fsim.FuelConverter.from_dict(veh_dict["pt_type"][pt_type_var]["fc"], skip_init=False)
     baseline_params_and_bounds = [
         (em.eff_fwd_max, None),
         (em.eff_fwd_range, None),

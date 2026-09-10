@@ -44,7 +44,7 @@ pub struct Vehicle {
     pub min_fastsim_version: Version,
     /// Where in the database this vehicle lives, if applicable
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub db_path: Option<database::Schema>,
+    pub db_path: Option<database::VehicleSchema>,
     /// Documentation (e.g. how this file was generated, calibration details)
     pub doc: Option<String>,
     /// Vehicle year (e.g. 2020, 2025)
@@ -255,7 +255,7 @@ impl Vehicle {
     pub fn new(
         name: String,
         min_fastsim_version: Option<Version>,
-        db_path: Option<database::Schema>,
+        db_path: Option<database::VehicleSchema>,
         doc: Option<String>,
         year: Option<String>,
         make: Option<String>,
@@ -1808,11 +1808,11 @@ pub(crate) mod tests {
         let veh = veh_result.unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = crate::simdrive::SimDrive::new(veh, cyc, Default::default());
-        let walk_result = sd.walk();
-        if let Err(err) = walk_result {
+        let run_result = sd.run();
+        if let Err(err) = run_result {
             panic!("Error: {}", err);
         }
-        assert!(walk_result.is_ok());
+        assert!(run_result.is_ok());
     }
 
     fn accumulate_for_zero_speed(speeds_mps: &[f64], fuels_mj: &[f64]) -> f64 {
@@ -1836,13 +1836,13 @@ pub(crate) mod tests {
         let veh_conv = veh_conv_result.unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd_uhev = crate::simdrive::SimDrive::new(veh_uhev, cyc.clone(), Default::default());
-        let result_uhev = sd_uhev.walk();
+        let result_uhev = sd_uhev.run();
         if let Err(err) = result_uhev {
             panic!("Error: {}", err);
         }
         assert!(result_uhev.is_ok());
         let mut sd_conv = crate::simdrive::SimDrive::new(veh_conv, cyc.clone(), Default::default());
-        let result_conv = sd_conv.walk();
+        let result_conv = sd_conv.run();
         assert!(result_conv.is_ok());
         let speeds_mps: Vec<f64> = cyc
             .speed
@@ -1893,13 +1893,13 @@ pub(crate) mod tests {
         let veh_conv = veh_conv_result.unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd_ss = crate::simdrive::SimDrive::new(veh_ss, cyc.clone(), Default::default());
-        let result_ss = sd_ss.walk();
+        let result_ss = sd_ss.run();
         if let Err(err) = result_ss {
             panic!("Error: {}", err);
         }
         assert!(result_ss.is_ok());
         let mut sd_conv = crate::simdrive::SimDrive::new(veh_conv, cyc.clone(), Default::default());
-        let result_conv = sd_conv.walk();
+        let result_conv = sd_conv.run();
         assert!(result_conv.is_ok());
         let speeds_mps: Vec<f64> = cyc
             .speed
@@ -2029,13 +2029,13 @@ pub(crate) mod tests {
         let veh_dfco = veh_dfco_result.unwrap();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = crate::simdrive::SimDrive::new(veh, cyc.clone(), Default::default());
-        let sd_result = sd.walk();
+        let sd_result = sd.run();
         if let Err(err) = sd_result {
             panic!("Error: {}", err);
         }
         assert!(sd_result.is_ok());
         let mut sd_dfco = crate::simdrive::SimDrive::new(veh_dfco, cyc.clone(), Default::default());
-        let sd_dfco_result = sd_dfco.walk();
+        let sd_dfco_result = sd_dfco.run();
         assert!(sd_dfco_result.is_ok());
         let fc = sd.veh.pt_type.fc().unwrap();
         let fc_dfco = sd_dfco.veh.pt_type.fc().unwrap();
